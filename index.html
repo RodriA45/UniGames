@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JueFriv</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="src/styles.css" />
+</head>
+<body>
+
+<!-- ════════════════ HEADER ════════════════ -->
+<header>
+  <div class="header-inner">
+
+    <!-- Botón hamburguesa -->
+    <button class="hamburger" id="hamburger" aria-label="Abrir menú">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <!-- Logo -->
+    <div class="logo" onclick="goTo('inicio')">JueFriv</div>
+
+    <!-- Autenticación -->
+    <div class="auth-area">
+      <button class="btn-auth btn-login"    onclick="openModal('login')">Iniciar sesión</button>
+      <button class="btn-auth btn-register" onclick="openModal('register')">Registrarse</button>
+    </div>
+
+  </div>
+
+  <!-- Menú desplegable -->
+  <nav class="nav-menu" id="navMenu">
+    <ul>
+      <li><a href="#" class="active" onclick="goTo('inicio')">     <span class="nav-icon">🏠</span> Inicio      </a></li>
+      <li><a href="#"               onclick="goTo('juegos')">      <span class="nav-icon">🎮</span> Juegos      </a></li>
+      <li><a href="#"               onclick="goTo('puntuacion')">  <span class="nav-icon">🏆</span> Puntuación  </a></li>
+    </ul>
+  </nav>
+</header>
+
+<!-- ════════════════ MAIN ════════════════ -->
+<main>
+
+  <!-- ── SECCIÓN: INICIO ── -->
+  <section class="section active" id="sec-inicio">
+
+    <div class="hero">
+      <span class="hero-badge">🎮 Mini Juegos Gratis</span>
+      <h1>Bienvenido a <span>JueFriv</span></h1>
+      <p>Tu plataforma de mini juegos de palabras, cultura pop y entretenimiento.
+         Desafíate con trivias, sopas de letras, ahorcado y más.
+         ¡Elegí tu temática favorita y a jugar!</p>
+    </div>
+
+    <div style="text-align:center; margin-bottom:1.5rem;">
+      <span class="section-title">⚡ Juegos Destacados</span>
+    </div>
+
+    <!-- Se llena dinámicamente desde app.js -->
+    <div class="featured-grid" id="featuredGrid"></div>
+
+  </section>
+
+  <!-- ── SECCIÓN: JUEGOS ── -->
+  <section class="section" id="sec-juegos">
+
+    <div class="games-intro">
+      <div class="games-intro-icon">🕹️</div>
+      <div>
+        <p><strong>Todos los juegos disponibles.</strong>
+           Elegí tu juego favorito, seleccioná la temática
+           (Videojuegos, Películas o Anime) y empezá a jugar.
+           ¡El ahorcado no tiene temática, es un clásico!</p>
+      </div>
+    </div>
+
+    <div class="games-grid">
+
+      <!-- Sopa de letras -->
+      <div class="game-card-full">
+        <div class="card-header-band">
+          <span class="card-emoji">🔍</span>
+          <span class="card-title">Sopa de Letras</span>
+        </div>
+        <div class="card-body">
+          <p class="card-desc">Encontrá las palabras ocultas en la grilla antes de que se acabe el tiempo. Mientras más rápido, más puntos.</p>
+          <div class="theme-selector">
+            <span>Temática:</span>
+            <button class="theme-btn selected" onclick="selectTheme(this)">🎮 Videojuegos</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">🎬 Películas</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">⛩️ Anime</button>
+          </div>
+          <button class="btn-play" onclick="proximamente()">▶ Jugar</button>
+        </div>
+      </div>
+
+      <!-- Preguntados -->
+      <div class="game-card-full">
+        <div class="card-header-band">
+          <span class="card-emoji">❓</span>
+          <span class="card-title">Preguntados</span>
+        </div>
+        <div class="card-body">
+          <p class="card-desc">Respondé preguntas de trivia de múltiple opción. Cada respuesta correcta suma puntos. ¿Cuántas acertás?</p>
+          <div class="theme-selector">
+            <span>Temática:</span>
+            <button class="theme-btn selected" onclick="selectTheme(this)">🎮 Videojuegos</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">🎬 Películas</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">⛩️ Anime</button>
+          </div>
+          <button class="btn-play" onclick="proximamente()">▶ Jugar</button>
+        </div>
+      </div>
+
+      <!-- Termina la Palabra -->
+      <div class="game-card-full">
+        <div class="card-header-band">
+          <span class="card-emoji">🔤</span>
+          <span class="card-title">Termina la Palabra</span>
+        </div>
+        <div class="card-body">
+          <p class="card-desc">Te mostramos una palabra incompleta y tenés 5 intentos para adivinarla. Pensá bien cada letra que elegís.</p>
+          <div class="theme-selector">
+            <span>Temática:</span>
+            <button class="theme-btn selected" onclick="selectTheme(this)">🎮 Videojuegos</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">🎬 Películas</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">⛩️ Anime</button>
+          </div>
+          <button class="btn-play" onclick="proximamente()">▶ Jugar</button>
+        </div>
+      </div>
+
+      <!-- Ahorcado -->
+      <div class="game-card-full">
+        <div class="card-header-band">
+          <span class="card-emoji">🪢</span>
+          <span class="card-title">Ahorcado</span>
+        </div>
+        <div class="card-body">
+          <p class="card-desc">El clásico de siempre. Adiviná la palabra letra por letra antes de que se complete el dibujo del ahorcado.</p>
+          <p class="no-theme-note">* Este juego no tiene selección de temática.</p>
+          <button class="btn-play" onclick="proximamente()" style="margin-top:auto;">▶ Jugar</button>
+        </div>
+      </div>
+
+      <!-- Adivina la Cosa -->
+      <div class="game-card-full">
+        <div class="card-header-band">
+          <span class="card-emoji">🕵️</span>
+          <span class="card-title">Adivina la Cosa</span>
+        </div>
+        <div class="card-body">
+          <p class="card-desc">Te damos pistas y tenés que adivinar de qué juego, película, actor o anime se trata. ¡Cuantas menos pistas uses, más puntos ganás!</p>
+          <div class="theme-selector">
+            <span>Temática:</span>
+            <button class="theme-btn selected" onclick="selectTheme(this)">🎮 Videojuegos</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">🎬 Películas</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">⛩️ Anime</button>
+          </div>
+          <button class="btn-play" onclick="proximamente()">▶ Jugar</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── SECCIÓN: PUNTUACIÓN ── -->
+  <section class="section" id="sec-puntuacion">
+
+    <div class="scores-header">
+      <div class="icon">🏆</div>
+      <div>
+        <p><strong>Tabla de puntuaciones.</strong>
+           Los mejores jugadores de JueFriv.
+           Iniciá sesión para que tus puntos aparezcan acá
+           y competí por el primer lugar.</p>
+      </div>
+    </div>
+
+    <div class="scores-table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Jugador</th>
+            <th>Juego</th>
+            <th>Temática</th>
+            <th>Puntos</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="rank-1">🥇 1</td><td>PixelMaster99</td><td><span class="game-pill">Preguntados</span></td>       <td>Videojuegos</td><td><span class="score-badge">9850</span></td></tr>
+          <tr><td class="rank-2">🥈 2</td><td>AnimeQueen</td>   <td><span class="game-pill">Adivina la Cosa</span></td>   <td>Anime</td>       <td><span class="score-badge">8720</span></td></tr>
+          <tr><td class="rank-3">🥉 3</td><td>CineFilm_AR</td>  <td><span class="game-pill">Sopa de Letras</span></td>    <td>Películas</td>   <td><span class="score-badge">7600</span></td></tr>
+          <tr><td>4</td>                   <td>GamerPro_X</td>   <td><span class="game-pill">Ahorcado</span></td>          <td>—</td>           <td><span class="score-badge">6430</span></td></tr>
+          <tr><td>5</td>                   <td>WordNinja</td>    <td><span class="game-pill">Termina la Palabra</span></td><td>Anime</td>       <td><span class="score-badge">5980</span></td></tr>
+          <tr><td>6</td>                   <td>RetroKing</td>    <td><span class="game-pill">Preguntados</span></td>       <td>Películas</td>   <td><span class="score-badge">5150</span></td></tr>
+          <tr><td>7</td>                   <td>OtakuPower</td>   <td><span class="game-pill">Sopa de Letras</span></td>   <td>Anime</td>       <td><span class="score-badge">4800</span></td></tr>
+          <tr><td>8</td>                   <td>MissBrain</td>    <td><span class="game-pill">Adivina la Cosa</span></td>  <td>Videojuegos</td><td><span class="score-badge">4200</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- ════════════════ FOOTER ════════════════ -->
+<footer>
+  <p>© <span id="year"></span> <span>JueFriv</span> · Todos los derechos reservados</p>
+</footer>
+
+<!-- ════════════════ MODAL ════════════════ -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <p class="modal-title" id="modalTitle">Acceder a<br>JueFriv</p>
+
+    <!-- Tabs -->
+    <div class="modal-tabs">
+      <button class="tab-btn active" id="tabLogin"    onclick="switchTab('login')">Iniciar sesión</button>
+      <button class="tab-btn"        id="tabRegister" onclick="switchTab('register')">Registrarse</button>
+    </div>
+
+    <!-- Formulario: Iniciar sesión -->
+    <div id="formLogin">
+      <div class="form-group">
+        <label>Usuario o Email</label>
+        <input type="text"     placeholder="tu@email.com" />
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" placeholder="••••••••" />
+      </div>
+      <button class="btn-modal-submit">Iniciar sesión</button>
+    </div>
+
+    <!-- Formulario: Registrarse -->
+    <div id="formRegister" style="display:none">
+      <div class="form-group">
+        <label>Nombre de usuario</label>
+        <input type="text"     placeholder="PixelMaster99" />
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email"    placeholder="tu@email.com" />
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" placeholder="••••••••" />
+      </div>
+      <div class="form-group">
+        <label>Confirmar contraseña</label>
+        <input type="password" placeholder="••••••••" />
+      </div>
+      <button class="btn-modal-submit">Crear cuenta</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Script -->
+<script src="src/app.js"></script>
+</body>
+</html>
