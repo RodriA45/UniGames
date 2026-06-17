@@ -1,6 +1,6 @@
 import sqlite3
 
-conexion = sqlite3.connect("juefriv.db")
+conexion = sqlite3.connect("unigames.db")
 cursor = conexion.cursor()
 
 cursor.execute("""
@@ -80,6 +80,6 @@ INSERT OR IGNORE INTO juego_tematica (juego_id, tematica_id) VALUES
 conexion.commit()
 conexion.close()
 
-print("Base de datos juefriv.db creada correctamente.")
+print("Base de datos unigames.db creada correctamente.")
 
 

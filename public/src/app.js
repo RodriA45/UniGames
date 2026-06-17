@@ -1,6 +1,8 @@
 // ══════════════════════════════════════
-//   JueFriv — app.js
+//   UniGames — app.js
 // ══════════════════════════════════════
+
+let currentUser = null;
 
 // ─── Datos de juegos ───────────────────
 const allGames = [
@@ -82,8 +84,8 @@ function switchTab(tab) {
   document.getElementById('tabLogin').classList.toggle('active', isLogin);
   document.getElementById('tabRegister').classList.toggle('active', !isLogin);
   document.getElementById('modalTitle').innerHTML = isLogin
-    ? 'Iniciar sesión<br>en JueFriv'
-    : 'Crear cuenta<br>en JueFriv';
+    ? 'Iniciar sesión<br>en UniGames'
+    : 'Crear cuenta<br>en UniGames';
 }
 
 // ─── Selector de temática ──────────────
@@ -110,4 +112,122 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.nav-menu a').forEach(a => {
     a.addEventListener('click', e => e.preventDefault());
   });
+
+  // Cargar tabla de posiciones desde la API
+  fetchLeaderboard();
 });
+
+// ─── Lógica de API (Backend) ───────────
+async function handleLogin(e) {
+  e.preventDefault();
+  const identity = document.getElementById('loginIdentity').value;
+  const password = document.getElementById('loginPassword').value;
+
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identity, password })
+    });
+    const data = await res.json();
+    
+    if (res.ok) {
+      currentUser = data.user;
+      alert('Inicio de sesión exitoso');
+      closeModal();
+      updateAuthUI();
+    } else {
+      alert(data.error || 'Error al iniciar sesión');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Error de conexión');
+  }
+}
+
+async function handleRegister(e) {
+  e.preventDefault();
+  const username = document.getElementById('regUsername').value;
+  const email = document.getElementById('regEmail').value;
+  const password = document.getElementById('regPassword').value;
+  const confirm = document.getElementById('regConfirm').value;
+
+  if (password !== confirm) {
+    alert('Las contraseñas no coinciden');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password })
+    });
+    const data = await res.json();
+    
+    if (res.ok) {
+      alert('Registro exitoso, ahora podés iniciar sesión');
+      switchTab('login');
+    } else {
+      alert(data.error || 'Error al registrarse');
+    }
+  } catch (err) {
+    console.error(err);
+    alert('Error de conexión');
+  }
+}
+
+function updateAuthUI() {
+  const authArea = document.getElementById('authArea');
+  if (currentUser) {
+    authArea.innerHTML = `
+      <span style="color: #fff; margin-right: 15px; font-weight: bold;">Hola, ${currentUser.username}</span>
+      <button class="btn-auth btn-register" onclick="logout()">Cerrar sesión</button>
+    `;
+  } else {
+    authArea.innerHTML = `
+      <button class="btn-auth btn-login" onclick="openModal('login')">Iniciar sesión</button>
+      <button class="btn-auth btn-register" onclick="openModal('register')">Registrarse</button>
+    `;
+  }
+}
+
+function logout() {
+  currentUser = null;
+  updateAuthUI();
+}
+
+async function fetchLeaderboard() {
+  try {
+    const res = await fetch('/api/leaderboard');
+    if (!res.ok) return;
+    const scores = await res.json();
+    
+    const tbody = document.getElementById('leaderboardBody');
+    if (!tbody) return;
+
+    if (scores.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Todavía no hay puntuaciones</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = scores.map((s, idx) => {
+      let rank = idx + 1;
+      if (rank === 1) rank = '🥇 1';
+      else if (rank === 2) rank = '🥈 2';
+      else if (rank === 3) rank = '🥉 3';
+      
+      let rankClass = rank <= 3 ? \`rank-\${idx+1}\` : '';
+
+      return \`<tr>
+        <td class="\${rankClass}">\${rank}</td>
+        <td>\${s.jugador}</td>
+        <td><span class="game-pill">\${s.juego}</span></td>
+        <td>\${s.tematica || '—'}</td>
+        <td><span class="score-badge">\${s.puntos}</span></td>
+      </tr>\`;
+    }).join('');
+  } catch (err) {
+    console.error('Error al cargar puntuaciones', err);
+  }
+}

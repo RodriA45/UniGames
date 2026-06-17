@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JueFriv</title>
+  <title>UniGames</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="src/styles.css" />
 </head>
@@ -21,10 +21,10 @@
     </button>
 
     <!-- Logo -->
-    <div class="logo" onclick="goTo('inicio')">JueFriv</div>
+    <div class="logo" onclick="goTo('inicio')">UniGames</div>
 
     <!-- Autenticación -->
-    <div class="auth-area">
+    <div class="auth-area" id="authArea">
       <button class="btn-auth btn-login"    onclick="openModal('login')">Iniciar sesión</button>
       <button class="btn-auth btn-register" onclick="openModal('register')">Registrarse</button>
     </div>
@@ -49,7 +49,7 @@
 
     <div class="hero">
       <span class="hero-badge">🎮 Mini Juegos Gratis</span>
-      <h1>Bienvenido a <span>JueFriv</span></h1>
+      <h1>Bienvenido a <span>UniGames</span></h1>
       <p>Tu plataforma de mini juegos de palabras, cultura pop y entretenimiento.
          Desafíate con trivias, sopas de letras, ahorcado y más.
          ¡Elegí tu temática favorita y a jugar!</p>
@@ -174,7 +174,7 @@
       <div class="icon">🏆</div>
       <div>
         <p><strong>Tabla de puntuaciones.</strong>
-           Los mejores jugadores de JueFriv.
+           Los mejores jugadores de UniGames.
            Iniciá sesión para que tus puntos aparezcan acá
            y competí por el primer lugar.</p>
       </div>
@@ -191,7 +191,7 @@
             <th>Puntos</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="leaderboardBody">
           <tr><td class="rank-1">🥇 1</td><td>PixelMaster99</td><td><span class="game-pill">Preguntados</span></td>       <td>Videojuegos</td><td><span class="score-badge">9850</span></td></tr>
           <tr><td class="rank-2">🥈 2</td><td>AnimeQueen</td>   <td><span class="game-pill">Adivina la Cosa</span></td>   <td>Anime</td>       <td><span class="score-badge">8720</span></td></tr>
           <tr><td class="rank-3">🥉 3</td><td>CineFilm_AR</td>  <td><span class="game-pill">Sopa de Letras</span></td>    <td>Películas</td>   <td><span class="score-badge">7600</span></td></tr>
@@ -210,7 +210,7 @@
 
 <!-- ════════════════ FOOTER ════════════════ -->
 <footer>
-  <p>© <span id="year"></span> <span>JueFriv</span> · Todos los derechos reservados</p>
+  <p>© <span id="year"></span> <span>UniGames</span> · Todos los derechos reservados</p>
 </footer>
 
 <!-- ════════════════ MODAL ════════════════ -->
@@ -218,7 +218,7 @@
   <div class="modal">
 
     <button class="modal-close" onclick="closeModal()">✕</button>
-    <p class="modal-title" id="modalTitle">Acceder a<br>JueFriv</p>
+    <p class="modal-title" id="modalTitle">Acceder a<br>UniGames</p>
 
     <!-- Tabs -->
     <div class="modal-tabs">
@@ -227,38 +227,38 @@
     </div>
 
     <!-- Formulario: Iniciar sesión -->
-    <div id="formLogin">
+    <form id="formLogin" onsubmit="handleLogin(event)">
       <div class="form-group">
         <label>Usuario o Email</label>
-        <input type="text"     placeholder="tu@email.com" />
+        <input type="text" id="loginIdentity" placeholder="tu@email.com" required />
       </div>
       <div class="form-group">
         <label>Contraseña</label>
-        <input type="password" placeholder="••••••••" />
+        <input type="password" id="loginPassword" placeholder="••••••••" required />
       </div>
-      <button class="btn-modal-submit">Iniciar sesión</button>
-    </div>
+      <button type="submit" class="btn-modal-submit">Iniciar sesión</button>
+    </form>
 
     <!-- Formulario: Registrarse -->
-    <div id="formRegister" style="display:none">
+    <form id="formRegister" style="display:none" onsubmit="handleRegister(event)">
       <div class="form-group">
         <label>Nombre de usuario</label>
-        <input type="text"     placeholder="PixelMaster99" />
+        <input type="text" id="regUsername" placeholder="PixelMaster99" required />
       </div>
       <div class="form-group">
         <label>Email</label>
-        <input type="email"    placeholder="tu@email.com" />
+        <input type="email" id="regEmail" placeholder="tu@email.com" required />
       </div>
       <div class="form-group">
         <label>Contraseña</label>
-        <input type="password" placeholder="••••••••" />
+        <input type="password" id="regPassword" placeholder="••••••••" required />
       </div>
       <div class="form-group">
         <label>Confirmar contraseña</label>
-        <input type="password" placeholder="••••••••" />
+        <input type="password" id="regConfirm" placeholder="••••••••" required />
       </div>
-      <button class="btn-modal-submit">Crear cuenta</button>
-    </div>
+      <button type="submit" class="btn-modal-submit">Crear cuenta</button>
+    </form>
 
   </div>
 </div>
