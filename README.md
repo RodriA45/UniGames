@@ -84,4 +84,4 @@ El backend provee la siguiente API REST para la comunicación con el cliente:
 
 ---
 
-<p align="center">Desarrollado con ❤️ para jugar y aprender.</p>
+<p align="center">Desarrollado para jugar y aprender.</p>
