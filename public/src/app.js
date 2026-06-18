@@ -217,15 +217,15 @@ async function fetchLeaderboard() {
       else if (rank === 2) rank = '🥈 2';
       else if (rank === 3) rank = '🥉 3';
       
-      let rankClass = rank <= 3 ? \`rank-\${idx+1}\` : '';
+      let rankClass = rank <= 3 ? `rank-${idx+1}` : '';
 
-      return \`<tr>
-        <td class="\${rankClass}">\${rank}</td>
-        <td>\${s.jugador}</td>
-        <td><span class="game-pill">\${s.juego}</span></td>
-        <td>\${s.tematica || '—'}</td>
-        <td><span class="score-badge">\${s.puntos}</span></td>
-      </tr>\`;
+      return `<tr>
+        <td class="${rankClass}">${rank}</td>
+        <td>${s.jugador}</td>
+        <td><span class="game-pill">${s.juego}</span></td>
+        <td>${s.tematica || '—'}</td>
+        <td><span class="score-badge">${s.puntos}</span></td>
+      </tr>`;
     }).join('');
   } catch (err) {
     console.error('Error al cargar puntuaciones', err);
