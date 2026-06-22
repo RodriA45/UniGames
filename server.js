@@ -119,6 +119,41 @@ app.post('/api/partidas', (req, res) => {
     });
 });
 
+// 5. Obtener palabra aleatoria para Ahorcado
+app.get('/api/ahorcado/palabra', (req, res) => {
+    const sql = `SELECT palabra FROM palabras_ahorcado ORDER BY RANDOM() LIMIT 1`;
+    db.get(sql, [], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error al obtener palabra' });
+        }
+        if (row) {
+            res.json({ palabra: row.palabra });
+        } else {
+            res.status(404).json({ error: 'No hay palabras disponibles' });
+        }
+    });
+});
+
+// 6. Obtener preguntas aleatorias (opcionalmente por temática)
+app.get('/api/preguntas', (req, res) => {
+    const tematica_id = req.query.tematica_id;
+    let sql = `SELECT * FROM preguntas`;
+    let params = [];
+    
+    if (tematica_id) {
+        sql += ` WHERE tematica_id = ?`;
+        params.push(tematica_id);
+    }
+    sql += ` ORDER BY RANDOM() LIMIT 10`;
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error al obtener preguntas' });
+        }
+        res.json(rows);
+    });
+});
+
 // Fallback para SPA (Single Page Application) en caso de recargar
 app.use((req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

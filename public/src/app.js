@@ -122,13 +122,7 @@ function launchGame(gameKey, btn) {
 //   AHORCADO
 // ══════════════════════════════════════
 
-const PALABRAS_AHORCADO = [
-  'javascript', 'python', 'pokemon', 'minecraft', 'naruto',
-  'programacion', 'variable', 'funcion', 'algoritmo', 'teclado',
-  'anime', 'pelicula', 'videojuego', 'pantalla', 'servidor',
-  'express', 'database', 'frontend', 'backend', 'framework',
-  'react', 'github', 'terminal', 'interfaz', 'dragon'
-];
+// (Palabras borradas, ahora vienen del backend)
 
 const PARTES_HANG = ['h-head', 'h-body', 'h-arm-l', 'h-arm-r', 'h-leg-l', 'h-leg-r'];
 
@@ -140,8 +134,17 @@ let ahorcadoState = {
   finished: false
 };
 
-function initAhorcado() {
-  const word = PALABRAS_AHORCADO[Math.floor(Math.random() * PALABRAS_AHORCADO.length)];
+async function initAhorcado() {
+  let word = 'cargando';
+  try {
+    const res = await fetch('/api/ahorcado/palabra');
+    const data = await res.json();
+    if (data.palabra) word = data.palabra.toLowerCase();
+  } catch (e) {
+    console.error(e);
+    word = 'error';
+  }
+
   ahorcadoState = { word, revealed: [], wrong: [], maxErrors: 6, finished: false };
 
   // Reset SVG
@@ -199,11 +202,14 @@ function guessLetter(letter) {
     if (won) {
       statusEl.textContent = '🎉 ¡Ganaste! La palabra era: ' + word.toUpperCase();
       statusEl.className = 'ahorcado-status win';
+      const puntos = 1000 - (ahorcadoState.wrong.length * 150);
+      guardarPuntaje(4, puntos); // juego_id = 4 (Ahorcado)
     } else {
       // Revelar todas las letras al perder
       ahorcadoState.revealed = word.split('');
       statusEl.textContent = '💀 ¡Perdiste! La palabra era: ' + word.toUpperCase();
       statusEl.className = 'ahorcado-status lose';
+      guardarPuntaje(4, 50); // 50 puntos consuelo
     }
   }
 
@@ -340,6 +346,25 @@ async function fetchLeaderboard() {
     }).join('');
   } catch (err) {
     console.error('Error al cargar puntuaciones', err);
+  }
+}
+
+async function guardarPuntaje(juego_id, puntos) {
+  if (!currentUser) return; // Solo guarda si hay sesión iniciada
+  try {
+    await fetch('/api/partidas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        usuario_id: currentUser.id,
+        juego_id: juego_id,
+        tematica_id: null,
+        puntos: puntos
+      })
+    });
+    fetchLeaderboard(); // Refrescar la tabla
+  } catch (err) {
+    console.error('Error guardando puntos', err);
   }
 }
 
@@ -578,6 +603,7 @@ function playerDie() {
   if (RUNNER.raf) { cancelAnimationFrame(RUNNER.raf); RUNNER.raf = null; }
 
   if (RUNNER.score > RUNNER.bestScore) RUNNER.bestScore = RUNNER.score;
+  guardarPuntaje(1, RUNNER.score); // Guardamos puntaje (ID 1 temporal)
 
   // Dibujar última frame con el player muerto
   drawRunner(true);

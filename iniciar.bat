@@ -3,6 +3,9 @@ echo =========================================
 echo       Iniciando Servidor UniGames
 echo =========================================
 echo.
+echo Verificando e instalando dependencias (esto puede tardar unos segundos)...
+call npm install
+echo.
 echo Abriendo el navegador en http://localhost:3000...
 start http://localhost:3000
 echo.
