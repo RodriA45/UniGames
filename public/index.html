@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>UniGames</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="src/styles.css" />
 </head>
-<body>
+<body class="has-bg-gif">
 
 <!-- ════════════════ HEADER ════════════════ -->
 <header>
@@ -92,8 +93,9 @@
             <button class="theme-btn selected" onclick="selectTheme(this)">🎮 Videojuegos</button>
             <button class="theme-btn"          onclick="selectTheme(this)">🎬 Películas</button>
             <button class="theme-btn"          onclick="selectTheme(this)">⛩️ Anime</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">💻 Programación</button>
           </div>
-          <button class="btn-play" onclick="proximamente()">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('sopa', this)">▶ Jugar</button>
         </div>
       </div>
 
@@ -110,8 +112,9 @@
             <button class="theme-btn selected" onclick="selectTheme(this)">🎮 Videojuegos</button>
             <button class="theme-btn"          onclick="selectTheme(this)">🎬 Películas</button>
             <button class="theme-btn"          onclick="selectTheme(this)">⛩️ Anime</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">💻 Programación</button>
           </div>
-          <button class="btn-play" onclick="proximamente()">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('preguntados', this)">▶ Jugar</button>
         </div>
       </div>
 
@@ -128,8 +131,9 @@
             <button class="theme-btn selected" onclick="selectTheme(this)">🎮 Videojuegos</button>
             <button class="theme-btn"          onclick="selectTheme(this)">🎬 Películas</button>
             <button class="theme-btn"          onclick="selectTheme(this)">⛩️ Anime</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">💻 Programación</button>
           </div>
-          <button class="btn-play" onclick="proximamente()">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('termina', this)">▶ Jugar</button>
         </div>
       </div>
 
@@ -142,7 +146,7 @@
         <div class="card-body">
           <p class="card-desc">El clásico de siempre. Adiviná la palabra letra por letra antes de que se complete el dibujo del ahorcado.</p>
           <p class="no-theme-note">* Este juego no tiene selección de temática.</p>
-          <button class="btn-play" onclick="proximamente()" style="margin-top:auto;">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('ahorcado', this)" style="margin-top:auto;">▶ Jugar</button>
         </div>
       </div>
 
@@ -159,8 +163,25 @@
             <button class="theme-btn selected" onclick="selectTheme(this)">🎮 Videojuegos</button>
             <button class="theme-btn"          onclick="selectTheme(this)">🎬 Películas</button>
             <button class="theme-btn"          onclick="selectTheme(this)">⛩️ Anime</button>
+            <button class="theme-btn"          onclick="selectTheme(this)">💻 Programación</button>
           </div>
-          <button class="btn-play" onclick="proximamente()">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('adivina', this)">▶ Jugar</button>
+        </div>
+      </div>
+
+      <!-- Pixel Runner -->
+      <div class="game-card-full">
+        <div class="card-header-band" style="background: linear-gradient(135deg, #1a1a2e, #16213e);">
+          <span class="card-emoji">🏃</span>
+          <span class="card-title" style="color:#f5c518;">Pixel Runner</span>
+        </div>
+        <div class="card-body">
+          <p class="card-desc">¡Corrés sin parar! Esquivá obstáculos que vienen del suelo y del cielo. Doble salto disponible. La velocidad aumenta cada 500 puntos. ¿Hasta dónde llegás?</p>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
+            <span class="card-tag">⬆️ Doble salto</span>
+            <span class="card-tag">⚡ Velocidad creciente</span>
+          </div>
+          <button class="btn-play" onclick="launchGame('runner', this)" style="background:#f5c518;color:#0f1e3d;font-weight:900;">▶ Jugar</button>
         </div>
       </div>
 
@@ -204,6 +225,155 @@
       </table>
     </div>
 
+  </section>
+
+  <!-- ── SECCIÓN: AHORCADO ── -->
+  <section class="section" id="sec-ahorcado">
+    <div class="game-screen-header">
+      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <div class="game-screen-title"><span>🪢</span> Ahorcado</div>
+      <div class="game-screen-theme" id="ahorcado-theme-label"></div>
+    </div>
+
+    <div class="ahorcado-wrap">
+      <!-- Dibujo SVG -->
+      <div class="ahorcado-drawing">
+        <svg viewBox="0 0 120 160" width="120" height="160">
+          <!-- Estructura -->
+          <line x1="10" y1="155" x2="110" y2="155" stroke="#1a3a6b" stroke-width="4" stroke-linecap="round"/>
+          <line x1="30"  y1="155" x2="30"  y2="10"  stroke="#1a3a6b" stroke-width="4" stroke-linecap="round"/>
+          <line x1="30"  y1="10"  x2="80"  y2="10"  stroke="#1a3a6b" stroke-width="4" stroke-linecap="round"/>
+          <line x1="80"  y1="10"  x2="80"  y2="28"  stroke="#1a3a6b" stroke-width="4" stroke-linecap="round"/>
+          <!-- Partes del cuerpo (ocultas inicialmente) -->
+          <circle cx="80" cy="38" r="10" fill="none" stroke="#e53e3e" stroke-width="3" class="hang-part" id="h-head"/>
+          <line x1="80" y1="48" x2="80" y2="90" stroke="#e53e3e" stroke-width="3" stroke-linecap="round" class="hang-part" id="h-body"/>
+          <line x1="80" y1="58" x2="60" y2="75" stroke="#e53e3e" stroke-width="3" stroke-linecap="round" class="hang-part" id="h-arm-l"/>
+          <line x1="80" y1="58" x2="100" y2="75" stroke="#e53e3e" stroke-width="3" stroke-linecap="round" class="hang-part" id="h-arm-r"/>
+          <line x1="80" y1="90" x2="62"  y2="115" stroke="#e53e3e" stroke-width="3" stroke-linecap="round" class="hang-part" id="h-leg-l"/>
+          <line x1="80" y1="90" x2="98"  y2="115" stroke="#e53e3e" stroke-width="3" stroke-linecap="round" class="hang-part" id="h-leg-r"/>
+        </svg>
+      </div>
+
+      <!-- Área de juego -->
+      <div class="ahorcado-main">
+        <div class="ahorcado-word" id="ahorcado-word"></div>
+        <div class="ahorcado-status" id="ahorcado-status"></div>
+        <div class="ahorcado-keyboard" id="ahorcado-keyboard"></div>
+        <div class="ahorcado-actions">
+          <button class="btn-play" onclick="initAhorcado()">🔄 Nueva palabra</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECCIÓN: SOPA DE LETRAS ── -->
+  <section class="section" id="sec-sopa">
+    <div class="game-screen-header">
+      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <div class="game-screen-title"><span>🔍</span> Sopa de Letras</div>
+      <div class="game-screen-theme" id="sopa-theme-label"></div>
+    </div>
+    <div class="coming-soon-box">
+      <div class="cs-emoji">🔍</div>
+      <p class="cs-title">¡En construcción!</p>
+      <p class="cs-desc">La sopa de letras está siendo desarrollada. Pronto vas a poder buscar palabras ocultas en la grilla.</p>
+      <button class="btn-play" onclick="goTo('juegos')" style="max-width:200px;margin:0 auto;">← Volver a Juegos</button>
+    </div>
+  </section>
+
+  <!-- ── SECCIÓN: PREGUNTADOS ── -->
+  <section class="section" id="sec-preguntados">
+    <div class="game-screen-header">
+      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <div class="game-screen-title"><span>❓</span> Preguntados</div>
+      <div class="game-screen-theme" id="preguntados-theme-label"></div>
+    </div>
+    <div class="coming-soon-box">
+      <div class="cs-emoji">❓</div>
+      <p class="cs-title">¡En construcción!</p>
+      <p class="cs-desc">Las preguntas de trivia están siendo preparadas. Muy pronto vas a poder poner a prueba tus conocimientos.</p>
+      <button class="btn-play" onclick="goTo('juegos')" style="max-width:200px;margin:0 auto;">← Volver a Juegos</button>
+    </div>
+  </section>
+
+  <!-- ── SECCIÓN: TERMINA LA PALABRA ── -->
+  <section class="section" id="sec-termina">
+    <div class="game-screen-header">
+      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <div class="game-screen-title"><span>🔤</span> Termina la Palabra</div>
+      <div class="game-screen-theme" id="termina-theme-label"></div>
+    </div>
+    <div class="coming-soon-box">
+      <div class="cs-emoji">🔤</div>
+      <p class="cs-title">¡En construcción!</p>
+      <p class="cs-desc">El juego de completar palabras está en desarrollo. Muy pronto vas a poder poner a prueba tu vocabulario.</p>
+      <button class="btn-play" onclick="goTo('juegos')" style="max-width:200px;margin:0 auto;">← Volver a Juegos</button>
+    </div>
+  </section>
+
+  <!-- ── SECCIÓN: ADIVINA LA COSA ── -->
+  <section class="section" id="sec-adivina">
+    <div class="game-screen-header">
+      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <div class="game-screen-title"><span>🕵️</span> Adivina la Cosa</div>
+      <div class="game-screen-theme" id="adivina-theme-label"></div>
+    </div>
+    <div class="coming-soon-box">
+      <div class="cs-emoji">🕵️</div>
+      <p class="cs-title">¡En construcción!</p>
+      <p class="cs-desc">El sistema de pistas progresivas está siendo armado. Pronto vas a poder adivinar personajes, películas y más.</p>
+      <button class="btn-play" onclick="goTo('juegos')" style="max-width:200px;margin:0 auto;">← Volver a Juegos</button>
+    </div>
+  </section>
+
+  <!-- ── SECCIÓN: PIXEL RUNNER ── -->
+  <section class="section" id="sec-runner">
+    <div class="game-screen-header">
+      <button class="btn-back" onclick="stopRunner(); goTo('juegos')">← Volver</button>
+      <div class="game-screen-title" style="font-family:'Press Start 2P',monospace;color:#0f1e3d;">🏃 Pixel Runner</div>
+      <div class="runner-score-display">Puntos: <span id="runner-score-display">0</span></div>
+    </div>
+
+    <div class="runner-container">
+      <canvas id="runnerCanvas"></canvas>
+      <div class="runner-overlay" id="runnerOverlay">
+        <div class="runner-overlay-box">
+          <div class="runner-char-preview">
+            <svg viewBox="0 0 32 40" width="48" height="60">
+              <rect x="8" y="0" width="16" height="14" fill="#fbbf7a"/>
+              <rect x="8" y="0" width="16" height="3" fill="#3b2506"/>
+              <rect x="7" y="1" width="2" height="2" fill="#3b2506"/>
+              <rect x="23" y="1" width="2" height="2" fill="#3b2506"/>
+              <rect x="8"  y="7" width="6" height="5" rx="1" fill="none" stroke="#1a3a6b" stroke-width="1.5"/>
+              <rect x="18" y="7" width="6" height="5" rx="1" fill="none" stroke="#1a3a6b" stroke-width="1.5"/>
+              <rect x="14" y="9" width="4" height="1.5" fill="#1a3a6b"/>
+              <rect x="9"  y="8.5" width="4" height="2" fill="#93c5fd" opacity=".7"/>
+              <rect x="19" y="8.5" width="4" height="2" fill="#93c5fd" opacity=".7"/>
+              <rect x="11" y="11" width="10" height="1.5" fill="#d97706"/>
+              <rect x="8"  y="14" width="16" height="11" fill="#2563eb"/>
+              <rect x="12" y="14" width="8"  height="3"  fill="#fbbf7a"/>
+              <rect x="3"  y="16" width="5"  height="3"  fill="#fbbf7a"/>
+              <rect x="24" y="18" width="5"  height="3"  fill="#fbbf7a"/>
+              <rect x="8"  y="25" width="7"  height="6"  fill="#1e3a5f"/>
+              <rect x="17" y="25" width="7"  height="6"  fill="#1e3a5f"/>
+              <rect x="6"  y="31" width="9"  height="3"  fill="#f5c518"/>
+              <rect x="17" y="31" width="9"  height="3"  fill="#f5c518"/>
+            </svg>
+          </div>
+          <p class="runner-overlay-title" id="runnerOverlayTitle">¡Pixel Runner!</p>
+          <p class="runner-overlay-sub" id="runnerOverlaySub">↑ Saltar &nbsp;·&nbsp; ↓ Caída rápida<br>Doble salto disponible</p>
+          <p class="runner-best" id="runnerBest"></p>
+          <button class="btn-play runner-start-btn" id="runnerStartBtn" onclick="startRunner()">▶ Empezar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controles táctiles -->
+    <div class="runner-controls">
+      <button class="runner-ctrl-btn" id="btnJump"  onpointerdown="runnerJumpOrStart()">⬆ Saltar</button>
+      <button class="runner-ctrl-btn" id="btnDrop"  onpointerdown="runnerFastDrop()">⬇ Bajar</button>
+    </div>
+    <p class="runner-hint">↑ Saltar (doble salto) &nbsp;·&nbsp; ↓ Caída rápida &nbsp;·&nbsp; +vel cada 250 pts</p>
   </section>
 
 </main>

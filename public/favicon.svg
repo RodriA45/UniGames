@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
+  <!-- Background circle -->
+  <circle cx="16" cy="16" r="15" fill="#0f1e3d"/>
+  
+  <!-- Body - pixel style -->
+  <!-- Head -->
+  <rect x="11" y="6" width="10" height="9" fill="#fbbf7a"/>
+  <!-- Hair -->
+  <rect x="11" y="5" width="10" height="2" fill="#3b2506"/>
+  <rect x="10" y="6" width="2" height="2" fill="#3b2506"/>
+  <!-- Glasses frame -->
+  <rect x="11" y="10" width="4" height="3" fill="none" stroke="#1a3a6b" stroke-width="1"/>
+  <rect x="17" y="10" width="4" height="3" fill="none" stroke="#1a3a6b" stroke-width="1"/>
+  <rect x="15" y="11" width="2" height="1" fill="#1a3a6b"/>
+  <!-- Glasses lenses -->
+  <rect x="12" y="11" width="2" height="1" fill="#93c5fd"/>
+  <rect x="18" y="11" width="2" height="1" fill="#93c5fd"/>
+  <!-- Mouth -->
+  <rect x="13" y="13" width="6" height="1" fill="#d97706"/>
+
+  <!-- Shirt -->
+  <rect x="11" y="15" width="10" height="7" fill="#2563eb"/>
+  <!-- Collar -->
+  <rect x="14" y="15" width="4" height="2" fill="#fbbf7a"/>
+  
+  <!-- Arms running position -->
+  <rect x="8"  y="16" width="3" height="2" fill="#fbbf7a"/>
+  <rect x="21" y="18" width="3" height="2" fill="#fbbf7a"/>
+  
+  <!-- Legs -->
+  <rect x="11" y="22" width="4" height="4" fill="#1e3a5f"/>
+  <rect x="17" y="22" width="4" height="4" fill="#1e3a5f"/>
+  <!-- Shoes -->
+  <rect x="10" y="26" width="5" height="2" fill="#f5c518"/>
+  <rect x="17" y="26" width="5" height="2" fill="#f5c518"/>
+</svg>
