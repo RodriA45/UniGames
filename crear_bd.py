@@ -255,10 +255,37 @@ for tematica_id, palabras in palabras_wordle_por_tematica.items():
 
 cursor.execute("""
 INSERT OR IGNORE INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta) VALUES
+-- Videojuegos (Temática 1)
 (1, '¿Cuál es el nombre del protagonista de The Legend of Zelda?', 'Zelda', 'Link', 'Mario', 'Luigi', 'B'),
 (1, '¿En qué año se lanzó Minecraft oficialmente?', '2009', '2010', '2011', '2012', 'C'),
+(1, '¿Qué empresa desarrolló el juego "Half-Life"?', 'Valve', 'Epic Games', 'Blizzard', 'Bethesda', 'A'),
+(1, '¿Cómo se llama el villano principal de la saga Super Mario?', 'Wario', 'Donkey Kong', 'Bowser', 'Waluigi', 'C'),
+(1, '¿En qué juego aparece el personaje "Master Chief"?', 'Gears of War', 'Halo', 'Destiny', 'Mass Effect', 'B'),
+(1, '¿Cuál es el juego más vendido de la historia (hasta 2023)?', 'Tetris', 'Minecraft', 'GTA V', 'Wii Sports', 'B'),
+
+-- Películas (Temática 2)
 (2, '¿Quién dirigió la película "Inception" (El Origen)?', 'Steven Spielberg', 'Christopher Nolan', 'Quentin Tarantino', 'James Cameron', 'B'),
-(3, '¿Cómo se llama el zorro de nueve colas sellado en Naruto?', 'Shukaku', 'Matatabi', 'Kurama', 'Son Goku', 'C');
+(2, '¿Qué actor interpreta a Iron Man en el Universo Cinematográfico de Marvel?', 'Chris Evans', 'Chris Hemsworth', 'Robert Downey Jr.', 'Mark Ruffalo', 'C'),
+(2, '¿En qué año se estrenó la primera película de "Star Wars"?', '1977', '1980', '1983', '1975', 'A'),
+(2, '¿Qué película ganó el Oscar a Mejor Película en 2020?', 'Joker', '1917', 'Parasite', 'Once Upon a Time in Hollywood', 'C'),
+(2, '¿Cómo se llama el personaje principal de "The Matrix"?', 'Morpheus', 'Neo', 'Trinity', 'Agent Smith', 'B'),
+(2, 'En la película "El Rey León", ¿cómo se llama el padre de Simba?', 'Scar', 'Timón', 'Pumba', 'Mufasa', 'D'),
+
+-- Anime (Temática 3)
+(3, '¿Cómo se llama el zorro de nueve colas sellado en Naruto?', 'Shukaku', 'Matatabi', 'Kurama', 'Son Goku', 'C'),
+(3, '¿Cuál es el verdadero nombre de "L" en Death Note?', 'Light Yagami', 'L Lawliet', 'Nate River', 'Mihael Keehl', 'B'),
+(3, '¿Qué busca el protagonista en "One Piece"?', 'El tesoro One Piece', 'Ser Hokage', 'Las Esferas del Dragón', 'Vengar a su clan', 'A'),
+(3, '¿Cómo se llama el protagonista de "Shingeki no Kyojin" (Attack on Titan)?', 'Levi', 'Eren', 'Mikasa', 'Armin', 'B'),
+(3, '¿De qué anime es el personaje "Edward Elric"?', 'Bleach', 'Fairy Tail', 'Fullmetal Alchemist', 'Sword Art Online', 'C'),
+(3, '¿Cuál es la técnica característica de Goku en Dragon Ball?', 'Rasengan', 'Getsuga Tenshou', 'Chidori', 'Kamehameha', 'D'),
+
+-- Programación (Temática 4)
+(4, '¿Qué significa HTML?', 'Hyper Text Markup Language', 'High Text Machine Language', 'Hyper Tool Multi Language', 'Hyper Text Multiple Links', 'A'),
+(4, '¿Cuál de estos NO es un lenguaje de programación?', 'Python', 'Java', 'HTML', 'C++', 'C'),
+(4, '¿Qué hace la función "console.log()" en JavaScript?', 'Muestra un mensaje en la consola', 'Guarda datos en base de datos', 'Cierra el programa', 'Borra la consola', 'A'),
+(4, '¿Qué significa CSS?', 'Computer Style Sheets', 'Cascading Style Sheets', 'Creative Style System', 'Colorful Style Sheets', 'B'),
+(4, '¿Qué símbolo se usa comúnmente para comentarios de una línea en Python?', '//', '/*', '<!--', '#', 'D'),
+(4, '¿Qué estructura de datos usa el principio LIFO (Last In, First Out)?', 'Cola (Queue)', 'Pila (Stack)', 'Árbol', 'Grafo', 'B');
 """)
 
 conexion.commit()
