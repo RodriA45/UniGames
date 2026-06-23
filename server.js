@@ -80,29 +80,82 @@ app.post('/api/login', (req, res) => {
 });
 
 // 3. Obtener tabla de puntuaciones (Leaderboard)
+// 3. Leaderboard: UN solo registro por usuario+juego (el MAX de todos sus intentos y temáticas)
+// Opcional: ?juego_id=N para filtrar por juego
 app.get('/api/leaderboard', (req, res) => {
-    const sql = `
-        SELECT 
-            u.nombre_usuario as jugador, 
-            j.nombre as juego, 
-            t.nombre as tematica, 
-            p.puntos
+    const { juego_id } = req.query;
+
+    // Subconsulta: primero obtenemos el max de puntos por usuario+juego (ignorando temática)
+    // Luego en el outer select traemos nombre y juego
+    let sql = `
+        SELECT
+            u.nombre_usuario AS jugador,
+            j.id             AS juego_id,
+            j.nombre         AS juego,
+            MAX(p.puntos)    AS puntos
         FROM partidas p
         JOIN usuarios u ON p.usuario_id = u.id
-        JOIN juegos j ON p.juego_id = j.id
-        LEFT JOIN tematicas t ON p.tematica_id = t.id
-        ORDER BY p.puntos DESC
+        JOIN juegos j   ON p.juego_id   = j.id
+    `;
+    const params = [];
+
+    if (juego_id) {
+        sql += ` WHERE p.juego_id = ?`;
+        params.push(juego_id);
+    }
+
+    // GROUP BY solo usuario+juego: agrupa TODOS los intentos y temáticas del mismo usuario
+    sql += `
+        GROUP BY p.usuario_id, p.juego_id
+        ORDER BY puntos DESC
         LIMIT 10
     `;
-    db.all(sql, [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({ error: 'Error al obtener puntuaciones' });
-        }
+
+    db.all(sql, params, (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error al obtener puntuaciones' });
         res.json(rows);
     });
 });
 
-// 4. Guardar partida
+// 3b. Leaderboard global: top 5 por juego, un registro por usuario (el MAX absoluto)
+app.get('/api/leaderboard/global', (req, res) => {
+    // Primero calcular el best score de cada usuario por juego en una CTE
+    const sql = `
+        WITH best AS (
+            SELECT
+                p.usuario_id,
+                p.juego_id,
+                MAX(p.puntos) AS puntos
+            FROM partidas p
+            GROUP BY p.usuario_id, p.juego_id
+        )
+        SELECT
+            u.nombre_usuario AS jugador,
+            j.id             AS juego_id,
+            j.nombre         AS juego,
+            b.puntos
+        FROM best b
+        JOIN usuarios u ON b.usuario_id = u.id
+        JOIN juegos j   ON b.juego_id   = j.id
+        ORDER BY j.id ASC, b.puntos DESC
+    `;
+
+    db.all(sql, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Error al obtener puntuaciones' });
+
+        // Agrupar por juego en JS, top 5 por juego
+        const byGame = {};
+        for (const row of rows) {
+            if (!byGame[row.juego_id]) byGame[row.juego_id] = { juego: row.juego, entries: [] };
+            if (byGame[row.juego_id].entries.length < 5) {
+                byGame[row.juego_id].entries.push({ jugador: row.jugador, puntos: row.puntos });
+            }
+        }
+        res.json(byGame);
+    });
+});
+
+// 4. Guardar partida — solo guarda si supera el record actual del usuario en ese juego
 app.post('/api/partidas', (req, res) => {
     const { usuario_id, juego_id, tematica_id, puntos } = req.body;
 
@@ -110,12 +163,106 @@ app.post('/api/partidas', (req, res) => {
         return res.status(400).json({ error: 'Faltan datos de la partida' });
     }
 
-    const sql = `INSERT INTO partidas (usuario_id, juego_id, tematica_id, puntos) VALUES (?, ?, ?, ?)`;
-    db.run(sql, [usuario_id, juego_id, tematica_id, puntos], function(err) {
-        if (err) {
-            return res.status(500).json({ error: 'Error al guardar la partida' });
+    // Buscar si ya existe un record para este usuario+juego
+    const checkSql = `SELECT id, puntos FROM partidas WHERE usuario_id = ? AND juego_id = ? ORDER BY puntos DESC LIMIT 1`;
+    db.get(checkSql, [usuario_id, juego_id], (err, existing) => {
+        if (err) return res.status(500).json({ error: 'Error al verificar record' });
+
+        if (existing && existing.puntos >= puntos) {
+            // Ya tiene un record igual o mejor — no insertar, devolver ok igual
+            return res.status(200).json({ message: 'Puntaje no supera el record', record: existing.puntos, nuevo: puntos });
         }
-        res.status(201).json({ message: 'Partida guardada', id: this.lastID });
+
+        if (existing) {
+            // Actualizar el registro existente con el nuevo record
+            db.run(`UPDATE partidas SET puntos = ?, tematica_id = ?, fecha = CURRENT_TIMESTAMP WHERE id = ?`,
+                [puntos, tematica_id || null, existing.id],
+                function(err) {
+                    if (err) return res.status(500).json({ error: 'Error al actualizar record' });
+                    res.status(200).json({ message: 'Nuevo record guardado', id: existing.id, puntos });
+                }
+            );
+        } else {
+            // Primera vez que juega este juego — insertar
+            db.run(`INSERT INTO partidas (usuario_id, juego_id, tematica_id, puntos) VALUES (?, ?, ?, ?)`,
+                [usuario_id, juego_id, tematica_id || null, puntos],
+                function(err) {
+                    if (err) return res.status(500).json({ error: 'Error al guardar partida' });
+                    res.status(201).json({ message: 'Partida guardada', id: this.lastID });
+                }
+            );
+        }
+    });
+});
+
+// 5. Obtener palabra aleatoria para Ahorcado
+// Query param "tematica": "1"-"4" para una temática puntual,
+// "normal" para palabras sin temática (cotidianas), o sin parámetro = cualquiera.
+app.get('/api/ahorcado/palabra', (req, res) => {
+    const tematica = req.query.tematica;
+    let sql = `SELECT palabra FROM palabras_ahorcado`;
+    let params = [];
+
+    if (tematica === 'normal') {
+        sql += ` WHERE tematica_id IS NULL`;
+    } else if (tematica !== undefined && /^\d+$/.test(tematica)) {
+        sql += ` WHERE tematica_id = ?`;
+        params.push(Number(tematica));
+    }
+
+    sql += ` ORDER BY RANDOM() LIMIT 1`;
+
+    db.get(sql, params, (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error al obtener palabra' });
+        }
+        if (row) {
+            res.json({ palabra: row.palabra });
+        } else {
+            res.status(404).json({ error: 'No hay palabras disponibles' });
+        }
+    });
+});
+
+// 5.b Obtener palabra aleatoria para "Adivina la Palabra" (estilo Wordle)
+// Requiere temática (1 a 4), este juego no tiene la opción "Normal".
+app.get('/api/wordle/palabra', (req, res) => {
+    const tematica = req.query.tematica;
+
+    if (!tematica || !/^\d+$/.test(tematica)) {
+        return res.status(400).json({ error: 'Falta indicar una temática válida' });
+    }
+
+    const sql = `SELECT palabra FROM palabras_wordle WHERE tematica_id = ? ORDER BY RANDOM() LIMIT 1`;
+    db.get(sql, [Number(tematica)], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error al obtener palabra' });
+        }
+        if (row) {
+            res.json({ palabra: row.palabra });
+        } else {
+            res.status(404).json({ error: 'No hay palabras disponibles para esa temática' });
+        }
+    });
+});
+
+// 6. Obtener preguntas aleatorias (opcionalmente por temática)
+app.get('/api/preguntas', (req, res) => {
+    const tematica_id = req.query.tematica_id;
+    let sql = `SELECT * FROM preguntas`;
+    let params = [];
+    
+    if (tematica_id) {
+        sql += ` WHERE tematica_id = ?`;
+        params.push(tematica_id);
+    }
+    sql += ` ORDER BY RANDOM() LIMIT 10`;
+
+    db.all(sql, params, (err, rows) => {
+        if (err) {
+            return res.status(500).json({ error: 'Error al obtener preguntas' });
+        }
+        res.json(rows);
     });
 });
 
