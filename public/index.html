@@ -186,10 +186,10 @@
           <p class="card-desc">Te damos pistas y tenés que adivinar de qué juego, película, actor o anime se trata. ¡Cuantas menos pistas uses, más puntos ganás!</p>
           <div class="theme-selector">
             <span>Temática:</span>
-            <button class="theme-btn selected" onclick="selectTheme(this)">🎮 Videojuegos</button>
-            <button class="theme-btn"          onclick="selectTheme(this)">🎬 Películas</button>
-            <button class="theme-btn"          onclick="selectTheme(this)">⛩️ Anime</button>
-            <button class="theme-btn"          onclick="selectTheme(this)">💻 Programación</button>
+            <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)">🎮 Videojuegos</button>
+            <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)">🎬 Películas</button>
+            <button class="theme-btn"          data-tematica="3" onclick="selectTheme(this)">⛩️ Anime</button>
+            <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)">💻 Programación</button>
           </div>
           <button class="btn-play" onclick="launchGame('adivina', this)">▶ Jugar</button>
         </div>
@@ -376,15 +376,54 @@
   <!-- ── SECCIÓN: ADIVINA LA COSA ── -->
   <section class="section" id="sec-adivina">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="stopAdivina(); goTo('juegos')">← Volver</button>
       <div class="game-screen-title"><span>🕵️</span> Adivina la Cosa</div>
       <div class="game-screen-theme" id="adivina-theme-label"></div>
     </div>
-    <div class="coming-soon-box">
-      <div class="cs-emoji">🕵️</div>
-      <p class="cs-title">¡En construcción!</p>
-      <p class="cs-desc">El sistema de pistas progresivas está siendo armado. Pronto vas a poder adivinar personajes, películas y más.</p>
-      <button class="btn-play" onclick="goTo('juegos')" style="max-width:200px;margin:0 auto;">← Volver a Juegos</button>
+
+    <!-- Overlay inicio / fin -->
+    <div class="adivina-overlay" id="adivinaOverlay">
+      <div class="adivina-overlay-box">
+        <div id="adivinaOverlayEmoji" style="font-size:3rem;margin-bottom:.5rem;">🕵️</div>
+        <p id="adivinaOverlayTitle" style="font-size:1.3rem;font-weight:800;color:#0f1e3d;margin-bottom:.4rem;">Adivina la Cosa</p>
+        <p id="adivinaOverlayDesc" style="font-size:.9rem;color:#475569;margin-bottom:1.2rem;line-height:1.5;">
+          Se muestran pistas una por una.<br>¡Cuantas menos uses, más puntos ganás!
+        </p>
+        <button class="btn-play" id="adivinaOverlayBtn" onclick="startAdivina()" style="max-width:220px;margin:0 auto;">▶ Empezar</button>
+      </div>
+    </div>
+
+    <!-- Juego -->
+    <div class="adivina-game" id="adivinaGame" style="display:none;">
+      <!-- Info superior -->
+      <div class="adivina-meta">
+        <span>Item <span id="adivinaItemNum">1</span> / <span id="adivinaItemTotal">4</span></span>
+        <span>Puntos: <span id="adivinaScore">0</span></span>
+        <span>Pistas usadas: <span id="adivinaPistasUsed">0</span></span>
+      </div>
+
+      <!-- Imagen pixelada -->
+      <div class="adivina-img-wrap">
+        <canvas id="adivinaCanvas" width="260" height="200"></canvas>
+        <div class="adivina-blur-label">🔍 Imagen pixelada — desbloquear con pistas</div>
+      </div>
+
+      <!-- Pistas -->
+      <div class="adivina-pistas-wrap">
+        <div id="adivinaPistasList" class="adivina-pistas-list"></div>
+        <button class="adivina-btn-pista" id="adivinaBtnPista" onclick="revelarPista()">
+          🔎 Revelar pista <span id="adivinaPistaCosto">(-100 pts)</span>
+        </button>
+      </div>
+
+      <!-- Input respuesta -->
+      <div class="adivina-input-wrap">
+        <input type="text" id="adivinaInput" class="adivina-input" placeholder="Escribí tu respuesta..." autocomplete="off" />
+        <button class="btn-play adivina-btn-submit" onclick="submitAdivina()">✓ Confirmar</button>
+      </div>
+
+      <!-- Feedback -->
+      <div id="adivinaFeedback" class="adivina-feedback" style="display:none;"></div>
     </div>
   </section>
 

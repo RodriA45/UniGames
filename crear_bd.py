@@ -112,9 +112,42 @@ CREATE TABLE IF NOT EXISTS preguntas (
     opcion_c TEXT NOT NULL,
     opcion_d TEXT NOT NULL,
     respuesta_correcta TEXT NOT NULL,
-    FOREIGN KEY (tematica_id) REFERENCES tematicas(id)
+    FOREIGN KEY (tematica_id) REFERENCES tematicas(id),
+    UNIQUE(tematica_id, pregunta)
 );
 """)
+
+# Migración: si la tabla ya existe sin UNIQUE, limpiar duplicados y recrear con constraint.
+cols_preg = [r[1] for r in cursor.execute("PRAGMA table_info(preguntas)").fetchall()]
+idx_preg  = [r[1] for r in cursor.execute("PRAGMA index_list(preguntas)").fetchall()]
+has_unique = any('pregunta' in i or 'unique' in i.lower() for i in idx_preg)
+if not has_unique:
+    # Quedarse solo con el primer id por (tematica_id, pregunta)
+    cursor.execute("""
+        DELETE FROM preguntas WHERE id NOT IN (
+            SELECT MIN(id) FROM preguntas GROUP BY tematica_id, pregunta
+        )
+    """)
+    # Recrear tabla con UNIQUE
+    cursor.execute("ALTER TABLE preguntas RENAME TO preguntas_old")
+    cursor.execute("""
+        CREATE TABLE preguntas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tematica_id INTEGER NOT NULL,
+            pregunta TEXT NOT NULL,
+            opcion_a TEXT NOT NULL,
+            opcion_b TEXT NOT NULL,
+            opcion_c TEXT NOT NULL,
+            opcion_d TEXT NOT NULL,
+            respuesta_correcta TEXT NOT NULL,
+            FOREIGN KEY (tematica_id) REFERENCES tematicas(id),
+            UNIQUE(tematica_id, pregunta)
+        )
+    """)
+    cursor.execute("""
+        INSERT INTO preguntas SELECT * FROM preguntas_old
+    """)
+    cursor.execute("DROP TABLE preguntas_old")
 
 # Nueva tabla para el minijuego "Adivina la Palabra" (estilo Wordle).
 # Siempre tiene temática (no existe la opción "Normal" para este juego).
@@ -262,6 +295,10 @@ INSERT OR IGNORE INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opci
 (1, '¿Cómo se llama el villano principal de la saga Super Mario?', 'Wario', 'Donkey Kong', 'Bowser', 'Waluigi', 'C'),
 (1, '¿En qué juego aparece el personaje "Master Chief"?', 'Gears of War', 'Halo', 'Destiny', 'Mass Effect', 'B'),
 (1, '¿Cuál es el juego más vendido de la historia (hasta 2023)?', 'Tetris', 'Minecraft', 'GTA V', 'Wii Sports', 'B'),
+(1, '¿En qué año se lanzó el primer juego de Pokémon?', '1994', '1995', '1996', '1997', 'C'),
+(1, '¿Cómo se llama el caballo de Link en The Legend of Zelda: Ocarina of Time?', 'Rocinante', 'Epona', 'Binky', 'Agro', 'B'),
+(1, '¿Qué empresa creó la consola PlayStation?', 'Nintendo', 'Microsoft', 'Sony', 'Sega', 'C'),
+(1, '¿Cuál es el nombre del protagonista de God of War?', 'Kratos', 'Dante', 'Geralt', 'Ezio', 'A'),
 
 -- Películas (Temática 2)
 (2, '¿Quién dirigió la película "Inception" (El Origen)?', 'Steven Spielberg', 'Christopher Nolan', 'Quentin Tarantino', 'James Cameron', 'B'),
@@ -270,6 +307,10 @@ INSERT OR IGNORE INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opci
 (2, '¿Qué película ganó el Oscar a Mejor Película en 2020?', 'Joker', '1917', 'Parasite', 'Once Upon a Time in Hollywood', 'C'),
 (2, '¿Cómo se llama el personaje principal de "The Matrix"?', 'Morpheus', 'Neo', 'Trinity', 'Agent Smith', 'B'),
 (2, 'En la película "El Rey León", ¿cómo se llama el padre de Simba?', 'Scar', 'Timón', 'Pumba', 'Mufasa', 'D'),
+(2, '¿Cuántas películas conforman la trilogía original de El Señor de los Anillos?', '2', '3', '4', '6', 'B'),
+(2, '¿Quién compuso la música de la saga Star Wars?', 'Hans Zimmer', 'John Williams', 'Ennio Morricone', 'Danny Elfman', 'B'),
+(2, '¿En qué película aparece el personaje "Forrest Gump"?', 'Cast Away', 'Philadelphia', 'Forrest Gump', 'The Green Mile', 'C'),
+(2, '¿De qué país es la película "Parasite" que ganó el Oscar 2020?', 'China', 'Japón', 'Tailandia', 'Corea del Sur', 'D'),
 
 -- Anime (Temática 3)
 (3, '¿Cómo se llama el zorro de nueve colas sellado en Naruto?', 'Shukaku', 'Matatabi', 'Kurama', 'Son Goku', 'C'),
@@ -278,6 +319,10 @@ INSERT OR IGNORE INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opci
 (3, '¿Cómo se llama el protagonista de "Shingeki no Kyojin" (Attack on Titan)?', 'Levi', 'Eren', 'Mikasa', 'Armin', 'B'),
 (3, '¿De qué anime es el personaje "Edward Elric"?', 'Bleach', 'Fairy Tail', 'Fullmetal Alchemist', 'Sword Art Online', 'C'),
 (3, '¿Cuál es la técnica característica de Goku en Dragon Ball?', 'Rasengan', 'Getsuga Tenshou', 'Chidori', 'Kamehameha', 'D'),
+(3, '¿En qué ciudad transcurre gran parte de Shingeki no Kyojin?', 'Ciudad de las Paredes', 'Tokyo-3', 'Konohagakure', 'Soul Society', 'A'),
+(3, '¿Cómo se llama el dios de la muerte en Death Note?', 'Ryuk', 'Rem', 'Jealous', 'Armonia', 'A'),
+(3, '¿Qué tipo de fruta otorga poderes en One Piece?', 'Fruta del Demonio', 'Fruta del Diablo', 'Fruta Akuma', 'Fruta del Poder', 'B'),
+(3, '¿Cuántos miembros tiene el grupo Akatsuki en Naruto Shippuden?', '7', '8', '9', '10', 'D'),
 
 -- Programación (Temática 4)
 (4, '¿Qué significa HTML?', 'Hyper Text Markup Language', 'High Text Machine Language', 'Hyper Tool Multi Language', 'Hyper Text Multiple Links', 'A'),
@@ -285,7 +330,11 @@ INSERT OR IGNORE INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opci
 (4, '¿Qué hace la función "console.log()" en JavaScript?', 'Muestra un mensaje en la consola', 'Guarda datos en base de datos', 'Cierra el programa', 'Borra la consola', 'A'),
 (4, '¿Qué significa CSS?', 'Computer Style Sheets', 'Cascading Style Sheets', 'Creative Style System', 'Colorful Style Sheets', 'B'),
 (4, '¿Qué símbolo se usa comúnmente para comentarios de una línea en Python?', '//', '/*', '<!--', '#', 'D'),
-(4, '¿Qué estructura de datos usa el principio LIFO (Last In, First Out)?', 'Cola (Queue)', 'Pila (Stack)', 'Árbol', 'Grafo', 'B');
+(4, '¿Qué estructura de datos usa el principio LIFO (Last In, First Out)?', 'Cola (Queue)', 'Pila (Stack)', 'Árbol', 'Grafo', 'B'),
+(4, '¿Cuál es la extensión de un archivo JavaScript?', '.java', '.js', '.jscript', '.jsx', 'B'),
+(4, '¿Qué método de array en JavaScript devuelve un nuevo array con elementos transformados?', 'filter()', 'forEach()', 'map()', 'reduce()', 'C'),
+(4, '¿Qué significa SQL?', 'Structured Query Language', 'Simple Query Logic', 'Scalable Query Language', 'Stored Query Logic', 'A'),
+(4, '¿Cuál de estos es un sistema de control de versiones?', 'Docker', 'Git', 'Node', 'Webpack', 'B');
 """)
 
 conexion.commit()

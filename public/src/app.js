@@ -128,6 +128,10 @@ function launchGame(gameKey, btn) {
     const tId = tematicaId && /^\d+$/.test(tematicaId) ? Number(tematicaId) : TEMATICA_MAP[theme] || 1;
     initTermina(tId);
   }
+  if (gameKey === 'adivina') {
+    const tId = tematicaId && /^\d+$/.test(tematicaId) ? Number(tematicaId) : TEMATICA_MAP[theme] || 1;
+    initAdivina(tId);
+  }
 }
 
 // ══════════════════════════════════════
@@ -1194,7 +1198,14 @@ async function initPreguntados(tematicaId) {
   let preguntas = [];
   try {
     const res  = await fetch('/api/preguntas?tematica_id=' + tematicaId);
-    preguntas  = await res.json();
+    const raw  = await res.json();
+    // Deduplicar por texto de pregunta (la BD puede tener filas repetidas con distintos ids)
+    const seen = new Set();
+    preguntas = shuffle(raw).filter(p => {
+      if (seen.has(p.pregunta)) return false;
+      seen.add(p.pregunta);
+      return true;
+    });
   } catch(e) { console.error(e); }
 
   pregState = { preguntas, idx: 0, score: 0, timer: null, timeLeft: PREGUNTADOS_TIME, tematicaId, finished: false };
@@ -1686,3 +1697,418 @@ function submitTermina() {
   renderTermina();
 }
 
+
+// ══════════════════════════════════════
+//   ADIVINA LA COSA
+// ══════════════════════════════════════
+
+// Datos del juego organizados por temática
+// Cada item tiene: respuesta, pistas (de vaga a específica), imagen
+const ADIVINA_DATA = {
+  1: [ // Videojuegos
+    {
+      respuesta: 'minecraft',
+      aliases: ['mine craft'],
+      imagen: 'logos/videojuegos/minecraft.jpg',
+      pistas: [
+        'Es un videojuego de mundo abierto lanzado en 2011.',
+        'Podés construir estructuras usando bloques.',
+        'Incluye un modo supervivencia donde debés comer y combatir criaturas.',
+        'El Creeper es uno de sus enemigos más icónicos.',
+      ],
+    },
+    {
+      respuesta: 'god of war',
+      aliases: ['god of war', 'godofwar'],
+      imagen: 'logos/videojuegos/god-of-war.jpg',
+      pistas: [
+        'Es una saga de acción y aventura con temática mitológica.',
+        'El protagonista es un espartano con marcas blancas en la piel.',
+        'En las entregas recientes viaja por la mitología nórdica con su hijo Atreus.',
+        'Su nombre es Kratos.',
+      ],
+    },
+    {
+      respuesta: 'pokemon',
+      aliases: ['pokémon', 'pokemon rojo', 'pokémon rojo'],
+      imagen: 'logos/videojuegos/pokemon-rojo.jpg',
+      pistas: [
+        'Es una saga de RPG donde coleccionás y entrenás criaturas.',
+        'Tu objetivo principal es vencer a los 8 líderes de gimnasio.',
+        'La primera entrega se lanzó en 1996 para Game Boy.',
+        'El Pokémon más famoso de la saga es Pikachu.',
+      ],
+    },
+    {
+      respuesta: 'silent hill',
+      aliases: ['silent hill'],
+      imagen: 'logos/videojuegos/silent-hill.jpg',
+      pistas: [
+        'Es una saga de videojuegos de terror psicológico.',
+        'Transcurre en una ciudad envuelta en niebla y oscuridad.',
+        'Pyramid Head es uno de sus enemigos más reconocibles.',
+        'Fue desarrollada por Konami a fines de los 90.',
+      ],
+    },
+  ],
+  2: [ // Películas
+    {
+      respuesta: 'el origen de los guardianes',
+      aliases: ['rise of the guardians', 'origen de los guardianes', 'guardianes'],
+      imagen: 'logos/pelicula/el-origen-de-los-guardianes.jpg',
+      pistas: [
+        'Es una película de animación de DreamWorks del año 2012.',
+        'Los protagonistas son figuras míticas como el Conejo de Pascua y Santa Claus.',
+        'Un villano llamado Pitch Black quiere que los niños dejen de creer.',
+        'Jack Frost es el protagonista principal.',
+      ],
+    },
+    {
+      respuesta: 'metegol',
+      aliases: ['foosball', 'underdogs'],
+      imagen: 'logos/pelicula/metegol.jpg',
+      pistas: [
+        'Es una película de animación argentina estrenada en 2013.',
+        'Fue producida por Juan José Campanella.',
+        'Los personajes de un metegol cobran vida para ayudar al protagonista.',
+        'Ganó el Premio Goya a Mejor Película de Animación.',
+      ],
+    },
+    {
+      respuesta: 'rapido y furioso',
+      aliases: ['rápido y furioso', 'fast and furious', 'fast furious', 'fast & furious'],
+      imagen: 'logos/pelicula/rapido-y-furioso.jpg',
+      pistas: [
+        'Es una saga de acción estadounidense con múltiples películas.',
+        'Gira en torno a carreras ilegales de autos y misiones de alto riesgo.',
+        'Dominic Toretto es uno de sus personajes principales.',
+        'Vin Diesel y Paul Walker son los actores más asociados a la saga.',
+      ],
+    },
+    {
+      respuesta: 'scary movie',
+      aliases: ['scary movie 1'],
+      imagen: 'logos/pelicula/scary-movie.jpg',
+      pistas: [
+        'Es una comedia de parodia de películas de terror de los años 90.',
+        'Se burla de cintas como Scream y Sé Lo Que Hiciste El Verano Pasado.',
+        'Fue dirigida por Keenen Ivory Wayans en el año 2000.',
+        'La protagonista es Cindy Campbell, interpretada por Anna Faris.',
+      ],
+    },
+  ],
+  3: [ // Anime
+    {
+      respuesta: 'naruto',
+      aliases: ['naruto shippuden', 'naruto uzumaki'],
+      imagen: 'logos/anime/naruto.jpg',
+      pistas: [
+        'Es un anime shōnen que sigue la vida de un joven ninja.',
+        'El protagonista sueña con convertirse en Hokage de su aldea.',
+        'Tiene sellado en su cuerpo un zorro de nueve colas llamado Kurama.',
+        'El nombre del protagonista es el mismo que el del anime.',
+      ],
+    },
+    {
+      respuesta: 'goku',
+      aliases: ['son goku', 'dragon ball', 'dragon ball z'],
+      imagen: 'logos/anime/goku-jr.jpg',
+      pistas: [
+        'Es un personaje de una de las sagas de anime más famosas del mundo.',
+        'Es un Saiyan cuya técnica más emblemática es el Kamehameha.',
+        'Pelea contra enemigos cada vez más poderosos para proteger la Tierra.',
+        'Su nombre completo es Son Goku.',
+      ],
+    },
+    {
+      respuesta: 'eren',
+      aliases: ['eren yeager', 'eren jaeger', 'attack on titan', 'shingeki no kyojin'],
+      imagen: 'logos/anime/eren.jpg',
+      pistas: [
+        'Es el protagonista de un anime de acción y drama oscuro.',
+        'Vive en un mundo amenazado por gigantes caníbales llamados Titanes.',
+        'Posee la habilidad de transformarse en un Titán.',
+        'Su apellido es Yeager y el anime se llama Shingeki no Kyojin.',
+      ],
+    },
+    {
+      respuesta: 'kazuma',
+      aliases: ['kazuma sato', 'konosuba', 'kono subarashii'],
+      imagen: 'logos/anime/kazuma.jpg',
+      pistas: [
+        'Es el protagonista de un anime de isekai y comedia.',
+        'Fue transportado a un mundo de fantasía después de morir de forma ridícula.',
+        'Viaja con un grupo de compañeras bastante incompetentes.',
+        'El anime se llama KonoSuba.',
+      ],
+    },
+  ],
+  4: [ // Programación
+    {
+      respuesta: 'python',
+      aliases: ['python 3', 'python3'],
+      imagen: 'logos/programacion/Python.png',
+      pistas: [
+        'Es uno de los lenguajes de programación más populares del mundo.',
+        'Se usa mucho en ciencia de datos, inteligencia artificial y scripting.',
+        'Su sintaxis es limpia y muy legible, ideal para principiantes.',
+        'Su nombre hace referencia a un grupo de comediantes británicos.',
+      ],
+    },
+    {
+      respuesta: 'node',
+      aliases: ['node.js', 'nodejs'],
+      imagen: 'logos/programacion/node-js.png',
+      pistas: [
+        'Es un entorno de ejecución para JavaScript del lado del servidor.',
+        'Está basado en el motor V8 de Google Chrome.',
+        'Usa un modelo de entrada/salida no bloqueante, ideal para APIs.',
+        'Se suele usar junto a Express para crear servidores web.',
+      ],
+    },
+    {
+      respuesta: 'arduino',
+      aliases: [],
+      imagen: 'logos/programacion/arduino.png',
+      pistas: [
+        'Es una plataforma de hardware y software de código abierto.',
+        'Se usa para crear prototipos electrónicos y proyectos DIY.',
+        'Su placa física es de color azul o verde y tiene pines de entrada/salida.',
+        'Se programa con un lenguaje basado en C/C++.',
+      ],
+    },
+    {
+      respuesta: 'visual studio',
+      aliases: ['visual studio code', 'vscode', 'vs code', 'vs'],
+      imagen: 'logos/programacion/visual-studio.png',
+      pistas: [
+        'Es un editor de código desarrollado por Microsoft.',
+        'Es altamente extensible mediante plugins y extensiones.',
+        'Tiene integración nativa con Git y un terminal integrado.',
+        'Es el editor de código más usado en el mundo según encuestas de Stack Overflow.',
+      ],
+    },
+  ],
+};
+
+let adivinaState = null;
+
+function stopAdivina() {
+  adivinaState = null;
+}
+
+function initAdivina(tematicaId) {
+  const tId = tematicaId && /^\d+$/.test(String(tematicaId)) ? Number(tematicaId) : 1;
+  const items = shuffle([...ADIVINA_DATA[tId] || ADIVINA_DATA[1]]);
+
+  adivinaState = {
+    tematicaId: tId,
+    items,
+    itemIdx: 0,
+    score: 0,
+    pistasUsed: 0,
+    finished: false,
+  };
+
+  // Mostrar overlay de inicio
+  const ov = document.getElementById('adivinaOverlay');
+  document.getElementById('adivinaOverlayEmoji').textContent = '🕵️';
+  document.getElementById('adivinaOverlayTitle').textContent = 'Adivina la Cosa';
+  document.getElementById('adivinaOverlayDesc').textContent =
+    `Se muestran ${items.length} items de la temática seleccionada.\nCuantas menos pistas uses, ¡más puntos ganás!`;
+  document.getElementById('adivinaOverlayBtn').textContent = '▶ Empezar';
+  document.getElementById('adivinaOverlayBtn').onclick = startAdivina;
+  ov.style.display = 'flex';
+  document.getElementById('adivinaGame').style.display = 'none';
+}
+
+function startAdivina() {
+  if (!adivinaState) return;
+  document.getElementById('adivinaOverlay').style.display = 'none';
+  document.getElementById('adivinaGame').style.display = 'flex';
+  adivinaState.itemIdx = 0;
+  adivinaState.score = 0;
+  adivinaState.pistasUsed = 0;
+  adivinaState.pistasRevealedThisItem = [];
+  adivinaState.pistasUsedThisItem = 0;
+  adivinaState.respondido = false;
+  renderAdivinaItem();
+}
+
+function renderAdivinaItem() {
+  const s = adivinaState;
+  const item = s.items[s.itemIdx];
+
+  // Meta
+  document.getElementById('adivinaItemNum').textContent = s.itemIdx + 1;
+  document.getElementById('adivinaItemTotal').textContent = s.items.length;
+  document.getElementById('adivinaScore').textContent = s.score;
+  document.getElementById('adivinaPistasUsed').textContent = s.pistasUsedThisItem || 0;
+
+  // Pistas
+  document.getElementById('adivinaPistasList').innerHTML = '';
+  s.pistasRevealedThisItem = s.pistasRevealedThisItem || [];
+  for (const pista of s.pistasRevealedThisItem) {
+    const el = document.createElement('div');
+    el.className = 'adivina-pista-item';
+    el.textContent = `🔹 ${pista}`;
+    document.getElementById('adivinaPistasList').appendChild(el);
+  }
+
+  // Botón pista
+  const btn = document.getElementById('adivinaBtnPista');
+  const remaining = item.pistas.length - (s.pistasRevealedThisItem?.length || 0);
+  btn.disabled = remaining === 0;
+  btn.querySelector ? null : null;
+  document.getElementById('adivinaPistaCosto').textContent =
+    `(-${pistasCosto(s.pistasRevealedThisItem?.length || 0)} pts)`;
+
+  // Imagen pixelada
+  renderAdivinaCanvas(item.imagen, s.pistasRevealedThisItem?.length || 0, item.pistas.length);
+
+  // Input
+  document.getElementById('adivinaInput').value = '';
+  document.getElementById('adivinaInput').disabled = false;
+  document.getElementById('adivinaFeedback').style.display = 'none';
+  setTimeout(() => document.getElementById('adivinaInput')?.focus(), 50);
+}
+
+function pistasCosto(pistasYaReveladas) {
+  // Primera pista: -100, segunda: -150, tercera: -200, cuarta: -250
+  return 100 + pistasYaReveladas * 50;
+}
+
+function puntosItem(pistasUsadas) {
+  // Sin pistas: 500, con 1: 400, con 2: 250, con 3: 100, con 4+: 50
+  const base = [500, 400, 250, 100, 50];
+  return base[Math.min(pistasUsadas, 4)];
+}
+
+function renderAdivinaCanvas(imgSrc, pistasCnt, totalPistas) {
+  const canvas = document.getElementById('adivinaCanvas');
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  img.src = imgSrc;
+  img.onload = () => {
+    // Nivel de pixelado: cuantas más pistas, más nítida (1=muy pixelada, 0=nítida)
+    // 0 pistas = pixelSize 24, 1=16, 2=10, 3=5, 4=1
+    const pixelSizes = [24, 16, 10, 5, 1];
+    const pixelSize = pixelSizes[Math.min(pistasCnt, pixelSizes.length - 1)];
+
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    if (pixelSize <= 1) {
+      ctx.drawImage(img, 0, 0, w, h);
+      return;
+    }
+
+    // Dibujar pequeño, luego escalar
+    const small = document.createElement('canvas');
+    small.width  = Math.max(1, Math.floor(w / pixelSize));
+    small.height = Math.max(1, Math.floor(h / pixelSize));
+    const sCtx = small.getContext('2d');
+    sCtx.drawImage(img, 0, 0, small.width, small.height);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(small, 0, 0, w, h);
+  };
+  img.onerror = () => {
+    // Fallback: cuadrado gris con ícono
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '64px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🕵️', canvas.width / 2, canvas.height / 2);
+  };
+}
+
+function revelarPista() {
+  const s = adivinaState;
+  if (!s) return;
+  const item = s.items[s.itemIdx];
+  if (!s.pistasRevealedThisItem) s.pistasRevealedThisItem = [];
+  if (s.pistasRevealedThisItem.length >= item.pistas.length) return;
+
+  const pista = item.pistas[s.pistasRevealedThisItem.length];
+  s.pistasRevealedThisItem.push(pista);
+  s.pistasUsedThisItem = s.pistasRevealedThisItem.length;
+
+  renderAdivinaItem();
+}
+
+function submitAdivina() {
+  const s = adivinaState;
+  if (!s || s.respondido) return;
+  const item = s.items[s.itemIdx];
+  const input = document.getElementById('adivinaInput');
+  const raw = input.value.trim().toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e')
+    .replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
+
+  if (!raw) return;
+
+  const normalize = (str) => str.toLowerCase()
+    .replace(/[áàä]/g,'a').replace(/[éèë]/g,'e')
+    .replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
+
+  const correctas = [item.respuesta, ...item.aliases].map(normalize);
+  const correcto = correctas.includes(raw);
+
+  const fb = document.getElementById('adivinaFeedback');
+  fb.style.display = 'block';
+
+  const pistasUsadas = s.pistasRevealedThisItem?.length || 0;
+
+  if (correcto) {
+    s.respondido = true;
+    const pts = puntosItem(pistasUsadas);
+    s.score += pts;
+    fb.className = 'adivina-feedback correcto';
+    fb.textContent = `✅ ¡Correcto! +${pts} puntos`;
+    input.disabled = true;
+    document.getElementById('adivinaBtnPista').disabled = true;
+
+    // Revelar imagen completa
+    renderAdivinaCanvas(item.imagen, 99, item.pistas.length);
+
+    setTimeout(() => nextAdivinaItem(), 1800);
+  } else {
+    fb.className = 'adivina-feedback incorrecto';
+    fb.textContent = '❌ No es eso, seguí intentando o pedí más pistas.';
+    input.value = '';
+    setTimeout(() => { fb.style.display = 'none'; input.focus(); }, 1500);
+  }
+}
+
+// Soporte Enter en input
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('adivinaInput');
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') submitAdivina(); });
+});
+
+function nextAdivinaItem() {
+  const s = adivinaState;
+  s.pistasRevealedThisItem = [];
+  s.pistasUsedThisItem = 0;
+  s.respondido = false;
+  s.itemIdx++;
+
+  if (s.itemIdx >= s.items.length) {
+    // Fin del juego
+    s.finished = true;
+    guardarPuntaje(5, s.score, s.tematicaId); // juego_id=5 Adivina la Cosa
+
+    const ov = document.getElementById('adivinaOverlay');
+    document.getElementById('adivinaOverlayEmoji').textContent = '🏆';
+    document.getElementById('adivinaOverlayTitle').textContent = '¡Juego terminado!';
+    document.getElementById('adivinaOverlayDesc').textContent = `Tu puntaje final: ${s.score} puntos`;
+    document.getElementById('adivinaOverlayBtn').textContent = '🔁 Jugar de nuevo';
+    document.getElementById('adivinaOverlayBtn').onclick = startAdivina;
+    ov.style.display = 'flex';
+    return;
+  }
+
+  renderAdivinaItem();
+}
