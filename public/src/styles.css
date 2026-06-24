@@ -817,13 +817,16 @@ footer span { color: var(--yellow); }
 
 /* ─── PIXEL RUNNER ─── */
 .runner-score-display {
+  flex-basis: 100%;
   margin-left: auto;
+  margin-top: 0.4rem;
   font-family: 'Press Start 2P', monospace;
   font-size: 11px;
   color: var(--blue-dark);
   background: var(--yellow);
   padding: 0.4rem 0.9rem;
   border-radius: 20px;
+  width: fit-content;
 }
 
 .runner-container {
@@ -836,12 +839,15 @@ footer span { color: var(--yellow); }
   box-shadow: 0 8px 32px rgba(15,30,61,0.25);
   border: 3px solid #1a3a6b;
   background: #0d1b2a;
+  overscroll-behavior: contain;
 }
 
 #runnerCanvas {
   display: block;
   width: 100%;
   image-rendering: pixelated;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .runner-overlay {
@@ -852,6 +858,8 @@ footer span { color: var(--yellow); }
   align-items: center;
   justify-content: center;
   backdrop-filter: blur(2px);
+  overflow-y: auto;
+  padding: 0.5rem;
 }
 .runner-overlay.hidden { display: none; }
 
@@ -860,8 +868,10 @@ footer span { color: var(--yellow); }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
-  padding: 2rem;
+  gap: 0.4rem;
+  padding: 1rem;
+  margin: auto;
+  max-width: 100%;
 }
 
 .runner-char-preview { margin-bottom: 0.5rem; }
@@ -876,6 +886,8 @@ footer span { color: var(--yellow); }
   font-size: 0.85rem;
   color: rgba(255,255,255,0.8);
   line-height: 1.7;
+  white-space: pre-line;
+  text-align: center;
 }
 .runner-best {
   font-family: 'Press Start 2P', monospace;
@@ -919,6 +931,7 @@ footer span { color: var(--yellow); }
   cursor: pointer;
   user-select: none;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: background 0.15s, transform 0.1s;
 }
 .runner-ctrl-btn:active {
@@ -926,11 +939,269 @@ footer span { color: var(--yellow); }
   transform: scale(0.96);
 }
 
-/* ─── RESPONSIVE ─── */
 @media (max-width: 480px) {
-  .btn-register { display: none; }
-  .hero h1 { font-size: 14px; }
-  .featured-grid { grid-template-columns: 1fr; }
+  .runner-controls {
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+  }
+  .runner-ctrl-btn {
+    flex: 1;
+    padding: 1rem 0;
+    font-size: 1.15rem;
+    border-radius: 12px;
+    border-width: 3px;
+  }
+  .runner-hint {
+    font-size: 0.7rem;
+  }
+  /* Canvas más alto en mobile para más espacio de juego */
+  .runner-container {
+    border-radius: 10px;
+  }
+  .runner-overlay-box {
+    gap: 0.3rem;
+    padding: 0.5rem;
+  }
+  .runner-char-preview {
+    margin-bottom: 0;
+  }
+  .runner-char-preview svg {
+    width: 34px;
+    height: 42px;
+  }
+  .runner-overlay-sub {
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+  .runner-start-btn {
+    padding: 0.5rem 1.4rem;
+    font-size: 0.9rem;
+    margin-top: 0.2rem;
+  }
+}
+
+/* ─── RESPONSIVE ─── */
+
+/* Tablet */
+@media (max-width: 768px) {
+  main {
+    padding: 1.25rem 1rem;
+  }
+
+  .games-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lb-global-grids {
+    grid-template-columns: 1fr;
+  }
+
+  .scores-header,
+  .games-intro {
+    padding: 1.1rem 1.25rem;
+    gap: 0.75rem;
+  }
+  .scores-header .icon,
+  .games-intro-icon {
+    font-size: 2rem;
+  }
+
+  .ahorcado-wrap {
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+  }
+  .ahorcado-main {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .preg-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Mobile */
+@media (max-width: 480px) {
+  /* Header */
+  .header-inner {
+    padding: 0 0.85rem;
+    height: 56px;
+    gap: 0.6rem;
+  }
+  .logo {
+    font-size: 13px;
+  }
+  .btn-register {
+    display: none;
+  }
+  .btn-login {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.7rem;
+  }
+
+  /* Hero */
+  .hero {
+    padding: 1.5rem 0.5rem 1rem;
+  }
+  .hero h1 {
+    font-size: 14px;
+  }
+  .hero p {
+    font-size: 0.9rem;
+  }
+
+  /* Grids */
+  .featured-grid {
+    grid-template-columns: 1fr;
+  }
+  .games-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  .lb-global-grids {
+    grid-template-columns: 1fr;
+  }
+
+  /* Cards */
+  .card-body {
+    padding: 1rem;
+  }
+  .card-header-band {
+    padding: 1rem;
+  }
+
+  /* Theme buttons: scroll horizontal en móvil */
+  .theme-selector {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    gap: 0.35rem;
+  }
+  .theme-selector span {
+    flex-shrink: 0;
+  }
+  .theme-btn {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    padding: 0.28rem 0.65rem;
+  }
+
+  /* Leaderboard tabs: scroll horizontal */
+  .lb-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    gap: 0.35rem;
+  }
+  .lb-tab {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    padding: 0.35rem 0.75rem;
+  }
+
+  /* Pantalla de juego header */
+  .game-screen-header {
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+  }
+  .game-screen-title {
+    font-size: 9px;
+  }
+  .game-screen-theme {
+    font-size: 0.72rem;
+    padding: 0.2rem 0.6rem;
+  }
+
+  /* Ahorcado */
+  .ahorcado-drawing {
+    padding: 1rem;
+  }
+  .letter-box {
+    width: 30px;
+    height: 38px;
+    font-size: 11px;
+  }
+  .key-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 0.75rem;
+  }
+
+  /* Wordle */
+  .wordle-tile {
+    width: 36px;
+    height: 36px;
+    font-size: 11px;
+  }
+
+  /* Sopa */
+  .sopa-cell {
+    width: 22px;
+    height: 22px;
+    font-size: 6px;
+  }
+  .sopa-main {
+    flex-direction: column;
+  }
+
+  /* Termina la Palabra */
+  .termina-letra {
+    width: 30px;
+    height: 38px;
+    font-size: 11px;
+  }
+  .termina-input-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  /* Adivina la Cosa */
+  .adivina-meta {
+    font-size: 0.74rem;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  #adivinaCanvas {
+    width: 100%;
+    height: auto;
+  }
+  .adivina-input-wrap {
+    flex-direction: column;
+  }
+  .adivina-btn-submit {
+    width: 100%;
+  }
+
+  /* Pixel Runner controles táctiles más grandes */
+  .runner-ctrl-btn {
+    padding: 0.75rem 2rem;
+    font-size: 1.05rem;
+  }
+
+  /* Coming soon */
+  .coming-soon-box {
+    padding: 2rem 1.25rem;
+  }
+
+  /* Scores header texto */
+  .scores-header p,
+  .games-intro p {
+    font-size: 0.85rem;
+  }
+
+  /* Modal auth en mobile */
+  .modal-card {
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
+
+  /* Preguntados resultado */
+  .preg-result {
+    padding: 1.75rem 1.25rem;
+  }
 }
 
 /* ═══════════════════════════════════

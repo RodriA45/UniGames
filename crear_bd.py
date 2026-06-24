@@ -173,7 +173,8 @@ INSERT OR IGNORE INTO juegos (id, nombre, descripcion) VALUES
 (3, 'Termina la Palabra', 'Adivinar una palabra incompleta'),
 (4, 'Ahorcado', 'Adivinar letras antes de perder'),
 (5, 'Adivina la Cosa', 'Adivinar con pistas'),
-(6, 'Adivina la Palabra', 'Adiviná la palabra letra por letra, estilo Wordle, en 5 intentos');
+(6, 'Adivina la Palabra', 'Adiviná la palabra letra por letra, estilo Wordle, en 5 intentos'),
+(7, 'Pixel Runner', 'Saltá obstáculos y conseguí la mayor puntuación posible');
 """)
 
 # Temáticas: se agrega "Programación" como 4ta temática (ya usada en el selector del frontend)
@@ -285,6 +286,29 @@ for tematica_id, palabras in palabras_wordle_por_tematica.items():
 # ──────────────────────────────────────────────
 #  PREGUNTAS (Preguntados)
 # ──────────────────────────────────────────────
+
+# Limpiar preguntas near-duplicadas que pudieron quedar de versiones anteriores
+# (mismo significado pero texto levemente distinto — el INSERT OR IGNORE no las atrapa)
+preguntas_a_eliminar = [
+    # Videojuegos
+    (1, '¿Cómo se llama el caballo de Link en Ocarina of Time?'),
+    # Películas
+    (2, '¿Qué actor interpreta a Iron Man en el UCM?'),
+    (2, '¿Cómo se llama el protagonista de "The Matrix"?'),
+    (2, 'En "El Rey León", ¿cómo se llama el padre de Simba?'),
+    (2, '¿Cuántas películas conforman la trilogía de El Señor de los Anillos?'),
+    # Anime
+    (3, '¿Cómo se llama el protagonista de "Shingeki no Kyojin"?'),
+    # Programación
+    (4, '¿Qué hace "console.log()" en JavaScript?'),
+    (4, '¿Qué símbolo se usa para comentarios de una línea en Python?'),
+    (4, '¿Qué estructura de datos usa el principio LIFO?'),
+    (4, '¿Qué método de array devuelve un nuevo array transformado en JS?'),
+]
+for (tid, preg) in preguntas_a_eliminar:
+    cursor.execute("DELETE FROM preguntas WHERE tematica_id = ? AND pregunta = ?", (tid, preg))
+
+conexion.commit()
 
 cursor.execute("""
 INSERT OR IGNORE INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta) VALUES

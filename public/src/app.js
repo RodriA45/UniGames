@@ -157,7 +157,7 @@ async function initAhorcado(tematicaId) {
 
   let word = 'cargando';
   try {
-    const res = await fetch('/api/ahorcado/palabra?tematica=' + encodeURIComponent(tematicaId));
+    const res = await fetch('/api/ahorcado/palabra?tematica=' + encodeURIComponent(tematicaId), { cache: 'no-store' });
     const data = await res.json();
     if (data.palabra) word = data.palabra.toLowerCase();
   } catch (e) {
@@ -272,7 +272,7 @@ async function initWordle(tematicaId) {
 
   let word = null;
   try {
-    const res = await fetch('/api/wordle/palabra?tematica=' + encodeURIComponent(tematicaId));
+    const res = await fetch('/api/wordle/palabra?tematica=' + encodeURIComponent(tematicaId), { cache: 'no-store' });
     const data = await res.json();
     if (data.palabra) word = data.palabra.toLowerCase();
   } catch (e) {
@@ -574,7 +574,7 @@ async function fetchLeaderboardGlobal() {
     if (!res.ok) throw new Error();
     const data = await res.json(); // { juego_id: { juego, entries: [{jugador, puntos}] } }
 
-    const GAME_ICONS = { 1:'🔍', 2:'❓', 3:'🔤', 4:'🪢', 5:'🕵️', 6:'🟩' };
+    const GAME_ICONS = { 1:'🔍', 2:'❓', 3:'🔤', 4:'🪢', 5:'🕵️', 6:'🟩', 7:'🏃' };
     const keys = Object.keys(data);
 
     if (keys.length === 0) {
@@ -616,7 +616,7 @@ async function fetchLeaderboardByGame(juegoId) {
   tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;">Cargando...</td></tr>';
   try {
     const url = juegoId === 'runner'
-      ? '/api/leaderboard?juego_id=1'   // runner usa juego_id=1 provisoriamente
+      ? '/api/leaderboard?juego_id=7'   // Pixel Runner = juego_id 7
       : `/api/leaderboard?juego_id=${juegoId}`;
     const res  = await fetch(url);
     if (!res.ok) throw new Error();
@@ -694,45 +694,64 @@ const RUNNER = {
 
 function initRunner() {
   RUNNER.canvas = document.getElementById('runnerCanvas');
-  const C = RUNNER.canvas;
 
-  // Tamaño responsivo
-  const W = Math.min(C.parentElement.clientWidth, 800);
-  C.width  = W;
-  C.height = Math.round(W * 0.38);
-  RUNNER.ctx = C.getContext('2d');
+  // Esperar a que el layout esté listo (en mobile la sección recién se hizo visible
+  // y clientWidth puede ser 0 si el paint aún no corrió)
+  requestAnimationFrame(() => {
+    const C = RUNNER.canvas;
 
-  // Las zapatillas llegan hasta y + 36*S, con S = p.w/32 = 1 → 36px desde y
-  // groundY = donde empieza el suelo, el personaje debe llegar justo ahí
-  RUNNER.player.groundY = C.height - RUNNER.groundH - 36;
-  RUNNER.player.y       = RUNNER.player.groundY;
+    // Tamaño responsivo — fallback a window.innerWidth si clientWidth es 0
+    const containerW = C.parentElement.clientWidth || Math.min(window.innerWidth - 32, 800);
+    const W = Math.min(containerW, 800);
+    const isMobile = window.innerWidth <= 480;
+    C.width  = W;
+    C.height = Math.round(W * (isMobile ? 0.52 : 0.38));
+    RUNNER.ctx = C.getContext('2d');
 
-  // Generar estrellas
-  RUNNER.stars = Array.from({length: 40}, () => ({
-    x: Math.random() * C.width,
-    y: Math.random() * (C.height * 0.55),
-    r: Math.random() * 1.5 + 0.5,
-    blink: Math.random()
-  }));
+    // groundY: el personaje debe apoyar sobre el suelo
+    RUNNER.player.groundY = C.height - RUNNER.groundH - 36;
+    RUNNER.player.y       = RUNNER.player.groundY;
 
-  // Mostrar overlay de inicio
-  showRunnerOverlay('¡Pixel Runner!', 'Espacio / ↑ / Tap para saltar\nDoble salto disponible', false);
-  if (RUNNER.bestScore > 0) {
-    document.getElementById('runnerBest').textContent = 'Mejor: ' + RUNNER.bestScore + ' pts';
-  }
+    // Generar estrellas
+    RUNNER.stars = Array.from({length: 40}, () => ({
+      x: Math.random() * C.width,
+      y: Math.random() * (C.height * 0.55),
+      r: Math.random() * 1.5 + 0.5,
+      blink: Math.random()
+    }));
 
-  // Eventos
-  setupRunnerEvents();
+    // Mostrar overlay de inicio
+    showRunnerOverlay('\u00a1Pixel Runner!', 'Tap \u2b06 para saltar (doble salto) · Tap \u2b07 para bajar', false);
+    if (RUNNER.bestScore > 0) {
+      document.getElementById('runnerBest').textContent = 'Mejor: ' + RUNNER.bestScore + ' pts';
+    }
+
+    // Eventos
+    setupRunnerEvents();
+  });
 }
 
 function setupRunnerEvents() {
   // Evitar duplicados
   document.removeEventListener('keydown', runnerKeyHandler);
   document.addEventListener('keydown', runnerKeyHandler);
-  RUNNER.canvas.removeEventListener('click', runnerTapHandler);
-  RUNNER.canvas.addEventListener('click', runnerTapHandler);
-  RUNNER.canvas.removeEventListener('touchstart', runnerTapHandler);
-  RUNNER.canvas.addEventListener('touchstart', runnerTapHandler, {passive: true});
+
+  // En touch, usamos solo touchstart y bloqueamos el click sintético que
+  // el browser genera después, para que no consuma el doble salto
+  const canvas = RUNNER.canvas;
+  canvas.removeEventListener('click',      runnerTapHandler);
+  canvas.removeEventListener('touchstart', runnerTapHandler);
+
+  if ('ontouchstart' in window) {
+    // Dispositivo táctil: solo touchstart, nunca click
+    canvas.addEventListener('touchstart', function(e) {
+      e.preventDefault(); // bloquea el click sintético posterior
+      runnerJumpOrStart();
+    }, { passive: false });
+  } else {
+    // Desktop: solo click
+    canvas.addEventListener('click', runnerTapHandler);
+  }
 }
 
 function runnerKeyHandler(e) {
@@ -900,7 +919,7 @@ function playerDie() {
   if (RUNNER.raf) { cancelAnimationFrame(RUNNER.raf); RUNNER.raf = null; }
 
   if (RUNNER.score > RUNNER.bestScore) RUNNER.bestScore = RUNNER.score;
-  guardarPuntaje(1, RUNNER.score); // Guardamos puntaje (ID 1 temporal)
+  guardarPuntaje(7, RUNNER.score); // Pixel Runner = juego_id 7
 
   // Dibujar última frame con el player muerto
   drawRunner(true);
@@ -1219,7 +1238,7 @@ function renderPreguntados() {
 
   if (finished || idx >= preguntas.length) {
     sec.querySelector('.coming-soon-box')?.remove();
-    const puntos = score;
+    const puntos = score * 150;
     guardarPuntaje(2, puntos, pregState.tematicaId);
     sec.innerHTML = `
       <div class="game-screen-header">
@@ -1603,7 +1622,7 @@ async function initTermina(tematicaId) {
 
   let word = null;
   try {
-    const res  = await fetch('/api/wordle/palabra?tematica=' + tematicaId);
+    const res  = await fetch('/api/wordle/palabra?tematica=' + tematicaId, { cache: 'no-store' });
     const data = await res.json();
     if (data.palabra) word = data.palabra.toLowerCase();
   } catch(e) { console.error(e); }

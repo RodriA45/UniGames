@@ -234,6 +234,7 @@
       <button class="lb-tab" data-juego="2"   onclick="switchLeaderboardTab(this, 2)">❓ Preguntas</button>
       <button class="lb-tab" data-juego="3"   onclick="switchLeaderboardTab(this, 3)">🔤 Termina</button>
       <button class="lb-tab" data-juego="4"   onclick="switchLeaderboardTab(this, 4)">🪢 Ahorcado</button>
+      <button class="lb-tab" data-juego="5"   onclick="switchLeaderboardTab(this, 5)">🕵️ Adivina</button>
       <button class="lb-tab" data-juego="6"   onclick="switchLeaderboardTab(this, 6)">🟩 Wordle</button>
       <button class="lb-tab" data-juego="runner" onclick="switchLeaderboardTab(this, 'runner')">🏃 Runner</button>
     </div>
@@ -471,8 +472,10 @@
 
     <!-- Controles táctiles -->
     <div class="runner-controls">
-      <button class="runner-ctrl-btn" id="btnJump"  onpointerdown="runnerJumpOrStart()">⬆ Saltar</button>
-      <button class="runner-ctrl-btn" id="btnDrop"  onpointerdown="runnerFastDrop()">⬇ Bajar</button>
+      <button class="runner-ctrl-btn" id="btnJump"
+        onpointerdown="event.preventDefault(); runnerJumpOrStart();">⬆ Saltar</button>
+      <button class="runner-ctrl-btn" id="btnDrop"
+        onpointerdown="event.preventDefault(); runnerFastDrop();">⬇ Bajar</button>
     </div>
     <p class="runner-hint">↑ Saltar (doble salto) &nbsp;·&nbsp; ↓ Caída rápida &nbsp;·&nbsp; +vel cada 250 pts</p>
   </section>
