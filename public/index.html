@@ -140,7 +140,7 @@
       <!-- Ahorcado -->
       <div class="game-card-full">
         <div class="card-header-band">
-          <span class="card-emoji">🪢</span>
+          <span class="card-emoji">💀</span>
           <span class="card-title">Ahorcado</span>
         </div>
         <div class="card-body">
@@ -233,7 +233,7 @@
       <button class="lb-tab" data-juego="1"   onclick="switchLeaderboardTab(this, 1)">🔍 Sopa</button>
       <button class="lb-tab" data-juego="2"   onclick="switchLeaderboardTab(this, 2)">❓ Preguntas</button>
       <button class="lb-tab" data-juego="3"   onclick="switchLeaderboardTab(this, 3)">🔤 Termina</button>
-      <button class="lb-tab" data-juego="4"   onclick="switchLeaderboardTab(this, 4)">🪢 Ahorcado</button>
+      <button class="lb-tab" data-juego="4"   onclick="switchLeaderboardTab(this, 4)">💀 Ahorcado</button>
       <button class="lb-tab" data-juego="5"   onclick="switchLeaderboardTab(this, 5)">🕵️ Adivina</button>
       <button class="lb-tab" data-juego="6"   onclick="switchLeaderboardTab(this, 6)">🟩 Wordle</button>
       <button class="lb-tab" data-juego="runner" onclick="switchLeaderboardTab(this, 'runner')">🏃 Runner</button>
@@ -266,7 +266,7 @@
   <section class="section" id="sec-ahorcado">
     <div class="game-screen-header">
       <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
-      <div class="game-screen-title"><span>🪢</span> Ahorcado</div>
+      <div class="game-screen-title"><span>💀</span> Ahorcado</div>
       <div class="game-screen-theme" id="ahorcado-theme-label"></div>
     </div>
 
@@ -422,6 +422,7 @@
         <input type="text" id="adivinaInput" class="adivina-input" placeholder="Escribí tu respuesta..." autocomplete="off" />
         <button class="btn-play adivina-btn-submit" onclick="submitAdivina()">✓ Confirmar</button>
       </div>
+      <button class="btn-back" id="adivinaBtnRendirse" style="margin:.6rem auto 0;display:none;" onclick="rendirseAdivina()">🏳 Me rindo, mostrar respuesta</button>
 
       <!-- Feedback -->
       <div id="adivinaFeedback" class="adivina-feedback" style="display:none;"></div>
@@ -767,6 +768,8 @@
     const password = document.getElementById('regPassword').value;
     const confirm  = document.getElementById('regConfirm').value;
     if (!username || !email || !password || !confirm) return showAuthAlert('register-alert', 'Completá todos los campos.', 'error');
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_REGEX.test(email)) return showAuthAlert('register-alert', 'Ingresá un email válido (ej: nombre@dominio.com).', 'error');
     if (password !== confirm) return showAuthAlert('register-alert', 'Las contraseñas no coinciden.', 'error');
     try {
       const res = await fetch('/api/register', {

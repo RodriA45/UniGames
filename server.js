@@ -31,6 +31,11 @@ app.post('/api/register', async (req, res) => {
         return res.status(400).json({ error: 'Todos los campos son obligatorios' });
     }
 
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_REGEX.test(email)) {
+        return res.status(400).json({ error: 'El email ingresado no es válido' });
+    }
+
     try {
         const hash = await bcrypt.hash(password, 10);
         

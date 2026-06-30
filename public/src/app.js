@@ -9,7 +9,7 @@ const allGames = [
   { emoji: '🔍', title: 'Sopa de Letras',    desc: 'Encontrá palabras ocultas en la grilla. Mientras más rápido, más puntos ganás.', tag: '⏱ Velocidad' },
   { emoji: '❓', title: 'Preguntados',        desc: 'Trivia de múltiple opción. Respondé preguntas sobre tu temática favorita.',       tag: '🧠 Trivia'    },
   { emoji: '🔤', title: 'Termina la Palabra', desc: 'Adiviná la palabra incompleta. Tenés solo 5 intentos. ¡Pensá bien!',             tag: '🎯 5 intentos' },
-  { emoji: '🪢', title: 'Ahorcado',           desc: 'El clásico de siempre, ahora con temáticas. Letra por letra antes de que se complete el dibujo.', tag: '⚡ Clásico'   },
+  { emoji: '💀', title: 'Ahorcado',           desc: 'El clásico de siempre, ahora con temáticas. Letra por letra antes de que se complete el dibujo.', tag: '⚡ Clásico'   },
   { emoji: '🕵️', title: 'Adivina la Cosa',   desc: 'Pistas progresivas para adivinar un juego, película, actor o anime.',           tag: '🔎 Pistas'    },
   { emoji: '🟩', title: 'Adivina la Palabra', desc: 'Modo difícil estilo Wordle. 5 intentos, colores que te dan pistas letra por letra.', tag: '🔥 Hard'     },
 ];
@@ -485,10 +485,16 @@ async function handleLogin(e) {
 
 async function handleRegister(e) {
   e.preventDefault();
-  const username = document.getElementById('regUsername').value;
-  const email = document.getElementById('regEmail').value;
+  const username = document.getElementById('regUsername').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
   const password = document.getElementById('regPassword').value;
   const confirm = document.getElementById('regConfirm').value;
+
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!EMAIL_REGEX.test(email)) {
+    alert('Ingresá un email válido (ej: nombre@dominio.com)');
+    return;
+  }
 
   if (password !== confirm) {
     alert('Las contraseñas no coinciden');
@@ -574,7 +580,7 @@ async function fetchLeaderboardGlobal() {
     if (!res.ok) throw new Error();
     const data = await res.json(); // { juego_id: { juego, entries: [{jugador, puntos}] } }
 
-    const GAME_ICONS = { 1:'🔍', 2:'❓', 3:'🔤', 4:'🪢', 5:'🕵️', 6:'🟩', 7:'🏃' };
+    const GAME_ICONS = { 1:'🔍', 2:'❓', 3:'🔤', 4:'💀', 5:'🕵️', 6:'🟩', 7:'🏃' };
     const keys = Object.keys(data);
 
     if (keys.length === 0) {
@@ -669,6 +675,7 @@ async function guardarPuntaje(juego_id, puntos, tematica_id) {
 const RUNNER = {
   canvas: null, ctx: null,
   raf: null, running: false,
+  touchHandler: null,
   score: 0, bestScore: 0,
   speed: 5, baseSpeed: 5,
   frameCount: 0,
@@ -737,17 +744,25 @@ function setupRunnerEvents() {
   document.addEventListener('keydown', runnerKeyHandler);
 
   // En touch, usamos solo touchstart y bloqueamos el click sintético que
-  // el browser genera después, para que no consuma el doble salto
+  // el browser genera después, para que no consuma el doble salto.
+  // IMPORTANTE: guardamos la referencia de la función en RUNNER.touchHandler
+  // para poder removerla en cada init y evitar que se acumulen listeners
+  // (esto causaba el lag/fuga de memoria reportado en el QA: cada vez que
+  // se reiniciaba o se volvía a entrar al juego se sumaba un listener nuevo).
   const canvas = RUNNER.canvas;
   canvas.removeEventListener('click',      runnerTapHandler);
   canvas.removeEventListener('touchstart', runnerTapHandler);
+  if (RUNNER.touchHandler) {
+    canvas.removeEventListener('touchstart', RUNNER.touchHandler);
+  }
 
   if ('ontouchstart' in window) {
     // Dispositivo táctil: solo touchstart, nunca click
-    canvas.addEventListener('touchstart', function(e) {
+    RUNNER.touchHandler = function(e) {
       e.preventDefault(); // bloquea el click sintético posterior
       runnerJumpOrStart();
-    }, { passive: false });
+    };
+    canvas.addEventListener('touchstart', RUNNER.touchHandler, { passive: false });
   } else {
     // Desktop: solo click
     canvas.addEventListener('click', runnerTapHandler);
@@ -1494,11 +1509,7 @@ function sopaStart(r, c) {
   sopaState.dragging = true;
   sopaState.startCell = [r, c];
   sopaState.selected = [[r, c]];
-  renderSopa(); startSopaTimer(); // re-render sin perder timer
-  // Evitar restart del timer: solo re-render visual
-  clearInterval(sopaState.timer);
   updateSopaHighlight();
-  startSopaTimer();
 }
 function sopaMove(r, c) {
   if (!sopaState.dragging) return;
@@ -1582,6 +1593,12 @@ function checkSopaSelection() {
 }
 
 function sopaFinish(won) {
+  // Guard: evita que se ejecute dos veces (puede pasar si el jugador
+  // encuentra la última palabra justo cuando el tiempo llega a 0 —
+  // el timeout y el setTimeout de victoria competían y la segunda
+  // llamada pisaba el HTML recién renderizado con el botón "Jugar de
+  // nuevo", dejándolo sin su listener funcional).
+  if (sopaState.finished) return;
   sopaState.finished = true;
   clearInterval(sopaState.timer);
   const total = sopaState.placed.length;
@@ -1711,6 +1728,17 @@ function submitTermina() {
       ? Math.max(200, 600 - (terminaState.intentos - 1) * 100)
       : 25;
     guardarPuntaje(3, pts, terminaState.tematicaId); // juego_id=3 Termina la Palabra
+  } else {
+    // UI-004: dar feedback progresivo — revelar una letra oculta más
+    // por cada intento fallido, para evitar la frustración del jugador.
+    const ocultas = [];
+    terminaState.revealed.split('').forEach((l, i) => { if (l === '_') ocultas.push(i); });
+    if (ocultas.length > 0) {
+      const idx = ocultas[Math.floor(Math.random() * ocultas.length)];
+      const chars = terminaState.revealed.split('');
+      chars[idx] = word[idx];
+      terminaState.revealed = chars.join('');
+    }
   }
 
   renderTermina();
@@ -1990,6 +2018,10 @@ function renderAdivinaItem() {
   document.getElementById('adivinaInput').disabled = false;
   document.getElementById('adivinaFeedback').style.display = 'none';
   setTimeout(() => document.getElementById('adivinaInput')?.focus(), 50);
+
+  // Botón "Me rindo": solo disponible cuando ya no quedan más pistas para pedir
+  const btnRendirse = document.getElementById('adivinaBtnRendirse');
+  if (btnRendirse) btnRendirse.style.display = remaining === 0 ? 'block' : 'none';
 }
 
 function pistasCosto(pistasYaReveladas) {
@@ -2056,6 +2088,28 @@ function revelarPista() {
   s.pistasUsedThisItem = s.pistasRevealedThisItem.length;
 
   renderAdivinaItem();
+}
+
+function rendirseAdivina() {
+  const s = adivinaState;
+  if (!s || s.respondido) return;
+  const item = s.items[s.itemIdx];
+  s.respondido = true;
+
+  const input = document.getElementById('adivinaInput');
+  const fb = document.getElementById('adivinaFeedback');
+  fb.style.display = 'block';
+  fb.className = 'adivina-feedback incorrecto';
+  fb.textContent = `❌ La respuesta era: ${item.respuesta.charAt(0).toUpperCase() + item.respuesta.slice(1)}`;
+  input.disabled = true;
+  document.getElementById('adivinaBtnPista').disabled = true;
+  const btnRendirse = document.getElementById('adivinaBtnRendirse');
+  if (btnRendirse) btnRendirse.style.display = 'none';
+
+  // Revelar imagen completa
+  renderAdivinaCanvas(item.imagen, 99, item.pistas.length);
+
+  setTimeout(() => nextAdivinaItem(), 2200);
 }
 
 function submitAdivina() {
