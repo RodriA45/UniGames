@@ -828,6 +828,71 @@
   </div>
 </div>
 
+<<<<<<< HEAD
+=======
+<script>
+  function openModal(tab) {
+    switchTab(tab || 'login');
+    document.getElementById('modalOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal() {
+    document.getElementById('modalOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function closeModalOutside(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+  function switchTab(tab) {
+    document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+    document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
+    document.getElementById('auth-section-login').classList.toggle('active', tab === 'login');
+    document.getElementById('auth-section-register').classList.toggle('active', tab === 'register');
+  }
+  function showAuthAlert(id, msg, type) {
+    const el = document.getElementById(id);
+    el.textContent = msg;
+    el.className = 'auth-alert ' + type + ' show';
+    setTimeout(() => el.classList.remove('show'), 4000);
+  }
+  async function handleLogin(event) {
+    event.preventDefault();
+    const identity = document.getElementById('loginIdentity').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    if (!identity || !password) return showAuthAlert('login-alert', 'Completá todos los campos.', 'error');
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity, password })
+      });
+      const data = await res.json();
+      if (!res.ok) return showAuthAlert('login-alert', data.error || 'Error al iniciar sesión.', 'error');
+      showAuthAlert('login-alert', '¡Bienvenido, ' + data.user.username + '!', 'success');
+      setTimeout(() => { closeModal(); if (typeof onLoginSuccess === 'function') onLoginSuccess(data.user); }, 900);
+    } catch(e) { showAuthAlert('login-alert', 'No se pudo conectar con el servidor.', 'error'); }
+  }
+  async function handleRegister(event) {
+    event.preventDefault();
+    const username = document.getElementById('regUsername').value.trim();
+    const email    = document.getElementById('regEmail').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const confirm  = document.getElementById('regConfirm').value;
+    if (!username || !email || !password || !confirm) return showAuthAlert('register-alert', 'Completá todos los campos.', 'error');
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_REGEX.test(email)) return showAuthAlert('register-alert', 'Ingresá un email válido (ej: nombre@dominio.com).', 'error');
+    if (password !== confirm) return showAuthAlert('register-alert', 'Las contraseñas no coinciden.', 'error');
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) return showAuthAlert('register-alert', data.error || 'Error al registrarse.', 'error');
+      showAuthAlert('register-alert', '¡Cuenta creada! Ya podés iniciar sesión.', 'success');
+      setTimeout(() => switchTab('login'), 1200);
+    } catch(e) { showAuthAlert('register-alert', 'No se pudo conectar con el servidor.', 'error'); }
+  }
+</script>
+
+>>>>>>> ad4d539d88653b9fca0d7d35e49224f0d448d84d
 <!-- Script -->
 <script src="src/app.js"></script>
 </body>
