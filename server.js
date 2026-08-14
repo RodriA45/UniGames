@@ -7,9 +7,52 @@ const path = require('path');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// --- Rate limiting simple (en memoria) ---
+const rateLimitStore = {};
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minuto
+const RATE_LIMIT_MAX = 10;               // máximo 10 requests por ventana
+
+function rateLimit(ip) {
+    const now = Date.now();
+    if (!rateLimitStore[ip] || now - rateLimitStore[ip].start > RATE_LIMIT_WINDOW_MS) {
+        rateLimitStore[ip] = { start: now, count: 1 };
+        return true;
+    }
+    rateLimitStore[ip].count++;
+    return rateLimitStore[ip].count <= RATE_LIMIT_MAX;
+}
+
+// Limpiar entradas viejas cada 5 minutos
+setInterval(() => {
+    const now = Date.now();
+    for (const ip in rateLimitStore) {
+        if (now - rateLimitStore[ip].start > RATE_LIMIT_WINDOW_MS * 2) {
+            delete rateLimitStore[ip];
+        }
+    }
+}, 5 * 60 * 1000);
+
+// --- Middleware rate limit para auth ---
+function authRateLimit(req, res, next) {
+    const ip = req.ip || req.connection.remoteAddress;
+    if (!rateLimit(ip)) {
+        return res.status(429).json({ error: 'Demasiadas peticiones. Esperá un momento e intentá de nuevo.' });
+    }
+    next();
+}
+
 // Configuración
 app.use(cors());
 app.use(express.json());
+
+// Bloquear archivos .bak, .old, .orig (backups que no deben exponerse)
+app.use((req, res, next) => {
+    if (/\.(bak|old|orig)$/i.test(req.path)) {
+        return res.status(404).json({ error: 'Not found' });
+    }
+    next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Conexión a la base de datos
@@ -18,17 +61,34 @@ const db = new sqlite3.Database(path.join(__dirname, 'unigames.db'), (err) => {
         console.error('Error al conectar con la base de datos:', err.message);
     } else {
         console.log('Conectado a unigames.db exitosamente.');
+        // Habilitar foreign keys (SQLite las deshabilita por defecto)
+        db.run('PRAGMA foreign_keys = ON', (pragmaErr) => {
+            if (pragmaErr) console.error('Error al habilitar foreign keys:', pragmaErr.message);
+        });
     }
 });
 
 // --- API Endpoints ---
 
 // 1. Registro de usuario
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authRateLimit, async (req, res) => {
     const { username, email, password } = req.body;
 
     if (!username || !email || !password) {
         return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+    }
+
+    if (password.length < 6) {
+        return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    }
+
+    if (username.length < 3) {
+        return res.status(400).json({ error: 'El nombre de usuario debe tener al menos 3 caracteres' });
+    }
+
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!EMAIL_REGEX.test(email)) {
+        return res.status(400).json({ error: 'El email ingresado no es válido' });
     }
 
     try {
@@ -53,7 +113,7 @@ app.post('/api/register', async (req, res) => {
 });
 
 // 2. Inicio de sesión
-app.post('/api/login', (req, res) => {
+app.post('/api/login', authRateLimit, (req, res) => {
     const { identity, password } = req.body; // identity can be email or username
 
     if (!identity || !password) {
@@ -69,12 +129,17 @@ app.post('/api/login', (req, res) => {
             return res.status(400).json({ error: 'Usuario no encontrado' });
         }
 
-        const match = await bcrypt.compare(password, row.password_hash);
-        if (match) {
-            // TODO: En una app real, usaríamos JWT o sesiones aquí.
-            res.json({ message: 'Inicio de sesión exitoso', user: { id: row.id, username: row.nombre_usuario } });
-        } else {
-            res.status(400).json({ error: 'Contraseña incorrecta' });
+        try {
+            const match = await bcrypt.compare(password, row.password_hash);
+            if (match) {
+                // TODO: En una app real, usaríamos JWT o sesiones aquí.
+                res.json({ message: 'Inicio de sesión exitoso', user: { id: row.id, username: row.nombre_usuario } });
+            } else {
+                res.status(400).json({ error: 'Contraseña incorrecta' });
+            }
+        } catch (compareErr) {
+            console.error('Error al comparar contraseñas:', compareErr.message);
+            res.status(500).json({ error: 'Error interno del servidor' });
         }
     });
 });

@@ -9,7 +9,7 @@ const allGames = [
   { emoji: '🔍', title: 'Sopa de Letras',    desc: 'Encontrá palabras ocultas en la grilla. Mientras más rápido, más puntos ganás.', tag: '⏱ Velocidad' },
   { emoji: '❓', title: 'Preguntados',        desc: 'Trivia de múltiple opción. Respondé preguntas sobre tu temática favorita.',       tag: '🧠 Trivia'    },
   { emoji: '🔤', title: 'Termina la Palabra', desc: 'Adiviná la palabra incompleta. Tenés solo 5 intentos. ¡Pensá bien!',             tag: '🎯 5 intentos' },
-  { emoji: '🪢', title: 'Ahorcado',           desc: 'El clásico de siempre, ahora con temáticas. Letra por letra antes de que se complete el dibujo.', tag: '⚡ Clásico'   },
+  { emoji: '💀', title: 'Ahorcado',           desc: 'El clásico de siempre, ahora con temáticas. Letra por letra antes de que se complete el dibujo.', tag: '⚡ Clásico'   },
   { emoji: '🕵️', title: 'Adivina la Cosa',   desc: 'Pistas progresivas para adivinar un juego, película, actor o anime.',           tag: '🔎 Pistas'    },
   { emoji: '🟩', title: 'Adivina la Palabra', desc: 'Modo difícil estilo Wordle. 5 intentos, colores que te dan pistas letra por letra.', tag: '🔥 Hard'     },
 ];
@@ -17,6 +17,12 @@ const allGames = [
 // ─── Utilidades ────────────────────────
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
+}
+
+function sanitizeHTML(str) {
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(str));
+  return div.innerHTML;
 }
 
 // ─── Inicio: juegos destacados aleatorios ───
@@ -33,6 +39,23 @@ function renderFeatured() {
   `).join('');
 }
 
+// ─── Guardar HTML original de secciones que reemplazan su contenido ───
+const originalSectionHTML = {};
+
+function saveOriginalSections() {
+  ['preguntados', 'sopa', 'termina'].forEach(id => {
+    const sec = document.getElementById('sec-' + id);
+    if (sec) originalSectionHTML[id] = sec.innerHTML;
+  });
+}
+
+function restoreOriginalSection(id) {
+  if (originalSectionHTML[id]) {
+    const sec = document.getElementById('sec-' + id);
+    if (sec) sec.innerHTML = originalSectionHTML[id];
+  }
+}
+
 // ─── Navegación entre secciones ────────
 function goTo(section) {
   // Ocultar todas las secciones
@@ -47,6 +70,14 @@ function goTo(section) {
   // Para pantallas de juego, mantener "Juegos" activo
   const navIdx = map[section] !== undefined ? map[section] : map['juegos'];
   if (links[navIdx]) links[navIdx].classList.add('active');
+
+  // Refrescar leaderboard al navegar a la sección de puntuación
+  if (section === 'puntuacion') fetchLeaderboard();
+
+  // Restaurar HTML original de secciones de juego al volver a la grilla
+  if (section === 'juegos') {
+    ['preguntados', 'sopa', 'termina'].forEach(restoreOriginalSection);
+  }
 
   closeNav();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -76,16 +107,20 @@ function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
 }
 
-function closeModalOutside(e) {
-  if (e.target === document.getElementById('modalOverlay')) closeModal();
-}
-
 function switchTab(tab) {
   const isLogin = tab === 'login';
   document.getElementById('tabLogin').classList.toggle('active', isLogin);
   document.getElementById('tabRegister').classList.toggle('active', !isLogin);
   document.getElementById('auth-section-login').classList.toggle('active', isLogin);
   document.getElementById('auth-section-register').classList.toggle('active', !isLogin);
+}
+
+function showAuthAlert(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'auth-alert ' + type + ' show';
+  setTimeout(() => el.classList.remove('show'), 4000);
 }
 
 // ─── Selector de temática ──────────────
@@ -116,6 +151,7 @@ function launchGame(gameKey, btn) {
   if (gameKey === 'ahorcado')    initAhorcado(tematicaId);
   if (gameKey === 'wordle')      initWordle(tematicaId);
   if (gameKey === 'runner')      initRunner();
+  if (gameKey === 'trampas')     initTrampas();
   if (gameKey === 'preguntados') {
     const tId = tematicaId && /^\d+$/.test(tematicaId) ? Number(tematicaId) : TEMATICA_MAP[theme] || 1;
     initPreguntados(tId);
@@ -443,6 +479,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // Año dinámico en el footer
   document.getElementById('year').textContent = new Date().getFullYear();
 
+  // Restaurar sesión desde localStorage
+  try {
+    const saved = localStorage.getItem('unigames_user');
+    if (saved) {
+      currentUser = JSON.parse(saved);
+      updateAuthUI();
+    }
+  } catch (e) {
+    localStorage.removeItem('unigames_user');
+  }
+
+  // Guardar HTML original de secciones de juego (antes de que se modifiquen)
+  saveOriginalSections();
+
   // Juegos destacados aleatorios
   renderFeatured();
 
@@ -458,8 +508,12 @@ document.addEventListener('DOMContentLoaded', () => {
 // ─── Lógica de API (Backend) ───────────
 async function handleLogin(e) {
   e.preventDefault();
-  const identity = document.getElementById('loginIdentity').value;
+  const identity = document.getElementById('loginIdentity').value.trim();
   const password = document.getElementById('loginPassword').value;
+
+  if (!identity || !password) {
+    return showAuthAlert('login-alert', 'Completá todos los campos.', 'error');
+  }
 
   try {
     const res = await fetch('/api/login', {
@@ -468,31 +522,40 @@ async function handleLogin(e) {
       body: JSON.stringify({ identity, password })
     });
     const data = await res.json();
-    
+
     if (res.ok) {
       currentUser = data.user;
-      alert('Inicio de sesión exitoso');
-      closeModal();
+      localStorage.setItem('unigames_user', JSON.stringify(currentUser));
+      showAuthAlert('login-alert', '¡Bienvenido, ' + sanitizeHTML(data.user.username) + '!', 'success');
       updateAuthUI();
+      setTimeout(closeModal, 900);
     } else {
-      alert(data.error || 'Error al iniciar sesión');
+      showAuthAlert('login-alert', data.error || 'Error al iniciar sesión.', 'error');
     }
   } catch (err) {
     console.error(err);
-    alert('Error de conexión');
+    showAuthAlert('login-alert', 'No se pudo conectar con el servidor.', 'error');
   }
 }
 
 async function handleRegister(e) {
   e.preventDefault();
-  const username = document.getElementById('regUsername').value;
-  const email = document.getElementById('regEmail').value;
+  const username = document.getElementById('regUsername').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
   const password = document.getElementById('regPassword').value;
   const confirm = document.getElementById('regConfirm').value;
 
+  if (!username || !email || !password || !confirm) {
+    return showAuthAlert('register-alert', 'Completá todos los campos.', 'error');
+  }
+
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!EMAIL_REGEX.test(email)) {
+    return showAuthAlert('register-alert', 'Ingresá un email válido (ej: nombre@dominio.com).', 'error');
+  }
+
   if (password !== confirm) {
-    alert('Las contraseñas no coinciden');
-    return;
+    return showAuthAlert('register-alert', 'Las contraseñas no coinciden.', 'error');
   }
 
   try {
@@ -502,16 +565,16 @@ async function handleRegister(e) {
       body: JSON.stringify({ username, email, password })
     });
     const data = await res.json();
-    
+
     if (res.ok) {
-      alert('Registro exitoso, ahora podés iniciar sesión');
-      switchTab('login');
+      showAuthAlert('register-alert', '¡Cuenta creada! Ya podés iniciar sesión.', 'success');
+      setTimeout(() => switchTab('login'), 1200);
     } else {
-      alert(data.error || 'Error al registrarse');
+      showAuthAlert('register-alert', data.error || 'Error al registrarse.', 'error');
     }
   } catch (err) {
     console.error(err);
-    alert('Error de conexión');
+    showAuthAlert('register-alert', 'No se pudo conectar con el servidor.', 'error');
   }
 }
 
@@ -519,7 +582,7 @@ function updateAuthUI() {
   const authArea = document.getElementById('authArea');
   if (currentUser) {
     authArea.innerHTML = `
-      <span style="color: #fff; margin-right: 15px; font-weight: bold;">Hola, ${currentUser.username}</span>
+      <span style="color: #fff; margin-right: 15px; font-weight: bold;">Hola, ${sanitizeHTML(currentUser.username)}</span>
       <button class="btn-auth btn-register" onclick="logout()">Cerrar sesión</button>
     `;
   } else {
@@ -532,6 +595,7 @@ function updateAuthUI() {
 
 function logout() {
   currentUser = null;
+  localStorage.removeItem('unigames_user');
   updateAuthUI();
 }
 
@@ -574,7 +638,7 @@ async function fetchLeaderboardGlobal() {
     if (!res.ok) throw new Error();
     const data = await res.json(); // { juego_id: { juego, entries: [{jugador, puntos}] } }
 
-    const GAME_ICONS = { 1:'🔍', 2:'❓', 3:'🔤', 4:'🪢', 5:'🕵️', 6:'🟩', 7:'🏃' };
+    const GAME_ICONS = { 1:'🔍', 2:'❓', 3:'🔤', 4:'💀', 5:'🕵️', 6:'🟩', 7:'🏃', 8:'🪤' };
     const keys = Object.keys(data);
 
     if (keys.length === 0) {
@@ -590,14 +654,14 @@ async function fetchLeaderboardGlobal() {
         const cls    = i < 3 ? `rank-${i+1}` : '';
         return `<tr>
           <td class="${cls}">${medal} ${i >= 3 ? i+1 : ''}</td>
-          <td>${e.jugador}</td>
-          <td><span class="score-badge">${e.puntos}</span></td>
+          <td>${sanitizeHTML(e.jugador)}</td>
+          <td><span class="score-badge">${sanitizeHTML(String(e.puntos))}</span></td>
         </tr>`;
       }).join('');
 
       return `
         <div class="lb-game-card">
-          <div class="lb-game-title">${GAME_ICONS[jid] || '🎮'} ${g.juego}</div>
+          <div class="lb-game-title">${sanitizeHTML(GAME_ICONS[jid] || '🎮')} ${sanitizeHTML(g.juego)}</div>
           <table class="lb-mini-table">
             <thead><tr><th>#</th><th>Jugador</th><th>Puntos</th></tr></thead>
             <tbody>${rowsHTML || '<tr><td colspan="3" style="text-align:center;color:#94a3b8;font-size:.8rem;">Sin partidas aún</td></tr>'}</tbody>
@@ -633,8 +697,8 @@ async function fetchLeaderboardByGame(juegoId) {
       const cls    = i < 3 ? `rank-${i+1}` : '';
       return `<tr>
         <td class="${cls}">${medal} ${i >= 3 ? i+1 : ''}</td>
-        <td>${s.jugador}</td>
-        <td><span class="score-badge">${s.puntos}</span></td>
+        <td>${sanitizeHTML(s.jugador)}</td>
+        <td><span class="score-badge">${sanitizeHTML(String(s.puntos))}</span></td>
       </tr>`;
     }).join('');
   } catch (err) {
@@ -669,6 +733,7 @@ async function guardarPuntaje(juego_id, puntos, tematica_id) {
 const RUNNER = {
   canvas: null, ctx: null,
   raf: null, running: false,
+  touchHandler: null,
   score: 0, bestScore: 0,
   speed: 5, baseSpeed: 5,
   frameCount: 0,
@@ -737,17 +802,25 @@ function setupRunnerEvents() {
   document.addEventListener('keydown', runnerKeyHandler);
 
   // En touch, usamos solo touchstart y bloqueamos el click sintético que
-  // el browser genera después, para que no consuma el doble salto
+  // el browser genera después, para que no consuma el doble salto.
+  // IMPORTANTE: guardamos la referencia de la función en RUNNER.touchHandler
+  // para poder removerla en cada init y evitar que se acumulen listeners
+  // (esto causaba el lag/fuga de memoria reportado en el QA: cada vez que
+  // se reiniciaba o se volvía a entrar al juego se sumaba un listener nuevo).
   const canvas = RUNNER.canvas;
   canvas.removeEventListener('click',      runnerTapHandler);
   canvas.removeEventListener('touchstart', runnerTapHandler);
+  if (RUNNER.touchHandler) {
+    canvas.removeEventListener('touchstart', RUNNER.touchHandler);
+  }
 
   if ('ontouchstart' in window) {
     // Dispositivo táctil: solo touchstart, nunca click
-    canvas.addEventListener('touchstart', function(e) {
+    RUNNER.touchHandler = function(e) {
       e.preventDefault(); // bloquea el click sintético posterior
       runnerJumpOrStart();
-    }, { passive: false });
+    };
+    canvas.addEventListener('touchstart', RUNNER.touchHandler, { passive: false });
   } else {
     // Desktop: solo click
     canvas.addEventListener('click', runnerTapHandler);
@@ -1194,6 +1267,803 @@ function drawPlayer(ctx, p, dead) {
 }
 
 // ══════════════════════════════════════
+//   SALTO TRAICIONERO (plataformas + trampas)
+// ══════════════════════════════════════
+
+// Resolución lógica fija (el canvas se escala por CSS al ancho del contenedor)
+const TR_W = 480, TR_H = 270;
+const TR_GRAVITY = 0.42;
+const TR_JUMP_VY = -7.4;
+const TR_MOVE_SPEED = 2.7;
+
+// Niveles: cada uno define plataformas, peligros, flechas-trampa, inicio y salida.
+// type de plataforma: 'normal' | 'fake' (sin colisión, se ve igual a una normal)
+// | 'crumble' (colisiona pero se derrumba unos frames después de pisarla)
+const TR_LEVELS = [
+  {
+    nombre: 'El piso falso',
+    hint: 'Caminá tranquilo... o no.',
+    start: { x: 20, y: 200 },
+    platforms: [
+      { x: 0,   y: 240, w: 130, h: 30, type: 'normal' },
+      { x: 130, y: 240, w: 60,  h: 30, type: 'fake'   },
+      { x: 210, y: 240, w: 270, h: 30, type: 'normal' },
+    ],
+    hazards: [],
+    arrows: [],
+    exit: { x: 430, y: 200, w: 26, h: 40 },
+  },
+  {
+    nombre: 'La estrella tentadora',
+    hint: 'No todo lo brillante conviene agarrarlo.',
+    start: { x: 20, y: 200 },
+    platforms: [
+      { x: 0, y: 240, w: 480, h: 30, type: 'normal' },
+    ],
+    hazards: [
+      { x: 222, y: 168, w: 20, h: 20, type: 'star' },
+    ],
+    arrows: [],
+    exit: { x: 430, y: 200, w: 26, h: 40 },
+  },
+  {
+    nombre: 'Flecha en la pared',
+    hint: 'Algo se acerca desde la derecha.',
+    start: { x: 20, y: 200 },
+    platforms: [
+      { x: 0, y: 240, w: 480, h: 30, type: 'normal' },
+    ],
+    hazards: [],
+    arrows: [
+      { triggerX: 190, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.2, active: false, fired: false },
+    ],
+    exit: { x: 430, y: 200, w: 26, h: 40 },
+  },
+  {
+    nombre: 'Se cae a pedazos',
+    hint: 'No te quedes parado mucho tiempo.',
+    start: { x: 20, y: 170 },
+    platforms: [
+      { x: 0,   y: 210, w: 90,  h: 20, type: 'normal'  },
+      { x: 150, y: 210, w: 80,  h: 20, type: 'crumble' },
+      { x: 300, y: 210, w: 90,  h: 20, type: 'normal'  },
+      { x: 430, y: 210, w: 50,  h: 20, type: 'normal'  },
+    ],
+    hazards: [
+      { x: 0, y: 255, w: 480, h: 15, type: 'spike' },
+    ],
+    arrows: [],
+    exit: { x: 440, y: 170, w: 26, h: 40 },
+  },
+  {
+    nombre: 'Salto de fe',
+    hint: 'Donde ves pinchos, pisá. Donde ves piso, ¡no!',
+    start: { x: 20, y: 200 },
+    platforms: [
+      { x: 0,   y: 240, w: 110, h: 30, type: 'normal' },
+      { x: 110, y: 240, w: 40,  h: 30, type: 'normal', decor: 'spike' },
+      { x: 150, y: 240, w: 90,  h: 30, type: 'fake'   },
+      { x: 240, y: 240, w: 40,  h: 30, type: 'normal', decor: 'spike' },
+      { x: 280, y: 240, w: 200, h: 30, type: 'normal' },
+    ],
+    hazards: [],
+    arrows: [
+      { triggerX: 340, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.6, active: false, fired: false },
+    ],
+    exit: { x: 440, y: 200, w: 26, h: 40 },
+  },
+  {
+    nombre: 'El puente quebradizo',
+    hint: 'Todo se derrumba, movete rápido.',
+    start: { x: 20, y: 170 },
+    platforms: [
+      { x: 0,   y: 210, w: 70,  h: 20, type: 'normal'  },
+      { x: 100, y: 210, w: 60,  h: 20, type: 'crumble' },
+      { x: 190, y: 180, w: 50,  h: 20, type: 'crumble' },
+      { x: 270, y: 210, w: 60,  h: 20, type: 'crumble' },
+      { x: 360, y: 210, w: 120, h: 20, type: 'normal'  },
+    ],
+    hazards: [
+      { x: 0, y: 255, w: 480, h: 15, type: 'spike' },
+    ],
+    arrows: [],
+    exit: { x: 430, y: 170, w: 26, h: 40 },
+  },
+  {
+    nombre: 'Doble trampa',
+    hint: 'Flechas y pisos falsos juntos. Dificil.',
+    start: { x: 20, y: 200 },
+    platforms: [
+      { x: 0,   y: 240, w: 100, h: 30, type: 'normal' },
+      { x: 120, y: 240, w: 70,  h: 30, type: 'fake'   },
+      { x: 210, y: 240, w: 100, h: 30, type: 'normal' },
+      { x: 340, y: 220, w: 140, h: 30, type: 'normal' },
+    ],
+    hazards: [
+      { x: 120, y: 255, w: 70,  h: 15, type: 'spike' },
+    ],
+    arrows: [
+      { triggerX: 100, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.5, active: false, fired: false },
+      { triggerX: 300, x: 480, y: 194, w: 22, h: 8, dir: -1, speed: 5.0, active: false, fired: false },
+    ],
+    exit: { x: 430, y: 180, w: 26, h: 40 },
+  },
+  {
+    nombre: 'Laberinto invisible',
+    hint: 'Los caminos seguros no se ven.',
+    start: { x: 20, y: 170 },
+    platforms: [
+      { x: 0,   y: 210, w: 80,  h: 20, type: 'normal'  },
+      { x: 120, y: 180, w: 60,  h: 20, type: 'fake'    },
+      { x: 120, y: 210, w: 60,  h: 20, type: 'normal'  },
+      { x: 220, y: 150, w: 60,  h: 20, type: 'fake'    },
+      { x: 220, y: 210, w: 60,  h: 20, type: 'normal'  },
+      { x: 320, y: 180, w: 60,  h: 20, type: 'crumble' },
+      { x: 400, y: 210, w: 80,  h: 20, type: 'normal'  },
+    ],
+    hazards: [
+      { x: 0, y: 255, w: 480, h: 15, type: 'spike' },
+    ],
+    arrows: [
+      { triggerX: 250, x: 480, y: 190, w: 22, h: 8, dir: -1, speed: 5.2, active: false, fired: false },
+    ],
+    exit: { x: 430, y: 170, w: 26, h: 40 },
+  },
+  {
+    nombre: 'Lluvia de flechas',
+    hint: 'Miras a la derecha y te alcanzan.',
+    start: { x: 20, y: 200 },
+    platforms: [
+      { x: 0,   y: 240, w: 480, h: 30, type: 'normal' },
+    ],
+    hazards: [],
+    arrows: [
+      { triggerX: 80,  x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.0, active: false, fired: false },
+      { triggerX: 160, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.8, active: false, fired: false },
+      { triggerX: 240, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 5.5, active: false, fired: false },
+      { triggerX: 320, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 6.0, active: false, fired: false },
+    ],
+    exit: { x: 430, y: 200, w: 26, h: 40 },
+  },
+  {
+    nombre: 'Todo es mentira',
+    hint: 'Nada es lo que parece. Desconfiá de todo.',
+    start: { x: 20, y: 170 },
+    platforms: [
+      { x: 0,   y: 210, w: 80,  h: 20, type: 'normal'  },
+      { x: 100, y: 210, w: 50,  h: 20, type: 'fake'    },
+      { x: 140, y: 180, w: 50,  h: 20, type: 'crumble' },
+      { x: 210, y: 210, w: 40,  h: 20, type: 'normal'  },
+      { x: 270, y: 210, w: 50,  h: 20, type: 'fake'    },
+      { x: 330, y: 180, w: 150, h: 20, type: 'normal'  },
+    ],
+    hazards: [
+      { x: 100, y: 255, w: 50,  h: 15, type: 'spike' },
+      { x: 270, y: 255, w: 50,  h: 15, type: 'spike' },
+    ],
+    arrows: [
+      { triggerX: 150, x: 480, y: 154, w: 22, h: 8, dir: -1, speed: 5.0, active: false, fired: false },
+      { triggerX: 300, x: 480, y: 194, w: 22, h: 8, dir: -1, speed: 5.5, active: false, fired: false },
+    ],
+    exit: { x: 400, y: 140, w: 26, h: 40 },
+  },
+  {
+    nombre: 'La prueba final',
+    hint: 'Un poco de todo. No hay margen para error.',
+    start: { x: 20, y: 140 },
+    platforms: [
+      { x: 0,   y: 180, w: 70,  h: 20, type: 'normal'  },
+      { x: 100, y: 180, w: 50,  h: 20, type: 'fake'    },
+      { x: 100, y: 210, w: 50,  h: 20, type: 'crumble' },
+      { x: 180, y: 150, w: 50,  h: 20, type: 'fake'    },
+      { x: 180, y: 210, w: 50,  h: 20, type: 'normal'  },
+      { x: 260, y: 180, w: 40,  h: 20, type: 'crumble' },
+      { x: 330, y: 210, w: 50,  h: 20, type: 'normal'  },
+      { x: 410, y: 180, w: 70,  h: 20, type: 'normal'  },
+    ],
+    hazards: [
+      { x: 0,   y: 255, w: 480, h: 15, type: 'spike' },
+    ],
+    arrows: [
+      { triggerX: 120, x: 480, y: 190, w: 22, h: 8, dir: -1, speed: 5.0, active: false, fired: false },
+      { triggerX: 280, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 5.8, active: false, fired: false },
+      { triggerX: 370, x: 480, y: 180, w: 22, h: 8, dir: -1, speed: 6.5, active: false, fired: false },
+    ],
+    exit: { x: 420, y: 140, w: 26, h: 40 },
+  },
+];
+
+const TRAMPAS = {
+  canvas: null, ctx: null,
+  raf: null, running: false,
+  levelIndex: 0,
+  deathsThisLevel: 0,
+  totalDeaths: 0,
+  totalScore: 0,
+  levelStartTime: 0,
+  levelDeaths: 0,
+  keys: {},
+  keyHandlerDown: null,
+  keyHandlerUp: null,
+  explosions: [],
+
+  player: { x: 20, y: 200, w: 20, h: 26, vx: 0, vy: 0, onGround: false, dead: false },
+
+  // Estado dinámico del nivel actual (copias mutables de plataformas/flechas)
+  platforms: [],
+  hazards: [],
+  arrows: [],
+};
+
+// ─── SISTEMA DE ESTRELLAS ───
+const TR_TIME_LIMITS = [30, 35, 35, 40, 40, 45, 45, 50, 50, 55, 60];
+const TR_DEATH_LIMITS = [5, 5, 5, 4, 4, 3, 3, 3, 2, 2, 1];
+
+function trGetStars() {
+  try { return JSON.parse(localStorage.getItem('trampasStars')) || {}; }
+  catch { return {}; }
+}
+function trSaveStars(stars) {
+  localStorage.setItem('trampasStars', JSON.stringify(stars));
+}
+function trGetLevelStars(i) {
+  return trGetStars()[i] || 0;
+}
+function trSaveLevelStars(i, stars) {
+  const all = trGetStars();
+  if (stars > (all[i] || 0)) { all[i] = stars; trSaveStars(all); }
+}
+function trIsUnlocked(i) {
+  if (i === 0) return true;
+  return trGetLevelStars(i - 1) >= 1;
+}
+
+// ─── NAVEGACIÓN DE MENÚS ───
+let trSelectedLevel = 0;
+
+function trHideAll() {
+  ['trampasMainMenu', 'trampasLevelSelect', 'trampasSettings', 'trampasGameScreen'].forEach(id => {
+    document.getElementById(id).classList.add('hidden');
+  });
+}
+function trShowMainMenu() {
+  trHideAll();
+  document.getElementById('trampasMainMenu').classList.remove('hidden');
+  document.getElementById('trampasPauseMenu').classList.add('hidden');
+  stopTrampas();
+}
+function trShowLevelSelect() {
+  trHideAll();
+  document.getElementById('trampasLevelSelect').classList.remove('hidden');
+  trUpdateLevelCard();
+}
+function trShowSettings() {
+  trHideAll();
+  document.getElementById('trampasSettings').classList.remove('hidden');
+}
+function trShowGameScreen() {
+  trHideAll();
+  document.getElementById('trampasGameScreen').classList.remove('hidden');
+}
+function trBackToLevelSelect() {
+  stopTrampas();
+  trShowLevelSelect();
+}
+
+function trUpdateLevelCard() {
+  const i = trSelectedLevel;
+  const lvl = TR_LEVELS[i];
+  const stars = trGetLevelStars(i);
+  const unlocked = trIsUnlocked(i);
+
+  document.getElementById('trBigLevelNum').textContent = (i + 1);
+  document.getElementById('trBigLevelName').textContent = lvl.nombre;
+
+  const starEls = document.querySelectorAll('#trBigStars .star');
+  starEls.forEach((el, j) => {
+    el.classList.toggle('earned', stars >= j + 1);
+  });
+
+  const card = document.querySelector('.trampas-level-card-big');
+  card.classList.toggle('locked', !unlocked);
+
+  document.getElementById('trNavLeft').disabled = (i === 0);
+  document.getElementById('trNavRight').disabled = (i >= TR_LEVELS.length - 1);
+  document.getElementById('trLevelPlayBtn').disabled = !unlocked;
+
+  const dots = document.querySelectorAll('.trampas-level-dot');
+  dots.forEach((d, j) => d.classList.toggle('active', j === i));
+}
+
+function trNavLevel(dir) {
+  trSelectedLevel = Math.max(0, Math.min(TR_LEVELS.length - 1, trSelectedLevel + dir));
+  trUpdateLevelCard();
+}
+
+function trPlaySelectedLevel() {
+  if (!trIsUnlocked(trSelectedLevel)) return;
+  trStartLevel(trSelectedLevel);
+}
+
+function trStartLevel(i) {
+  TRAMPAS.levelIndex = i;
+  TRAMPAS.totalScore = 0;
+  TRAMPAS.totalDeaths = 0;
+  TRAMPAS.levelStartTime = performance.now();
+  TRAMPAS.levelDeaths = 0;
+  TRAMPAS.explosions = [];
+  trLoadLevel(i);
+  trShowGameScreen();
+  document.getElementById('trampasPauseMenu').classList.add('hidden');
+  showTrampasOverlay(TR_LEVELS[i].nombre, TR_LEVELS[i].hint, false);
+  document.getElementById('trampas-hud-deaths').textContent = '💀 0';
+  setupTrampasEvents();
+  drawTrampas();
+}
+
+function trCalculateStars() {
+  const elapsed = (performance.now() - TRAMPAS.levelStartTime) / 1000;
+  const timeLimit = TR_TIME_LIMITS[TRAMPAS.levelIndex] || 60;
+  const deathLimit = TR_DEATH_LIMITS[TRAMPAS.levelIndex] || 5;
+  let stars = 1;
+  if (elapsed <= timeLimit) stars = 2;
+  if (TRAMPAS.levelDeaths <= deathLimit) stars = 3;
+  return stars;
+}
+
+// ─── PAUSA ───
+function trPauseGame() {
+  TRAMPAS.running = false;
+  if (TRAMPAS.raf) { cancelAnimationFrame(TRAMPAS.raf); TRAMPAS.raf = null; }
+  document.getElementById('trampasPauseMenu').classList.remove('hidden');
+}
+function trResumeGame() {
+  document.getElementById('trampasPauseMenu').classList.add('hidden');
+  TRAMPAS.running = true;
+  if (TRAMPAS.raf) cancelAnimationFrame(TRAMPAS.raf);
+  TRAMPAS.raf = requestAnimationFrame(trampasLoop);
+}
+function trExitToLevels() {
+  document.getElementById('trampasPauseMenu').classList.add('hidden');
+  stopTrampas();
+  trShowLevelSelect();
+}
+
+function trLoadLevel(index) {
+  const lvl = TR_LEVELS[index];
+  TRAMPAS.platforms = lvl.platforms.map(p => ({ ...p, touchedAt: null, gone: false }));
+  TRAMPAS.hazards    = lvl.hazards.map(h => ({ ...h }));
+  TRAMPAS.arrows     = lvl.arrows.map(a => ({ ...a, active: false, fired: false }));
+  TRAMPAS.deathsThisLevel = 0;
+
+  const p = TRAMPAS.player;
+  p.x = lvl.start.x; p.y = lvl.start.y;
+  p.vx = 0; p.vy = 0; p.dead = false; p.onGround = false;
+
+  const starsEl = document.getElementById('trampas-hud-stars');
+  if (starsEl) starsEl.textContent = (index + 1) + '/' + TR_LEVELS.length + ' — ' + lvl.nombre;
+}
+
+function initTrampas() {
+  TRAMPAS.canvas = document.getElementById('trampasCanvas');
+  const C = TRAMPAS.canvas;
+  C.width = TR_W;
+  C.height = TR_H;
+  TRAMPAS.ctx = C.getContext('2d');
+
+  const dotsEl = document.getElementById('trLevelDots');
+  dotsEl.innerHTML = '';
+  TR_LEVELS.forEach((_, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'trampas-level-dot';
+    dot.onclick = () => { trSelectedLevel = i; trUpdateLevelCard(); };
+    dotsEl.appendChild(dot);
+  });
+
+  trSelectedLevel = 0;
+  trShowMainMenu();
+  setupTrampasEvents();
+}
+
+function setupTrampasEvents() {
+  if (TRAMPAS.keyHandlerDown) document.removeEventListener('keydown', TRAMPAS.keyHandlerDown);
+  if (TRAMPAS.keyHandlerUp)   document.removeEventListener('keyup', TRAMPAS.keyHandlerUp);
+
+  TRAMPAS.keyHandlerDown = function(e) {
+    if (!document.getElementById('sec-trampas').classList.contains('active')) return;
+    if (['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW'].includes(e.code)) e.preventDefault();
+    if (e.code === 'ArrowLeft'  || e.code === 'KeyA') TRAMPAS.keys.left  = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') TRAMPAS.keys.right = true;
+    if (e.code === 'ArrowUp' || e.code === 'KeyW' || e.code === 'Space') trJump();
+  };
+  TRAMPAS.keyHandlerUp = function(e) {
+    if (e.code === 'ArrowLeft'  || e.code === 'KeyA') TRAMPAS.keys.left  = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') TRAMPAS.keys.right = false;
+  };
+  document.addEventListener('keydown', TRAMPAS.keyHandlerDown);
+  document.addEventListener('keyup', TRAMPAS.keyHandlerUp);
+}
+
+function trMove(dir, on) {
+  if (dir === 'left')  TRAMPAS.keys.left  = on;
+  if (dir === 'right') TRAMPAS.keys.right = on;
+}
+
+function trJump() {
+  if (!TRAMPAS.running) return;
+  const p = TRAMPAS.player;
+  if (p.dead || !p.onGround) return;
+  p.vy = TR_JUMP_VY;
+  p.onGround = false;
+}
+
+function startTrampas() {
+  document.getElementById('trampasOverlay').classList.add('hidden');
+  TRAMPAS.levelStartTime = performance.now();
+  TRAMPAS.levelDeaths = 0;
+  TRAMPAS.running = true;
+  if (TRAMPAS.raf) cancelAnimationFrame(TRAMPAS.raf);
+  TRAMPAS.raf = requestAnimationFrame(trampasLoop);
+}
+
+function stopTrampas() {
+  TRAMPAS.running = false;
+  if (TRAMPAS.raf) { cancelAnimationFrame(TRAMPAS.raf); TRAMPAS.raf = null; }
+  if (TRAMPAS.keyHandlerDown) document.removeEventListener('keydown', TRAMPAS.keyHandlerDown);
+  if (TRAMPAS.keyHandlerUp)   document.removeEventListener('keyup', TRAMPAS.keyHandlerUp);
+}
+
+function trampasLoop() {
+  if (!TRAMPAS.running) return;
+  updateTrampas();
+  drawTrampas();
+  TRAMPAS.raf = requestAnimationFrame(trampasLoop);
+}
+
+function trRectsOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function updateTrampas() {
+  const p = TRAMPAS.player;
+  if (p.dead) return;
+
+  // Movimiento horizontal
+  p.vx = 0;
+  if (TRAMPAS.keys.left)  p.vx = -TR_MOVE_SPEED;
+  if (TRAMPAS.keys.right) p.vx =  TR_MOVE_SPEED;
+  p.x += p.vx;
+  p.x = Math.max(0, Math.min(p.x, TR_W - p.w));
+
+  // Gravedad
+  p.vy += TR_GRAVITY;
+  p.y  += p.vy;
+  p.onGround = false;
+
+  // Colisión con plataformas (solo 'normal' y 'crumble' vivas; 'fake' nunca colisiona)
+  for (const plat of TRAMPAS.platforms) {
+    if (plat.type === 'fake' || plat.gone) continue;
+    const feetPrev = p.y + p.h - p.vy;
+    const withinX = p.x + p.w > plat.x && p.x < plat.x + plat.w;
+    if (withinX && p.vy >= 0 && feetPrev <= plat.y + 1 && p.y + p.h >= plat.y) {
+      p.y = plat.y - p.h;
+      p.vy = 0;
+      p.onGround = true;
+      if (plat.type === 'crumble' && plat.touchedAt === null) {
+        plat.touchedAt = performance.now();
+      }
+    }
+  }
+
+  // Derrumbe de plataformas 'crumble' 400ms después de pisarlas
+  for (const plat of TRAMPAS.platforms) {
+    if (plat.type === 'crumble' && plat.touchedAt !== null && !plat.gone) {
+      if (performance.now() - plat.touchedAt > 400) plat.gone = true;
+    }
+  }
+
+  // Flechas de pared: se activan al cruzar triggerX
+  for (const lvl of [TR_LEVELS[TRAMPAS.levelIndex]]) {
+    lvl.arrows.forEach((def, i) => {
+      const a = TRAMPAS.arrows[i];
+      if (!a.fired && p.x >= def.triggerX) {
+        a.fired = true;
+        a.active = true;
+        a.x = def.x;
+      }
+    });
+  }
+  TRAMPAS.arrows.forEach(a => {
+    if (a.active) {
+      a.x += a.dir * a.speed;
+      if (a.x < -30 || a.x > TR_W + 30) a.active = false;
+      if (trRectsOverlap(p, a)) { trPlayerDie(); return; }
+    }
+  });
+
+  if (p.dead) return;
+
+  // Peligros estáticos (picos y estrella-trampa)
+  for (const hz of TRAMPAS.hazards) {
+    if (trRectsOverlap(p, hz)) { trPlayerDie(); return; }
+  }
+
+  // Caerse del mapa
+  if (p.y > TR_H + 20) { trPlayerDie(); return; }
+
+  // Llegar a la salida
+  const lvl = TR_LEVELS[TRAMPAS.levelIndex];
+  if (trRectsOverlap(p, lvl.exit)) { trLevelComplete(); }
+}
+
+function drawTrampasPlayer(ctx, p) {
+  const x = Math.round(p.x), y = Math.round(p.y);
+  const W = p.w, H = p.h;
+
+  if (p.dead) {
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+  }
+
+  const S = W / 32;
+
+  const legColors = ['#1e3a5f', '#1e3a5f'];
+  const shoeColor = '#f5c518';
+
+  if (!p.dead) {
+    ctx.fillStyle = legColors[0];
+    ctx.fillRect(x + 8*S, y + 25*S, 7*S, 8*S);
+    ctx.fillStyle = shoeColor;
+    ctx.fillRect(x + 6*S, y + 33*S, 9*S, 3*S);
+    ctx.fillStyle = legColors[1];
+    ctx.fillRect(x + 17*S, y + 25*S, 7*S, 8*S);
+    ctx.fillStyle = shoeColor;
+    ctx.fillRect(x + 17*S, y + 33*S, 9*S, 3*S);
+  } else {
+    ctx.fillStyle = legColors[0];
+    ctx.fillRect(x + 8*S, y + 25*S, 7*S, 8*S);
+    ctx.fillRect(x + 17*S, y + 25*S, 7*S, 8*S);
+    ctx.fillStyle = shoeColor;
+    ctx.fillRect(x + 6*S, y + 33*S, 9*S, 3*S);
+    ctx.fillRect(x + 17*S, y + 33*S, 9*S, 3*S);
+  }
+
+  ctx.fillStyle = '#2563eb';
+  ctx.fillRect(x + 8*S, y + 14*S, 16*S, 11*S);
+
+  ctx.fillStyle = '#fbbf7a';
+  ctx.fillRect(x + 12*S, y + 14*S, 8*S, 3*S);
+
+  ctx.fillStyle = '#fbbf7a';
+  ctx.fillRect(x + 3*S,  y + 16*S, 5*S, 3*S);
+  ctx.fillRect(x + 24*S, y + 16*S, 5*S, 3*S);
+
+  ctx.fillStyle = '#fbbf7a';
+  ctx.fillRect(x + 8*S, y + 2*S, 16*S, 13*S);
+
+  ctx.fillStyle = '#3b2506';
+  ctx.fillRect(x + 8*S,  y,       16*S, 3*S);
+  ctx.fillRect(x + 7*S,  y + 1*S, 2*S,  2*S);
+  ctx.fillRect(x + 23*S, y + 1*S, 2*S,  2*S);
+
+  ctx.strokeStyle = '#1a3a6b';
+  ctx.lineWidth = Math.max(1, S * 1.5);
+  ctx.strokeRect(x + 8*S,  y + 8*S, 7*S, 5*S);
+  ctx.strokeRect(x + 17*S, y + 8*S, 7*S, 5*S);
+
+  ctx.fillStyle = '#1a3a6b';
+  ctx.fillRect(x + 15*S, y + 10*S, 2*S, 1.5*S);
+
+  ctx.fillStyle = 'rgba(147,197,253,0.55)';
+  ctx.fillRect(x + 9*S,  y + 9*S, 5*S, 3*S);
+  ctx.fillRect(x + 18*S, y + 9*S, 5*S, 3*S);
+
+  ctx.fillStyle = p.dead ? '#ef4444' : '#d97706';
+  ctx.fillRect(x + 12*S, y + 12*S, 8*S, 2*S);
+
+  if (!p.dead) {
+    ctx.fillStyle = '#1e1e1e';
+    ctx.fillRect(x + 10*S, y + 9.5*S, 2*S, 1.5*S);
+    ctx.fillRect(x + 20*S, y + 9.5*S, 2*S, 1.5*S);
+  } else {
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = S;
+    ctx.beginPath();
+    ctx.moveTo(x + 9*S,  y + 9*S); ctx.lineTo(x + 14*S, y + 13*S);
+    ctx.moveTo(x + 14*S, y + 9*S); ctx.lineTo(x + 9*S,  y + 13*S);
+    ctx.moveTo(x + 18*S, y + 9*S); ctx.lineTo(x + 23*S, y + 13*S);
+    ctx.moveTo(x + 23*S, y + 9*S); ctx.lineTo(x + 18*S, y + 13*S);
+    ctx.stroke();
+  }
+
+  if (p.dead) ctx.restore();
+}
+
+function spawnExplosion(cx, cy) {
+  const colors = ['#ef4444', '#f97316', '#facc15', '#fbbf24', '#fff'];
+  for (let i = 0; i < 18; i++) {
+    const angle = (Math.PI * 2 / 18) * i + (Math.random() - 0.5) * 0.4;
+    const speed = 2 + Math.random() * 4;
+    TRAMPAS.explosions.push({
+      x: cx, y: cy,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      r: 2 + Math.random() * 3,
+      life: 1,
+      decay: 0.02 + Math.random() * 0.03,
+      color: colors[Math.floor(Math.random() * colors.length)],
+    });
+  }
+}
+
+function updateExplosions() {
+  for (let i = TRAMPAS.explosions.length - 1; i >= 0; i--) {
+    const e = TRAMPAS.explosions[i];
+    e.x += e.vx;
+    e.y += e.vy;
+    e.vy += 0.1;
+    e.life -= e.decay;
+    if (e.life <= 0) TRAMPAS.explosions.splice(i, 1);
+  }
+}
+
+function drawExplosions(ctx) {
+  for (const e of TRAMPAS.explosions) {
+    ctx.globalAlpha = e.life;
+    ctx.fillStyle = e.color;
+    ctx.beginPath();
+    ctx.arc(e.x, e.y, e.r * e.life, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function trPlayerDie() {
+  const p = TRAMPAS.player;
+  p.dead = true;
+  TRAMPAS.deathsThisLevel++;
+  TRAMPAS.totalDeaths++;
+  TRAMPAS.levelDeaths++;
+  const deathsEl = document.getElementById('trampas-hud-deaths');
+  if (deathsEl) deathsEl.textContent = '💀 ' + TRAMPAS.totalDeaths;
+  spawnExplosion(p.x + p.w / 2, p.y + p.h / 2);
+  drawTrampas();
+
+  setTimeout(() => {
+    trLoadLevel(TRAMPAS.levelIndex);
+    drawTrampas();
+  }, 450);
+}
+
+function trLevelComplete() {
+  TRAMPAS.running = false;
+  if (TRAMPAS.raf) { cancelAnimationFrame(TRAMPAS.raf); TRAMPAS.raf = null; }
+
+  const stars = trCalculateStars();
+  trSaveLevelStars(TRAMPAS.levelIndex, stars);
+
+  const basePoints = 100;
+  const starPoints = stars * 50;
+  const levelScore = basePoints + starPoints;
+  TRAMPAS.totalScore += levelScore;
+
+  const starsText = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+  document.getElementById('trampas-hud-deaths').textContent = '💀 0';
+
+  const esUltimo = TRAMPAS.levelIndex >= TR_LEVELS.length - 1;
+  if (esUltimo) {
+    guardarPuntaje(8, TRAMPAS.totalScore, null);
+    showTrampasOverlay('🏆 ¡Completaste todo!', starsText + '  +' + levelScore + ' pts — Total: ' + TRAMPAS.totalScore, true);
+  } else {
+    TRAMPAS.levelIndex++;
+    trLoadLevel(TRAMPAS.levelIndex);
+    showTrampasOverlay('✅ ¡Nivel superado!', starsText + '  +' + levelScore + ' pts', false);
+  }
+}
+
+function showTrampasOverlay(title, sub, isEnd) {
+  const overlay = document.getElementById('trampasOverlay');
+  overlay.classList.remove('hidden');
+  document.getElementById('trampasOverlayTitle').textContent = title;
+  document.getElementById('trampasOverlaySub').textContent = sub;
+  document.getElementById('trampasStartBtn').textContent = isEnd ? '🔄 Jugar de nuevo' : '▶ Empezar';
+  document.getElementById('trampasStartBtn').onclick = isEnd ? restartTrampas : startTrampas;
+}
+
+function restartTrampas() {
+  trBackToLevelSelect();
+}
+
+function drawTrampas() {
+  const ctx = TRAMPAS.ctx;
+  if (!ctx) return;
+  const p = TRAMPAS.player;
+
+  // Fondo
+  const bg = ctx.createLinearGradient(0, 0, 0, TR_H);
+  bg.addColorStop(0, '#2a0e37');
+  bg.addColorStop(1, '#150620');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, TR_W, TR_H);
+
+  // Plataformas
+  for (const plat of TRAMPAS.platforms) {
+    if (plat.gone) continue;
+    if (plat.type === 'crumble' && plat.touchedAt !== null) {
+      ctx.fillStyle = '#e8543f';
+    } else {
+      ctx.fillStyle = '#7c3aed';
+    }
+    ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(plat.x, plat.y, plat.w, 4);
+
+    if (plat.decor === 'spike') {
+      ctx.fillStyle = '#ef4444';
+      const n = Math.max(1, Math.floor(plat.w / 14));
+      for (let i = 0; i < n; i++) {
+        const sx = plat.x + i * (plat.w / n);
+        ctx.beginPath();
+        ctx.moveTo(sx, plat.y);
+        ctx.lineTo(sx + plat.w / n / 2, plat.y - 10);
+        ctx.lineTo(sx + plat.w / n, plat.y);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+
+  // Peligros
+  for (const hz of TRAMPAS.hazards) {
+    if (hz.type === 'spike') {
+      ctx.fillStyle = '#ef4444';
+      const n = Math.max(1, Math.floor(hz.w / 14));
+      for (let i = 0; i < n; i++) {
+        const sx = hz.x + i * (hz.w / n);
+        ctx.beginPath();
+        ctx.moveTo(sx, hz.y + hz.h);
+        ctx.lineTo(sx + hz.w / n / 2, hz.y);
+        ctx.lineTo(sx + hz.w / n, hz.y + hz.h);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else if (hz.type === 'star') {
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      const cx = hz.x + hz.w / 2, cy = hz.y + hz.h / 2, r = hz.w / 2;
+      for (let i = 0; i < 5; i++) {
+        const ang = (Math.PI * 2 / 5) * i - Math.PI / 2;
+        const angIn = ang + Math.PI / 5;
+        ctx.lineTo(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
+        ctx.lineTo(cx + Math.cos(angIn) * r * 0.45, cy + Math.sin(angIn) * r * 0.45);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // Flechas activas
+  ctx.fillStyle = '#facc15';
+  TRAMPAS.arrows.forEach(a => {
+    if (a.active) ctx.fillRect(a.x, a.y, a.w, a.h);
+  });
+
+  // Salida
+  const lvl = TR_LEVELS[TRAMPAS.levelIndex];
+  ctx.fillStyle = '#22c55e';
+  ctx.fillRect(lvl.exit.x, lvl.exit.y, lvl.exit.w, lvl.exit.h);
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.fillRect(lvl.exit.x, lvl.exit.y, lvl.exit.w, 5);
+
+  // Jugador — sprite de Pixel Runner adaptado
+  drawTrampasPlayer(ctx, p);
+
+  // Explosiones
+  updateExplosions();
+  drawExplosions(ctx);
+}
+
+// ══════════════════════════════════════
 //   PREGUNTADOS
 // ══════════════════════════════════════
 
@@ -1354,6 +2224,7 @@ let sopaState = {
   timer: null, timeLeft: SOPA_TIME,
   score: 0, tematicaId: 1, finished: false
 };
+let sopaFinishTimeout = null;
 
 // Palabras hardcodeadas por temática para la sopa (se usan las del ahorcado)
 const SOPA_WORDS = {
@@ -1366,6 +2237,7 @@ const SOPA_WORDS = {
 async function initSopa(tematicaId) {
   tematicaId = Number(tematicaId) || sopaState.tematicaId || 1;
   clearInterval(sopaState.timer);
+  if (sopaFinishTimeout) { clearTimeout(sopaFinishTimeout); sopaFinishTimeout = null; }
 
   const candidatos = (SOPA_WORDS[tematicaId] || SOPA_WORDS[1])
     .filter(w => w.length <= SOPA_GRID - 1);
@@ -1494,11 +2366,7 @@ function sopaStart(r, c) {
   sopaState.dragging = true;
   sopaState.startCell = [r, c];
   sopaState.selected = [[r, c]];
-  renderSopa(); startSopaTimer(); // re-render sin perder timer
-  // Evitar restart del timer: solo re-render visual
-  clearInterval(sopaState.timer);
   updateSopaHighlight();
-  startSopaTimer();
 }
 function sopaMove(r, c) {
   if (!sopaState.dragging) return;
@@ -1573,8 +2441,10 @@ function checkSopaSelection() {
         if (el.textContent === p.word) el.classList.add('sopa-word-found');
       });
       if (sopaState.found.length === sopaState.placed.length) {
+        // Todas las palabras encontradas — limpiar timer ANTES de programar el finish
         clearInterval(sopaState.timer);
-        setTimeout(() => sopaFinish(true), 400);
+        if (sopaFinishTimeout) clearTimeout(sopaFinishTimeout);
+        sopaFinishTimeout = setTimeout(() => sopaFinish(true), 400);
       }
       return;
     }
@@ -1582,8 +2452,15 @@ function checkSopaSelection() {
 }
 
 function sopaFinish(won) {
+  // Guard: evita que se ejecute dos veces (puede pasar si el jugador
+  // encuentra la última palabra justo cuando el tiempo llega a 0 —
+  // el timeout y el setTimeout de victoria competían y la segunda
+  // llamada pisaba el HTML recién renderizado con el botón "Jugar de
+  // nuevo", dejándolo sin su listener funcional).
+  if (sopaState.finished) return;
   sopaState.finished = true;
   clearInterval(sopaState.timer);
+  if (sopaFinishTimeout) { clearTimeout(sopaFinishTimeout); sopaFinishTimeout = null; }
   const total = sopaState.placed.length;
   const found = sopaState.found.length;
   const pts   = sopaState.score;
@@ -1711,6 +2588,17 @@ function submitTermina() {
       ? Math.max(200, 600 - (terminaState.intentos - 1) * 100)
       : 25;
     guardarPuntaje(3, pts, terminaState.tematicaId); // juego_id=3 Termina la Palabra
+  } else {
+    // UI-004: dar feedback progresivo — revelar una letra oculta más
+    // por cada intento fallido, para evitar la frustración del jugador.
+    const ocultas = [];
+    terminaState.revealed.split('').forEach((l, i) => { if (l === '_') ocultas.push(i); });
+    if (ocultas.length > 0) {
+      const idx = ocultas[Math.floor(Math.random() * ocultas.length)];
+      const chars = terminaState.revealed.split('');
+      chars[idx] = word[idx];
+      terminaState.revealed = chars.join('');
+    }
   }
 
   renderTermina();
@@ -1990,6 +2878,10 @@ function renderAdivinaItem() {
   document.getElementById('adivinaInput').disabled = false;
   document.getElementById('adivinaFeedback').style.display = 'none';
   setTimeout(() => document.getElementById('adivinaInput')?.focus(), 50);
+
+  // Botón "Me rindo": solo disponible cuando ya no quedan más pistas para pedir
+  const btnRendirse = document.getElementById('adivinaBtnRendirse');
+  if (btnRendirse) btnRendirse.style.display = remaining === 0 ? 'block' : 'none';
 }
 
 function pistasCosto(pistasYaReveladas) {
@@ -2056,6 +2948,28 @@ function revelarPista() {
   s.pistasUsedThisItem = s.pistasRevealedThisItem.length;
 
   renderAdivinaItem();
+}
+
+function rendirseAdivina() {
+  const s = adivinaState;
+  if (!s || s.respondido) return;
+  const item = s.items[s.itemIdx];
+  s.respondido = true;
+
+  const input = document.getElementById('adivinaInput');
+  const fb = document.getElementById('adivinaFeedback');
+  fb.style.display = 'block';
+  fb.className = 'adivina-feedback incorrecto';
+  fb.textContent = `❌ La respuesta era: ${item.respuesta.charAt(0).toUpperCase() + item.respuesta.slice(1)}`;
+  input.disabled = true;
+  document.getElementById('adivinaBtnPista').disabled = true;
+  const btnRendirse = document.getElementById('adivinaBtnRendirse');
+  if (btnRendirse) btnRendirse.style.display = 'none';
+
+  // Revelar imagen completa
+  renderAdivinaCanvas(item.imagen, 99, item.pistas.length);
+
+  setTimeout(() => nextAdivinaItem(), 2200);
 }
 
 function submitAdivina() {

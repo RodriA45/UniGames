@@ -174,7 +174,8 @@ INSERT OR IGNORE INTO juegos (id, nombre, descripcion) VALUES
 (4, 'Ahorcado', 'Adivinar letras antes de perder'),
 (5, 'Adivina la Cosa', 'Adivinar con pistas'),
 (6, 'Adivina la Palabra', 'Adiviná la palabra letra por letra, estilo Wordle, en 5 intentos'),
-(7, 'Pixel Runner', 'Saltá obstáculos y conseguí la mayor puntuación posible');
+(7, 'Pixel Runner', 'Saltá obstáculos y conseguí la mayor puntuación posible'),
+(8, 'Salto Traicionero', 'Plataformas con trampas escondidas: pisos falsos, flechas y sorpresas');
 """)
 
 # Temáticas: se agrega "Programación" como 4ta temática (ya usada en el selector del frontend)

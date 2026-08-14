@@ -140,7 +140,7 @@
       <!-- Ahorcado -->
       <div class="game-card-full">
         <div class="card-header-band">
-          <span class="card-emoji">🪢</span>
+          <span class="card-emoji">💀</span>
           <span class="card-title">Ahorcado</span>
         </div>
         <div class="card-body">
@@ -211,6 +211,22 @@
         </div>
       </div>
 
+      <!-- Salto Traicionero -->
+      <div class="game-card-full">
+        <div class="card-header-band" style="background: linear-gradient(135deg, #2a0e37, #4c1d95);">
+          <span class="card-emoji">🪤</span>
+          <span class="card-title" style="color:#facc15;">Salto Traicionero</span>
+        </div>
+        <div class="card-body">
+          <p class="card-desc">Plataformas con trampas escondidas: pisos falsos, flechas en la pared y sorpresas que no son lo que parecen. Morís, revivís al instante y lo volvés a intentar. 5 niveles.</p>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
+            <span class="card-tag">🪤 Trampas ocultas</span>
+            <span class="card-tag">🔁 Reintento instantáneo</span>
+          </div>
+          <button class="btn-play" onclick="launchGame('trampas', this)" style="background:#facc15;color:#2a0e37;font-weight:900;">▶ Jugar</button>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -233,10 +249,11 @@
       <button class="lb-tab" data-juego="1"   onclick="switchLeaderboardTab(this, 1)">🔍 Sopa</button>
       <button class="lb-tab" data-juego="2"   onclick="switchLeaderboardTab(this, 2)">❓ Preguntas</button>
       <button class="lb-tab" data-juego="3"   onclick="switchLeaderboardTab(this, 3)">🔤 Termina</button>
-      <button class="lb-tab" data-juego="4"   onclick="switchLeaderboardTab(this, 4)">🪢 Ahorcado</button>
+      <button class="lb-tab" data-juego="4"   onclick="switchLeaderboardTab(this, 4)">💀 Ahorcado</button>
       <button class="lb-tab" data-juego="5"   onclick="switchLeaderboardTab(this, 5)">🕵️ Adivina</button>
       <button class="lb-tab" data-juego="6"   onclick="switchLeaderboardTab(this, 6)">🟩 Wordle</button>
       <button class="lb-tab" data-juego="runner" onclick="switchLeaderboardTab(this, 'runner')">🏃 Runner</button>
+      <button class="lb-tab" data-juego="8"   onclick="switchLeaderboardTab(this, 8)">🪤 Trampas</button>
     </div>
 
     <!-- Tabla global (por juego) -->
@@ -266,7 +283,7 @@
   <section class="section" id="sec-ahorcado">
     <div class="game-screen-header">
       <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
-      <div class="game-screen-title"><span>🪢</span> Ahorcado</div>
+      <div class="game-screen-title"><span>💀</span> Ahorcado</div>
       <div class="game-screen-theme" id="ahorcado-theme-label"></div>
     </div>
 
@@ -422,6 +439,7 @@
         <input type="text" id="adivinaInput" class="adivina-input" placeholder="Escribí tu respuesta..." autocomplete="off" />
         <button class="btn-play adivina-btn-submit" onclick="submitAdivina()">✓ Confirmar</button>
       </div>
+      <button class="btn-back" id="adivinaBtnRendirse" style="margin:.6rem auto 0;display:none;" onclick="rendirseAdivina()">🏳 Me rindo, mostrar respuesta</button>
 
       <!-- Feedback -->
       <div id="adivinaFeedback" class="adivina-feedback" style="display:none;"></div>
@@ -478,6 +496,95 @@
         onpointerdown="event.preventDefault(); runnerFastDrop();">⬇ Bajar</button>
     </div>
     <p class="runner-hint">↑ Saltar (doble salto) &nbsp;·&nbsp; ↓ Caída rápida &nbsp;·&nbsp; +vel cada 250 pts</p>
+  </section>
+
+  <!-- ── SECCIÓN: SALTO TRAICIONERO ── -->
+  <section class="section" id="sec-trampas">
+    <!-- Menú Principal -->
+    <div class="trampas-menu" id="trampasMainMenu">
+      <div class="trampas-menu-title">🪤 Salto Traicionero</div>
+      <div class="trampas-menu-subtitle">No todo lo que ves es seguro.</div>
+      <button class="trampas-menu-btn" onclick="trShowLevelSelect()">▶ Jugar</button>
+      <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowSettings()">⚙ Ajustes</button>
+    </div>
+
+    <!-- Selección de Niveles -->
+    <div class="trampas-menu hidden" id="trampasLevelSelect">
+      <div class="trampas-menu-header">
+        <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
+        <div class="trampas-menu-title-small">Seleccionar Nivel</div>
+      </div>
+      <div class="trampas-level-nav">
+        <button class="trampas-nav-arrow" id="trNavLeft" onclick="trNavLevel(-1)">◀</button>
+        <div class="trampas-level-card-big" id="trLevelCardBig">
+          <div class="trampas-big-stars" id="trBigStars">
+            <span class="star">★</span><span class="star">★</span><span class="star">★</span>
+          </div>
+          <div class="trampas-big-level-num" id="trBigLevelNum">1</div>
+          <div class="trampas-big-level-name" id="trBigLevelName">Nombre</div>
+        </div>
+        <button class="trampas-nav-arrow" id="trNavRight" onclick="trNavLevel(1)">▶</button>
+      </div>
+      <div class="trampas-level-dots" id="trLevelDots"></div>
+      <button class="trampas-play-btn" id="trLevelPlayBtn" onclick="trPlaySelectedLevel()">▶ Jugar Nivel</button>
+    </div>
+
+    <!-- Ajustes -->
+    <div class="trampas-menu hidden" id="trampasSettings">
+      <div class="trampas-menu-header">
+        <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
+        <div class="trampas-menu-title-small">Ajustes</div>
+      </div>
+      <div class="trampas-settings-content">
+        <p style="color: rgba(255,255,255,0.7);">Próximamente...</p>
+      </div>
+    </div>
+
+    <!-- Pantalla de Juego -->
+    <div class="hidden" id="trampasGameScreen">
+      <div class="trampas-container">
+        <canvas id="trampasCanvas"></canvas>
+
+        <!-- HUD superpuesto al juego -->
+        <div class="trampas-hud">
+          <button class="trampas-hud-btn" onclick="trPauseGame()">☰</button>
+          <div class="trampas-hud-info">
+            <span class="trampas-hud-stars" id="trampas-hud-stars"></span>
+            <span class="trampas-hud-deaths" id="trampas-hud-deaths">💀 0</span>
+          </div>
+        </div>
+
+        <!-- Overlay de inicio/nivel -->
+        <div class="trampas-overlay" id="trampasOverlay">
+          <div class="trampas-overlay-box">
+            <p class="trampas-overlay-title" id="trampasOverlayTitle">🪤 Salto Traicionero</p>
+            <p class="trampas-overlay-sub" id="trampasOverlaySub">No todo lo que ves es seguro.</p>
+            <button class="btn-play trampas-start-btn" id="trampasStartBtn" onclick="startTrampas()">▶ Empezar</button>
+          </div>
+        </div>
+
+        <!-- Mini menú de pausa -->
+        <div class="trampas-pause-menu hidden" id="trampasPauseMenu">
+          <div class="trampas-pause-box">
+            <p class="trampas-pause-title">⏸ Pausa</p>
+            <button class="trampas-pause-opt" onclick="trResumeGame()">▶ Continuar</button>
+            <button class="trampas-pause-opt trampas-pause-exit" onclick="trExitToLevels()">✖ Salir</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controles táctiles -->
+      <div class="trampas-controls">
+        <button class="runner-ctrl-btn" id="trBtnLeft"
+          onpointerdown="event.preventDefault(); trMove('left', true);"
+          onpointerup="trMove('left', false);" onpointerleave="trMove('left', false);">◀</button>
+        <button class="runner-ctrl-btn" id="trBtnJump"
+          onpointerdown="event.preventDefault(); trJump();">⬆ Saltar</button>
+        <button class="runner-ctrl-btn" id="trBtnRight"
+          onpointerdown="event.preventDefault(); trMove('right', true);"
+          onpointerup="trMove('right', false);" onpointerleave="trMove('right', false);">▶</button>
+      </div>
+    </div>
   </section>
 
 </main>
@@ -720,66 +827,6 @@
 
   </div>
 </div>
-
-<script>
-  function openModal(tab) {
-    switchTab(tab || 'login');
-    document.getElementById('modalOverlay').classList.add('open');
-    document.body.style.overflow = 'hidden';
-  }
-  function closeModal() {
-    document.getElementById('modalOverlay').classList.remove('open');
-    document.body.style.overflow = '';
-  }
-  function closeModalOutside(e) { if (e.target === document.getElementById('modalOverlay')) closeModal(); }
-  function switchTab(tab) {
-    document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
-    document.getElementById('tabRegister').classList.toggle('active', tab === 'register');
-    document.getElementById('auth-section-login').classList.toggle('active', tab === 'login');
-    document.getElementById('auth-section-register').classList.toggle('active', tab === 'register');
-  }
-  function showAuthAlert(id, msg, type) {
-    const el = document.getElementById(id);
-    el.textContent = msg;
-    el.className = 'auth-alert ' + type + ' show';
-    setTimeout(() => el.classList.remove('show'), 4000);
-  }
-  async function handleLogin(event) {
-    event.preventDefault();
-    const identity = document.getElementById('loginIdentity').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    if (!identity || !password) return showAuthAlert('login-alert', 'Completá todos los campos.', 'error');
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identity, password })
-      });
-      const data = await res.json();
-      if (!res.ok) return showAuthAlert('login-alert', data.error || 'Error al iniciar sesión.', 'error');
-      showAuthAlert('login-alert', '¡Bienvenido, ' + data.user.username + '!', 'success');
-      setTimeout(() => { closeModal(); if (typeof onLoginSuccess === 'function') onLoginSuccess(data.user); }, 900);
-    } catch(e) { showAuthAlert('login-alert', 'No se pudo conectar con el servidor.', 'error'); }
-  }
-  async function handleRegister(event) {
-    event.preventDefault();
-    const username = document.getElementById('regUsername').value.trim();
-    const email    = document.getElementById('regEmail').value.trim();
-    const password = document.getElementById('regPassword').value;
-    const confirm  = document.getElementById('regConfirm').value;
-    if (!username || !email || !password || !confirm) return showAuthAlert('register-alert', 'Completá todos los campos.', 'error');
-    if (password !== confirm) return showAuthAlert('register-alert', 'Las contraseñas no coinciden.', 'error');
-    try {
-      const res = await fetch('/api/register', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password })
-      });
-      const data = await res.json();
-      if (!res.ok) return showAuthAlert('register-alert', data.error || 'Error al registrarse.', 'error');
-      showAuthAlert('register-alert', '¡Cuenta creada! Ya podés iniciar sesión.', 'success');
-      setTimeout(() => switchTab('login'), 1200);
-    } catch(e) { showAuthAlert('register-alert', 'No se pudo conectar con el servidor.', 'error'); }
-  }
-</script>
 
 <!-- Script -->
 <script src="src/app.js"></script>
