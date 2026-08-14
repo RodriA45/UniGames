@@ -545,7 +545,6 @@ async function handleRegister(e) {
   const password = document.getElementById('regPassword').value;
   const confirm = document.getElementById('regConfirm').value;
 
-<<<<<<< HEAD
   if (!username || !email || !password || !confirm) {
     return showAuthAlert('register-alert', 'Completá todos los campos.', 'error');
   }
@@ -553,12 +552,6 @@ async function handleRegister(e) {
   const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!EMAIL_REGEX.test(email)) {
     return showAuthAlert('register-alert', 'Ingresá un email válido (ej: nombre@dominio.com).', 'error');
-=======
-  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!EMAIL_REGEX.test(email)) {
-    alert('Ingresá un email válido (ej: nombre@dominio.com)');
-    return;
->>>>>>> ad4d539d88653b9fca0d7d35e49224f0d448d84d
   }
 
   if (password !== confirm) {
@@ -645,11 +638,7 @@ async function fetchLeaderboardGlobal() {
     if (!res.ok) throw new Error();
     const data = await res.json(); // { juego_id: { juego, entries: [{jugador, puntos}] } }
 
-<<<<<<< HEAD
     const GAME_ICONS = { 1:'🔍', 2:'❓', 3:'🔤', 4:'💀', 5:'🕵️', 6:'🟩', 7:'🏃', 8:'🪤' };
-=======
-    const GAME_ICONS = { 1:'🔍', 2:'❓', 3:'🔤', 4:'💀', 5:'🕵️', 6:'🟩', 7:'🏃' };
->>>>>>> ad4d539d88653b9fca0d7d35e49224f0d448d84d
     const keys = Object.keys(data);
 
     if (keys.length === 0) {

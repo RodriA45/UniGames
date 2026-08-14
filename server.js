@@ -78,7 +78,6 @@ app.post('/api/register', authRateLimit, async (req, res) => {
         return res.status(400).json({ error: 'Todos los campos son obligatorios' });
     }
 
-<<<<<<< HEAD
     if (password.length < 6) {
         return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
     }
@@ -87,8 +86,6 @@ app.post('/api/register', authRateLimit, async (req, res) => {
         return res.status(400).json({ error: 'El nombre de usuario debe tener al menos 3 caracteres' });
     }
 
-=======
->>>>>>> ad4d539d88653b9fca0d7d35e49224f0d448d84d
     const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!EMAIL_REGEX.test(email)) {
         return res.status(400).json({ error: 'El email ingresado no es válido' });
