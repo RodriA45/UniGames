@@ -78,7 +78,7 @@ function sanitizeHTML(str) {
 function renderFeatured() {
   const three = shuffle(allGames).slice(0, 3);
   document.getElementById('featuredGrid').innerHTML = three.map(g => `
-    <div class="game-card" onclick="scrollToGame('${g.id}')">
+    <div class="game-card" onclick="launchGame('${g.id}', this)">
       <div class="card-emoji">${g.emoji}</div>
       <div class="card-title">${g.title}</div>
       <p class="card-desc">${g.desc}</p>
