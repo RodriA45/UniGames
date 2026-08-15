@@ -251,7 +251,24 @@ async function initAhorcado(tematicaId) {
     if (data.palabra) word = data.palabra.toLowerCase();
   } catch (e) {
     console.error(e);
-    word = 'error';
+  }
+
+  if (word === 'cargando' || !word) {
+    const sec = document.getElementById('sec-ahorcado');
+    if (sec) {
+      sec.innerHTML = `
+        <div class="game-screen-header">
+          <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+          <div class="game-screen-title"><span>💀</span> Ahorcado</div>
+          <div class="game-screen-theme">${TEMATICA_NAMES[tematicaId]||'Normal'}</div>
+        </div>
+        <div class="coming-soon-box" style="margin-top:2rem;">
+          <h2>Sin palabras</h2>
+          <p>Aún no hay palabras cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
+          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver</button>
+        </div>`;
+    }
+    return;
   }
 
   ahorcadoState = { word, revealed: [], wrong: [], maxErrors: 6, finished: false, tematicaId };
@@ -369,7 +386,23 @@ async function initWordle(tematicaId) {
     console.error(e);
   }
 
-  if (!word) word = 'error';
+  if (!word) {
+    const sec = document.getElementById('sec-wordle');
+    if (sec) {
+      sec.innerHTML = `
+        <div class="game-screen-header">
+          <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+          <div class="game-screen-title"><span>📝</span> Adivina la Palabra</div>
+          <div class="game-screen-theme">${TEMATICA_NAMES[tematicaId]||''}</div>
+        </div>
+        <div class="coming-soon-box" style="margin-top:2rem;">
+          <h2>Sin palabras</h2>
+          <p>Aún no hay palabras cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
+          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver</button>
+        </div>`;
+    }
+    return;
+  }
 
   wordleState = {
     word,
@@ -2173,6 +2206,21 @@ function renderPreguntados() {
   const sec = document.getElementById('sec-preguntados');
   const { preguntas, idx, score, finished } = pregState;
 
+  if (preguntas.length === 0) {
+    sec.innerHTML = `
+      <div class="game-screen-header">
+        <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+        <div class="game-screen-title"><span>❓</span> Preguntados</div>
+        <div class="game-screen-theme">${TEMATICA_NAMES[pregState.tematicaId]||''}</div>
+      </div>
+      <div class="coming-soon-box" style="margin-top:2rem;">
+        <h2>Sin preguntas</h2>
+        <p>Aún no hay preguntas cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
+        <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver</button>
+      </div>`;
+    return;
+  }
+
   if (finished || idx >= preguntas.length) {
     sec.querySelector('.coming-soon-box')?.remove();
     const puntos = score * 150;
@@ -2194,20 +2242,6 @@ function renderPreguntados() {
     return;
   }
 
-  if (preguntas.length === 0) {
-    sec.innerHTML = `
-      <div class="game-screen-header">
-        <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
-        <div class="game-screen-title"><span>❓</span> Preguntados</div>
-      </div>
-      <div class="coming-soon-box">
-        <div class="cs-emoji">😕</div>
-        <p class="cs-title">Sin preguntas</p>
-        <p class="cs-desc">No hay preguntas para esta temática todavía.</p>
-        <button class="btn-play" onclick="goTo('juegos')" style="max-width:200px;margin:0 auto;">← Volver a Juegos</button>
-      </div>`;
-    return;
-  }
 
   const q   = preguntas[idx];
   const opts = ['A', 'B', 'C', 'D'];
@@ -2571,7 +2605,23 @@ async function initTermina(tematicaId) {
     if (data.palabra) word = data.palabra.toLowerCase();
   } catch(e) { console.error(e); }
 
-  if (!word) word = 'error';
+  if (!word) {
+    const sec = document.getElementById('sec-termina');
+    if (sec) {
+      sec.innerHTML = `
+        <div class="game-screen-header">
+          <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+          <div class="game-screen-title"><span>🔤</span> Termina la Palabra</div>
+          <div class="game-screen-theme">${TEMATICA_NAMES[tematicaId]||''}</div>
+        </div>
+        <div class="coming-soon-box" style="margin-top:2rem;">
+          <h2>Sin palabras</h2>
+          <p>Aún no hay palabras cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
+          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver</button>
+        </div>`;
+    }
+    return;
+  }
 
   // Revelar entre 30-50% de las letras (posiciones aleatorias)
   const totalReveal = Math.max(1, Math.floor(word.length * 0.35));
