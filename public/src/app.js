@@ -89,7 +89,11 @@ function renderFeatured() {
 }
 
 function scrollToGame(gameId) {
-  goTo('juegos');
+  // Cambiar a la pestaña de juegos manualmente para evitar conflicto de scroll
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById('sec-juegos');
+  if (target) target.classList.add('active');
+
   setTimeout(() => {
     const card = document.getElementById('card-' + gameId);
     if (card) {
@@ -102,7 +106,7 @@ function scrollToGame(gameId) {
         card.style.boxShadow = 'none';
       }, 1500);
     }
-  }, 100);
+  }, 50);
 }
 
 // ─── Guardar HTML original de secciones que reemplazan su contenido ───

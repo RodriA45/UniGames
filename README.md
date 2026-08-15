@@ -76,6 +76,18 @@ Si deseas agregar nuevas preguntas o palabras a la base de datos, agrégalas en 
 2. Sigue las instrucciones en la consola para describir tu cambio.
 
 El script actualizará tu base de datos local para verificar que no haya errores de sintaxis, y luego subirá el código a GitHub de forma segura. El servidor en producción (ej. Render) detectará el cambio y usará su propio `npm start` para inyectar tus palabras nuevas en la base de datos viva sin borrar a los usuarios.
+
+### ⚠️ Importante para Deploy en Render (Plan Gratuito)
+Para asegurarte de que tu base de datos SQLite y tus juegos funcionen correctamente en el servidor gratuito de Render:
+1. Ve a **Settings** en tu proyecto de Render.
+2. Asegúrate de configurar el **Build Command** como: `npm install && python crear_bd.py`.
+3. Configura el **Start Command** como: `node server.js`.
+Esto garantiza que tu base de datos de palabras se genere en la imagen del sistema y no se borre cuando Render ponga a dormir el servidor.
+
+### 🛠️ Últimas Mejoras UI/UX
+- **Navegación Dinámica:** Los Juegos Destacados del inicio ahora scrollean suavemente hacia la tarjeta de juego exacta sin conflictos de animación.
+- **Adivina la Cosa:** Se rediseñó el modal de introducción y el fondo translúcido para asegurar que cubra exactamente el área de juego sin pisar el menú superior.
+
 ## 📂 Estructura del Proyecto
 
 ```text
