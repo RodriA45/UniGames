@@ -3183,40 +3183,38 @@ function nextAdivinaItem() {
 
   renderAdivinaItem();
 }
- / /    % % %  M O D A L   I N F O   /   C R � D I T O S    % % %
- l e t   c u r r e n t I n f o P a g e   =   1 ; 
- c o n s t   t o t a l I n f o P a g e s   =   4 ; 
- 
- f u n c t i o n   o p e n I n f o M o d a l ( )   { 
-     d o c u m e n t . g e t E l e m e n t B y I d ( ' i n f o O v e r l a y ' ) . c l a s s L i s t . a d d ( ' s h o w ' ) ; 
-     c u r r e n t I n f o P a g e   =   1 ; 
-     u p d a t e I n f o M o d a l ( ) ; 
- } 
- 
- f u n c t i o n   c l o s e I n f o M o d a l ( )   { 
-     d o c u m e n t . g e t E l e m e n t B y I d ( ' i n f o O v e r l a y ' ) . c l a s s L i s t . r e m o v e ( ' s h o w ' ) ; 
- } 
- 
- f u n c t i o n   c h a n g e I n f o P a g e ( d i r )   { 
-     c u r r e n t I n f o P a g e   + =   d i r ; 
-     i f   ( c u r r e n t I n f o P a g e   <   1 )   c u r r e n t I n f o P a g e   =   1 ; 
-     i f   ( c u r r e n t I n f o P a g e   >   t o t a l I n f o P a g e s )   c u r r e n t I n f o P a g e   =   t o t a l I n f o P a g e s ; 
-     u p d a t e I n f o M o d a l ( ) ; 
- } 
- 
- f u n c t i o n   u p d a t e I n f o M o d a l ( )   { 
-     / /   O c u l t a r   t o d a s   l a s   p � g i n a s 
-     d o c u m e n t . q u e r y S e l e c t o r A l l ( ' . i n f o - p a g e ' ) . f o r E a c h ( p   = >   p . c l a s s L i s t . r e m o v e ( ' a c t i v e ' ) ) ; 
-     / /   M o s t r a r   l a   p � g i n a   a c t u a l 
-     c o n s t   a c t i v e P a g e   =   d o c u m e n t . g e t E l e m e n t B y I d ( ' i n f o P a g e '   +   c u r r e n t I n f o P a g e ) ; 
-     i f   ( a c t i v e P a g e )   a c t i v e P a g e . c l a s s L i s t . a d d ( ' a c t i v e ' ) ; 
- 
-     / /   A c t u a l i z a r   d o t s 
-     c o n s t   d o t s   =   d o c u m e n t . q u e r y S e l e c t o r A l l ( ' # i n f o D o t s   . d o t ' ) ; 
-     d o t s . f o r E a c h ( ( d o t ,   i n d e x )   = >   { 
-         i f   ( i n d e x   = = =   c u r r e n t I n f o P a g e   -   1 )   d o t . c l a s s L i s t . a d d ( ' a c t i v e ' ) ; 
-         e l s e   d o t . c l a s s L i s t . r e m o v e ( ' a c t i v e ' ) ; 
-     } ) ; 
- } 
-  
- 
+// ─── MODAL INFO / CRÉDITOS ───
+let currentInfoPage = 1;
+const totalInfoPages = 4;
+
+function openInfoModal() {
+  document.getElementById('infoOverlay').classList.add('show');
+  currentInfoPage = 1;
+  updateInfoModal();
+}
+
+function closeInfoModal() {
+  document.getElementById('infoOverlay').classList.remove('show');
+}
+
+function changeInfoPage(dir) {
+  currentInfoPage += dir;
+  if (currentInfoPage < 1) currentInfoPage = 1;
+  if (currentInfoPage > totalInfoPages) currentInfoPage = totalInfoPages;
+  updateInfoModal();
+}
+
+function updateInfoModal() {
+  // Ocultar todas las páginas
+  document.querySelectorAll('.info-page').forEach(p => p.classList.remove('active'));
+  // Mostrar la página actual
+  const activePage = document.getElementById('infoPage' + currentInfoPage);
+  if (activePage) activePage.classList.add('active');
+
+  // Actualizar dots
+  const dots = document.querySelectorAll('#infoDots .dot');
+  dots.forEach((dot, index) => {
+    if (index === currentInfoPage - 1) dot.classList.add('active');
+    else dot.classList.remove('active');
+  });
+}
