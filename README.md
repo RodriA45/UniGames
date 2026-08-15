@@ -55,21 +55,27 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
    JWT_SECRET=tu_clave_secreta_super_segura
    ```
 
-4. **Base de Datos:**
-   El proyecto usa `sqlite` con Promesas. El archivo `unigames.db` se genera localmente. Para poblarlo con todas las palabras y temáticas:
+4. **Generar la Base de Datos y Correr el Servidor:**
+   El proyecto usa `sqlite` con Promesas. La base de datos `.db` NO se sube a GitHub para proteger los puntajes de los usuarios en producción.
+   
+   Para arrancar el servidor de desarrollo y generar la base de datos automáticamente (ejecuta el script de Python por detrás):
    ```bash
-   python crear_bd.py
-   ```
-
-5. **Iniciar el Servidor:**
-   ```bash
-   node server.js
+   npm start
    ```
    *(Alternativa en Windows: doble clic en el archivo `iniciar.bat`).*
 
-6. **Jugar:**
+5. **Jugar:**
    Abre tu navegador en [http://localhost:3000](http://localhost:3000).
 
+---
+
+### 📦 Cómo subir cambios y nuevas palabras (Para Desarrolladores)
+
+Si deseas agregar nuevas preguntas o palabras a la base de datos, agrégalas en el archivo `crear_bd.py`. Luego, en vez de usar comandos de Git manualmente, simplemente:
+1. Da doble clic en el archivo **`subir.bat`** (solo Windows).
+2. Sigue las instrucciones en la consola para describir tu cambio.
+
+El script actualizará tu base de datos local para verificar que no haya errores de sintaxis, y luego subirá el código a GitHub de forma segura. El servidor en producción (ej. Render) detectará el cambio y usará su propio `npm start` para inyectar tus palabras nuevas en la base de datos viva sin borrar a los usuarios.
 ## 📂 Estructura del Proyecto
 
 ```text
