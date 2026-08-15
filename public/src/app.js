@@ -4,6 +4,55 @@
 
 let currentUser = null;
 
+// ─── Audio Manager ─────────────────────
+let globalAudioEnabled = false;
+let audioStarted = false;
+const bgMusic = new Audio('sounds/menu.mp3');
+bgMusic.loop = true;
+bgMusic.volume = 0.5;
+
+const deathSound = new Audio('sounds/muerte.mp3');
+deathSound.volume = 0.8;
+
+function initAudio() {
+  audioStarted = true;
+  globalAudioEnabled = true;
+  document.getElementById('globalAudioBtn').textContent = '🔊';
+  bgMusic.play().catch(e => console.log("Audio play prevented:", e));
+}
+
+function toggleGlobalAudio() {
+  if (!audioStarted) {
+    initAudio();
+    return;
+  }
+  globalAudioEnabled = !globalAudioEnabled;
+  if (globalAudioEnabled) {
+    document.getElementById('globalAudioBtn').textContent = '🔊';
+    bgMusic.play().catch(e => console.log("Audio play prevented:", e));
+  } else {
+    document.getElementById('globalAudioBtn').textContent = '🔇';
+    bgMusic.pause();
+  }
+}
+
+function changeBgMusic(trackName) {
+  const newSrc = 'sounds/' + trackName;
+  if (!bgMusic.src.endsWith(newSrc)) {
+    bgMusic.src = newSrc;
+    if (globalAudioEnabled) {
+      bgMusic.play().catch(e => console.log("Audio play prevented:", e));
+    }
+  }
+}
+
+function playDeathSound() {
+  if (globalAudioEnabled) {
+    deathSound.currentTime = 0;
+    deathSound.play().catch(e => console.log("Audio play prevented:", e));
+  }
+}
+
 // ─── Datos de juegos ───────────────────
 const allGames = [
   { emoji: '🔍', title: 'Sopa de Letras',    desc: 'Encontrá palabras ocultas en la grilla. Mientras más rápido, más puntos ganás.', tag: '⏱ Velocidad' },
@@ -77,6 +126,10 @@ function goTo(section) {
   // Restaurar HTML original de secciones de juego al volver a la grilla
   if (section === 'juegos') {
     ['preguntados', 'sopa', 'termina'].forEach(restoreOriginalSection);
+  }
+
+  if (['inicio', 'juegos', 'puntuacion'].includes(section)) {
+    if (typeof changeBgMusic === 'function') changeBgMusic('menu.mp3');
   }
 
   closeNav();
@@ -267,6 +320,7 @@ function guessLetter(letter) {
       ahorcadoState.revealed = word.split('');
       statusEl.textContent = '💀 ¡Perdiste! La palabra era: ' + word.toUpperCase();
       statusEl.className = 'ahorcado-status lose';
+      if (typeof playDeathSound === 'function') playDeathSound();
       guardarPuntaje(4, 50, tId); // 50 puntos consuelo
     }
   }
@@ -481,13 +535,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Restaurar sesión desde localStorage
   try {
-    const saved = localStorage.getItem('unigames_user');
-    if (saved) {
-      currentUser = JSON.parse(saved);
+    const savedUser = localStorage.getItem('unigames_user');
+    const savedToken = localStorage.getItem('unigames_token');
+    if (savedUser && savedToken) {
+      currentUser = JSON.parse(savedUser);
       updateAuthUI();
     }
   } catch (e) {
     localStorage.removeItem('unigames_user');
+    localStorage.removeItem('unigames_token');
   }
 
   // Guardar HTML original de secciones de juego (antes de que se modifiquen)
@@ -525,6 +581,7 @@ async function handleLogin(e) {
 
     if (res.ok) {
       currentUser = data.user;
+      localStorage.setItem('unigames_token', data.token);
       localStorage.setItem('unigames_user', JSON.stringify(currentUser));
       showAuthAlert('login-alert', '¡Bienvenido, ' + sanitizeHTML(data.user.username) + '!', 'success');
       updateAuthUI();
@@ -567,8 +624,12 @@ async function handleRegister(e) {
     const data = await res.json();
 
     if (res.ok) {
-      showAuthAlert('register-alert', '¡Cuenta creada! Ya podés iniciar sesión.', 'success');
-      setTimeout(() => switchTab('login'), 1200);
+      currentUser = data.user;
+      localStorage.setItem('unigames_token', data.token);
+      localStorage.setItem('unigames_user', JSON.stringify(currentUser));
+      showAuthAlert('register-alert', '¡Cuenta creada exitosamente! Sesión iniciada.', 'success');
+      updateAuthUI();
+      setTimeout(closeModal, 1200);
     } else {
       showAuthAlert('register-alert', data.error || 'Error al registrarse.', 'error');
     }
@@ -595,6 +656,7 @@ function updateAuthUI() {
 
 function logout() {
   currentUser = null;
+  localStorage.removeItem('unigames_token');
   localStorage.removeItem('unigames_user');
   updateAuthUI();
 }
@@ -710,11 +772,14 @@ async function fetchLeaderboardByGame(juegoId) {
 async function guardarPuntaje(juego_id, puntos, tematica_id) {
   if (!currentUser) return; // Solo guarda si hay sesión iniciada
   try {
+    const token = localStorage.getItem('unigames_token');
     await fetch('/api/partidas', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({
-        usuario_id: currentUser.id,
         juego_id: juego_id,
         tematica_id: tematica_id || null,
         puntos: puntos
@@ -861,6 +926,7 @@ function runnerJumpOrStart() {
 }
 
 function startRunner() {
+  if (typeof changeBgMusic === 'function') changeBgMusic('pixel-runner.mp3');
   // Reset estado
   const C = RUNNER.canvas;
   RUNNER.score = 0;
@@ -989,6 +1055,7 @@ function spawnObstacle(C) {
 function playerDie() {
   RUNNER.player.dead = true;
   RUNNER.running = false;
+  if (typeof playDeathSound === 'function') playDeathSound();
   if (RUNNER.raf) { cancelAnimationFrame(RUNNER.raf); RUNNER.raf = null; }
 
   if (RUNNER.score > RUNNER.bestScore) RUNNER.bestScore = RUNNER.score;

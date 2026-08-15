@@ -208,28 +208,34 @@ palabras_ahorcado_por_tematica = {
         'mercado', 'jardin', 'montana', 'desierto', 'oceano', 'biblioteca',
         'semaforo', 'paraguas', 'calendario', 'almohada', 'espejo',
         'chimenea', 'cocina', 'garage', 'zapato', 'sombrero', 'ventilador',
-        'escalera', 'lampara',
+        'escalera', 'lampara', 'computadora', 'televisor', 'cuchara',
+        'tenedor', 'cuchillo', 'campera', 'zapatillas', 'pantalon', 'reloj', 'cuaderno'
     ],
     1: [  # Videojuegos
         'pokemon', 'minecraft', 'videojuego', 'joystick', 'consola',
         'nintendo', 'playstation', 'fortnite', 'zelda', 'mario',
         'multijugador', 'control', 'pixeles', 'arcade', 'gamer',
+        'tetris', 'pacman', 'supermario', 'bloodborne', 'sekiro',
+        'skyrim', 'fallout', 'doom', 'mortal kombat'
     ],
     2: [  # Películas
         'pelicula', 'cinema', 'director', 'actor', 'guion', 'escena',
         'taquilla', 'estreno', 'subtitulos', 'protagonista', 'trailer',
-        'productor', 'hollywood', 'drama', 'comedia',
+        'productor', 'hollywood', 'drama', 'comedia', 'avatar', 'titanic',
+        'gladiador', 'matrix', 'rocky', 'terminator', 'alien', 'jurassic park', 'batman'
     ],
     3: [  # Anime
         'anime', 'naruto', 'manga', 'otaku', 'shonen', 'ninja', 'samurai',
         'kawaii', 'sensei', 'dragon', 'goku', 'cosplay', 'mecha',
-        'shinigami', 'mangaka',
+        'shinigami', 'mangaka', 'bleach', 'one piece', 'hunterxhunter',
+        'evangelion', 'sailormoon', 'akira', 'ghibli', 'jojos', 'my hero academia'
     ],
     4: [  # Programación
         'javascript', 'python', 'programacion', 'variable', 'funcion',
         'algoritmo', 'teclado', 'servidor', 'express', 'database',
         'frontend', 'backend', 'framework', 'react', 'github',
-        'terminal', 'interfaz',
+        'terminal', 'interfaz', 'html', 'css', 'typescript', 'angular',
+        'vue', 'linux', 'ubuntu', 'docker', 'kubernetes', 'aws'
     ],
 }
 
@@ -253,22 +259,26 @@ palabras_wordle_por_tematica = {
     1: [  # Videojuegos
         'minecraft', 'warcraft', 'fortnite', 'starcraft', 'nintendo',
         'katamari', 'overwatch', 'bayonetta', 'splatoon', 'terraria',
-        'runescape', 'halflife', 'valorant',
+        'runescape', 'halflife', 'valorant', 'tetris', 'pacman',
+        'skyrim', 'fallout', 'sekiro', 'roblox', 'tekken', 'mario', 'sonic'
     ],
     2: [  # Películas
         'thriller', 'comedia', 'suspenso', 'guionista', 'animacion',
         'documental', 'narrativa', 'fotografia', 'taquillera',
-        'productor', 'hollywood', 'cortometraje',
+        'productor', 'hollywood', 'cortometraje', 'avatar', 'titanic',
+        'matrix', 'rocky', 'alien', 'batman', 'marvel', 'oscar', 'shrek'
     ],
     3: [  # Anime
         'mangaka', 'shounen', 'doblaje', 'tsundere', 'shinigami',
         'subtitulado', 'temporada', 'personaje', 'protagonista',
-        'villano', 'cosplay', 'opening',
+        'villano', 'cosplay', 'opening', 'bleach', 'akira', 'ghibli',
+        'jojos', 'gintama', 'naruto', 'boruto', 'seinen', 'isekai'
     ],
     4: [  # Programación
         'algoritmo', 'variable', 'funcion', 'servidor', 'framework',
         'terminal', 'interfaz', 'database', 'frontend', 'backend',
-        'navegador', 'compilador', 'depuracion',
+        'navegador', 'compilador', 'depuracion', 'linux', 'docker',
+        'ubuntu', 'react', 'angular', 'github', 'agile', 'scrum', 'python'
     ],
 }
 

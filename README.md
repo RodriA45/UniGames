@@ -13,14 +13,20 @@
 
 ## 📖 Sobre el Proyecto
 
-**UniGames** es una aplicación web interactiva desarrollada en equipo, pensada para ofrecer una experiencia rápida y entretenida con mini juegos clásicos. Actualmente en desarrollo, la plataforma incluirá juegos como:
-- 🔍 Sopa de Letras
-- ❓ Preguntados
-- 🔤 Termina la Palabra
-- 🪢 Ahorcado
-- 🕵️ Adivina la Cosa
+**UniGames** es una aplicación web interactiva desarrollada en equipo como proyecto final, pensada para ofrecer una experiencia rápida y entretenida con mini juegos clásicos. Cuenta con distintos modos y temáticas (Videojuegos, Películas, Anime, Programación).
 
-El sistema cuenta con **registro y autenticación de usuarios**, y una **tabla de puntuaciones global** (Leaderboard) donde los jugadores pueden competir para alcanzar el primer puesto según la temática elegida (Videojuegos, Películas, Anime, etc.).
+Actualmente incluye:
+- 💀 **Ahorcado:** El clásico, con sistema de vidas y palabras por temática.
+- 🟩 **Adivina la Palabra (Wordle):** Modo difícil para adivinar palabras con pistas de colores.
+- 🕵️ **Adivina la Cosa:** Adivina el título/personaje usando pistas progresivas. Incluye imágenes que se des-pixelan dinámicamente con Canvas.
+- 🏃 **Pixel Runner:** Juego de carrera infinita con físicas y obstáculos, aumentando de velocidad.
+- *(En desarrollo)* Sopa de Letras, Preguntados, Termina la Palabra, Salto Traicionero.
+
+### 🛡️ Características Principales
+- **Autenticación Segura (JWT):** Login y registro usando Json Web Tokens guardados en `localStorage`. Las contraseñas se encriptan con `bcrypt`.
+- **Sistema de Audio:** Efectos de sonido y música de fondo dinámica que cambia según el juego, con un botón global de "Mute".
+- **Leaderboard Global:** Tabla de puntuaciones donde los jugadores compiten por el primer lugar en cada juego.
+- **Preparado para Deploy:** Configurado con variables de entorno (`.env`) listo para ser desplegado en servicios como **Render**. *(Nota: Actualmente usa SQLite para la presentación local, pero se planea migración a PostgreSQL para producción).*
 
 ## 🚀 Instalación y Uso Local
 
@@ -28,60 +34,67 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
 
 ### Requisitos previos
 - [Node.js](https://nodejs.org/) instalado (versión 18+ recomendada).
-- Python (Solo necesario si querés regenerar la base de datos desde cero).
+- Python (Solo necesario si querés regenerar o expandir la base de datos de palabras desde cero).
 
 ### Pasos
 
 1. **Clonar el repositorio:**
-   \`\`\`bash
+   ```bash
    git clone https://github.com/RodriA45/UniGames.git
    cd UniGames
-   \`\`\`
+   ```
 
 2. **Instalar dependencias:**
-   \`\`\`bash
+   ```bash
    npm install
-   \`\`\`
+   ```
 
-3. **Base de Datos:**
-   El proyecto usa SQLite. El archivo \`unigames.db\` se genera localmente para almacenar usuarios y puntajes. Si necesitás regenerarla, puedes usar el script de Python incluido:
-   \`\`\`bash
+3. **Variables de Entorno:**
+   Crea un archivo `.env` en la raíz del proyecto y agrega tu secreto para JWT:
+   ```env
+   JWT_SECRET=tu_clave_secreta_super_segura
+   ```
+
+4. **Base de Datos:**
+   El proyecto usa `sqlite` con Promesas. El archivo `unigames.db` se genera localmente. Para poblarlo con todas las palabras y temáticas:
+   ```bash
    python crear_bd.py
-   \`\`\`
+   ```
 
-4. **Iniciar el Servidor:**
-   \`\`\`bash
+5. **Iniciar el Servidor:**
+   ```bash
    node server.js
-   \`\`\`
-   *(Alternativa en Windows: puedes hacer doble clic en el archivo \`iniciar.bat\` que levantará el servidor y abrirá el navegador automáticamente).*
+   ```
+   *(Alternativa en Windows: doble clic en el archivo `iniciar.bat`).*
 
-5. **Jugar:**
+6. **Jugar:**
    Abre tu navegador en [http://localhost:3000](http://localhost:3000).
 
 ## 📂 Estructura del Proyecto
 
-\`\`\`text
+```text
 UniGames/
 │
 ├── public/                 # Archivos Estáticos (Frontend)
-│   ├── src/                # Scripts y Estilos del cliente
+│   ├── src/                # Scripts y Estilos del cliente (app.js, styles.css)
+│   ├── logos/              # Imágenes para "Adivina la Cosa"
+│   ├── sounds/             # Efectos de sonido y música (.mp3)
 │   └── index.html          # Vista principal y punto de entrada SPA
 │
-├── server.js               # Servidor Backend (API REST con Express)
-├── crear_bd.py             # Script para generar las tablas en SQLite
+├── server.js               # Servidor Backend (API REST con Express, Async/Await)
+├── crear_bd.py             # Script para generar las tablas y diccionarios de palabras
+├── .env                    # Variables de entorno (no subido a GitHub)
 ├── iniciar.bat             # Acceso directo para inicializar en Windows
-├── package.json            # Configuración de dependencias de Node
-└── .gitignore              # Archivos excluidos de Git (node_modules, *.db)
-\`\`\`
+└── package.json            # Configuración de dependencias (express, sqlite, jsonwebtoken...)
+```
 
-## 🔌 Endpoints de la API
+## 🔌 Endpoints de la API (Protegida)
 
-El backend provee la siguiente API REST para la comunicación con el cliente:
-- \`POST /api/register\`: Registra un usuario nuevo con contraseña encriptada (bcrypt).
-- \`POST /api/login\`: Verifica las credenciales e inicia sesión.
-- \`GET /api/leaderboard\`: Devuelve el top 10 de jugadores globales.
-- \`POST /api/partidas\`: Guarda el puntaje obtenido por un usuario en un juego y temática.
+- `POST /api/register`: Registra usuario y devuelve un token JWT.
+- `POST /api/login`: Verifica credenciales y devuelve token JWT.
+- `GET /api/leaderboard`: Devuelve el top de jugadores globales.
+- `POST /api/partidas`: Guarda el puntaje. **(Requiere header `Authorization: Bearer <token>`)**
 
 ---
 
-<p align="center">Desarrollado para jugar y aprender.</p>
+<p align="center">Desarrollado en equipo para aprender y jugar.</p>
