@@ -55,12 +55,12 @@ function playDeathSound() {
 
 // ─── Datos de juegos ───────────────────
 const allGames = [
-  { emoji: '🔍', title: 'Sopa de Letras',    desc: 'Encontrá palabras ocultas en la grilla. Mientras más rápido, más puntos ganás.', tag: '⏱ Velocidad' },
-  { emoji: '❓', title: 'Preguntados',        desc: 'Trivia de múltiple opción. Respondé preguntas sobre tu temática favorita.',       tag: '🧠 Trivia'    },
-  { emoji: '🔤', title: 'Termina la Palabra', desc: 'Adiviná la palabra incompleta. Tenés solo 5 intentos. ¡Pensá bien!',             tag: '🎯 5 intentos' },
-  { emoji: '💀', title: 'Ahorcado',           desc: 'El clásico de siempre, ahora con temáticas. Letra por letra antes de que se complete el dibujo.', tag: '⚡ Clásico'   },
-  { emoji: '🕵️', title: 'Adivina la Cosa',   desc: 'Pistas progresivas para adivinar un juego, película, actor o anime.',           tag: '🔎 Pistas'    },
-  { emoji: '🟩', title: 'Adivina la Palabra', desc: 'Modo difícil estilo Wordle. 5 intentos, colores que te dan pistas letra por letra.', tag: '🔥 Hard'     },
+  { id: 'sopa', emoji: '🔍', title: 'Sopa de Letras',    desc: 'Encontrá palabras ocultas en la grilla. Mientras más rápido, más puntos ganás.', tag: '⏱ Velocidad' },
+  { id: 'preguntados', emoji: '❓', title: 'Preguntados',        desc: 'Trivia de múltiple opción. Respondé preguntas sobre tu temática favorita.',       tag: '🧠 Trivia'    },
+  { id: 'termina', emoji: '🔤', title: 'Termina la Palabra', desc: 'Adiviná la palabra incompleta. Tenés solo 5 intentos. ¡Pensá bien!',             tag: '🎯 5 intentos' },
+  { id: 'ahorcado', emoji: '💀', title: 'Ahorcado',           desc: 'El clásico de siempre, ahora con temáticas. Letra por letra antes de que se complete el dibujo.', tag: '⚡ Clásico'   },
+  { id: 'adivina', emoji: '🕵️', title: 'Adivina la Cosa',   desc: 'Pistas progresivas para adivinar un juego, película, actor o anime.',           tag: '🔎 Pistas'    },
+  { id: 'wordle', emoji: '🟩', title: 'Adivina la Palabra', desc: 'Modo difícil estilo Wordle. 5 intentos, colores que te dan pistas letra por letra.', tag: '🔥 Hard'     },
 ];
 
 // ─── Utilidades ────────────────────────
@@ -78,7 +78,7 @@ function sanitizeHTML(str) {
 function renderFeatured() {
   const three = shuffle(allGames).slice(0, 3);
   document.getElementById('featuredGrid').innerHTML = three.map(g => `
-    <div class="game-card" onclick="goTo('juegos')">
+    <div class="game-card" onclick="scrollToGame('${g.id}')">
       <div class="card-emoji">${g.emoji}</div>
       <div class="card-title">${g.title}</div>
       <p class="card-desc">${g.desc}</p>
@@ -86,6 +86,23 @@ function renderFeatured() {
       <button class="btn-play">▶ Jugar ahora</button>
     </div>
   `).join('');
+}
+
+function scrollToGame(gameId) {
+  goTo('juegos');
+  setTimeout(() => {
+    const card = document.getElementById('card-' + gameId);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.style.transition = 'transform 0.3s, box-shadow 0.3s';
+      card.style.transform = 'scale(1.02)';
+      card.style.boxShadow = '0 0 20px rgba(255,255,255,0.2)';
+      setTimeout(() => {
+        card.style.transform = 'none';
+        card.style.boxShadow = 'none';
+      }, 1500);
+    }
+  }, 100);
 }
 
 // ─── Guardar HTML original de secciones que reemplazan su contenido ───
