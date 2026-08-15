@@ -29,6 +29,11 @@
       🔇
     </div>
 
+    <!-- Info -->
+    <div class="info-toggle" style="cursor: pointer; font-size: 1.5rem; margin-right: 1rem;" onclick="openInfoModal()" title="Acerca del Proyecto">
+      ℹ️
+    </div>
+
     <!-- Autenticación -->
     <div class="auth-area" id="authArea">
       <button class="btn-auth btn-login"    onclick="openModal('login')">Iniciar sesión</button>
@@ -834,6 +839,84 @@
       <div class="auth-switch-link">¿Ya tenés cuenta? <button onclick="switchTab('login')">Iniciá sesión</button></div>
     </div>
 
+  </div>
+</div>
+
+<!-- MODAL DE INFO / CRÉDITOS -->
+<div class="info-overlay" id="infoOverlay">
+  <div class="info-modal">
+    <button class="info-close" onclick="closeInfoModal()">✖</button>
+    
+    <!-- PÁGINA 1: ACERCA DEL PROYECTO -->
+    <div class="info-page active" id="infoPage1">
+      <h2>🎓 Acerca del Proyecto</h2>
+      <p class="info-subtitle">Proyecto Integrador Final - <b>UniGames</b></p>
+      <div class="info-content-box">
+        <p><b>Universidad Tecnológica Nacional (UTN) - Facultad Regional Tucumán</b></p>
+        <p><b>Carrera:</b> Tecnicatura Universitaria en Programación</p>
+        <p><b>Materia:</b> Desarrollo Web Full Stack & Base de Datos II</p>
+        <p style="margin-top:10px;"><b>Resumen:</b> UniGames es una Plataforma Web de Minijuegos Didácticos implementada como una Single Page Application (SPA). Diseñada con arquitectura Full-Stack cliente-servidor para fomentar la agilidad mental y mejorar el vocabulario.</p>
+      </div>
+    </div>
+
+    <!-- PÁGINA 2: TECNOLOGÍAS CLAVE -->
+    <div class="info-page" id="infoPage2">
+      <h2>💻 Tecnologías Clave</h2>
+      <p class="info-subtitle">Arquitectura y Herramientas</p>
+      <div class="info-content-box info-grid">
+        <div class="info-tech-item"><span>🎨</span> <b>Frontend:</b> SPA construida con HTML5, CSS3, JavaScript ES6+ e interfaz Glassmorphism.</div>
+        <div class="info-tech-item"><span>⚙️</span> <b>Backend:</b> API REST robusta en Node.js con Express.</div>
+        <div class="info-tech-item"><span>🔒</span> <b>Seguridad:</b> Autenticación JWT y encriptación Bcrypt.</div>
+        <div class="info-tech-item"><span>🗄️</span> <b>Base de Datos:</b> SQLite (Modelo normalizado 3FN) con integridad referencial.</div>
+        <div class="info-tech-item"><span>🏗️</span> <b>Patrones:</b> Arquitectura POO (herencia/polimorfismo) y metodología ágil Scrum.</div>
+      </div>
+    </div>
+
+    <!-- PÁGINA 3: EQUIPO -->
+    <div class="info-page" id="infoPage3">
+      <h2>👨‍💻 Equipo de Desarrollo</h2>
+      <p class="info-subtitle">Estudiantes a cargo del proyecto</p>
+      <div class="info-content-box team-list">
+        <div class="team-member">
+          <div class="team-avatar">👨‍💻</div>
+          <div><b>Rodrigo Antunez</b><br><span>Backend / Scrum Master</span></div>
+        </div>
+        <div class="team-member">
+          <div class="team-avatar">👨‍💻</div>
+          <div><b>Veliz Santiago</b><br><span>QA Testing / Product Owner</span></div>
+        </div>
+        <div class="team-member">
+          <div class="team-avatar">👨‍💻</div>
+          <div><b>Juarez Kevin</b><br><span>Frontend / UI·UX</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PÁGINA 4: TUTORIAL -->
+    <div class="info-page" id="infoPage4">
+      <h2>🎮 Tutorial Rápido</h2>
+      <p class="info-subtitle">¿Cómo usar UniGames?</p>
+      <div class="info-content-box">
+        <ul class="info-tutorial-list">
+          <li><b>1. Elegí un juego:</b> Navegá por el catálogo en la pantalla principal.</li>
+          <li><b>2. Seleccioná temática:</b> Antes de jugar (ej. Preguntados, Ahorcado), podés filtrar por Videojuegos, Películas, Anime o Programación.</li>
+          <li><b>3. Compite:</b> Registrate e iniciá sesión para guardar tus récords. Los mejores puntajes aparecen en la <i>Leaderboard Global</i>.</li>
+          <li><b>4. Tip Pro:</b> Cuanto más rápido respondas y menos vidas o pistas uses, ¡más puntos sumarás!</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- CONTROLES DE PAGINACIÓN -->
+    <div class="info-nav">
+      <button class="info-btn-nav" onclick="changeInfoPage(-1)">◀ Atrás</button>
+      <div class="info-dots" id="infoDots">
+        <span class="dot active"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+        <span class="dot"></span>
+      </div>
+      <button class="info-btn-nav" onclick="changeInfoPage(1)">Siguiente ▶</button>
+    </div>
   </div>
 </div>
 
