@@ -240,7 +240,83 @@ main {
   display: inline-block;
 }
 
-/* Grid de juegos destacados */
+/* --- Menú de Inicio --- */
+.inicio-container {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  text-align: center;
+}
+
+.inicio-portada {
+  width: 100%;
+  height: 400px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  margin-bottom: 2rem;
+  border-radius: 24px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.inicio-portada::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  border-radius: 24px;
+}
+
+.inicio-título {
+  position: absolute;
+  top: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(24px, 6vw, 36px);
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0,0,0,0.8);
+  margin: 0;
+}
+
+.inicio-botones {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-inicio {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(12px, 1.5vw, 16px);
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 14px rgba(99,102,241,0.4);
+}
+
+.btn-inicio:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(99,102,241,0.5);
+}
+
+.btn-inicio:active {
+  transform: translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .inicio-portada { height: 250px; }
+  .inicio-título { font-size: clamp(18px, 8vw, 28px); }
+  .inicio-botones { gap: 0.5rem; }
+  .btn-inicio { padding: 0.5rem 1rem; font-size: clamp(10px, 2vw, 14px); }
+}
 .featured-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -712,9 +788,10 @@ footer span { color: var(--yellow); }
 
 /* ─── PIXEL RUNNER ─── */
 .runner-score-display {
-  flex-basis: 100%;
-  margin-left: auto;
-  margin-top: 0.4rem;
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 5;
   font-family: 'Press Start 2P', monospace;
   font-size: 11px;
   color: var(--blue-dark);
@@ -722,6 +799,7 @@ footer span { color: var(--yellow); }
   padding: 0.4rem 0.9rem;
   border-radius: 20px;
   width: fit-content;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
 }
 
 .runner-container {
@@ -729,6 +807,7 @@ footer span { color: var(--yellow); }
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
+  aspect-ratio: 480 / 270;
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(15,30,61,0.25);
@@ -740,6 +819,7 @@ footer span { color: var(--yellow); }
 #runnerCanvas {
   display: block;
   width: 100%;
+  height: 100%;
   image-rendering: pixelated;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
@@ -853,6 +933,12 @@ footer span { color: var(--yellow); }
   .runner-container {
     border-radius: 10px;
   }
+  .runner-score-display {
+    top: 0.4rem;
+    left: 0.4rem;
+    font-size: 8px;
+    padding: 0.3rem 0.6rem;
+  }
   .runner-overlay-box {
     gap: 0.3rem;
     padding: 0.5rem;
@@ -887,7 +973,7 @@ footer span { color: var(--yellow); }
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(76,29,149,0.35);
   border: 3px solid #4c1d95;
-  background: #150620;
+  background: #150620 url('assert/Castle Escape/back1.jpg') center/cover no-repeat;
   overscroll-behavior: contain;
 }
 
@@ -935,6 +1021,7 @@ footer span { color: var(--yellow); }
   color: rgba(255,255,255,0.8);
   line-height: 1.6;
   text-align: center;
+  white-space: pre-line;
 }
 .trampas-start-btn {
   background: #facc15;
@@ -965,7 +1052,8 @@ footer span { color: var(--yellow); }
     border-radius: 12px;
     border-width: 3px;
   }
-  .trampas-container {
+  .trampas-container,
+  .trampas-menu {
     border-radius: 10px;
   }
   .trampas-overlay-sub {
@@ -987,10 +1075,23 @@ footer span { color: var(--yellow); }
   justify-content: center;
   gap: 1rem;
   padding: 2rem;
-  min-height: 60vh;
-  background: linear-gradient(180deg, #2a0e37 0%, #150620 100%);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 800px;
+  aspect-ratio: 480 / 270;
+  margin: 0 auto;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(76,29,149,0.35);
+  border: 3px solid #4c1d95;
+  background: linear-gradient(180deg, rgba(42,14,55,0.82) 0%, rgba(21,6,32,0.9) 100%), url('/assert/Castle Escape/menu.jpg') center/cover no-repeat;
 }
 .trampas-menu.hidden { display: none; }
+
+/* Menú principal: sin overlay morado, se ve la imagen limpia */
+#trampasMainMenu {
+  background: url('/assert/Castle Escape/menu.jpg') center/cover no-repeat;
+}
 
 .trampas-menu-title {
   font-family: 'Press Start 2P', monospace;
@@ -1201,6 +1302,11 @@ footer span { color: var(--yellow); }
   line-height: 1;
 }
 .trampas-hud-btn:hover { background: rgba(250,204,21,0.2); }
+.trampas-hud-left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 .trampas-hud-info {
   display: flex;
   gap: 10px;
@@ -2273,3 +2379,272 @@ footer span { color: var(--yellow); }
   background: var(--primary);
   box-shadow: 0 0 8px var(--primary);
 }
+
+/* ─── CASTLE ESCAPE ─── */
+.castle-escape-container {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.castle-escape-level-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+
+/* Lienzo del juego: capa 1, por encima del fondo (capa 0) */
+#castleEscapeCanvas {
+  position: relative;
+  z-index: 1;
+  display: block;
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  image-rendering: pixelated;
+  touch-action: none;
+}
+
+.castle-escape-header {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  border-bottom: 2px solid #4c1d95;
+}
+
+.castle-escape-header .game-screen-title {
+  font-family: 'Press Start 2P', monospace;
+  color: #fff;
+  margin: 0;
+}
+
+.castle-escape-menu {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  padding: 2rem;
+}
+
+.castle-escape-menu.hidden { display: none; }
+
+.castle-escape-menu-background {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  border-radius: 16px;
+  margin-bottom: 1rem;
+}
+
+.castle-escape-menu-content {
+  text-align: center;
+  color: #fff;
+}
+
+.castle-escape-menu-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(24px, 6vw, 36px);
+  margin-bottom: 0.5rem;
+  text-shadow: 0 0 10px rgba(0,0,0,0.8);
+}
+
+.castle-escape-menu-sub {
+  font-size: 0.9rem;
+  opacity: 0.8;
+  margin-bottom: 1.5rem;
+}
+
+.castle-escape-pause-menu {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(145deg, #2a0e37, #1a0a28);
+  border: 2px solid #4c1d95;
+  border-radius: 16px;
+  padding: 2rem 1.5rem;
+  color: #fff;
+  z-index: 30;
+  min-width: 200px;
+  text-align: center;
+}
+
+.castle-escape-pause-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  margin-bottom: 1rem;
+}
+
+.castle-escape-pause-opt {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  border: 2px solid #7c3aed;
+  padding: 0.6rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin: 0.5rem;
+  width: auto;
+  transition: all 0.2s;
+}
+.castle-escape-pause-opt:hover {
+  background: #7c3aed;
+  color: #fff;
+}
+
+.castle-escape-result {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.85);
+  border: 2px solid #4c1d95;
+  border-radius: 16px;
+  padding: 2rem;
+  color: #fff;
+  z-index: 30;
+  min-width: 250px;
+  text-align: center;
+}
+
+.castle-escape-result-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 24px;
+  margin-bottom: 1rem;
+}
+
+.castle-escape-result-text {
+  font-size: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.castle-escape-hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 0.75rem 1rem;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #4c1d95;
+}
+
+.castle-escape-hud-info {
+  display: flex;
+  gap: 1rem;
+  color: #fff;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.castle-escape-hud-score {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #facc15;
+}
+
+.castle-escape-mute-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.castle-escape-mute-btn:hover { color: #facc15; }
+
+@media (max-width: 768px) {
+  .castle-escape-header { padding: 0.75rem 1rem; }
+  .castle-escape-hud { padding: 0.5rem 1rem; }
+  .castle-escape-hud-info { gap: 0.5rem; }
+  .castle-escape-hud-score { font-size: 0.8rem; }
+  .castle-escape-mute-btn { font-size: 1rem; padding: 0.2rem 0.5rem; }
+  .castle-escape-pause-box { padding: 1rem 1rem; }
+  .castle-escape-pause-opt { padding: 0.4rem 1rem; font-size: 0.75rem; }
+}
+
+@media (max-width: 480px) {
+  .castle-escape-menu-title { font-size: clamp(18px, 8vw, 28px); }
+  .castle-escape-pause-title { font-size: 14px; }
+  .castle-escape-result { padding: 1rem; }
+  .castle-escape-result-title { font-size: 18px; }
+}
+
+/* ══════════════════════════════════════
+   PIXEL RUNNER — MENÚ DEL JUEGO
+   (overlay dentro del runner-container)
+   ══════════════════════════════════════ */
+.runner-menu {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 20;
+}
+
+.runner-menu.hidden { display: none; }
+
+.runner-menu-background {
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  background-size: cover;
+  background-position: center;
+}
+
+.runner-menu-content {
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+}
+
+.runner-menu-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(24px, 6vw, 36px);
+  margin-bottom: 0.5rem;
+}
+
+.runner-menu-sub {
+  font-size: 0.9rem;
+  opacity: 0.85;
+  margin-bottom: 1.5rem;
+}
+
+.runner-menu-buttons,
+.castle-escape-menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.runner-menu-buttons .btn-play,
+.castle-escape-menu-buttons .btn-play { min-width: 200px; }
+
+.runner-btn-secondary {
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+.runner-btn-secondary:hover { background: rgba(255, 255, 255, 0.25); }

@@ -221,19 +221,19 @@
         </div>
       </div>
 
-      <!-- Salto Traicionero -->
-      <div class="game-card-full" id="card-trampas">
+      <!-- Castle Escape -->
+      <div class="game-card-full" id="card-castle_escape">
         <div class="card-header-band" style="background: linear-gradient(135deg, #2a0e37, #4c1d95);">
-          <span class="card-emoji">🪤</span>
-          <span class="card-title" style="color:#facc15;">Salto Traicionero</span>
+          <span class="card-emoji">🏰</span>
+          <span class="card-title" style="color:#facc15;">Castle Escape</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">Plataformas con trampas escondidas: pisos falsos, flechas en la pared y sorpresas que no son lo que parecen. Morís, revivís al instante y lo volvés a intentar. 5 niveles.</p>
+          <p class="card-desc">Aventuras en el castillo: saltá plataformas, esquivá trampas y llegá a la salida de cada nivel. 2 fondos distintos y música propia.</p>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
-            <span class="card-tag">🪤 Trampas ocultas</span>
-            <span class="card-tag">🔁 Reintento instantáneo</span>
+            <span class="card-tag">🏰 2 niveles</span>
+            <span class="card-tag">🎵 Música propia</span>
           </div>
-          <button class="btn-play" onclick="launchGame('trampas', this)" style="background:#facc15;color:#2a0e37;font-weight:900;">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('castle_escape', this)" style="background:#facc15;color:#2a0e37;font-weight:900;">▶ Jugar</button>
         </div>
       </div>
 
@@ -463,13 +463,28 @@
   <!-- ── SECCIÓN: PIXEL RUNNER ── -->
   <section class="section" id="sec-runner">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="stopRunner(); goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="stopRunner(); goTo('inicio')">← Volver al menú</button>
       <div class="game-screen-title" style="font-family:'Press Start 2P',monospace;color:#0f1e3d;">🏃 Pixel Runner</div>
-      <div class="runner-score-display">Puntos: <span id="runner-score-display">0</span></div>
     </div>
 
     <div class="runner-container">
+      <div class="runner-score-display">Puntos: <span id="runner-score-display">0</span></div>
       <canvas id="runnerCanvas"></canvas>
+      <!-- Pantalla de menú del juego (Pixel Runner) -->
+      <div class="runner-menu" id="runnerMenu">
+        <div class="runner-menu-background" style="background-image: url('assert/pixel runner/menu.jpg'); background-size: cover; background-position: center;">
+          <div class="runner-menu-content">
+            <h2 class="runner-menu-title">Pixel Runner</h2>
+            <p class="runner-menu-sub">Corré, saltá y esquivá obstáculos</p>
+            <div class="runner-menu-buttons">
+              <button class="btn-play" onclick="startPixelRunnerGame()">▶ Jugar</button>
+              <button class="btn-play runner-btn-secondary" onclick="mostrarAjustes()">⚙️ Ajuste</button>
+              <button class="btn-play runner-btn-secondary" onclick="mostrarComoJugar()">📋 Cómo jugar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="runner-overlay" id="runnerOverlay">
         <div class="runner-overlay-box">
           <div class="runner-char-preview">
@@ -497,7 +512,10 @@
           <p class="runner-overlay-title" id="runnerOverlayTitle">¡Pixel Runner!</p>
           <p class="runner-overlay-sub" id="runnerOverlaySub">↑ Saltar &nbsp;·&nbsp; ↓ Caída rápida<br>Doble salto disponible</p>
           <p class="runner-best" id="runnerBest"></p>
-          <button class="btn-play runner-start-btn" id="runnerStartBtn" onclick="startRunner()">▶ Empezar</button>
+          <div class="runner-gameover-buttons">
+            <button class="btn-play runner-restart-btn" id="runnerRestartBtn" onclick="restartRunner()">▶ Jugar de nuevo</button>
+            <button class="btn-play runner-menu-btn" id="runnerMenuBtn" onclick="toRunnerMenu()">Volver al menú</button>
+          </div>
         </div>
       </div>
     </div>
@@ -512,12 +530,12 @@
     <p class="runner-hint">↑ Saltar (doble salto) &nbsp;·&nbsp; ↓ Caída rápida &nbsp;·&nbsp; +vel cada 250 pts</p>
   </section>
 
-  <!-- ── SECCIÓN: SALTO TRAICIONERO ── -->
-  <section class="section" id="sec-trampas">
+  <!-- ── SECCIÓN: CASTLE ESCAPE ── -->
+  <section class="section" id="sec-castle_escape">
     <!-- Menú Principal -->
     <div class="trampas-menu" id="trampasMainMenu">
-      <div class="trampas-menu-title">🪤 Salto Traicionero</div>
-      <div class="trampas-menu-subtitle">No todo lo que ves es seguro.</div>
+      <div class="trampas-menu-title">🏰 Castle Escape</div>
+      <div class="trampas-menu-subtitle">11 niveles de pura trampa. ¡Encuentra la salida!</div>
       <button class="trampas-menu-btn" onclick="trShowLevelSelect()">▶ Jugar</button>
       <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowSettings()">⚙ Ajustes</button>
     </div>
@@ -561,7 +579,10 @@
 
         <!-- HUD superpuesto al juego -->
         <div class="trampas-hud">
-          <button class="trampas-hud-btn" onclick="trPauseGame()">☰</button>
+          <div class="trampas-hud-left">
+            <button class="trampas-hud-btn" onclick="trPauseGame()">⏸</button>
+            <button class="trampas-hud-btn" onclick="toggleCastleMusic()" title="Mute música">🔊</button>
+          </div>
           <div class="trampas-hud-info">
             <span class="trampas-hud-stars" id="trampas-hud-stars"></span>
             <span class="trampas-hud-deaths" id="trampas-hud-deaths">💀 0</span>
@@ -571,7 +592,7 @@
         <!-- Overlay de inicio/nivel -->
         <div class="trampas-overlay" id="trampasOverlay">
           <div class="trampas-overlay-box">
-            <p class="trampas-overlay-title" id="trampasOverlayTitle">🪤 Salto Traicionero</p>
+            <p class="trampas-overlay-title" id="trampasOverlayTitle">🏰 Castle Escape</p>
             <p class="trampas-overlay-sub" id="trampasOverlaySub">No todo lo que ves es seguro.</p>
             <button class="btn-play trampas-start-btn" id="trampasStartBtn" onclick="startTrampas()">▶ Empezar</button>
           </div>

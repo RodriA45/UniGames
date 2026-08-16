@@ -1,0 +1,19 @@
+--- work/public/public/src/app.js	2026-08-16 11:02:05.262998000 +0000
++++ fixed/src/app.js	2026-08-16 11:15:12.246054754 +0000
+@@ -1195,6 +1195,7 @@
+ function playerDie() {
+   RUNNER.player.dead = true;
+   RUNNER.running = false;
++  bgMusic.pause();
+   if (typeof playDeathSound === 'function') playDeathSound();
+   if (RUNNER.raf) { cancelAnimationFrame(RUNNER.raf); RUNNER.raf = null; }
+ 
+@@ -1944,7 +1945,7 @@
+   if (TRAMPAS.keyHandlerUp)   document.removeEventListener('keyup', TRAMPAS.keyHandlerUp);
+ 
+   TRAMPAS.keyHandlerDown = function(e) {
+-    if (!document.getElementById('sec-trampas').classList.contains('active')) return;
++    if (!document.getElementById('sec-castle_escape').classList.contains('active')) return;
+     if (['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW'].includes(e.code)) e.preventDefault();
+     if (e.code === 'ArrowLeft'  || e.code === 'KeyA') TRAMPAS.keys.left  = true;
+     if (e.code === 'ArrowRight' || e.code === 'KeyD') TRAMPAS.keys.right = true;

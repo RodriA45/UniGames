@@ -7,12 +7,25 @@ let currentUser = null;
 // ─── Audio Manager ─────────────────────
 let globalAudioEnabled = false;
 let audioStarted = false;
-const bgMusic = new Audio('sounds/menu.mp3');
+let pageMusicMuted = false;
+const bgMusic = new Audio('assert/menu.mp3');
 bgMusic.loop = true;
 bgMusic.volume = 0.5;
 
 const deathSound = new Audio('sounds/muerte.mp3');
 deathSound.volume = 0.8;
+
+const gameMusicMap = {
+  runner: 'pixel-runner.mp3',
+  castle_escape: 'backsong.mp3',
+  sopa: null,
+  ahorcado: null,
+  wordle: null,
+  trampas: null,
+  adivina: null,
+  termina: null,
+  preguntados: null
+};
 
 function initAudio() {
   audioStarted = true;
@@ -30,6 +43,9 @@ function toggleGlobalAudio() {
   if (globalAudioEnabled) {
     document.getElementById('globalAudioBtn').textContent = '🔊';
     bgMusic.play().catch(e => console.log("Audio play prevented:", e));
+    if (pageMusicMuted) {
+      unmutepageMusic();
+    }
   } else {
     document.getElementById('globalAudioBtn').textContent = '🔇';
     bgMusic.pause();
@@ -37,12 +53,44 @@ function toggleGlobalAudio() {
 }
 
 function changeBgMusic(trackName) {
-  const newSrc = 'sounds/' + trackName;
-  if (!bgMusic.src.endsWith(newSrc)) {
-    bgMusic.src = newSrc;
-    if (globalAudioEnabled) {
-      bgMusic.play().catch(e => console.log("Audio play prevented:", e));
-    }
+  // trackName puede venir con o sin ruta
+  // Si ya tiene assert/ o sounds/, usarlo tal cual, si no, prefijo assert/
+  let newSrc;
+  if (trackName.startsWith('assert/')) {
+    newSrc = trackName;
+  } else if (trackName.startsWith('sounds/')) {
+    newSrc = 'assert/' + trackName;
+  } else {
+    newSrc = 'assert/' + trackName;
+  }
+  setMusic(newSrc);
+}
+
+// Reproduce una pista de música de fondo (menú o juego).
+// Solo cambia el src si es distinto para no reiniciar la reproducción,
+// y siempre intenta reproducir (dentro de un gesto del usuario).
+let currentMusicSrc = null;
+function setMusic(src) {
+  if (currentMusicSrc !== src) {
+    currentMusicSrc = src;
+    bgMusic.src = src;
+  }
+  bgMusic.loop = true;
+  bgMusic.volume = 0.5;
+  if (globalAudioEnabled) {
+    bgMusic.play().catch(e => console.log("Audio play prevented:", e));
+  }
+}
+
+function mutePageMusic() {
+  pageMusicMuted = true;
+  bgMusic.pause();
+}
+
+function unmutepageMusic() {
+  pageMusicMuted = false;
+  if (globalAudioEnabled) {
+    bgMusic.play().catch(e => console.log("Audio play prevented:", e));
   }
 }
 
@@ -149,8 +197,14 @@ function goTo(section) {
     ['preguntados', 'sopa', 'termina'].forEach(restoreOriginalSection);
   }
 
-  if (['inicio', 'juegos', 'puntuacion'].includes(section)) {
+if (section === 'runner' || section === 'castle_escape') {
+    // Estos juegos manejan su propia música; pausamos la música ambiente de la página
+    mutePageMusic();
+    if (section === 'castle_escape' && typeof initTrampas === 'function') initTrampas();
+  } else {
+    // Cualquier otra sección usa la música ambiente del sitio: la reactivamos
     if (typeof changeBgMusic === 'function') changeBgMusic('menu.mp3');
+    unmutepageMusic();
   }
 
   closeNav();
@@ -169,6 +223,18 @@ hamburger.addEventListener('click', () => {
 function closeNav() {
   hamburger.classList.remove('open');
   navMenu.classList.remove('open');
+}
+
+function iniciarJuego(gameKey) {
+  launchGame(gameKey, null);
+}
+
+function mostrarAjustes() {
+  alert('⚙️ Ajustes\n\nEste apartado se abrirá en una próxima actualización.');
+}
+
+function mostrarComoJugar() {
+  alert('📋 Cómo jugar\n\n1. Seleccioná un juego de la lista\n2. Elegí tu temática preferida\n3. Presioná ▶ Jugar\n4. Usá las flechas o controles táctiles\n5. ¡Evitá los obstáculos y tratá de llegar lo más lejos posible!\n\nBuena suerte y diviertete!');
 }
 
 // ─── Modal login / registro ────────────
@@ -211,10 +277,10 @@ function proximamente() {
 
 // ─── Lanzar juego desde la card ────────
 function launchGame(gameKey, btn) {
-  const card = btn.closest('.game-card-full');
+  const card = btn ? btn.closest('.game-card-full') : null;
   const selected = card ? card.querySelector('.theme-btn.selected') : null;
   const theme = selected ? selected.textContent.trim() : null;
-  const tematicaId = selected ? selected.dataset.tematica : null;
+  const tematicaId = card ? card.querySelector('.theme-btn.selected')?.dataset.tematica : null;
 
   goTo(gameKey);
 
@@ -224,8 +290,7 @@ function launchGame(gameKey, btn) {
 
   if (gameKey === 'ahorcado')    initAhorcado(tematicaId);
   if (gameKey === 'wordle')      initWordle(tematicaId);
-  if (gameKey === 'runner')      initRunner();
-  if (gameKey === 'trampas')     initTrampas();
+  if (gameKey === 'runner')      showRunnerMenu();
   if (gameKey === 'preguntados') {
     const tId = tematicaId && /^\d+$/.test(tematicaId) ? Number(tematicaId) : TEMATICA_MAP[theme] || 1;
     initPreguntados(tId);
@@ -611,6 +676,9 @@ document.addEventListener('DOMContentLoaded', () => {
     a.addEventListener('click', e => e.preventDefault());
   });
 
+  // Inicializar audio al cargar la página
+  initAudio();
+
   // Cargar tabla de posiciones desde la API
   fetchLeaderboard();
 });
@@ -860,14 +928,14 @@ const RUNNER = {
 
   // Personaje
   player: {
-    x: 90, y: 0, w: 32, h: 48,
+    x: 90, y: 0, w: 34, h: 40,
     vy: 0, jumps: 0, maxJumps: 2,
     dead: false, animFrame: 0, animTick: 0,
     groundY: 0,
   },
 
   // Suelo y cielo
-  groundH: 24, skyH: 24,
+  groundH: 34, skyH: 30,
 
   // Obstáculos activos
   obstacles: [],
@@ -884,16 +952,15 @@ function initRunner() {
   requestAnimationFrame(() => {
     const C = RUNNER.canvas;
 
-    // Tamaño responsivo — fallback a window.innerWidth si clientWidth es 0
-    const containerW = C.parentElement.clientWidth || Math.min(window.innerWidth - 32, 800);
-    const W = Math.min(containerW, 800);
-    const isMobile = window.innerWidth <= 480;
+    // Resolución interna igual a Castle Escape (480x270) para que el
+    // contenedor (mismo tamaño/aspecto en ambos juegos) no estire la imagen.
+    const W = 480, H = 270;
     C.width  = W;
-    C.height = Math.round(W * (isMobile ? 0.52 : 0.38));
+    C.height = H;
     RUNNER.ctx = C.getContext('2d');
 
     // groundY: el personaje debe apoyar sobre el suelo
-    RUNNER.player.groundY = C.height - RUNNER.groundH - 36;
+    RUNNER.player.groundY = C.height - RUNNER.groundH - RUNNER.player.h;
     RUNNER.player.y       = RUNNER.player.groundY;
 
     // Generar estrellas
@@ -904,14 +971,17 @@ function initRunner() {
       blink: Math.random()
     }));
 
-    // Mostrar overlay de inicio
-    showRunnerOverlay('\u00a1Pixel Runner!', 'Tap \u2b06 para saltar (doble salto) · Tap \u2b07 para bajar', false);
+    // Ocultar overlay y arrancar el juego directo
+    document.getElementById('runnerOverlay').classList.add('hidden');
     if (RUNNER.bestScore > 0) {
       document.getElementById('runnerBest').textContent = 'Mejor: ' + RUNNER.bestScore + ' pts';
     }
 
     // Eventos
     setupRunnerEvents();
+
+    // Arrancar el bucle del juego
+    startRunner();
   });
 }
 
@@ -948,6 +1018,19 @@ function setupRunnerEvents() {
 
 function runnerKeyHandler(e) {
   if (!document.getElementById('sec-runner').classList.contains('active')) return;
+
+  // Si está el overlay de Game Over visible, Enter/Espacio equivalen a
+  // tocar "Volver a intentar"
+  const overlay = document.getElementById('runnerOverlay');
+  if (overlay && !overlay.classList.contains('hidden')) {
+    if (e.code === 'Space' || e.code === 'Enter') {
+      e.preventDefault();
+      const btn = document.getElementById('runnerRestartBtn');
+      if (btn && btn.style.display !== 'none') btn.click();
+    }
+    return;
+  }
+
   if (e.code === 'Space' || e.code === 'ArrowUp') {
     e.preventDefault();
     runnerJumpOrStart();
@@ -980,7 +1063,9 @@ function runnerJumpOrStart() {
 }
 
 function startRunner() {
-  if (typeof changeBgMusic === 'function') changeBgMusic('pixel-runner.mp3');
+  // Pixel Runner usa su propia música de fondo
+  setMusic('assert/pixel runner/sounds/backplay.mp3');
+
   // Reset estado
   const C = RUNNER.canvas;
   RUNNER.score = 0;
@@ -1002,6 +1087,10 @@ function startRunner() {
   // Ocultar overlay
   document.getElementById('runnerOverlay').classList.add('hidden');
   document.getElementById('runner-score-display').textContent = '0';
+
+  // Ocultar botones de game over
+  document.getElementById('runnerRestartBtn').style.display = 'none';
+  document.getElementById('runnerMenuBtn').style.display = 'none';
 
   if (RUNNER.raf) cancelAnimationFrame(RUNNER.raf);
   RUNNER.raf = requestAnimationFrame(runnerLoop);
@@ -1085,30 +1174,31 @@ function spawnObstacle(C) {
 
   if (type < 0.45) {
     // Obstáculo del suelo (cactus/pared)
-    const h = 28 + Math.floor(Math.random() * 28);
-    const w = 16 + Math.floor(Math.random() * 14);
+    const h = 36 + Math.floor(Math.random() * 34);
+    const w = 20 + Math.floor(Math.random() * 18);
     RUNNER.obstacles.push({ x: C.width + 20, y: groundY - h, w, h, kind: 'ground' });
   } else if (type < 0.75) {
     // Obstáculo aéreo (pájaro/nube enemiga)
-    const h = 18 + Math.floor(Math.random() * 12);
-    const w = 30 + Math.floor(Math.random() * 20);
+    const h = 24 + Math.floor(Math.random() * 16);
+    const w = 38 + Math.floor(Math.random() * 26);
     const minY = skyTop + 4;
     const maxY = C.height * 0.45;
     const y = minY + Math.random() * (maxY - minY);
     RUNNER.obstacles.push({ x: C.width + 20, y, w, h, kind: 'air' });
   } else {
     // Combo: dos obstáculos a la vez
-    const h1 = 24 + Math.floor(Math.random() * 20);
-    RUNNER.obstacles.push({ x: C.width + 20, y: groundY - h1, w: 14, h: h1, kind: 'ground' });
-    const h2 = 16;
+    const h1 = 32 + Math.floor(Math.random() * 26);
+    RUNNER.obstacles.push({ x: C.width + 20, y: groundY - h1, w: 18, h: h1, kind: 'ground' });
+    const h2 = 22;
     const y2 = skyTop + 10 + Math.random() * (C.height * 0.3);
-    RUNNER.obstacles.push({ x: C.width + 60, y: y2, w: 28, h: h2, kind: 'air' });
+    RUNNER.obstacles.push({ x: C.width + 60, y: y2, w: 34, h: h2, kind: 'air' });
   }
 }
 
 function playerDie() {
   RUNNER.player.dead = true;
   RUNNER.running = false;
+  bgMusic.pause();
   if (typeof playDeathSound === 'function') playDeathSound();
   if (RUNNER.raf) { cancelAnimationFrame(RUNNER.raf); RUNNER.raf = null; }
 
@@ -1129,9 +1219,72 @@ function showRunnerOverlay(title, sub, isGameover) {
   overlay.classList.remove('hidden');
   document.getElementById('runnerOverlayTitle').textContent = title;
   document.getElementById('runnerOverlaySub').textContent  = sub;
-  document.getElementById('runnerStartBtn').textContent    = isGameover ? '🔄 Reintentar' : '▶ Empezar';
   if (RUNNER.bestScore > 0)
     document.getElementById('runnerBest').textContent = 'Mejor: ' + RUNNER.bestScore + ' pts';
+
+  // Show/game over buttons
+  const goBtn = document.getElementById('runnerRestartBtn');
+  const menuBtn = document.getElementById('runnerMenuBtn');
+  if (goBtn) goBtn.style.display = isGameover ? 'inline-block' : 'none';
+  if (menuBtn) menuBtn.style.display = isGameover ? 'inline-block' : 'none';
+}
+
+function restartRunner() {
+  stopRunner();
+  // Reset score and state
+  RUNNER.score = 0;
+  RUNNER.speed = RUNNER.baseSpeed;
+  RUNNER.frameCount = 0;
+  RUNNER.obstacleTimer = 0;
+  RUNNER.obstacleInterval = 90;
+  RUNNER.obstacles = [];
+  const p = RUNNER.player;
+  p.y = p.groundY;
+  p.vy = 0;
+  p.jumps = 0;
+  p.dead = false;
+  p.animFrame = 0;
+  p.animTick = 0;
+  document.getElementById('runnerOverlay').classList.add('hidden');
+  document.getElementById('runner-score-display').textContent = '0';
+  // stopRunner() quitó el listener de teclado; hay que reengancharlo o
+  // los controles quedan muertos después de "Volver a intentar"
+  setupRunnerEvents();
+  startRunner();
+}
+
+function toRunnerMenu() {
+  stopRunner();
+  showRunnerMenu();
+}
+
+function showRunnerMenu() {
+  const menu = document.getElementById('runnerMenu');
+  const container = document.querySelector('#sec-runner .runner-container');
+  const controls = document.querySelector('#sec-runner .runner-controls');
+  const hint = document.querySelector('#sec-runner .runner-hint');
+  if (menu) menu.classList.remove('hidden');
+  if (container) container.classList.remove('hidden');
+  if (controls) controls.classList.add('hidden');
+  if (hint) hint.classList.add('hidden');
+  // Ocultar overlay de juego por si estaba visible
+  const ov = document.getElementById('runnerOverlay');
+  if (ov) ov.classList.add('hidden');
+  // Música del menú de Pixel Runner
+  setMusic('assert/pixel runner/sounds/menu.mp3');
+}
+
+function startPixelRunnerGame() {
+  const menu = document.getElementById('runnerMenu');
+  const controls = document.querySelector('#sec-runner .runner-controls');
+  const hintEl = document.querySelector('#sec-runner .runner-hint');
+  if (menu) menu.classList.add('hidden');
+  if (controls) controls.classList.remove('hidden');
+  if (hintEl) hintEl.classList.remove('hidden');
+  // Música de fondo del juego
+  setMusic('assert/pixel runner/sounds/backplay.mp3');
+  // Inicializar y arrancar el juego
+  initRunner();
 }
 
 // ─── DIBUJO ────────────────────────────
@@ -1608,7 +1761,10 @@ const TRAMPAS = {
   keyHandlerUp: null,
   explosions: [],
 
-  player: { x: 20, y: 200, w: 20, h: 26, vx: 0, vy: 0, onGround: false, dead: false },
+  // w/h en proporción 32:36 (la misma que usa drawTrampasPlayer), así el
+  // sprite dibujado llega exactamente hasta el borde inferior del hitbox
+  // y no queda "flotando" sobre las plataformas.
+  player: { x: 20, y: 200, w: 24, h: 27, vx: 0, vy: 0, onGround: false, dead: false },
 
   // Estado dinámico del nivel actual (copias mutables de plataformas/flechas)
   platforms: [],
@@ -1652,6 +1808,7 @@ function trShowMainMenu() {
   document.getElementById('trampasMainMenu').classList.remove('hidden');
   document.getElementById('trampasPauseMenu').classList.add('hidden');
   stopTrampas();
+  if (typeof setMusic === 'function') setMusic('assert/Castle Escape/sounds/menu_song.mp3');
 }
 function trShowLevelSelect() {
   trHideAll();
@@ -1668,6 +1825,7 @@ function trShowGameScreen() {
 }
 function trBackToLevelSelect() {
   stopTrampas();
+  if (typeof setMusic === 'function') setMusic('assert/Castle Escape/sounds/menu_song.mp3');
   trShowLevelSelect();
 }
 
@@ -1747,6 +1905,7 @@ function trResumeGame() {
 function trExitToLevels() {
   document.getElementById('trampasPauseMenu').classList.add('hidden');
   stopTrampas();
+  if (typeof setMusic === 'function') setMusic('assert/Castle Escape/sounds/menu_song.mp3');
   trShowLevelSelect();
 }
 
@@ -1762,7 +1921,11 @@ function trLoadLevel(index) {
   p.vx = 0; p.vy = 0; p.dead = false; p.onGround = false;
 
   const starsEl = document.getElementById('trampas-hud-stars');
-  if (starsEl) starsEl.textContent = (index + 1) + '/' + TR_LEVELS.length + ' — ' + lvl.nombre;
+  if (starsEl) starsEl.textContent = (index + 1) + '/' + TR_LEVELS.length + ' - ' + lvl.nombre;
+
+  // Imagen de fondo del castillo (capa 0): back1 para los primeros niveles, back2 después
+  const cont = document.querySelector('.trampas-container');
+  if (cont) cont.style.background = "#150620 url('assert/Castle Escape/" + (index >= 6 ? 'back2' : 'back1') + ".jpg') center/cover no-repeat";
 }
 
 function initTrampas() {
@@ -1791,7 +1954,20 @@ function setupTrampasEvents() {
   if (TRAMPAS.keyHandlerUp)   document.removeEventListener('keyup', TRAMPAS.keyHandlerUp);
 
   TRAMPAS.keyHandlerDown = function(e) {
-    if (!document.getElementById('sec-trampas').classList.contains('active')) return;
+    if (!document.getElementById('sec-castle_escape').classList.contains('active')) return;
+
+    // Si el overlay (empezar / nivel superado / completado) está visible,
+    // Enter/Espacio equivalen a tocar el botón en vez de tener que clickear
+    const overlay = document.getElementById('trampasOverlay');
+    if (overlay && !overlay.classList.contains('hidden')) {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        const btn = document.getElementById('trampasStartBtn');
+        if (btn) btn.click();
+      }
+      return;
+    }
+
     if (['ArrowLeft','ArrowRight','ArrowUp','Space','KeyA','KeyD','KeyW'].includes(e.code)) e.preventDefault();
     if (e.code === 'ArrowLeft'  || e.code === 'KeyA') TRAMPAS.keys.left  = true;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') TRAMPAS.keys.right = true;
@@ -1825,6 +2001,7 @@ function startTrampas() {
   TRAMPAS.running = true;
   if (TRAMPAS.raf) cancelAnimationFrame(TRAMPAS.raf);
   TRAMPAS.raf = requestAnimationFrame(trampasLoop);
+  if (typeof setMusic === 'function') setMusic('assert/Castle Escape/sounds/backsong.mp3');
 }
 
 function stopTrampas() {
@@ -1832,6 +2009,10 @@ function stopTrampas() {
   if (TRAMPAS.raf) { cancelAnimationFrame(TRAMPAS.raf); TRAMPAS.raf = null; }
   if (TRAMPAS.keyHandlerDown) document.removeEventListener('keydown', TRAMPAS.keyHandlerDown);
   if (TRAMPAS.keyHandlerUp)   document.removeEventListener('keyup', TRAMPAS.keyHandlerUp);
+}
+
+function toggleCastleMusic() {
+  if (typeof bgMusic !== 'undefined' && bgMusic) bgMusic.muted = !bgMusic.muted;
 }
 
 function trampasLoop() {
@@ -2069,25 +2250,34 @@ function trLevelComplete() {
   TRAMPAS.totalScore += levelScore;
 
   const starsText = '★'.repeat(stars) + '☆'.repeat(3 - stars);
+  const timeLimit = TR_TIME_LIMITS[TRAMPAS.levelIndex] || 60;
+  const deathLimit = TR_DEATH_LIMITS[TRAMPAS.levelIndex] || 5;
+  const condiciones = '★ Completar el nivel\n★★ En ' + timeLimit + 's o menos\n★★★ Con ' + deathLimit + ' muerte' + (deathLimit === 1 ? '' : 's') + ' o menos';
+
   document.getElementById('trampas-hud-deaths').textContent = '💀 0';
+
+  // Reiniciar contadores para que el próximo nivel empiece en 0
+  TRAMPAS.totalDeaths = 0;
+  TRAMPAS.levelDeaths = 0;
 
   const esUltimo = TRAMPAS.levelIndex >= TR_LEVELS.length - 1;
   if (esUltimo) {
     guardarPuntaje(8, TRAMPAS.totalScore, null);
-    showTrampasOverlay('🏆 ¡Completaste todo!', starsText + '  +' + levelScore + ' pts — Total: ' + TRAMPAS.totalScore, true);
+    showTrampasOverlay('🏆 ¡Completaste todo!', starsText + '  +' + levelScore + ' pts — Total: ' + TRAMPAS.totalScore + '\n\n' + condiciones, true);
   } else {
     TRAMPAS.levelIndex++;
+    TRAMPAS.levelStartTime = performance.now();
     trLoadLevel(TRAMPAS.levelIndex);
-    showTrampasOverlay('✅ ¡Nivel superado!', starsText + '  +' + levelScore + ' pts', false);
+    showTrampasOverlay('✅ ¡Nivel superado!', starsText + '  +' + levelScore + ' pts\n\n' + condiciones, false, '▶ Continuar');
   }
 }
 
-function showTrampasOverlay(title, sub, isEnd) {
+function showTrampasOverlay(title, sub, isEnd, btnLabel) {
   const overlay = document.getElementById('trampasOverlay');
   overlay.classList.remove('hidden');
   document.getElementById('trampasOverlayTitle').textContent = title;
   document.getElementById('trampasOverlaySub').textContent = sub;
-  document.getElementById('trampasStartBtn').textContent = isEnd ? '🔄 Jugar de nuevo' : '▶ Empezar';
+  document.getElementById('trampasStartBtn').textContent = isEnd ? '🔄 Jugar de nuevo' : (btnLabel || '▶ Empezar');
   document.getElementById('trampasStartBtn').onclick = isEnd ? restartTrampas : startTrampas;
 }
 
@@ -2100,12 +2290,8 @@ function drawTrampas() {
   if (!ctx) return;
   const p = TRAMPAS.player;
 
-  // Fondo
-  const bg = ctx.createLinearGradient(0, 0, 0, TR_H);
-  bg.addColorStop(0, '#2a0e37');
-  bg.addColorStop(1, '#150620');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, TR_W, TR_H);
+  // Fondo transparente: el contenedor muestra la imagen del castillo (capa 0)
+  ctx.clearRect(0, 0, TR_W, TR_H);
 
   // Plataformas
   for (const plat of TRAMPAS.platforms) {
@@ -3218,3 +3404,5 @@ function updateInfoModal() {
     else dot.classList.remove('active');
   });
 }
+
+// ══════════════════════════════════════
