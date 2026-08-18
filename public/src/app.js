@@ -5,8 +5,7 @@
 let currentUser = null;
 
 // ─── Audio Manager ─────────────────────
-let globalAudioEnabled = false;
-let audioStarted = false;
+let globalAudioEnabled = true;
 let pageMusicMuted = false;
 const bgMusic = new Audio('assert/menu.mp3');
 bgMusic.loop = true;
@@ -27,25 +26,49 @@ const gameMusicMap = {
   preguntados: null
 };
 
+// El audio arranca "activado" por defecto (icono 🔊) e intenta reproducirse
+// apenas carga la página.
 function initAudio() {
-  audioStarted = true;
-  globalAudioEnabled = true;
-  document.getElementById('globalAudioBtn').textContent = '🔊';
-  bgMusic.play().catch(e => console.log("Audio play prevented:", e));
+  const btn = document.getElementById('globalAudioBtn');
+  if (btn) btn.textContent = '🔊';
+  attemptPlayMusic();
+}
+
+// Los navegadores bloquean bgMusic.play() si no hay un gesto del usuario
+// (click/tap/tecla) todavía. Por eso al entrar a la página la música no
+// se escuchaba: play() fallaba en silencio (solo el console.log del catch).
+// attemptPlayMusic() intenta reproducir y, si el navegador lo bloquea,
+// arma un listener para arrancar apenas el usuario interactúe con la
+// página por primera vez (no hace falta que toque el botón de audio).
+function attemptPlayMusic() {
+  if (!globalAudioEnabled || pageMusicMuted) return;
+  const playPromise = bgMusic.play();
+  if (playPromise && typeof playPromise.catch === 'function') {
+    playPromise.catch(() => armFirstInteractionUnlock());
+  }
+}
+
+let firstInteractionArmed = false;
+function armFirstInteractionUnlock() {
+  if (firstInteractionArmed) return;
+  firstInteractionArmed = true;
+  const unlock = () => {
+    document.removeEventListener('click', unlock);
+    document.removeEventListener('touchstart', unlock);
+    document.removeEventListener('keydown', unlock);
+    firstInteractionArmed = false;
+    attemptPlayMusic();
+  };
+  document.addEventListener('click', unlock, { once: true });
+  document.addEventListener('touchstart', unlock, { once: true });
+  document.addEventListener('keydown', unlock, { once: true });
 }
 
 function toggleGlobalAudio() {
-  if (!audioStarted) {
-    initAudio();
-    return;
-  }
   globalAudioEnabled = !globalAudioEnabled;
   if (globalAudioEnabled) {
     document.getElementById('globalAudioBtn').textContent = '🔊';
-    bgMusic.play().catch(e => console.log("Audio play prevented:", e));
-    if (pageMusicMuted) {
-      unmutepageMusic();
-    }
+    unmutepageMusic();
   } else {
     document.getElementById('globalAudioBtn').textContent = '🔇';
     bgMusic.pause();
@@ -70,16 +93,18 @@ function changeBgMusic(trackName) {
 // Solo cambia el src si es distinto para no reiniciar la reproducción,
 // y siempre intenta reproducir (dentro de un gesto del usuario).
 let currentMusicSrc = null;
-function setMusic(src) {
+function setMusic(src, forceRestart) {
   if (currentMusicSrc !== src) {
     currentMusicSrc = src;
     bgMusic.src = src;
+  } else if (forceRestart) {
+    // Mismo track, pero se pide arrancar desde 0 (ej: reintentar un nivel
+    // después de perder, en vez de seguir donde había quedado sonando).
+    bgMusic.currentTime = 0;
   }
   bgMusic.loop = true;
   bgMusic.volume = 0.5;
-  if (globalAudioEnabled) {
-    bgMusic.play().catch(e => console.log("Audio play prevented:", e));
-  }
+  attemptPlayMusic();
 }
 
 function mutePageMusic() {
@@ -89,9 +114,7 @@ function mutePageMusic() {
 
 function unmutepageMusic() {
   pageMusicMuted = false;
-  if (globalAudioEnabled) {
-    bgMusic.play().catch(e => console.log("Audio play prevented:", e));
-  }
+  attemptPlayMusic();
 }
 
 function playDeathSound() {
@@ -197,14 +220,19 @@ function goTo(section) {
     ['preguntados', 'sopa', 'termina'].forEach(restoreOriginalSection);
   }
 
-if (section === 'runner' || section === 'castle_escape') {
-    // Estos juegos manejan su propia música; pausamos la música ambiente de la página
-    mutePageMusic();
+if (section === 'runner' || section === 'castle_escape' || section === 'rpg_pixel') {
+    // Estos juegos manejan su propia música (la ponen ellos mismos vía
+    // setMusic al mostrar su menú). Ojo: NO llamar a mutePageMusic() acá,
+    // porque deja pageMusicMuted = true y el setMusic() que viene justo
+    // después (showRunnerMenu / initTrampas / rpgInit) queda bloqueado hasta
+    // que el usuario mutea y desmutea manualmente.
+    unmutepageMusic();
     if (section === 'castle_escape' && typeof initTrampas === 'function') initTrampas();
+    if (section === 'rpg_pixel' && typeof rpgInit === 'function') rpgInit();
   } else {
     // Cualquier otra sección usa la música ambiente del sitio: la reactivamos
-    if (typeof changeBgMusic === 'function') changeBgMusic('menu.mp3');
     unmutepageMusic();
+    if (typeof changeBgMusic === 'function') changeBgMusic('menu.mp3');
   }
 
   closeNav();
@@ -928,7 +956,7 @@ const RUNNER = {
 
   // Personaje
   player: {
-    x: 90, y: 0, w: 34, h: 40,
+    x: 90, y: 0, w: 29, h: 34, // antes 34x40 — más chico
     vy: 0, jumps: 0, maxJumps: 2,
     dead: false, animFrame: 0, animTick: 0,
     groundY: 0,

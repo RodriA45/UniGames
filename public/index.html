@@ -7,6 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="src/styles.css" />
+  <link rel="stylesheet" href="src/games/rpg.css" />
 </head>
 <body class="has-bg-gif">
 
@@ -26,7 +27,7 @@
 
     <!-- Audio -->
     <div class="audio-toggle" style="margin-right: auto; margin-left: 1rem; cursor: pointer; font-size: 1.5rem;" onclick="toggleGlobalAudio()" id="globalAudioBtn" title="Activar/Desactivar Sonido">
-      🔇
+      🔊
     </div>
 
     <!-- Info -->
@@ -228,12 +229,28 @@
           <span class="card-title" style="color:#facc15;">Castle Escape</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">Aventuras en el castillo: saltá plataformas, esquivá trampas y llegá a la salida de cada nivel. 2 fondos distintos y música propia.</p>
+          <p class="card-desc">Aventuras en el castillo: saltá plataformas, esquivá trampas y llegá a la salida de cada nivel. 11 niveles con 2 ambientaciones distintas y música propia.</p>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
-            <span class="card-tag">🏰 2 niveles</span>
+            <span class="card-tag">🏰 11 niveles</span>
             <span class="card-tag">🎵 Música propia</span>
           </div>
           <button class="btn-play" onclick="launchGame('castle_escape', this)" style="background:#facc15;color:#2a0e37;font-weight:900;">▶ Jugar</button>
+        </div>
+      </div>
+
+      <!-- RPG Pixel -->
+      <div class="game-card-full" id="card-rpg_pixel">
+        <div class="card-header-band" style="background: linear-gradient(135deg, #14532d, #166534);">
+          <span class="card-emoji">🗡️</span>
+          <span class="card-title" style="color:#4ade80;">RPG Pixel</span>
+        </div>
+        <div class="card-body">
+          <p class="card-desc">Combatí contra jefes pixel art en arenas fijas. Moveté, disparás en la dirección que caminaste y usá el escudo para bloquear golpes.</p>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
+            <span class="card-tag">🔫 Combate</span>
+            <span class="card-tag">🛡️ Bloqueo</span>
+          </div>
+          <button class="btn-play" onclick="launchGame('rpg_pixel', this)" style="background:#166534;color:#fff;font-weight:900;">▶ Jugar</button>
         </div>
       </div>
 
@@ -622,6 +639,73 @@
     </div>
   </section>
 
+  <!-- ── SECCIÓN: RPG PIXEL ── -->
+  <section class="section" id="sec-rpg_pixel">
+    <div class="game-screen-header">
+      <button class="btn-back" onclick="rpgExitToHub();">← Volver al menú</button>
+      <div class="game-screen-title" style="font-family:'Press Start 2P',monospace;color:#14532d;">🗡️ RPG Pixel</div>
+    </div>
+
+    <div class="rpg-container">
+      <canvas id="rpgCanvas"></canvas>
+
+      <!-- Menú principal del RPG (selección de nivel) -->
+      <div class="rpg-menu" id="rpgMenu">
+        <div class="rpg-menu-background" style="background-image: url('assert/rpg pixel/menu.jpg'); background-size: cover; background-position: center;">
+          <div class="rpg-menu-content">
+            <h2 class="rpg-menu-title">RPG Pixel</h2>
+            <p class="rpg-menu-sub">Elegí un nivel para enfrentar al jefe</p>
+            <div class="rpg-menu-buttons" id="rpgLevelButtons">
+              <button class="btn-play" onclick="rpgStartLevel(1)">⚔️ Nivel 1 · Caballero</button>
+              <button class="btn-play" onclick="rpgStartLevel(2)">👻 Nivel 2 · Fantasma</button>
+              <button class="btn-play" onclick="rpgStartLevel(3)">🧛 Nivel 3 · Rey Vampiro</button>
+              <button class="btn-play rpg-btn-secondary" onclick="proximamente()">🔒 Jefe Secreto</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- HUD superpuesto al juego -->
+      <div class="rpg-hud hidden" id="rpgHud">
+        <div class="rpg-hud-bar-wrap">
+          <span class="rpg-hud-label">Junior</span>
+          <div class="rpg-hud-bar"><div class="rpg-hud-bar-fill rpg-hud-bar-player" id="rpgPlayerHpFill"></div></div>
+        </div>
+        <div class="rpg-hud-timer" id="rpgTimeLeft"></div>
+        <div class="rpg-hud-bar-wrap rpg-hud-bar-wrap-enemy">
+          <span class="rpg-hud-label" id="rpgEnemyName">Enemigo</span>
+          <div class="rpg-hud-bar"><div class="rpg-hud-bar-fill rpg-hud-bar-enemy" id="rpgEnemyHpFill"></div></div>
+        </div>
+        <button class="rpg-hud-btn" onclick="rpgPauseGame()" title="Pausa">⏸</button>
+      </div>
+
+      <!-- Overlay de inicio / pausa / resultado -->
+      <div class="rpg-overlay hidden" id="rpgOverlay">
+        <div class="rpg-overlay-box">
+          <p class="rpg-overlay-title" id="rpgOverlayTitle">Nivel 1</p>
+          <p class="rpg-overlay-sub" id="rpgOverlaySub">Caminá con las flechas / WASD, disparás con Espacio o click en la dirección que caminaste. Mantené Shift o el botón 🛡️ para bloquear.</p>
+          <div class="rpg-overlay-buttons" id="rpgOverlayButtons">
+            <button class="btn-play" id="rpgOverlayMainBtn" onclick="rpgBeginCombat()">▶ Empezar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Controles táctiles -->
+    <div class="rpg-controls">
+      <div class="rpg-dpad">
+        <button class="runner-ctrl-btn rpg-dpad-btn rpg-dpad-up" onpointerdown="event.preventDefault(); rpgMove('up', true);" onpointerup="rpgMove('up', false);" onpointerleave="rpgMove('up', false);">▲</button>
+        <button class="runner-ctrl-btn rpg-dpad-btn rpg-dpad-left" onpointerdown="event.preventDefault(); rpgMove('left', true);" onpointerup="rpgMove('left', false);" onpointerleave="rpgMove('left', false);">◀</button>
+        <button class="runner-ctrl-btn rpg-dpad-btn rpg-dpad-right" onpointerdown="event.preventDefault(); rpgMove('right', true);" onpointerup="rpgMove('right', false);" onpointerleave="rpgMove('right', false);">▶</button>
+        <button class="runner-ctrl-btn rpg-dpad-btn rpg-dpad-down" onpointerdown="event.preventDefault(); rpgMove('down', true);" onpointerup="rpgMove('down', false);" onpointerleave="rpgMove('down', false);">▼</button>
+      </div>
+      <div class="rpg-action-buttons">
+        <button class="runner-ctrl-btn rpg-btn-block" onpointerdown="event.preventDefault(); rpgBlock(true);" onpointerup="rpgBlock(false);" onpointerleave="rpgBlock(false);">🛡️</button>
+        <button class="runner-ctrl-btn rpg-btn-fire" onpointerdown="event.preventDefault(); rpgFire();">🔫</button>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <!-- ════════════════ FOOTER ════════════════ -->
@@ -942,6 +1026,8 @@
 </div>
 
 <!-- Script -->
+<script src="assert/rpg pixel/models/sprites.js"></script>
+<script src="src/games/rpg.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>

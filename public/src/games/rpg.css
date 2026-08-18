@@ -1,0 +1,255 @@
+/* ══════════════════════════════════════
+   RPG Pixel — rpg.css
+   Estilos específicos del minijuego RPG. Reutiliza variables de
+   styles.css (--blue-dark, --yellow, etc.) y la clase .runner-ctrl-btn
+   para que los controles táctiles se vean consistentes con los otros
+   juegos, pero todo lo demás vive acá para no seguir inflando app.js/
+   styles.css.
+   ══════════════════════════════════════ */
+
+.rpg-container {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  aspect-ratio: 480 / 270;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(15,30,61,0.25);
+  border: 3px solid #14532d;
+  background: #0a0f0a;
+  overscroll-behavior: contain;
+}
+
+#rpgCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Menú (selección de nivel) ─────────── */
+.rpg-menu {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+.rpg-menu.hidden { display: none; }
+
+.rpg-menu-background {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #0a0f0a;
+}
+
+.rpg-menu-content {
+  text-align: center;
+  background: rgba(10, 15, 10, 0.72);
+  padding: 1.2rem 1.5rem;
+  border-radius: 14px;
+  backdrop-filter: blur(2px);
+  max-width: 90%;
+}
+
+.rpg-menu-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(14px, 3vw, 22px);
+  color: #4ade80;
+  text-shadow: 0 0 12px rgba(74,222,128,0.5);
+  margin-bottom: 0.5rem;
+}
+
+.rpg-menu-sub {
+  color: rgba(255,255,255,0.85);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.rpg-menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.rpg-btn-secondary {
+  background: transparent !important;
+  border: 2px solid rgba(255,255,255,0.35);
+  color: rgba(255,255,255,0.7) !important;
+  opacity: 0.75;
+  cursor: not-allowed;
+}
+
+/* ─── HUD dentro del juego ──────────────── */
+.rpg-hud {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.55), transparent);
+}
+.rpg-hud.hidden { display: none; }
+
+.rpg-hud-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.rpg-hud-bar-wrap-enemy { align-items: flex-end; }
+
+.rpg-hud-label {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.rpg-hud-bar {
+  width: 100%;
+  height: 10px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.rpg-hud-bar-fill {
+  height: 100%;
+  width: 100%;
+  transition: width 0.15s ease-out;
+}
+.rpg-hud-bar-player { background: #3b82f6; }
+.rpg-hud-bar-enemy   { background: #ef4444; }
+
+.rpg-hud-timer {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #fde68a;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+  white-space: nowrap;
+  min-width: 2.5rem;
+  text-align: center;
+}
+.rpg-hud-timer.rpg-timer-warn { color: #ef4444; }
+
+.rpg-hud-btn {
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.4);
+  color: #fff;
+  border-radius: 8px;
+  width: 2rem;
+  height: 2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+.rpg-hud-btn:hover { background: rgba(255,255,255,0.15); }
+
+/* ─── Overlay (empezar / pausa / resultado) ─ */
+.rpg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: rgba(5, 15, 5, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+.rpg-overlay.hidden { display: none; }
+
+.rpg-overlay-box {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1rem;
+  margin: auto;
+  max-width: 100%;
+}
+
+.rpg-overlay-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(12px, 2vw, 18px);
+  color: #4ade80;
+  text-shadow: 0 0 12px rgba(74,222,128,0.5);
+}
+.rpg-overlay-sub {
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.85);
+  line-height: 1.6;
+  max-width: 34rem;
+}
+.rpg-overlay-buttons {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 0.4rem;
+}
+
+/* ─── Controles táctiles ────────────────── */
+.rpg-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  max-width: 800px;
+  margin: 0.9rem auto 0;
+  padding: 0 0.5rem;
+}
+
+.rpg-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, 2.6rem);
+  grid-template-rows: repeat(2, 2.2rem);
+  gap: 0.3rem;
+  flex: 0 0 auto;
+}
+.rpg-dpad-btn { padding: 0 !important; font-size: 1rem !important; }
+.rpg-dpad-up    { grid-column: 2; grid-row: 1; }
+.rpg-dpad-left  { grid-column: 1; grid-row: 2; }
+.rpg-dpad-right { grid-column: 3; grid-row: 2; }
+.rpg-dpad-down  { grid-column: 2; grid-row: 2; }
+
+.rpg-action-buttons {
+  display: flex;
+  gap: 0.6rem;
+  flex: 0 0 auto;
+}
+.rpg-btn-block, .rpg-btn-fire {
+  border-radius: 50% !important;
+  width: 3.2rem;
+  height: 3.2rem;
+  padding: 0 !important;
+  font-size: 1.3rem !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.rpg-btn-fire { background: #b91c1c !important; border-color: #ef4444 !important; }
+
+@media (max-width: 480px) {
+  .rpg-container { border-radius: 10px; }
+  .rpg-dpad { grid-template-columns: repeat(3, 2.3rem); grid-template-rows: repeat(2, 2rem); }
+  .rpg-btn-block, .rpg-btn-fire { width: 2.8rem; height: 2.8rem; font-size: 1.1rem !important; }
+}
+
+/* En desktop, los controles táctiles no hacen falta (se usa teclado) */
+@media (min-width: 900px) and (hover: hover) and (pointer: fine) {
+  .rpg-controls { display: none; }
+}

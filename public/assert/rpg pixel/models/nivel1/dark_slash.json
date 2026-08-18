@@ -1,0 +1,10 @@
+{
+  "sheet": "dark_slash.png",
+  "frameSize": { "w": 522, "h": 144 },
+  "frames": {
+    "slash_large_1": { "x": 1044, "y": 0,   "w": 522, "h": 144 },
+    "slash_large_2": { "x": 1044, "y": 144, "w": 522, "h": 144 },
+    "slash_small_1": { "x": 0,    "y": 0,   "w": 522, "h": 144 },
+    "slash_small_2": { "x": 0,    "y": 144, "w": 522, "h": 144 }
+  }
+}
