@@ -1,0 +1,101 @@
+{
+  "note": "Coordenadas escaladas x0.32 respecto al item.png original subido por el usuario. Frames: coin_0..coin_7 = ciclo de giro de la moneda (loop de 8), coin_crown = variante sin usar por ahora, powerup_shield = icono del power-up de escudo (el que se dibuja flotando en el juego), powerup_x2 = icono del power-up de doble puntaje, shield_shimmer_0..4 = frames de brillo/pulso (usados como aura alrededor del jugador mientras el escudo está activo).",
+  "frames": {
+    "coin_0": {
+      "x": 4,
+      "y": 18,
+      "w": 63,
+      "h": 67
+    },
+    "coin_1": {
+      "x": 71,
+      "y": 18,
+      "w": 62,
+      "h": 67
+    },
+    "coin_2": {
+      "x": 137,
+      "y": 19,
+      "w": 44,
+      "h": 66
+    },
+    "coin_3": {
+      "x": 185,
+      "y": 19,
+      "w": 28,
+      "h": 66
+    },
+    "coin_4": {
+      "x": 217,
+      "y": 18,
+      "w": 26,
+      "h": 67
+    },
+    "coin_5": {
+      "x": 247,
+      "y": 19,
+      "w": 25,
+      "h": 66
+    },
+    "coin_6": {
+      "x": 276,
+      "y": 19,
+      "w": 28,
+      "h": 66
+    },
+    "coin_7": {
+      "x": 308,
+      "y": 19,
+      "w": 44,
+      "h": 66
+    },
+    "coin_crown": {
+      "x": 356,
+      "y": 19,
+      "w": 62,
+      "h": 66
+    },
+    "powerup_x2": {
+      "x": 422,
+      "y": 17,
+      "w": 66,
+      "h": 68
+    },
+    "shield_shimmer_0": {
+      "x": 492,
+      "y": 4,
+      "w": 85,
+      "h": 81
+    },
+    "shield_shimmer_1": {
+      "x": 581,
+      "y": 4,
+      "w": 86,
+      "h": 81
+    },
+    "shield_shimmer_2": {
+      "x": 671,
+      "y": 4,
+      "w": 84,
+      "h": 81
+    },
+    "shield_shimmer_3": {
+      "x": 759,
+      "y": 4,
+      "w": 86,
+      "h": 81
+    },
+    "shield_shimmer_4": {
+      "x": 849,
+      "y": 4,
+      "w": 85,
+      "h": 81
+    },
+    "powerup_shield": {
+      "x": 938,
+      "y": 10,
+      "w": 74,
+      "h": 75
+    }
+  }
+}

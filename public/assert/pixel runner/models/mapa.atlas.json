@@ -1,0 +1,101 @@
+{
+  "note": "Coordenadas escaladas x0.35, para usar con mapa.png ya redimensionado (no el original). ground_* pensados para Engine2D.drawCover (textura de fondo), sun_*/moon_*/cloud_* para drawAtlasFrame, stars_* como franja para tilear/recortar en el cielo nocturno.",
+  "frames": {
+    "ground_grass": {
+      "x": 102,
+      "y": 18,
+      "w": 288,
+      "h": 176
+    },
+    "ground_desert": {
+      "x": 459,
+      "y": 18,
+      "w": 288,
+      "h": 177
+    },
+    "sun_0": {
+      "x": 13,
+      "y": 198,
+      "w": 88,
+      "h": 91
+    },
+    "sun_1": {
+      "x": 115,
+      "y": 198,
+      "w": 87,
+      "h": 91
+    },
+    "sun_2": {
+      "x": 221,
+      "y": 198,
+      "w": 88,
+      "h": 91
+    },
+    "sun_3": {
+      "x": 326,
+      "y": 198,
+      "w": 88,
+      "h": 91
+    },
+    "moon_0": {
+      "x": 448,
+      "y": 201,
+      "w": 67,
+      "h": 79
+    },
+    "moon_1": {
+      "x": 549,
+      "y": 201,
+      "w": 68,
+      "h": 79
+    },
+    "moon_2": {
+      "x": 661,
+      "y": 202,
+      "w": 68,
+      "h": 79
+    },
+    "moon_3": {
+      "x": 763,
+      "y": 201,
+      "w": 67,
+      "h": 79
+    },
+    "stars_sparse": {
+      "x": 30,
+      "y": 308,
+      "w": 788,
+      "h": 56
+    },
+    "stars_dense": {
+      "x": 27,
+      "y": 381,
+      "w": 801,
+      "h": 48
+    },
+    "cloud_0": {
+      "x": 22,
+      "y": 492,
+      "w": 100,
+      "h": 72
+    },
+    "cloud_1": {
+      "x": 152,
+      "y": 487,
+      "w": 207,
+      "h": 72
+    },
+    "cloud_2": {
+      "x": 380,
+      "y": 451,
+      "w": 233,
+      "h": 125
+    },
+    "cloud_3": {
+      "x": 639,
+      "y": 473,
+      "w": 188,
+      "h": 91
+    }
+  }
+}
