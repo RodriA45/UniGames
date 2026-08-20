@@ -159,6 +159,17 @@ const allGames = [
   { id: 'wordle', emoji: '🟩', title: 'Adivina la Palabra', desc: 'Modo difícil estilo Wordle. 5 intentos, colores que te dan pistas letra por letra.', tag: '🔥 Hard'     },
 ];
 
+// Los juegos de acción (jugables con el motor 2D): Pixel Runner, Castle
+// Escape y RPG Pixel. Se usan en "Juegos Destacados" y "Juegos de Acción".
+const actionGames = [
+  { id: 'runner', emoji: '🏃', title: 'Pixel Runner',     desc: 'Corré sin parar, esquivá obstáculos del suelo y del cielo. Doble salto y velocidad creciente.', tag: '⚡ Acción'   },
+  { id: 'castle_escape', emoji: '🏰', title: 'Castle Escape',    desc: 'Saltá plataformas, esquivá trampas y llegá a la salida de los 20 niveles del castillo.',   tag: '🏰 Aventura' },
+  { id: 'rpg_pixel', emoji: '🗡️', title: 'RPG Pixel',         desc: 'Combatí contra jefes pixel art: dispará y bloqueá con el escudo en arenas fijas.',         tag: '⚔️ Combate'  },
+];
+
+// Los 3 juegos sencillos fijos que se muestran siempre en el inicio.
+const SIMPLE_GAME_IDS = ['sopa', 'ahorcado', 'preguntados'];
+
 // ─── Utilidades ────────────────────────
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
@@ -171,9 +182,8 @@ function sanitizeHTML(str) {
 }
 
 // ─── Inicio: juegos destacados aleatorios ───
-function renderFeatured() {
-  const three = shuffle(allGames).slice(0, 3);
-  document.getElementById('featuredGrid').innerHTML = three.map(g => `
+function gameCardHTML(g) {
+  return `
     <div class="game-card" onclick="launchGame('${g.id}', this)">
       <div class="card-emoji">${g.emoji}</div>
       <div class="card-title">${g.title}</div>
@@ -181,7 +191,25 @@ function renderFeatured() {
       <span class="card-tag">${g.tag}</span>
       <button class="btn-play">▶ Jugar ahora</button>
     </div>
-  `).join('');
+  `;
+}
+
+// Destacados: 3 al azar de TODOS los juegos (clásicos + de acción).
+function renderFeatured() {
+  const pool = [...allGames, ...actionGames];
+  const three = shuffle(pool).slice(0, 3);
+  document.getElementById('featuredGrid').innerHTML = three.map(gameCardHTML).join('');
+}
+
+// Juegos sencillos: 3 fijos (definidos en SIMPLE_GAME_IDS).
+function renderSimple() {
+  const list = SIMPLE_GAME_IDS.map(id => allGames.find(g => g.id === id)).filter(Boolean);
+  document.getElementById('simpleGrid').innerHTML = list.map(gameCardHTML).join('');
+}
+
+// Juegos de acción: los jugables con el motor 2D.
+function renderAction() {
+  document.getElementById('actionGrid').innerHTML = actionGames.map(gameCardHTML).join('');
 }
 
 function scrollToGame(gameId) {
@@ -607,14 +635,14 @@ async function initAhorcado(tematicaId) {
     if (sec) {
       sec.innerHTML = `
         <div class="game-screen-header">
-          <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+          <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
           <div class="game-screen-title"><span>💀</span> Ahorcado</div>
           <div class="game-screen-theme">${TEMATICA_NAMES[tematicaId]||'Normal'}</div>
         </div>
         <div class="coming-soon-box" style="margin-top:2rem;">
           <h2>Sin palabras</h2>
           <p>Aún no hay palabras cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
-          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver</button>
+          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver a Juegos</button>
         </div>`;
     }
     return;
@@ -740,14 +768,14 @@ async function initWordle(tematicaId) {
     if (sec) {
       sec.innerHTML = `
         <div class="game-screen-header">
-          <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+          <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
           <div class="game-screen-title"><span>📝</span> Adivina la Palabra</div>
           <div class="game-screen-theme">${TEMATICA_NAMES[tematicaId]||''}</div>
         </div>
         <div class="coming-soon-box" style="margin-top:2rem;">
           <h2>Sin palabras</h2>
           <p>Aún no hay palabras cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
-          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver</button>
+          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver a Juegos</button>
         </div>`;
     }
     return;
@@ -931,8 +959,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Guardar HTML original de secciones de juego (antes de que se modifiquen)
   saveOriginalSections();
 
-  // Juegos destacados aleatorios
+  // Juegos destacados aleatorios + secciones del inicio
   renderFeatured();
+  renderSimple();
+  renderAction();
 
   // Evitar recarga en links del menú
   document.querySelectorAll('.nav-menu a').forEach(a => {
@@ -1222,14 +1252,14 @@ function renderPreguntados() {
   if (preguntas.length === 0) {
     sec.innerHTML = `
       <div class="game-screen-header">
-        <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+        <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
         <div class="game-screen-title"><span>❓</span> Preguntados</div>
         <div class="game-screen-theme">${TEMATICA_NAMES[pregState.tematicaId]||''}</div>
       </div>
       <div class="coming-soon-box" style="margin-top:2rem;">
         <h2>Sin preguntas</h2>
         <p>Aún no hay preguntas cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
-        <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver</button>
+        <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver a Juegos</button>
       </div>`;
     return;
   }
@@ -1240,7 +1270,7 @@ function renderPreguntados() {
     guardarPuntaje(2, puntos, pregState.tematicaId);
     sec.innerHTML = `
       <div class="game-screen-header">
-        <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+        <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
         <div class="game-screen-title"><span>❓</span> Preguntados</div>
         <div class="game-screen-theme" id="preguntados-theme-label">${TEMATICA_NAMES[pregState.tematicaId]||''}</div>
       </div>
@@ -1262,7 +1292,7 @@ function renderPreguntados() {
 
   sec.innerHTML = `
     <div class="game-screen-header">
-      <button class="btn-back" onclick="clearInterval(pregState.timer); goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="clearInterval(pregState.timer); goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title"><span>❓</span> Preguntados</div>
       <div class="game-screen-theme" id="preguntados-theme-label">${TEMATICA_NAMES[pregState.tematicaId]||''}</div>
     </div>
@@ -1439,7 +1469,7 @@ function renderSopa() {
 
   sec.innerHTML = `
     <div class="game-screen-header">
-      <button class="btn-back" onclick="clearInterval(sopaState.timer); goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="clearInterval(sopaState.timer); goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title"><span>🔍</span> Sopa de Letras</div>
       <div class="game-screen-theme" id="sopa-theme-label">${TEMATICA_NAMES[sopaState.tematicaId]||''}</div>
     </div>
@@ -1582,7 +1612,7 @@ function sopaFinish(won) {
   const sec = document.getElementById('sec-sopa');
   sec.innerHTML = `
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title"><span>🔍</span> Sopa de Letras</div>
     </div>
     <div class="preg-result">
@@ -1623,14 +1653,14 @@ async function initTermina(tematicaId) {
     if (sec) {
       sec.innerHTML = `
         <div class="game-screen-header">
-          <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+          <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
           <div class="game-screen-title"><span>🔤</span> Termina la Palabra</div>
           <div class="game-screen-theme">${TEMATICA_NAMES[tematicaId]||''}</div>
         </div>
         <div class="coming-soon-box" style="margin-top:2rem;">
           <h2>Sin palabras</h2>
           <p>Aún no hay palabras cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
-          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver</button>
+          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">← Volver a Juegos</button>
         </div>`;
     }
     return;
@@ -1668,7 +1698,7 @@ function renderTermina() {
 
   sec.innerHTML = `
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title"><span>🔤</span> Termina la Palabra</div>
       <div class="game-screen-theme" id="termina-theme-label">${TEMATICA_NAMES[terminaState.tematicaId]||''}</div>
     </div>
@@ -1691,7 +1721,7 @@ function renderTermina() {
         </div>
         <div style="display:flex;gap:1rem;justify-content:center;margin-top:1rem;">
           <button class="btn-play" style="max-width:220px;" onclick="initTermina(${terminaState.tematicaId})">🔄 Nueva palabra</button>
-          <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+          <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
         </div>` : ''}
     </div>`;
 

@@ -230,7 +230,7 @@ function rpgShowMenu() {
 
 function rpgExitToHub() {
   rpgStopLoop();
-  goTo('inicio');
+  goTo('juegos');
 }
 
 // ─── Posiciones de costado (para el patrón "sides") ─────

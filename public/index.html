@@ -74,6 +74,20 @@
     <!-- Se llena dinámicamente desde app.js -->
     <div class="featured-grid" id="featuredGrid"></div>
 
+    <div style="text-align:center; margin:2.5rem 0 1.5rem;">
+      <span class="section-title">🧩 Juegos Sencillos</span>
+    </div>
+
+    <!-- Se llena dinámicamente desde app.js -->
+    <div class="featured-grid" id="simpleGrid"></div>
+
+    <div style="text-align:center; margin:2.5rem 0 1.5rem;">
+      <span class="section-title">⚔️ Juegos de Acción</span>
+    </div>
+
+    <!-- Se llena dinámicamente desde app.js -->
+    <div class="featured-grid" id="actionGrid"></div>
+
   </section>
 
   <!-- ── SECCIÓN: JUEGOS ── -->
@@ -309,7 +323,7 @@
   <!-- ── SECCIÓN: AHORCADO ── -->
   <section class="section" id="sec-ahorcado">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title"><span>💀</span> Ahorcado</div>
       <div class="game-screen-theme" id="ahorcado-theme-label"></div>
     </div>
@@ -348,7 +362,7 @@
   <!-- ── SECCIÓN: ADIVINA LA PALABRA (estilo Wordle) ── -->
   <section class="section" id="sec-wordle">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="stopWordle(); goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="stopWordle(); goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title"><span>🟩</span> Adivina la Palabra</div>
       <div class="game-screen-theme" id="wordle-theme-label"></div>
     </div>
@@ -376,7 +390,7 @@
   <!-- ── SECCIÓN: SOPA DE LETRAS ── -->
   <section class="section" id="sec-sopa">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title"><span>🔍</span> Sopa de Letras</div>
       <div class="game-screen-theme" id="sopa-theme-label"></div>
     </div>
@@ -391,7 +405,7 @@
   <!-- ── SECCIÓN: PREGUNTADOS ── -->
   <section class="section" id="sec-preguntados">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title"><span>❓</span> Preguntados</div>
       <div class="game-screen-theme" id="preguntados-theme-label"></div>
     </div>
@@ -406,7 +420,7 @@
   <!-- ── SECCIÓN: TERMINA LA PALABRA ── -->
   <section class="section" id="sec-termina">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title"><span>🔤</span> Termina la Palabra</div>
       <div class="game-screen-theme" id="termina-theme-label"></div>
     </div>
@@ -421,7 +435,7 @@
   <!-- ── SECCIÓN: ADIVINA LA COSA ── -->
   <section class="section" id="sec-adivina">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="stopAdivina(); goTo('juegos')">← Volver</button>
+      <button class="btn-back" onclick="stopAdivina(); goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title"><span>🕵️</span> Adivina la Cosa</div>
       <div class="game-screen-theme" id="adivina-theme-label"></div>
     </div>
@@ -480,7 +494,7 @@
   <!-- ── SECCIÓN: PIXEL RUNNER ── -->
   <section class="section" id="sec-runner">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="stopRunner(); goTo('inicio')">← Volver al menú</button>
+      <button class="btn-back" onclick="stopRunner(); goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title" style="font-family:'Press Start 2P',monospace;color:#0f1e3d;">🏃 Pixel Runner</div>
     </div>
 
@@ -627,6 +641,7 @@
     <div class="trampas-menu" id="trampasMainMenu">
       <div class="trampas-menu-title">Castle Escape</div>
       <div class="trampas-menu-subtitle">¿Porqué este castillo es un laberinto?</div>
+      <button class="trampas-menu-btn" onclick="stopTrampas(); goTo('juegos')">← Volver a Juegos</button>
       <button class="trampas-menu-btn" onclick="trShowLevelSelect()">▶ Jugar</button>
       <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowSettings()">⚙ Ajustes</button>
       <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowHowToPlay()">❓ Cómo jugar</button>
@@ -748,7 +763,7 @@
   <!-- ── SECCIÓN: RPG PIXEL ── -->
   <section class="section" id="sec-rpg_pixel">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="rpgExitToHub();">← Volver al menú</button>
+      <button class="btn-back" onclick="rpgExitToHub();">← Volver a Juegos</button>
       <div class="game-screen-title" style="font-family:'Press Start 2P',monospace;color:#14532d;">🗡️ RPG Pixel</div>
     </div>
 
