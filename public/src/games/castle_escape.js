@@ -63,6 +63,10 @@ const TR_LEVELS = [
     start: { x: 20, y: 200 },
     platforms: [
       { x: 0, y: 240, w: 480, h: 30, type: 'normal' },
+      // Señuelo: parece un escalón para llegar a la estrella, pero es
+      // falso — si saltás hacia él, tu arco pasa justo por donde está
+      // la estrella. Caminando por el piso normal no hace falta tocarlo.
+      { x: 190, y: 196, w: 46, h: 14, type: 'fake' },
     ],
     hazards: [
       { x: 222, y: 168, w: 20, h: 20, type: 'star' },
@@ -75,11 +79,15 @@ const TR_LEVELS = [
     hint: 'Algo se acerca desde la derecha.',
     start: { x: 20, y: 200 },
     platforms: [
-      { x: 0, y: 240, w: 480, h: 30, type: 'normal' },
+      { x: 0,   y: 240, w: 170, h: 30, type: 'normal' },
+      // Tramo falso justo en la zona donde hay que esquivar la flecha —
+      // no te podés quedar parado ahí adelante ni aunque el piso se vea igual.
+      { x: 170, y: 240, w: 80,  h: 30, type: 'fake'   },
+      { x: 250, y: 240, w: 230, h: 30, type: 'normal' },
     ],
     hazards: [],
     arrows: [
-      { triggerX: 190, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.2, active: false, fired: false },
+      { triggerX: 160, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.2, active: false, fired: false },
     ],
     exit: { x: 430, y: 200, w: 26, h: 40 },
   },
@@ -89,6 +97,9 @@ const TR_LEVELS = [
     start: { x: 20, y: 170 },
     platforms: [
       { x: 0,   y: 210, w: 90,  h: 20, type: 'normal'  },
+      // Parece un escalón de paso para no saltar el hueco entero — es
+      // falso, si pisás ahí seguís cayendo directo a los pinchos.
+      { x: 110, y: 210, w: 26,  h: 14, type: 'fake'     },
       { x: 150, y: 210, w: 80,  h: 20, type: 'crumble' },
       { x: 300, y: 210, w: 90,  h: 20, type: 'normal'  },
       { x: 430, y: 210, w: 50,  h: 20, type: 'normal'  },
@@ -126,6 +137,9 @@ const TR_LEVELS = [
       { x: 190, y: 180, w: 50,  h: 20, type: 'crumble' },
       { x: 270, y: 210, w: 60,  h: 20, type: 'crumble' },
       { x: 360, y: 210, w: 120, h: 20, type: 'normal'  },
+      // Falsa "red de seguridad" más abajo, justo sobre los pinchos —
+      // parece piso normal pero no frena la caída. Acá no hay red.
+      { x: 140, y: 236, w: 90,  h: 14, type: 'fake'     },
     ],
     hazards: [
       { x: 0, y: 255, w: 480, h: 15, type: 'spike' },
@@ -142,6 +156,9 @@ const TR_LEVELS = [
       { x: 120, y: 240, w: 70,  h: 30, type: 'fake'   },
       { x: 210, y: 240, w: 100, h: 30, type: 'normal' },
       { x: 340, y: 220, w: 140, h: 30, type: 'normal' },
+      // Señuelo elevado cerca de la segunda flecha — tienta a treparse
+      // ahí para "esquivarla" pero es falso y la flecha pasa justo por ahí.
+      { x: 290, y: 176, w: 40,  h: 14, type: 'fake'   },
     ],
     hazards: [
       { x: 120, y: 255, w: 70,  h: 15, type: 'spike' },
@@ -179,6 +196,9 @@ const TR_LEVELS = [
     start: { x: 20, y: 200 },
     platforms: [
       { x: 0,   y: 240, w: 480, h: 30, type: 'normal' },
+      // Tienta a treparse "arriba de todo" para esquivar las 4 flechas
+      // de una — es falso, si intentás pararte ahí seguís cayendo.
+      { x: 110, y: 172, w: 50,  h: 14, type: 'fake'   },
     ],
     hazards: [],
     arrows: [
@@ -200,6 +220,8 @@ const TR_LEVELS = [
       { x: 210, y: 210, w: 40,  h: 20, type: 'normal'  },
       { x: 270, y: 210, w: 50,  h: 20, type: 'fake'    },
       { x: 330, y: 180, w: 150, h: 20, type: 'normal'  },
+      // "Atajo" falso cerca de la salida — ni al final hay que confiar.
+      { x: 370, y: 140, w: 30,  h: 14, type: 'fake'    },
     ],
     hazards: [
       { x: 100, y: 255, w: 50,  h: 15, type: 'spike' },
@@ -283,6 +305,9 @@ const TR_LEVELS = [
       { x: 170, y: 150, w: 60, h: 20, type: 'normal' },
       { x: 250, y: 150, w: 60, h: 16, type: 'moving', move: { axis: 'x', from: 250, to: 370, speed: 1.1 } },
       { x: 390, y: 150, w: 90, h: 20, type: 'normal' },
+      // Tienta a cruzar de un salto sin esperar el segundo ascensor —
+      // es falso, y abajo están los pinchos.
+      { x: 300, y: 108, w: 40, h: 14, type: 'fake' },
     ],
     hazards: [
       { x: 230, y: 255, w: 250, h: 15, type: 'spike' },
@@ -315,6 +340,9 @@ const TR_LEVELS = [
       { x: 90,  y: 240, w: 50, h: 16, type: 'moving', move: { axis: 'y', from: 120, to: 240, speed: 1.0 } },
       { x: 200, y: 220, w: 50, h: 16, type: 'moving', move: { axis: 'y', from: 100, to: 220, speed: 1.2 } },
       { x: 310, y: 100, w: 170, h: 20, type: 'normal' },
+      // Tienta a cruzar de un salto entre los dos ascensores sin
+      // esperarlos — es falso, y ahí abajo siguen los pinchos.
+      { x: 150, y: 168, w: 36, h: 14, type: 'fake' },
     ],
     hazards: [
       { x: 60, y: 255, w: 420, h: 15, type: 'spike' },
@@ -333,6 +361,9 @@ const TR_LEVELS = [
       { x: 110, y: 210, w: 60, h: 20, type: 'crumble' },
       { x: 200, y: 180, w: 60, h: 16, type: 'moving',  move: { axis: 'x', from: 200, to: 320, speed: 1.3 } },
       { x: 350, y: 180, w: 130, h: 20, type: 'normal' },
+      // Tienta a saltar directo desde el inicio ignorando el piso
+      // quebradizo — es falso.
+      { x: 90,  y: 172, w: 34, h: 14, type: 'fake' },
     ],
     hazards: [
       { x: 0,   y: 255, w: 480, h: 15, type: 'spike' },
@@ -346,7 +377,9 @@ const TR_LEVELS = [
     hint: 'Esquivá flechas sin dejar de mirar el piso.',
     start: { x: 20, y: 200 },
     platforms: [
-      { x: 0, y: 240, w: 480, h: 30, type: 'normal' },
+      { x: 0,   y: 240, w: 150, h: 30, type: 'normal' },
+      { x: 150, y: 240, w: 60,  h: 30, type: 'fake'   },
+      { x: 210, y: 240, w: 270, h: 30, type: 'normal' },
     ],
     hazards: [
       { x: 250, y: 214, w: 26, h: 26, type: 'saw', move: { axis: 'x', from: 80, to: 400, speed: 2.2 } },
@@ -411,6 +444,7 @@ const TRAMPAS = {
   levelStartTime: 0,
   levelDeaths: 0,
   explosions: [],
+  floorY: 0,
 
   // w/h en proporción 32:36 (la misma que usa drawTrampasPlayer), así el
   // sprite dibujado llega exactamente hasta el borde inferior del hitbox
@@ -641,6 +675,12 @@ function trLoadLevel(index) {
   TRAMPAS.arrows     = lvl.arrows.map(a => ({ ...a, active: false, fired: false }));
   TRAMPAS.deathsThisLevel = 0;
 
+  // Y del "piso base" del nivel: la fila más baja (mayor y) entre las
+  // plataformas definidas. Se usa para decidir qué segmentos normal/fake
+  // son parte del suelo real (textura wall) vs islas sueltas elevadas
+  // (textura trapdoor) — ver trIsFloatingPlatform.
+  TRAMPAS.floorY = Math.max(...lvl.platforms.map(p => p.y));
+
   const p = TRAMPAS.player;
   p.x = lvl.start.x; p.y = lvl.start.y;
   p.vx = 0; p.vy = 0; p.dead = false; p.onGround = false; p.ridingPlatform = null;
@@ -741,23 +781,38 @@ function trGetDecoAssets() {
 
 // Dibuja una plataforma. El sprite de "isla flotante" (mapa.png) se usa
 // SOLO para lo que realmente flota/se mueve/se rompe: plataformas
-// 'moving', 'crumble', y las 'normal'/'fake' que son islas sueltas en el
-// aire (angostas, no tocan el piso). El "suelo" — los pisos largos que
-// hacen de base del nivel — vuelve a la textura de color plana de antes,
-// tal cual pediste. 'fake' siempre se dibuja IGUAL que 'normal' de su
-// mismo tipo (isla o piso) — esa es la trampa, no debe notarse cuál es cuál.
+// 'moving', 'crumble', y las 'normal'/'fake' que están elevadas por
+// encima del piso base del nivel (no forman parte de la fila de suelo).
+// El "suelo" — los segmentos que están a la misma altura que el resto
+// del piso, angostos o anchos — usa la textura de piso "wall" tileada.
+// 'fake' siempre se dibuja IGUAL que 'normal' de su misma altura — esa
+// es la trampa, no debe notarse cuál es cuál a simple vista.
 function trIsFloatingPlatform(plat) {
-  return plat.type === 'moving' || plat.type === 'crumble' || plat.w < 260;
+  return plat.type === 'moving' || plat.type === 'crumble' || plat.y < TRAMPAS.floorY;
 }
 
 function trDrawPlatform(ctx, plat) {
   const assets = trGetMapaAssets();
-  const useSprite = assets && trIsFloatingPlatform(plat);
-  if (useSprite) {
-    const f = assets.atlas.frames.platform_float;
-    ctx.drawImage(assets.img, f.x, f.y, f.w, f.h, plat.x, plat.y, plat.w, plat.h);
+  const floatF = assets && trIsFloatingPlatform(plat) ? assets.atlas.frames.trapdoor : null;
+  if (floatF) {
+    ctx.drawImage(assets.img, floatF.x, floatF.y, floatF.w, floatF.h, plat.x, plat.y, plat.w, plat.h);
+  } else if (assets && assets.atlas.frames.wall) {
+    // Piso / suelo — se tilea el bloque cuadrado "wall" repetido en vez
+    // de un rectángulo de color plano. clip() recorta lo que sobra del
+    // último bloque para que no se pase del ancho de la plataforma.
+    const w = assets.atlas.frames.wall;
+    const tileW = plat.h * (w.w / w.h);
+    const n = Math.max(1, Math.ceil(plat.w / tileW));
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(plat.x, plat.y, plat.w, plat.h);
+    ctx.clip();
+    for (let i = 0; i < n; i++) {
+      ctx.drawImage(assets.img, w.x, w.y, w.w, w.h, plat.x + i * tileW, plat.y, tileW, plat.h);
+    }
+    ctx.restore();
   } else {
-    // Piso / suelo — textura de color plana, la de siempre.
+    // Fallback — sin assets o sin frame "wall": rectángulo de color plano.
     ctx.fillStyle = '#7c3aed';
     ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
@@ -810,7 +865,11 @@ function trDrawDecor(ctx) {
 // como para la decoración decor:'spike' arriba de una plataforma.
 function trDrawSpikeRow(ctx, x, y, w, h) {
   const assets = trGetMapaAssets();
-  if (!assets) {
+  // El atlas del proyecto trae 3 variantes sueltas (spike_1a/1b/1c). Se
+  // van rotando al tilear la fila, así no queda un patrón repetido idéntico.
+  const variants = assets ? [assets.atlas.frames.spike_1a, assets.atlas.frames.spike_1b, assets.atlas.frames.spike_1c] : null;
+  const spritesReady = variants && variants.every(Boolean);
+  if (!spritesReady) {
     ctx.fillStyle = '#ef4444';
     const n = Math.max(1, Math.floor(w / 14));
     for (let i = 0; i < n; i++) {
@@ -824,11 +883,14 @@ function trDrawSpikeRow(ctx, x, y, w, h) {
     }
     return;
   }
-  const f = assets.atlas.frames.spike_1;
-  const iconW = h * (f.w / f.h);
+  // Se van rotando las 3 variantes al tilear la fila, así no queda un
+  // patrón repetido pincho-pincho-pincho idéntico.
+  const f0 = variants[0];
+  const iconW = h * (f0.w / f0.h);
   const n = Math.max(1, Math.round(w / iconW));
   const step = w / n;
   for (let i = 0; i < n; i++) {
+    const f = variants[i % variants.length];
     ctx.drawImage(assets.img, f.x, f.y, f.w, f.h, x + i * step, y, step, h);
   }
 }
@@ -1200,11 +1262,10 @@ function drawTrampas() {
       if (!a.active) return;
       if (assets) {
         const f = a.dir < 0 ? assets.atlas.frames.arrow_left : assets.atlas.frames.arrow_right;
-        ctx.drawImage(assets.img, f.x, f.y, f.w, f.h, a.x, a.y, a.w, a.h);
-      } else {
-        ctx.fillStyle = '#facc15';
-        ctx.fillRect(a.x, a.y, a.w, a.h);
+        if (f) { ctx.drawImage(assets.img, f.x, f.y, f.w, f.h, a.x, a.y, a.w, a.h); return; }
       }
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(a.x, a.y, a.w, a.h);
     });
   }
 
@@ -1212,8 +1273,8 @@ function drawTrampas() {
   const lvl = TR_LEVELS[TRAMPAS.levelIndex];
   {
     const assets = trGetMapaAssets();
-    if (assets) {
-      const f = assets.atlas.frames.door_exit;
+    const f = assets && assets.atlas.frames.door;
+    if (f) {
       ctx.drawImage(assets.img, f.x, f.y, f.w, f.h, lvl.exit.x, lvl.exit.y, lvl.exit.w, lvl.exit.h);
     } else {
       ctx.fillStyle = '#22c55e';
