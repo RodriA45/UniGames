@@ -229,9 +229,9 @@
           <span class="card-title" style="color:#facc15;">Castle Escape</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">Aventuras en el castillo: saltá plataformas, esquivá trampas y llegá a la salida de cada nivel. 11 niveles con 2 ambientaciones distintas y música propia.</p>
+          <p class="card-desc">Aventuras en el castillo: saltá plataformas, esquivá trampas y llegá a la salida de cada nivel. 20 niveles con 2 ambientaciones distintas y música propia.</p>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
-            <span class="card-tag">🏰 11 niveles</span>
+            <span class="card-tag">🏰 20 niveles</span>
             <span class="card-tag">🎵 Música propia</span>
           </div>
           <button class="btn-play" onclick="launchGame('castle_escape', this)" style="background:#facc15;color:#2a0e37;font-weight:900;">▶ Jugar</button>
@@ -485,46 +485,63 @@
     </div>
 
     <div class="runner-container">
-      <div class="runner-score-display">Puntos: <span id="runner-score-display">0</span></div>
+      <div class="runner-hud">
+        <div class="runner-score-display">Puntos: <span id="runner-score-display">0</span></div>
+        <div class="runner-coins-display">🪙 <span id="runner-coins-run-display">0</span></div>
+      </div>
       <canvas id="runnerCanvas"></canvas>
       <!-- Pantalla de menú del juego (Pixel Runner) -->
       <div class="runner-menu" id="runnerMenu">
         <div class="runner-menu-background" style="background-image: url('assert/pixel runner/menu.jpg'); background-size: cover; background-position: center;">
           <div class="runner-menu-content">
             <h2 class="runner-menu-title">Pixel Runner</h2>
-            <p class="runner-menu-sub">Corré, saltá y esquivá obstáculos</p>
+            <p class="runner-menu-sub">Comienzo de un viaje al castillo</p>
+          </div>
+          <div class="runner-menu-buttons-wrap">
             <div class="runner-menu-buttons">
-              <button class="btn-play" onclick="startPixelRunnerGame()">▶ Jugar</button>
-              <button class="btn-play runner-btn-secondary" onclick="mostrarAjustes()">⚙️ Ajuste</button>
-              <button class="btn-play runner-btn-secondary" onclick="mostrarComoJugar()">📋 Cómo jugar</button>
+              <button class="btn-play" onclick="mostrarModoRunner()">Jugar</button>
+              <button class="btn-play runner-btn-secondary" onclick="mostrarMejoras()">Mejoras</button>
+              <button class="btn-play runner-btn-secondary" onclick="mostrarAjustes()">Ajuste</button>
+              <button class="btn-play runner-btn-secondary" onclick="mostrarComoJugar()">Cómo jugar</button>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Cartel: Selección de modo (Historia / Infinito) -->
+      <div class="runner-panel hidden" id="runnerModePanel">
+        <div class="runner-panel-box">
+          <div class="runner-panel-header">
+            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
+            <div class="runner-panel-title">🎮 Elegí tu modo</div>
+          </div>
+          <div class="runner-panel-content runner-mode-content">
+            <button class="runner-mode-card" id="runnerModoHistoriaBtn" onclick="elegirModoRunner('historia')">
+              <span class="runner-mode-icon">📖</span>
+              <span class="runner-mode-name">Historia</span>
+              <span class="runner-mode-desc">Llegá a los 2.500 puntos</span>
+            </button>
+            <button class="runner-mode-card locked" id="runnerModoInfinitoBtn" onclick="elegirModoRunner('infinito')">
+              <span class="runner-mode-icon">♾️</span>
+              <span class="runner-mode-name">Infinito</span>
+              <span class="runner-mode-desc" id="runnerModoInfinitoDesc">🔒 Completá Historia para desbloquear</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cartel: Cómic (intro de Historia al elegir el modo / final al llegar a los 2500 pts) -->
+      <div class="runner-comic-overlay hidden" id="runnerComicOverlay">
+        <div class="runner-comic-box">
+          <img class="runner-comic-img" id="runnerComicImg" src="" alt="Cómic Pixel Runner">
+          <button class="btn-play runner-comic-btn" id="runnerComicBtn" onclick="runnerComicContinuar()">Continuar ▶</button>
         </div>
       </div>
 
       <div class="runner-overlay" id="runnerOverlay">
         <div class="runner-overlay-box">
           <div class="runner-char-preview">
-            <svg viewBox="0 0 32 40" width="48" height="60">
-              <rect x="8" y="0" width="16" height="14" fill="#fbbf7a"/>
-              <rect x="8" y="0" width="16" height="3" fill="#3b2506"/>
-              <rect x="7" y="1" width="2" height="2" fill="#3b2506"/>
-              <rect x="23" y="1" width="2" height="2" fill="#3b2506"/>
-              <rect x="8"  y="7" width="6" height="5" rx="1" fill="none" stroke="#1a3a6b" stroke-width="1.5"/>
-              <rect x="18" y="7" width="6" height="5" rx="1" fill="none" stroke="#1a3a6b" stroke-width="1.5"/>
-              <rect x="14" y="9" width="4" height="1.5" fill="#1a3a6b"/>
-              <rect x="9"  y="8.5" width="4" height="2" fill="#93c5fd" opacity=".7"/>
-              <rect x="19" y="8.5" width="4" height="2" fill="#93c5fd" opacity=".7"/>
-              <rect x="11" y="11" width="10" height="1.5" fill="#d97706"/>
-              <rect x="8"  y="14" width="16" height="11" fill="#2563eb"/>
-              <rect x="12" y="14" width="8"  height="3"  fill="#fbbf7a"/>
-              <rect x="3"  y="16" width="5"  height="3"  fill="#fbbf7a"/>
-              <rect x="24" y="18" width="5"  height="3"  fill="#fbbf7a"/>
-              <rect x="8"  y="25" width="7"  height="6"  fill="#1e3a5f"/>
-              <rect x="17" y="25" width="7"  height="6"  fill="#1e3a5f"/>
-              <rect x="6"  y="31" width="9"  height="3"  fill="#f5c518"/>
-              <rect x="17" y="31" width="9"  height="3"  fill="#f5c518"/>
-            </svg>
+            <canvas id="runnerCharPreviewCanvas" width="64" height="80"></canvas>
           </div>
           <p class="runner-overlay-title" id="runnerOverlayTitle">¡Pixel Runner!</p>
           <p class="runner-overlay-sub" id="runnerOverlaySub">↑ Saltar &nbsp;·&nbsp; ↓ Caída rápida<br>Doble salto disponible</p>
@@ -535,26 +552,84 @@
           </div>
         </div>
       </div>
+
+      <!-- Cartel: Mejoras -->
+      <div class="runner-panel hidden" id="runnerMejorasPanel">
+        <div class="runner-panel-box">
+          <div class="runner-panel-header">
+            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
+            <div class="runner-panel-title">🛠️ Mejoras</div>
+          </div>
+          <div class="runner-panel-content runner-mejoras-content">
+            <div class="runner-mejoras-coins">🪙 <span id="runnerMejorasCoinsTotal">0</span> monedas juntadas</div>
+            <div class="runner-mejoras-grid" id="runnerMejorasGrid"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cartel: Ajustes -->
+      <div class="runner-panel hidden" id="runnerAjustesPanel">
+        <div class="runner-panel-box">
+          <div class="runner-panel-header">
+            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
+            <div class="runner-panel-title">⚙️ Ajustes</div>
+          </div>
+          <div class="runner-panel-content trampas-settings-content">
+            <div class="trampas-slider-row">
+              <label for="runnerMusicVolume">🎵 Música</label>
+              <input type="range" id="runnerMusicVolume" min="0" max="100" value="50" oninput="runnerOnMusicVolumeChange(this.value)">
+              <span class="trampas-slider-value" id="runnerMusicVolumeValue">50%</span>
+            </div>
+            <div class="trampas-slider-row">
+              <label for="runnerSfxVolume">🔊 Efectos</label>
+              <input type="range" id="runnerSfxVolume" min="0" max="100" value="80" oninput="runnerOnSfxVolumeChange(this.value)">
+              <span class="trampas-slider-value" id="runnerSfxVolumeValue">80%</span>
+            </div>
+            <div class="trampas-slider-row runner-fullscreen-row" id="runnerFullscreenRow">
+              <label>🖥️ Pantalla completa</label>
+              <button type="button" class="runner-fullscreen-btn" id="runnerFullscreenBtn" onclick="runnerToggleFullscreen()">Activar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cartel: Cómo jugar -->
+      <div class="runner-panel hidden" id="runnerComoJugarPanel">
+        <div class="runner-panel-box">
+          <div class="runner-panel-header">
+            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
+            <div class="runner-panel-title">📋 Cómo jugar</div>
+          </div>
+          <div class="runner-panel-content trampas-howto-content">
+            <div class="trampas-howto-row"><span class="trampas-howto-keys">↑ / Espacio / W</span><span>Saltar (doble salto disponible)</span></div>
+            <div class="trampas-howto-row"><span class="trampas-howto-keys">↓ / S</span><span>Caída rápida</span></div>
+            <div class="trampas-howto-row"><span class="trampas-howto-keys">← →</span><span>Moverse a los costados</span></div>
+            <div class="trampas-howto-row runner-howto-powerup">
+              <span class="trampas-howto-keys runner-powerup-badge runner-powerup-shield">Escudo</span>
+              <span>Bloquea un choque</span>
+            </div>
+            <div class="trampas-howto-row runner-howto-powerup">
+              <span class="trampas-howto-keys runner-powerup-badge runner-powerup-x2">x2</span>
+              <span>Duplica los puntos</span>
+            </div>
+            <p class="trampas-howto-tip">En celular usá los botones dentro de la pantalla del juego: abajo a la izquierda para moverte, abajo a la derecha para Saltar / Bajar.</p>
+            <p class="trampas-howto-tip">Esquivá los obstáculos y juntá monedas y power-ups. La velocidad aumenta cada 250 puntos: ¡aguantá lo más que puedas!</p>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Controles táctiles -->
-    <div class="runner-controls">
-      <button class="runner-ctrl-btn" id="btnJump"
-        onpointerdown="event.preventDefault(); runnerJumpOrStart();">⬆ Saltar</button>
-      <button class="runner-ctrl-btn" id="btnDrop"
-        onpointerdown="event.preventDefault(); runnerFastDrop();">⬇ Bajar</button>
-    </div>
-    <p class="runner-hint">↑ Saltar (doble salto) &nbsp;·&nbsp; ↓ Caída rápida &nbsp;·&nbsp; +vel cada 250 pts</p>
   </section>
 
   <!-- ── SECCIÓN: CASTLE ESCAPE ── -->
   <section class="section" id="sec-castle_escape">
     <!-- Menú Principal -->
     <div class="trampas-menu" id="trampasMainMenu">
-      <div class="trampas-menu-title">🏰 Castle Escape</div>
-      <div class="trampas-menu-subtitle">11 niveles de pura trampa. ¡Encuentra la salida!</div>
+      <div class="trampas-menu-title">Castle Escape</div>
+      <div class="trampas-menu-subtitle">¿Porqué este castillo es un laberinto?</div>
       <button class="trampas-menu-btn" onclick="trShowLevelSelect()">▶ Jugar</button>
       <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowSettings()">⚙ Ajustes</button>
+      <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowHowToPlay()">❓ Cómo jugar</button>
     </div>
 
     <!-- Selección de Niveles -->
@@ -585,7 +660,30 @@
         <div class="trampas-menu-title-small">Ajustes</div>
       </div>
       <div class="trampas-settings-content">
-        <p style="color: rgba(255,255,255,0.7);">Próximamente...</p>
+        <div class="trampas-slider-row">
+          <label for="trMusicVolume">🎵 Música</label>
+          <input type="range" id="trMusicVolume" min="0" max="100" value="50" oninput="trOnMusicVolumeChange(this.value)">
+          <span class="trampas-slider-value" id="trMusicVolumeValue">50%</span>
+        </div>
+        <div class="trampas-slider-row">
+          <label for="trSfxVolume">🔊 Efectos</label>
+          <input type="range" id="trSfxVolume" min="0" max="100" value="80" oninput="trOnSfxVolumeChange(this.value)">
+          <span class="trampas-slider-value" id="trSfxVolumeValue">80%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cómo jugar -->
+    <div class="trampas-menu hidden" id="trampasHowToPlay">
+      <div class="trampas-menu-header">
+        <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
+        <div class="trampas-menu-title-small">Cómo jugar</div>
+      </div>
+      <div class="trampas-howto-content">
+        <div class="trampas-howto-row"><span class="trampas-howto-keys">← → / A D</span><span>Moverse</span></div>
+        <div class="trampas-howto-row"><span class="trampas-howto-keys">↑ / W / Espacio</span><span>Saltar</span></div>
+        <p class="trampas-howto-tip">En celular usá los botones táctiles debajo del juego.</p>
+        <p class="trampas-howto-tip">Encontrá la salida verde de cada nivel. No todo lo que ves es seguro: hay pisos falsos, flechas y plataformas que se derrumban.</p>
       </div>
     </div>
 
@@ -599,11 +697,19 @@
           <div class="trampas-hud-left">
             <button class="trampas-hud-btn" onclick="trPauseGame()">⏸</button>
             <button class="trampas-hud-btn" onclick="toggleCastleMusic()" title="Mute música">🔊</button>
+            <button class="trampas-hud-btn" onclick="trToggleControlsSign()" title="Controles">❓</button>
           </div>
           <div class="trampas-hud-info">
             <span class="trampas-hud-stars" id="trampas-hud-stars"></span>
             <span class="trampas-hud-deaths" id="trampas-hud-deaths">💀 0</span>
           </div>
+        </div>
+
+        <!-- Cartel de controles (se muestra/oculta con el botón ❓ del HUD) -->
+        <div class="trampas-controls-sign hidden" id="trampasControlsSign">
+          <div class="trampas-controls-sign-title">Controles</div>
+          <div class="trampas-controls-sign-row"><b>← →</b> Moverse</div>
+          <div class="trampas-controls-sign-row"><b>↑</b> Saltar</div>
         </div>
 
         <!-- Overlay de inicio/nivel -->
@@ -1029,6 +1135,7 @@
 <script src="assert/rpg pixel/models/sprites.js"></script>
 <script src="src/engine2d.js"></script>
 <script src="src/games/pixelrunner.js"></script>
+<script src="src/games/castle_escape.js"></script>
 <script src="src/games/rpg.js"></script>
 <script src="src/app.js"></script>
 </body>
