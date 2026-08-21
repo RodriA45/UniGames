@@ -2226,6 +2226,13 @@ function changeInfoPage(dir) {
   updateInfoModal();
 }
 
+function goToInfoPage(page) {
+  currentInfoPage = page;
+  if (currentInfoPage < 1) currentInfoPage = 1;
+  if (currentInfoPage > totalInfoPages) currentInfoPage = totalInfoPages;
+  updateInfoModal();
+}
+
 function updateInfoModal() {
   // Ocultar todas las páginas
   document.querySelectorAll('.info-page').forEach(p => p.classList.remove('active'));

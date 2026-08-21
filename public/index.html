@@ -637,126 +637,131 @@
 
   <!-- ── SECCIÓN: CASTLE ESCAPE ── -->
   <section class="section" id="sec-castle_escape">
-    <!-- Menú Principal -->
-    <div class="trampas-menu" id="trampasMainMenu">
-      <div class="trampas-menu-title">Castle Escape</div>
-      <div class="trampas-menu-subtitle">¿Porqué este castillo es un laberinto?</div>
-      <button class="trampas-menu-btn" onclick="stopTrampas(); goTo('juegos')">← Volver a Juegos</button>
-      <button class="trampas-menu-btn" onclick="trShowLevelSelect()">▶ Jugar</button>
-      <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowSettings()">⚙ Ajustes</button>
-      <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowHowToPlay()">❓ Cómo jugar</button>
+    <div class="game-screen-header">
+      <button class="btn-back" onclick="stopTrampas(); goTo('juegos')">← Volver a Juegos</button>
+      <div class="game-screen-title" style="font-family:'Press Start 2P',monospace;color:#2e1065;">🏰 Castle Escape</div>
     </div>
 
-    <!-- Selección de Niveles -->
-    <div class="trampas-menu hidden" id="trampasLevelSelect">
-      <div class="trampas-menu-header">
-        <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
-        <div class="trampas-menu-title-small">Seleccionar Nivel</div>
-      </div>
-      <div class="trampas-level-nav">
-        <button class="trampas-nav-arrow" id="trNavLeft" onclick="trNavLevel(-1)">◀</button>
-        <div class="trampas-level-card-big" id="trLevelCardBig">
-          <div class="trampas-big-stars" id="trBigStars">
-            <span class="star">★</span><span class="star">★</span><span class="star">★</span>
-          </div>
-          <div class="trampas-big-level-num" id="trBigLevelNum">1</div>
-          <div class="trampas-big-level-name" id="trBigLevelName">Nombre</div>
+    <div class="trampas-container">
+      <canvas id="trampasCanvas"></canvas>
+
+      <!-- HUD superpuesto al juego -->
+      <div class="trampas-hud">
+        <div class="trampas-hud-left">
+          <button class="trampas-hud-btn" onclick="trPauseGame()">⏸</button>
+          <button class="trampas-hud-btn" onclick="toggleCastleMusic()" title="Mute música">🔊</button>
+          <button class="trampas-hud-btn" onclick="trToggleControlsSign()" title="Controles">❓</button>
         </div>
-        <button class="trampas-nav-arrow" id="trNavRight" onclick="trNavLevel(1)">▶</button>
+        <div class="trampas-hud-info">
+          <span class="trampas-hud-stars" id="trampas-hud-stars"></span>
+          <span class="trampas-hud-deaths" id="trampas-hud-deaths">💀 0</span>
+        </div>
       </div>
-      <div class="trampas-level-dots" id="trLevelDots"></div>
-      <button class="trampas-play-btn" id="trLevelPlayBtn" onclick="trPlaySelectedLevel()">▶ Jugar Nivel</button>
+
+      <!-- Menú Principal -->
+      <div class="trampas-menu" id="trampasMainMenu">
+        <div class="trampas-menu-title">Castle Escape</div>
+        <div class="trampas-menu-subtitle">¿Porqué este castillo es un laberinto?</div>
+        <button class="trampas-menu-btn" onclick="trShowLevelSelect()">▶ Jugar</button>
+        <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowSettings()">⚙ Ajustes</button>
+        <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowHowToPlay()">❓ Cómo jugar</button>
+      </div>
+
+      <!-- Selección de Niveles -->
+      <div class="trampas-menu hidden" id="trampasLevelSelect">
+        <div class="trampas-menu-header">
+          <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
+          <div class="trampas-menu-title-small">Seleccionar Nivel</div>
+        </div>
+        <div class="trampas-level-nav">
+          <button class="trampas-nav-arrow" id="trNavLeft" onclick="trNavLevel(-1)">◀</button>
+          <div class="trampas-level-card-big" id="trLevelCardBig">
+            <div class="trampas-big-stars" id="trBigStars">
+              <span class="star">★</span><span class="star">★</span><span class="star">★</span>
+            </div>
+            <div class="trampas-big-level-num" id="trBigLevelNum">1</div>
+            <div class="trampas-big-level-name" id="trBigLevelName">Nombre</div>
+          </div>
+          <button class="trampas-nav-arrow" id="trNavRight" onclick="trNavLevel(1)">▶</button>
+        </div>
+        <div class="trampas-level-dots" id="trLevelDots"></div>
+        <button class="trampas-play-btn" id="trLevelPlayBtn" onclick="trPlaySelectedLevel()">▶ Jugar Nivel</button>
+      </div>
+
+      <!-- Ajustes -->
+      <div class="trampas-menu hidden" id="trampasSettings">
+        <div class="trampas-menu-header">
+          <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
+          <div class="trampas-menu-title-small">Ajustes</div>
+        </div>
+        <div class="trampas-settings-content">
+          <div class="trampas-slider-row">
+            <label for="trMusicVolume">Música</label>
+            <input type="range" id="trMusicVolume" min="0" max="100" value="50" oninput="trOnMusicVolumeChange(this.value)">
+            <span class="trampas-slider-value" id="trMusicVolumeValue">50%</span>
+          </div>
+          <div class="trampas-slider-row">
+            <label for="trSfxVolume">Efectos</label>
+            <input type="range" id="trSfxVolume" min="0" max="100" value="80" oninput="trOnSfxVolumeChange(this.value)">
+            <span class="trampas-slider-value" id="trSfxVolumeValue">80%</span>
+          </div>
+          <div class="trampas-slider-row trampas-fullscreen-row" id="trFullscreenRow">
+            <label>🖥️ Pantalla completa</label>
+            <button type="button" class="runner-fullscreen-btn" id="trFullscreenBtn" onclick="trToggleFullscreen()">Activar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cómo jugar -->
+      <div class="trampas-menu hidden" id="trampasHowToPlay">
+        <div class="trampas-menu-header">
+          <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
+          <div class="trampas-menu-title-small">Cómo jugar</div>
+        </div>
+        <div class="trampas-howto-content">
+          <div class="trampas-howto-row"><span class="trampas-howto-keys">← → / A D</span><span>Moverse</span></div>
+          <div class="trampas-howto-row"><span class="trampas-howto-keys">↑ / W / Espacio</span><span>Saltar</span></div>
+          <p class="trampas-howto-tip">En celular usá los botones táctiles debajo del juego.</p>
+          <p class="trampas-howto-tip">Encontrá la salida verde de cada nivel. No todo lo que ves es seguro: hay pisos falsos, flechas y plataformas que se derrumban.</p>
+        </div>
+      </div>
+
+      <!-- Cartel de controles (se muestra/oculta con el botón ❓ del HUD) -->
+      <div class="trampas-controls-sign hidden" id="trampasControlsSign">
+        <div class="trampas-controls-sign-title">Controles</div>
+        <div class="trampas-controls-sign-row"><b>← →</b> Moverse</div>
+        <div class="trampas-controls-sign-row"><b>↑</b> Saltar</div>
+      </div>
+
+      <!-- Overlay de inicio/nivel -->
+      <div class="trampas-overlay hidden" id="trampasOverlay">
+        <div class="trampas-overlay-box">
+          <p class="trampas-overlay-title" id="trampasOverlayTitle">🏰 Castle Escape</p>
+          <p class="trampas-overlay-sub" id="trampasOverlaySub">No todo lo que ves es seguro.</p>
+          <button class="btn-play trampas-start-btn" id="trampasStartBtn" onclick="startTrampas()">▶ Empezar</button>
+        </div>
+      </div>
+
+      <!-- Mini menú de pausa -->
+      <div class="trampas-pause-menu hidden" id="trampasPauseMenu">
+        <div class="trampas-pause-box">
+          <p class="trampas-pause-title">⏸ Pausa</p>
+          <button class="trampas-pause-opt" onclick="trResumeGame()">▶ Continuar</button>
+          <button class="trampas-pause-opt trampas-pause-exit" onclick="trExitToLevels()">✖ Salir</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Ajustes -->
-    <div class="trampas-menu hidden" id="trampasSettings">
-      <div class="trampas-menu-header">
-        <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
-        <div class="trampas-menu-title-small">Ajustes</div>
-      </div>
-      <div class="trampas-settings-content">
-        <div class="trampas-slider-row">
-          <label for="trMusicVolume">🎵 Música</label>
-          <input type="range" id="trMusicVolume" min="0" max="100" value="50" oninput="trOnMusicVolumeChange(this.value)">
-          <span class="trampas-slider-value" id="trMusicVolumeValue">50%</span>
-        </div>
-        <div class="trampas-slider-row">
-          <label for="trSfxVolume">🔊 Efectos</label>
-          <input type="range" id="trSfxVolume" min="0" max="100" value="80" oninput="trOnSfxVolumeChange(this.value)">
-          <span class="trampas-slider-value" id="trSfxVolumeValue">80%</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Cómo jugar -->
-    <div class="trampas-menu hidden" id="trampasHowToPlay">
-      <div class="trampas-menu-header">
-        <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
-        <div class="trampas-menu-title-small">Cómo jugar</div>
-      </div>
-      <div class="trampas-howto-content">
-        <div class="trampas-howto-row"><span class="trampas-howto-keys">← → / A D</span><span>Moverse</span></div>
-        <div class="trampas-howto-row"><span class="trampas-howto-keys">↑ / W / Espacio</span><span>Saltar</span></div>
-        <p class="trampas-howto-tip">En celular usá los botones táctiles debajo del juego.</p>
-        <p class="trampas-howto-tip">Encontrá la salida verde de cada nivel. No todo lo que ves es seguro: hay pisos falsos, flechas y plataformas que se derrumban.</p>
-      </div>
-    </div>
-
-    <!-- Pantalla de Juego -->
-    <div class="hidden" id="trampasGameScreen">
-      <div class="trampas-container">
-        <canvas id="trampasCanvas"></canvas>
-
-        <!-- HUD superpuesto al juego -->
-        <div class="trampas-hud">
-          <div class="trampas-hud-left">
-            <button class="trampas-hud-btn" onclick="trPauseGame()">⏸</button>
-            <button class="trampas-hud-btn" onclick="toggleCastleMusic()" title="Mute música">🔊</button>
-            <button class="trampas-hud-btn" onclick="trToggleControlsSign()" title="Controles">❓</button>
-          </div>
-          <div class="trampas-hud-info">
-            <span class="trampas-hud-stars" id="trampas-hud-stars"></span>
-            <span class="trampas-hud-deaths" id="trampas-hud-deaths">💀 0</span>
-          </div>
-        </div>
-
-        <!-- Cartel de controles (se muestra/oculta con el botón ❓ del HUD) -->
-        <div class="trampas-controls-sign hidden" id="trampasControlsSign">
-          <div class="trampas-controls-sign-title">Controles</div>
-          <div class="trampas-controls-sign-row"><b>← →</b> Moverse</div>
-          <div class="trampas-controls-sign-row"><b>↑</b> Saltar</div>
-        </div>
-
-        <!-- Overlay de inicio/nivel -->
-        <div class="trampas-overlay" id="trampasOverlay">
-          <div class="trampas-overlay-box">
-            <p class="trampas-overlay-title" id="trampasOverlayTitle">🏰 Castle Escape</p>
-            <p class="trampas-overlay-sub" id="trampasOverlaySub">No todo lo que ves es seguro.</p>
-            <button class="btn-play trampas-start-btn" id="trampasStartBtn" onclick="startTrampas()">▶ Empezar</button>
-          </div>
-        </div>
-
-        <!-- Mini menú de pausa -->
-        <div class="trampas-pause-menu hidden" id="trampasPauseMenu">
-          <div class="trampas-pause-box">
-            <p class="trampas-pause-title">⏸ Pausa</p>
-            <button class="trampas-pause-opt" onclick="trResumeGame()">▶ Continuar</button>
-            <button class="trampas-pause-opt trampas-pause-exit" onclick="trExitToLevels()">✖ Salir</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Controles táctiles -->
-      <div class="trampas-controls">
-        <button class="runner-ctrl-btn" id="trBtnLeft"
-          onpointerdown="event.preventDefault(); trMove('left', true);"
-          onpointerup="trMove('left', false);" onpointerleave="trMove('left', false);">◀</button>
-        <button class="runner-ctrl-btn" id="trBtnJump"
-          onpointerdown="event.preventDefault(); trJump();">⬆ Saltar</button>
-        <button class="runner-ctrl-btn" id="trBtnRight"
-          onpointerdown="event.preventDefault(); trMove('right', true);"
-          onpointerup="trMove('right', false);" onpointerleave="trMove('right', false);">▶</button>
-      </div>
+    <!-- Controles táctiles -->
+    <div class="trampas-controls">
+      <button class="runner-ctrl-btn" id="trBtnLeft"
+        onpointerdown="event.preventDefault(); trMove('left', true);"
+        onpointerup="trMove('left', false);" onpointerleave="trMove('left', false);">◀</button>
+      <button class="runner-ctrl-btn" id="trBtnJump"
+        onpointerdown="event.preventDefault(); trJump();">⬆ Saltar</button>
+      <button class="runner-ctrl-btn" id="trBtnRight"
+        onpointerdown="event.preventDefault(); trMove('right', true);"
+        onpointerup="trMove('right', false);" onpointerleave="trMove('right', false);">▶</button>
     </div>
   </section>
 
@@ -1069,9 +1074,9 @@
 </div>
 
 <!-- MODAL DE INFO / CRÉDITOS -->
-<div class="info-overlay" id="infoOverlay">
+<div class="info-overlay" id="infoOverlay" onclick="if(event.target===this) closeInfoModal()">
   <div class="info-modal">
-    <button class="info-close" onclick="closeInfoModal()">✖</button>
+    <button class="info-close" onclick="closeInfoModal()" aria-label="Cerrar modal">✕</button>
     
     <!-- PÁGINA 1: ACERCA DEL PROYECTO -->
     <div class="info-page active" id="infoPage1">
@@ -1136,10 +1141,10 @@
     <div class="info-nav">
       <button class="info-btn-nav" onclick="changeInfoPage(-1)">◀ Atrás</button>
       <div class="info-dots" id="infoDots">
-        <span class="dot active"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
-        <span class="dot"></span>
+        <span class="dot active" onclick="goToInfoPage(1)"></span>
+        <span class="dot" onclick="goToInfoPage(2)"></span>
+        <span class="dot" onclick="goToInfoPage(3)"></span>
+        <span class="dot" onclick="goToInfoPage(4)"></span>
       </div>
       <button class="info-btn-nav" onclick="changeInfoPage(1)">Siguiente ▶</button>
     </div>

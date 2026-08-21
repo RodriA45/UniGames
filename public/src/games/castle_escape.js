@@ -30,6 +30,13 @@ const TR_GRAVITY = 0.42;
 const TR_JUMP_VY = -7.4;
 const TR_MOVE_SPEED = 2.7;
 
+// ─── Sprite del jugador (reutilizado de Pixel Runner: junior.png/atlas) ───
+const TR_RUN_FRAMES = ['run_0', 'run_1', 'run_2', 'run_3', 'run_4', 'run_5', 'run_6'];
+const TR_JUMP_FRAME = 'action_2'; // mismo frame que usa Pixel Runner como pose de salto
+const TR_FALL_FRAMES = ['fall_0', 'fall_1', 'fall_2', 'fall_3']; // animación de morir
+const TR_FALL_FRAME_DELAY = 110; // ms entre frames — 4 frames caben en TR_DEATH_DELAY (450ms)
+const TR_DEATH_DELAY = 450; // ms antes de reiniciar el nivel tras morir (ver trPlayerDie)
+
 // ─── SISTEMA DE ESTRELLAS ───
 const TR_TIME_LIMITS = [30, 35, 35, 40, 40, 45, 45, 50, 50, 55, 60, 55, 55, 60, 60, 65, 65, 70, 70, 75];
 const TR_DEATH_LIMITS = [5, 5, 5, 4, 4, 3, 3, 3, 2, 2, 1, 3, 3, 2, 2, 2, 1, 1, 1, 1];
@@ -45,6 +52,7 @@ const TR_LEVELS = [
     platforms: [
       { x: 0,   y: 240, w: 130, h: 30, type: 'normal' },
       { x: 130, y: 240, w: 60,  h: 30, type: 'fake'   },
+      { x: 190, y: 240, w: 20,  h: 30, type: 'fake'   },
       { x: 210, y: 240, w: 270, h: 30, type: 'normal' },
     ],
     hazards: [],
@@ -58,21 +66,24 @@ const TR_LEVELS = [
     ],
   },
   {
-    nombre: 'La estrella tentadora',
-    hint: 'No todo lo brillante conviene agarrarlo.',
+    nombre: 'Doble piso falso',
+    hint: 'El piso te puede fallar dos veces.',
     start: { x: 20, y: 200 },
     platforms: [
-      { x: 0, y: 240, w: 480, h: 30, type: 'normal' },
-      // Señuelo: parece un escalón para llegar a la estrella, pero es
-      // falso — si saltás hacia él, tu arco pasa justo por donde está
-      // la estrella. Caminando por el piso normal no hace falta tocarlo.
-      { x: 190, y: 196, w: 46, h: 14, type: 'fake' },
+      { x: 0,   y: 240, w: 150, h: 30, type: 'normal' },
+      { x: 150, y: 240, w: 60,  h: 30, type: 'fake'   },
+      { x: 210, y: 240, w: 140, h: 30, type: 'normal' },
+      { x: 350, y: 240, w: 60,  h: 30, type: 'fake'   },
+      { x: 410, y: 240, w: 70,  h: 30, type: 'normal' },
     ],
-    hazards: [
-      { x: 222, y: 168, w: 20, h: 20, type: 'star' },
-    ],
+    hazards: [],
     arrows: [],
     exit: { x: 430, y: 200, w: 26, h: 40 },
+    decor: [
+      { type: 'torch', x: 30,  y: 45, h: 36 },
+      { type: 'torch', x: 410, y: 45, h: 36 },
+      { type: 'ivy_2', x: 250, y: 0,  h: 50 },
+    ],
   },
   {
     nombre: 'Flecha en la pared',
@@ -90,6 +101,11 @@ const TR_LEVELS = [
       { triggerX: 160, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.2, active: false, fired: false },
     ],
     exit: { x: 430, y: 200, w: 26, h: 40 },
+    decor: [
+      { type: 'torch',          x: 25,  y: 50, h: 34 },
+      { type: 'chain_hook',     x: 200, y: 0,  h: 60 },
+      { type: 'banner_tattered', x: 400, y: 0, h: 55 },
+    ],
   },
   {
     nombre: 'Se cae a pedazos',
@@ -109,6 +125,12 @@ const TR_LEVELS = [
     ],
     arrows: [],
     exit: { x: 440, y: 170, w: 26, h: 40 },
+    decor: [
+      { type: 'torch', x: 15,  y: 20, h: 34 },
+      { type: 'ivy_1', x: 160, y: 0,  h: 60 },
+      { type: 'torch', x: 450, y: 20, h: 34 },
+      { type: 'rat',   x: 330, y: 194, h: 16 },
+    ],
   },
   {
     nombre: 'Salto de fe',
@@ -126,6 +148,11 @@ const TR_LEVELS = [
       { triggerX: 340, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.6, active: false, fired: false },
     ],
     exit: { x: 440, y: 200, w: 26, h: 40 },
+    decor: [
+      { type: 'torch', x: 20,  y: 45, h: 36 },
+      { type: 'banner', x: 340, y: 0, h: 65 },
+      { type: 'ivy_2', x: 60,  y: 0, h: 45 },
+    ],
   },
   {
     nombre: 'El puente quebradizo',
@@ -146,6 +173,11 @@ const TR_LEVELS = [
     ],
     arrows: [],
     exit: { x: 430, y: 170, w: 26, h: 40 },
+    decor: [
+      { type: 'chain_straight', x: 30,  y: 0, h: 80 },
+      { type: 'torch',          x: 250, y: 30, h: 34 },
+      { type: 'chain_hook',     x: 430, y: 0, h: 70 },
+    ],
   },
   {
     nombre: 'Doble trampa',
@@ -153,21 +185,27 @@ const TR_LEVELS = [
     start: { x: 20, y: 200 },
     platforms: [
       { x: 0,   y: 240, w: 100, h: 30, type: 'normal' },
-      { x: 120, y: 240, w: 70,  h: 30, type: 'fake'   },
-      { x: 210, y: 240, w: 100, h: 30, type: 'normal' },
+      { x: 100, y: 240, w: 15,  h: 30, type: 'fake'   },
+      { x: 115, y: 240, w: 45,  h: 30, type: 'fake'   },
+      { x: 160, y: 240, w: 100, h: 30, type: 'normal' },
       { x: 340, y: 220, w: 140, h: 30, type: 'normal' },
       // Señuelo elevado cerca de la segunda flecha — tienta a treparse
       // ahí para "esquivarla" pero es falso y la flecha pasa justo por ahí.
       { x: 290, y: 176, w: 40,  h: 14, type: 'fake'   },
     ],
     hazards: [
-      { x: 120, y: 255, w: 70,  h: 15, type: 'spike' },
+      { x: 115, y: 255, w: 45,  h: 15, type: 'spike' },
     ],
     arrows: [
       { triggerX: 100, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.5, active: false, fired: false },
       { triggerX: 300, x: 480, y: 194, w: 22, h: 8, dir: -1, speed: 5.0, active: false, fired: false },
     ],
     exit: { x: 430, y: 180, w: 26, h: 40 },
+    decor: [
+      { type: 'torch',          x: 20,  y: 45, h: 36 },
+      { type: 'ivy_1',          x: 200, y: 0,  h: 55 },
+      { type: 'banner_tattered', x: 400, y: 0, h: 60 },
+    ],
   },
   {
     nombre: 'Laberinto invisible',
@@ -189,6 +227,12 @@ const TR_LEVELS = [
       { triggerX: 250, x: 480, y: 190, w: 22, h: 8, dir: -1, speed: 5.2, active: false, fired: false },
     ],
     exit: { x: 430, y: 170, w: 26, h: 40 },
+    decor: [
+      { type: 'torch',      x: 15,  y: 30, h: 32 },
+      { type: 'ivy_2',      x: 140, y: 0,  h: 50 },
+      { type: 'chain_hook', x: 260, y: 0,  h: 65 },
+      { type: 'torch',      x: 440, y: 30, h: 32 },
+    ],
   },
   {
     nombre: 'Lluvia de flechas',
@@ -208,6 +252,12 @@ const TR_LEVELS = [
       { triggerX: 320, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 6.0, active: false, fired: false },
     ],
     exit: { x: 430, y: 200, w: 26, h: 40 },
+    decor: [
+      { type: 'banner_tattered', x: 60,  y: 0, h: 60 },
+      { type: 'banner_tattered', x: 220, y: 0, h: 60 },
+      { type: 'banner_tattered', x: 380, y: 0, h: 60 },
+      { type: 'rat', x: 20, y: 224, h: 16 },
+    ],
   },
   {
     nombre: 'Todo es mentira',
@@ -215,9 +265,11 @@ const TR_LEVELS = [
     start: { x: 20, y: 170 },
     platforms: [
       { x: 0,   y: 210, w: 80,  h: 20, type: 'normal'  },
+      { x: 80,  y: 210, w: 20,  h: 20, type: 'fake'    },
       { x: 100, y: 210, w: 50,  h: 20, type: 'fake'    },
       { x: 140, y: 180, w: 50,  h: 20, type: 'crumble' },
       { x: 210, y: 210, w: 40,  h: 20, type: 'normal'  },
+      { x: 250, y: 210, w: 20,  h: 20, type: 'fake'    },
       { x: 270, y: 210, w: 50,  h: 20, type: 'fake'    },
       { x: 330, y: 180, w: 150, h: 20, type: 'normal'  },
       // "Atajo" falso cerca de la salida — ni al final hay que confiar.
@@ -232,6 +284,12 @@ const TR_LEVELS = [
       { triggerX: 300, x: 480, y: 194, w: 22, h: 8, dir: -1, speed: 5.5, active: false, fired: false },
     ],
     exit: { x: 400, y: 140, w: 26, h: 40 },
+    decor: [
+      { type: 'torch', x: 10,  y: 60, h: 30 },
+      { type: 'ivy_1', x: 160, y: 0,  h: 60 },
+      { type: 'ivy_2', x: 300, y: 0,  h: 55 },
+      { type: 'torch', x: 450, y: 40, h: 30 },
+    ],
   },
   {
     nombre: 'La prueba final',
@@ -256,6 +314,11 @@ const TR_LEVELS = [
       { triggerX: 370, x: 480, y: 180, w: 22, h: 8, dir: -1, speed: 6.5, active: false, fired: false },
     ],
     exit: { x: 420, y: 140, w: 26, h: 40 },
+    decor: [
+      { type: 'chain_hook', x: 20,  y: 0, h: 75 },
+      { type: 'torch',      x: 210, y: 10, h: 30 },
+      { type: 'banner',     x: 350, y: 0, h: 60 },
+    ],
   },
   // ─── Nivel 12: mecánica nueva — plataformas móviles ('moving') ───
   // Se paran arriba tuyo y te llevan con ellas mientras las estás pisando
@@ -294,6 +357,11 @@ const TR_LEVELS = [
     ],
     arrows: [],
     exit: { x: 430, y: 200, w: 26, h: 40 },
+    decor: [
+      { type: 'torch', x: 30,  y: 45, h: 36 },
+      { type: 'torch', x: 430, y: 45, h: 36 },
+      { type: 'rat',   x: 400, y: 224, h: 16 },
+    ],
   },
   {
     nombre: 'Doble ascensor',
@@ -314,6 +382,11 @@ const TR_LEVELS = [
     ],
     arrows: [],
     exit: { x: 440, y: 110, w: 26, h: 40 },
+    decor: [
+      { type: 'chain_straight',  x: 120, y: 0, h: 150 },
+      { type: 'torch',           x: 20,  y: 45, h: 34 },
+      { type: 'banner_tattered', x: 440, y: 0, h: 55 },
+    ],
   },
   {
     nombre: 'Salto de fe (parte 2)',
@@ -321,15 +394,21 @@ const TR_LEVELS = [
     start: { x: 20, y: 200 },
     platforms: [
       { x: 0,   y: 240, w: 100, h: 30, type: 'normal' },
-      { x: 140, y: 240, w: 70,  h: 30, type: 'fake'   },
-      { x: 250, y: 240, w: 230, h: 30, type: 'normal' },
+      { x: 100, y: 240, w: 20,  h: 30, type: 'fake'   },
+      { x: 120, y: 240, w: 50,  h: 30, type: 'fake'   },
+      { x: 170, y: 240, w: 310, h: 30, type: 'normal' },
     ],
     hazards: [
-      { x: 140, y: 255, w: 70, h: 15, type: 'spike' },
+      { x: 120, y: 255, w: 50, h: 15, type: 'spike' },
       { x: 270, y: 214, w: 26, h: 26, type: 'saw', move: { axis: 'x', from: 270, to: 440, speed: 1.8 } },
     ],
     arrows: [],
     exit: { x: 440, y: 200, w: 26, h: 40 },
+    decor: [
+      { type: 'torch', x: 20,  y: 45, h: 36 },
+      { type: 'ivy_2', x: 220, y: 0,  h: 50 },
+      { type: 'banner', x: 400, y: 0, h: 65 },
+    ],
   },
   {
     nombre: 'Torres gemelas',
@@ -351,6 +430,11 @@ const TR_LEVELS = [
       { triggerX: 250, x: 480, y: 80, w: 22, h: 8, dir: -1, speed: 5.0, active: false, fired: false },
     ],
     exit: { x: 440, y: 60, w: 26, h: 40 },
+    decor: [
+      { type: 'chain_straight', x: 105, y: 0, h: 120 },
+      { type: 'chain_hook',     x: 215, y: 0, h: 100 },
+      { type: 'torch',          x: 350, y: 20, h: 32 },
+    ],
   },
   {
     nombre: 'Todo se mueve',
@@ -371,6 +455,11 @@ const TR_LEVELS = [
     ],
     arrows: [],
     exit: { x: 440, y: 140, w: 26, h: 40 },
+    decor: [
+      { type: 'torch',      x: 15,  y: 30, h: 32 },
+      { type: 'ivy_1',      x: 250, y: 0,  h: 55 },
+      { type: 'chain_hook', x: 400, y: 0,  h: 60 },
+    ],
   },
   {
     nombre: 'Lluvia y sierra',
@@ -390,6 +479,11 @@ const TR_LEVELS = [
       { triggerX: 340, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 6.5, active: false, fired: false },
     ],
     exit: { x: 430, y: 200, w: 26, h: 40 },
+    decor: [
+      { type: 'torch',          x: 20,  y: 45, h: 36 },
+      { type: 'banner_tattered', x: 180, y: 0, h: 60 },
+      { type: 'banner_tattered', x: 340, y: 0, h: 60 },
+    ],
   },
   {
     nombre: 'El ascensor invisible',
@@ -409,6 +503,11 @@ const TR_LEVELS = [
       { triggerX: 280, x: 480, y: 154, w: 22, h: 8, dir: -1, speed: 5.5, active: false, fired: false },
     ],
     exit: { x: 440, y: 140, w: 26, h: 40 },
+    decor: [
+      { type: 'chain_straight', x: 190, y: 0, h: 150 },
+      { type: 'torch',          x: 20,  y: 20, h: 32 },
+      { type: 'ivy_2',          x: 400, y: 0, h: 55 },
+    ],
   },
   {
     nombre: 'La prueba definitiva',
@@ -431,6 +530,13 @@ const TR_LEVELS = [
       { triggerX: 320, x: 480, y: 124, w: 22, h: 8, dir: -1, speed: 6.5, active: false, fired: false },
     ],
     exit: { x: 440, y: 70, w: 26, h: 40 },
+    decor: [
+      { type: 'torch',          x: 15,  y: 30, h: 30 },
+      { type: 'chain_straight', x: 310, y: 0,  h: 150 },
+      { type: 'banner_tattered', x: 130, y: 0,  h: 60 },
+      { type: 'ivy_1',          x: 440, y: 0,  h: 55 },
+      { type: 'rat',            x: 15,  y: 164, h: 16 },
+    ],
   },
 ];
 
@@ -446,15 +552,30 @@ const TRAMPAS = {
   explosions: [],
   floorY: 0,
 
-  // w/h en proporción 32:36 (la misma que usa drawTrampasPlayer), así el
-  // sprite dibujado llega exactamente hasta el borde inferior del hitbox
-  // y no queda "flotando" sobre las plataformas.
-  player: { x: 20, y: 200, w: 24, h: 27, vx: 0, vy: 0, onGround: false, dead: false, ridingPlatform: null },
+  // w/h en proporción 32:36 (la misma que usa drawTrampasPlayer para el
+  // fallback dibujado a mano), así ese sprite llega exactamente hasta el
+  // borde inferior del hitbox y no queda "flotando" sobre las plataformas.
+  // El sprite de junior.png se ancla igual (borde inferior = piso del
+  // hitbox), aunque su ancho real varíe según el frame (ver drawTrampasPlayer).
+  player: {
+    x: 20, y: 200, w: 24, h: 27, vx: 0, vy: 0, onGround: false, dead: false, ridingPlatform: null,
+    facing: 1,          // 1 = mirando derecha, -1 = mirando izquierda
+    animFrame: 0,       // índice dentro de TR_RUN_FRAMES mientras corre
+    animTick: 0,        // contador para el ritmo del ciclo de correr
+    animFrameName: null // frame de la animación de morir (fall_0..3), ver trPlayerDie
+  },
 
   // Estado dinámico del nivel actual (copias mutables de plataformas/flechas)
   platforms: [],
   hazards: [],
   arrows: [],
+
+  // Cámara + tamaño del nivel en world-space. Si el nivel es más grande que
+  // la vista (TR_W×TR_H) la cámara sigue al jugador y se recorta a los
+  // bordes del nivel; si cabe entero, queda en (0,0) y no hay scroll.
+  camera: { x: 0, y: 0 },
+  levelW: TR_W,
+  levelH: TR_H,
 };
 
 // ─── Loop y teclado — ahora con Engine2D en vez de raf/keydown a mano ───
@@ -530,8 +651,9 @@ function trIsUnlocked(i) {
 let trSelectedLevel = 0;
 
 function trHideAll() {
-  ['trampasMainMenu', 'trampasLevelSelect', 'trampasSettings', 'trampasHowToPlay', 'trampasGameScreen'].forEach(id => {
-    document.getElementById(id).classList.add('hidden');
+  ['trampasMainMenu', 'trampasLevelSelect', 'trampasSettings', 'trampasHowToPlay'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
   });
 }
 function trShowMainMenu() {
@@ -549,8 +671,7 @@ function trShowLevelSelect() {
 function trShowSettings() {
   trHideAll();
   document.getElementById('trampasSettings').classList.remove('hidden');
-  // Sincronizar los sliders con el volumen global actual (por si se
-  // cambió desde otro juego, o es la primera vez que se abre).
+  // Sincronizar los sliders con el volumen global actual
   const musicPct = Math.round((typeof getGlobalMusicVolume === 'function' ? getGlobalMusicVolume() : 0.5) * 100);
   const sfxPct = Math.round((typeof getGlobalSfxVolume === 'function' ? getGlobalSfxVolume() : 0.8) * 100);
   const musicSlider = document.getElementById('trMusicVolume');
@@ -559,6 +680,7 @@ function trShowSettings() {
   if (sfxSlider) sfxSlider.value = sfxPct;
   document.getElementById('trMusicVolumeValue').textContent = musicPct + '%';
   document.getElementById('trSfxVolumeValue').textContent = sfxPct + '%';
+  trSyncFullscreenBtn();
 }
 function trOnMusicVolumeChange(v) {
   document.getElementById('trMusicVolumeValue').textContent = v + '%';
@@ -568,13 +690,50 @@ function trOnSfxVolumeChange(v) {
   document.getElementById('trSfxVolumeValue').textContent = v + '%';
   if (typeof setGlobalSfxVolume === 'function') setGlobalSfxVolume(v / 100);
 }
+
+// ─── Pantalla completa (exactamente igual a Pixel Runner) ───
+function trGetFullscreenElement() {
+  return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement || null;
+}
+
+function trFullscreenSupported() {
+  const el = document.querySelector('.trampas-container');
+  return !!(el && (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen));
+}
+
+function trToggleFullscreen() {
+  const el = document.querySelector('.trampas-container');
+  if (!el) return;
+  if (!trGetFullscreenElement()) {
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    else if (el.msRequestFullscreen) el.msRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    else if (document.msExitFullscreen) document.msExitFullscreen();
+  }
+  trSyncFullscreenBtn();
+}
+
+function trSyncFullscreenBtn() {
+  const row = document.getElementById('trFullscreenRow');
+  if (row) row.classList.toggle('unsupported', !trFullscreenSupported());
+  const btn = document.getElementById('trFullscreenBtn');
+  if (!btn) return;
+  btn.textContent = trGetFullscreenElement() ? 'Salir' : 'Activar';
+}
+
+document.addEventListener('fullscreenchange', trSyncFullscreenBtn);
+document.addEventListener('webkitfullscreenchange', trSyncFullscreenBtn);
+
 function trShowHowToPlay() {
   trHideAll();
   document.getElementById('trampasHowToPlay').classList.remove('hidden');
 }
+
 function trShowGameScreen() {
   trHideAll();
-  document.getElementById('trampasGameScreen').classList.remove('hidden');
 }
 // Cartel de controles dentro del juego (no es un alert, es un panel que
 // se muestra/oculta sobre el canvas con el botón ❓ del HUD).
@@ -675,23 +834,33 @@ function trLoadLevel(index) {
   TRAMPAS.arrows     = lvl.arrows.map(a => ({ ...a, active: false, fired: false }));
   TRAMPAS.deathsThisLevel = 0;
 
+  // Tamaño del nivel en world-space (por defecto la vista fija si el nivel
+  // no declara width/height, así los niveles viejos siguen funcionando).
+  TRAMPAS.levelW = lvl.width  || TR_W;
+  TRAMPAS.levelH = lvl.height || TR_H;
+  TRAMPAS.camera.x = 0;
+  TRAMPAS.camera.y = 0;
+
   // Y del "piso base" del nivel: la fila más baja (mayor y) entre las
-  // plataformas definidas. Se usa para decidir qué segmentos normal/fake
-  // son parte del suelo real (textura wall) vs islas sueltas elevadas
-  // (textura trapdoor) — ver trIsFloatingPlatform.
-  TRAMPAS.floorY = Math.max(...lvl.platforms.map(p => p.y));
+  // plataformas normales/falsas (el suelo real). No se cuentan 'crumble'
+  // ni 'moving' acá — son islas sueltas por definición y si están más
+  // abajo que el piso (ver nivel 20) no deben "correr" el piso hacia
+  // abajo y hacer que el piso real se dibuje con textura de isla.
+  const floorCandidates = lvl.platforms.filter(p => p.type === 'normal' || p.type === 'fake');
+  TRAMPAS.floorY = Math.max(...(floorCandidates.length ? floorCandidates : lvl.platforms).map(p => p.y));
 
   const p = TRAMPAS.player;
   p.x = lvl.start.x; p.y = lvl.start.y;
   p.vx = 0; p.vy = 0; p.dead = false; p.onGround = false; p.ridingPlatform = null;
+  p.facing = 1; p.animFrame = 0; p.animTick = 0; p.animFrameName = null;
 
   const starsEl = document.getElementById('trampas-hud-stars');
   if (starsEl) starsEl.textContent = (index + 1) + '/' + TR_LEVELS.length + ' - ' + lvl.nombre;
 
-  // Imagen de fondo del castillo (capa 0): back1 para la primera mitad de
-  // niveles, back2 para la segunda (repartido parejo entre los 20).
+  // Imagen de fondo del castillo (capa 0): una sola imagen (back.png) para
+  // todos los niveles.
   const cont = document.querySelector('.trampas-container');
-  if (cont) cont.style.background = "#150620 url('assert/Castle Escape/" + (index >= 10 ? 'back2' : 'back1') + ".jpg') center/cover no-repeat";
+  if (cont) cont.style.background = "#150620 url('assert/Castle Escape/back.png') center/cover no-repeat";
 }
 
 // ─── Spritesheets (mapa.png / deco.png) ───
@@ -704,6 +873,11 @@ const TR_ASSETS = [
   { type: 'atlas', src: 'assert/Castle Escape/mapa_atlas.json' },
   { type: 'image', src: 'assert/Castle Escape/deco.png' },
   { type: 'atlas', src: 'assert/Castle Escape/deco_atlas.json' },
+  // Personaje — reutiliza el spritesheet de Pixel Runner (junior.png):
+  // trae run_0..6 (correr), action_0..6 (acá se usa action_2 como pose de
+  // salto, igual que en Pixel Runner) y fall_0..3 (animación de morir).
+  { type: 'image', src: 'assert/Castle Escape/models/junior.png' },
+  { type: 'atlas', src: 'assert/Castle Escape/models/junior.atlas.json' },
 ];
 
 function initTrampas() {
@@ -778,6 +952,11 @@ function trGetDecoAssets() {
   const atlas = Engine2D.getAtlas('assert/Castle Escape/deco_atlas.json');
   return (img && img.complete && atlas) ? { img, atlas } : null;
 }
+function trGetJuniorAssets() {
+  const img = Engine2D.getImage('assert/Castle Escape/models/junior.png');
+  const atlas = Engine2D.getAtlas('assert/Castle Escape/models/junior.atlas.json');
+  return (img && img.complete && atlas) ? { img, atlas } : null;
+}
 
 // Dibuja una plataforma. El sprite de "isla flotante" (mapa.png) se usa
 // SOLO para lo que realmente flota/se mueve/se rompe: plataformas
@@ -792,42 +971,63 @@ function trIsFloatingPlatform(plat) {
 }
 
 function trDrawPlatform(ctx, plat) {
-  const assets = trGetMapaAssets();
-  const floatF = assets && trIsFloatingPlatform(plat) ? assets.atlas.frames.trapdoor : null;
-  if (floatF) {
-    ctx.drawImage(assets.img, floatF.x, floatF.y, floatF.w, floatF.h, plat.x, plat.y, plat.w, plat.h);
-  } else if (assets && assets.atlas.frames.wall) {
-    // Piso / suelo — se tilea el bloque cuadrado "wall" repetido en vez
-    // de un rectángulo de color plano. clip() recorta lo que sobra del
-    // último bloque para que no se pase del ancho de la plataforma.
-    const w = assets.atlas.frames.wall;
-    const tileW = plat.h * (w.w / w.h);
-    const n = Math.max(1, Math.ceil(plat.w / tileW));
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(plat.x, plat.y, plat.w, plat.h);
-    ctx.clip();
-    for (let i = 0; i < n; i++) {
-      ctx.drawImage(assets.img, w.x, w.y, w.w, w.h, plat.x + i * tileW, plat.y, tileW, plat.h);
-    }
-    ctx.restore();
-  } else {
-    // Fallback — sin assets o sin frame "wall": rectángulo de color plano.
-    ctx.fillStyle = '#7c3aed';
-    ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(plat.x, plat.y, plat.w, 4);
-  }
-  // Tintes por encima para distinguir tipo/estado — mismo criterio de
-  // color que antes, ahora como overlay semi-transparente sobre lo que
-  // se haya dibujado (sprite o color plano).
-  if (plat.type === 'moving') {
-    ctx.fillStyle = 'rgba(14,165,233,0.35)';
-    ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
-  } else if (plat.type === 'crumble' && plat.touchedAt !== null) {
+  // Todas las plataformas (piso normal/fake y también islas flotantes,
+  // crumble y moving) usan la piedra dibujada a mano — mapa.png ya no se
+  // usa acá, solo queda para flechas y la puerta de salida.
+  trDrawStoneFloor(ctx, plat);
+  // Tinte por encima para distinguir estado — el de 'moving' se sacó
+  // (tapaba la textura de la plataforma flotante con un rectángulo azul).
+  if (plat.type === 'crumble' && plat.touchedAt !== null) {
     ctx.fillStyle = 'rgba(232,84,63,0.45)';
     ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
   }
+}
+
+// Piso de piedra gris oscuro dibujado a mano (reemplaza al sprite "wall"
+// tileado y al viejo rectángulo morado plano). No es un gris fijo: cada
+// bloque tiene un tono levemente distinto (variación tipo mampostería) y
+// hay líneas de "argamasa" más oscuras entre bloques. La variación sale de
+// un hash determinístico por posición (seno de x/y), no de Math.random,
+// así el patrón queda fijo — no titila ni cambia de frame a frame.
+const TR_STONE_MORTAR = '#232025';
+function trStoneShade(bx, by) {
+  const n = Math.sin(bx * 12.9898 + by * 78.233) * 43758.5453;
+  return n - Math.floor(n); // 0..1 determinístico para este bloque
+}
+function trDrawStoneFloor(ctx, plat) {
+  const x = plat.x, y = plat.y, w = plat.w, h = plat.h;
+
+  // Argamasa de fondo — se ve en las líneas finas entre bloques.
+  ctx.fillStyle = TR_STONE_MORTAR;
+  ctx.fillRect(x, y, w, h);
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+
+  // Bloques tipo mampostería, filas al tresbolillo (offset alternado).
+  const blockH = Math.max(9, Math.round(h / 2));
+  const blockW = blockH * 1.7;
+  let row = 0;
+  for (let by = y; by < y + h; by += blockH) {
+    const offset = (row % 2 === 0) ? 0 : -blockW / 2;
+    for (let bx = x + offset; bx < x + w; bx += blockW) {
+      const t = trStoneShade(Math.round(bx), Math.round(by)); // 0..1
+      const g = Math.round(46 + t * 26); // gris oscuro, variación ~46-72
+      ctx.fillStyle = `rgb(${g},${g - 2},${g + 3})`; // toque frío, no gris puro
+      ctx.fillRect(bx + 1, by + 1, blockW - 2, blockH - 2);
+    }
+    row++;
+  }
+  ctx.restore();
+
+  // Borde superior más claro (da sensación de piso sólido/luz de arriba)
+  // y sombra fina abajo — mismo criterio visual que tenía el morado plano.
+  ctx.fillStyle = 'rgba(255,255,255,0.10)';
+  ctx.fillRect(x, y, w, 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.30)';
+  ctx.fillRect(x, y + h - 2, w, 2);
 }
 // Puramente visual — no colisiona, no importa el orden, se dibuja detrás
 // de todo lo jugable. 'torch' anima sola (parpadeo, 4 frames de deco.png)
@@ -846,12 +1046,18 @@ function trDrawDecor(ctx) {
       f = F['torch_' + (frame + 1)];
     } else if (d.type === 'ivy') {
       f = F.ivy_1;
+    } else if (d.type === 'ivy_2') {
+      f = F.ivy_2;
     } else if (d.type === 'chain') {
       f = F.chain_straight;
+    } else if (d.type === 'chain_hook') {
+      f = F.chain_hook;
     } else if (d.type === 'banner') {
       f = F.banner;
     } else if (d.type === 'banner_tattered') {
       f = F.banner_tattered;
+    } else if (d.type === 'rat') {
+      f = F.rat;
     }
     if (!f) return;
     const h = d.h || 40;
@@ -863,35 +1069,32 @@ function trDrawDecor(ctx) {
 // Sprite de pincho más chico, repetido para llenar un ancho — reemplaza
 // los triángulos dibujados a mano, tanto para el peligro 'spike' (pozo)
 // como para la decoración decor:'spike' arriba de una plataforma.
+// Pinchos dibujados a mano (triángulos) — ya no usa el sprite spike_1a/b/c
+// de mapa.png, ese atlas ahora solo se usa para flechas y puerta.
 function trDrawSpikeRow(ctx, x, y, w, h) {
-  const assets = trGetMapaAssets();
-  // El atlas del proyecto trae 3 variantes sueltas (spike_1a/1b/1c). Se
-  // van rotando al tilear la fila, así no queda un patrón repetido idéntico.
-  const variants = assets ? [assets.atlas.frames.spike_1a, assets.atlas.frames.spike_1b, assets.atlas.frames.spike_1c] : null;
-  const spritesReady = variants && variants.every(Boolean);
-  if (!spritesReady) {
-    ctx.fillStyle = '#ef4444';
-    const n = Math.max(1, Math.floor(w / 14));
-    for (let i = 0; i < n; i++) {
-      const sx = x + i * (w / n);
-      ctx.beginPath();
-      ctx.moveTo(sx, y + h);
-      ctx.lineTo(sx + w / n / 2, y);
-      ctx.lineTo(sx + w / n, y + h);
-      ctx.closePath();
-      ctx.fill();
-    }
-    return;
-  }
-  // Se van rotando las 3 variantes al tilear la fila, así no queda un
-  // patrón repetido pincho-pincho-pincho idéntico.
-  const f0 = variants[0];
-  const iconW = h * (f0.w / f0.h);
-  const n = Math.max(1, Math.round(w / iconW));
+  const n = Math.max(1, Math.floor(w / 14));
   const step = w / n;
   for (let i = 0; i < n; i++) {
-    const f = variants[i % variants.length];
-    ctx.drawImage(assets.img, f.x, f.y, f.w, f.h, x + i * step, y, step, h);
+    const sx = x + i * step;
+    // Cuerpo del pincho — degradé simple (más claro en la punta) para
+    // que no quede un triángulo de color plano.
+    const grad = ctx.createLinearGradient(sx, y + h, sx, y);
+    grad.addColorStop(0, '#7f1d1d');
+    grad.addColorStop(1, '#f87171');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(sx, y + h);
+    ctx.lineTo(sx + step / 2, y);
+    ctx.lineTo(sx + step, y + h);
+    ctx.closePath();
+    ctx.fill();
+    // Filo/brillo en un borde para dar volumen.
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(sx + step / 2, y);
+    ctx.lineTo(sx + step, y + h);
+    ctx.stroke();
   }
 }
 
@@ -938,7 +1141,18 @@ function updateTrampas(step) {
   if (TRAMPAS.keys.left)  p.vx = -TR_MOVE_SPEED;
   if (TRAMPAS.keys.right) p.vx =  TR_MOVE_SPEED;
   p.x += p.vx * step;
-  p.x = Math.max(0, Math.min(p.x, TR_W - p.w));
+  p.x = Math.max(0, Math.min(p.x, TRAMPAS.levelW - p.w));
+
+  // Animación / dirección del sprite (junior.png) — se actualiza acá,
+  // drawTrampasPlayer solo lee p.animFrame/p.facing, no los calcula.
+  if (p.vx > 0) p.facing = 1;
+  else if (p.vx < 0) p.facing = -1;
+  if (p.onGround && p.vx !== 0) {
+    p.animTick += step;
+    if (p.animTick >= 6) { p.animTick = 0; p.animFrame = (p.animFrame + 1) % TR_RUN_FRAMES.length; }
+  } else if (p.onGround) {
+    p.animFrame = 0; p.animTick = 0; // quieto = primer frame de correr (pose de parado)
+  }
 
   // Gravedad
   p.vy += TR_GRAVITY * step;
@@ -946,11 +1160,12 @@ function updateTrampas(step) {
   p.onGround = false;
   p.ridingPlatform = null;
 
-  // Colisión con plataformas (todo menos 'fake', que nunca colisiona)
-  // Sigue siendo código propio: son rectángulos sueltos, no una grilla de
-  // tiles pareja, así que Engine2D.Physics (pensado para TileMap) no aplica acá.
+  // Colisión con plataformas (todo menos 'fake' —y 'fake' como flag de
+  // plataforma móvil falsa— que nunca colisionan). Sigue siendo código
+  // propio: son rectángulos sueltos, no una grilla de tiles pareja, así que
+  // Engine2D.Physics (pensado para TileMap) no aplica acá.
   for (const plat of TRAMPAS.platforms) {
-    if (plat.type === 'fake' || plat.gone) continue;
+    if (plat.type === 'fake' || plat.gone || plat.fake) continue;
     const feetPrev = p.y + p.h - p.vy * step;
     const withinX = p.x + p.w > plat.x && p.x < plat.x + plat.w;
     if (withinX && p.vy >= 0 && feetPrev <= plat.y + 1 && p.y + p.h >= plat.y) {
@@ -971,7 +1186,9 @@ function updateTrampas(step) {
     }
   }
 
-  // Flechas de pared: se activan al cruzar triggerX
+  // Flechas de pared: se activan al cruzar triggerX (en las verticales el
+  // triggerX sigue siendo el umbral horizontal del jugador; la flecha sale
+  // desde su posición y se mueve en y).
   const lvl = TR_LEVELS[TRAMPAS.levelIndex];
   lvl.arrows.forEach((def, i) => {
     const a = TRAMPAS.arrows[i];
@@ -979,12 +1196,18 @@ function updateTrampas(step) {
       a.fired = true;
       a.active = true;
       a.x = def.x;
+      a.y = def.y;
     }
   });
   TRAMPAS.arrows.forEach(a => {
     if (a.active) {
-      a.x += a.dir * a.speed * step;
-      if (a.x < -30 || a.x > TR_W + 30) a.active = false;
+      // Movimiento según dirección: -1/1 = horizontal, 'up'/'down' = vertical.
+      if (a.dir === 'up')        a.y -= a.speed * step;
+      else if (a.dir === 'down') a.y += a.speed * step;
+      else                       a.x += a.dir * a.speed * step;
+      const outX = a.x < -40 || a.x > TRAMPAS.levelW + 40;
+      const outY = a.y < -40 || a.y > TRAMPAS.levelH + 40;
+      if (outX || outY) a.active = false;
       if (trRectsOverlap(p, a)) { trPlayerDie(); return; }
     }
   });
@@ -992,19 +1215,46 @@ function updateTrampas(step) {
   if (p.dead) return;
 
   // Peligros: estáticos (picos, estrella) y móviles (sierra) — misma
-  // comprobación, la sierra ya se movió arriba antes de llegar acá.
+  // comprobación, la sierra ya se movió arriba antes de llegar acá. Los
+  // pinchos "falsos" (fake) se ven idénticos pero no matan.
   for (const hz of TRAMPAS.hazards) {
+    if (hz.fake) continue;
     if (trRectsOverlap(p, hz)) { trPlayerDie(); return; }
   }
 
   // Caerse del mapa
-  if (p.y > TR_H + 20) { trPlayerDie(); return; }
+  if (p.y > TRAMPAS.levelH + 20) { trPlayerDie(); return; }
+
+  // Cámara: sigue al jugador y se recorta al tamaño del nivel.
+  const cam = TRAMPAS.camera;
+  const maxX = Math.max(0, TRAMPAS.levelW - TR_W);
+  const maxY = Math.max(0, TRAMPAS.levelH - TR_H);
+  cam.x = Math.max(0, Math.min(maxX, p.x + p.w / 2 - TR_W / 2));
+  cam.y = Math.max(0, Math.min(maxY, p.y + p.h / 2 - TR_H / 2));
 
   // Llegar a la salida
   if (trRectsOverlap(p, lvl.exit)) { trLevelComplete(); }
 }
 
 function drawTrampasPlayer(ctx, p) {
+  // Sprite real (junior.png, reutilizado de Pixel Runner) — si ya cargó,
+  // se usa esto y no el dibujo a mano de abajo (que queda de fallback
+  // por si los assets todavía no terminaron de cargar).
+  const junior = trGetJuniorAssets();
+  if (junior) {
+    const frameName = p.dead
+      ? (p.animFrameName || TR_FALL_FRAMES[0])
+      : (!p.onGround ? TR_JUMP_FRAME : TR_RUN_FRAMES[p.animFrame]);
+    ctx.save();
+    if (p.dead) ctx.globalAlpha = 0.85;
+    // Ancla: centro-x del hitbox, borde inferior — mismo criterio que ya
+    // usa Pixel Runner con este mismo sprite (targetH = altura del hitbox,
+    // drawAtlasFrame centra el ancho solo y sube desde `y`).
+    Engine2D.drawAtlasFrame(ctx, junior.img, junior.atlas, frameName, p.x + p.w / 2, p.y + p.h, p.h, p.facing === -1, false);
+    ctx.restore();
+    return;
+  }
+
   const x = Math.round(p.x), y = Math.round(p.y);
   const W = p.w, H = p.h;
 
@@ -1135,12 +1385,24 @@ function trPlayerDie() {
   const deathsEl = document.getElementById('trampas-hud-deaths');
   if (deathsEl) deathsEl.textContent = '💀 ' + TRAMPAS.totalDeaths;
   spawnExplosion(p.x + p.w / 2, p.y + p.h / 2);
-  drawTrampas();
+
+  // Recorre fall_0..3 (junior.png) mientras dura el respawn, en vez de
+  // quedarse en un solo frame — mismo criterio que playDeathAnimation en
+  // Pixel Runner. El loop del juego (trLoop) sigue dibujando solo (updateTrampas
+  // corta al toque por p.dead, pero el draw() del loop sigue en pie), así que acá
+  // alcanza con ir cambiando animFrameName; no hace falta llamar drawTrampas() de nuevo.
+  p.animFrameName = TR_FALL_FRAMES[0];
+
+  let fallFrame = 0;
+  const fallTimer = setInterval(() => {
+    fallFrame++;
+    if (fallFrame < TR_FALL_FRAMES.length) p.animFrameName = TR_FALL_FRAMES[fallFrame];
+  }, TR_FALL_FRAME_DELAY);
 
   setTimeout(() => {
+    clearInterval(fallTimer);
     trLoadLevel(TRAMPAS.levelIndex);
-    drawTrampas();
-  }, 450);
+  }, TR_DEATH_DELAY);
 }
 
 function trLevelComplete() {
@@ -1196,12 +1458,29 @@ function drawTrampas() {
   if (!ctx) return;
   const p = TRAMPAS.player;
 
-  // Fondo transparente: el contenedor muestra la imagen del castillo (capa 0)
+  // Fondo transparente: el contenedor muestra la imagen del castillo (capa 0).
+  // Todo el dibujo de world-space va dentro del translate de la cámara.
   ctx.clearRect(0, 0, TR_W, TR_H);
+  ctx.save();
+  ctx.translate(-TRAMPAS.camera.x, -TRAMPAS.camera.y);
 
   // Decoración de fondo (antorchas/hiedra/cadenas/estandartes) — va antes
   // que las plataformas para quedar detrás de todo lo jugable.
   trDrawDecor(ctx);
+
+  // Peligros tipo 'spike' — van ANTES que las plataformas. En la mayoría
+  // de los niveles el pincho está a y:255 y ninguna plataforma baja de
+  // y:250, así que este orden no cambia nada visualmente. Pero en los
+  // niveles 7 y 15 hay una plataforma 'fake' que ocupa el MISMO rectángulo
+  // que un pincho (el diseño es "piso falso con pinchos escondidos
+  // debajo"): si el pincho se dibuja después, se pinta encima de la
+  // textura de piedra y la trampa se nota a simple vista. Dibujándolo
+  // antes, la fake lo tapa como cualquier plataforma normal.
+  for (const hz of TRAMPAS.hazards) {
+    if (hz.type === 'spike') {
+      trDrawSpikeRow(ctx, hz.x, hz.y, hz.w, hz.h);
+    }
+  }
 
   // Plataformas
   for (const plat of TRAMPAS.platforms) {
@@ -1212,11 +1491,11 @@ function drawTrampas() {
     }
   }
 
-  // Peligros
+  // Resto de los peligros (star, saw) — estos SÍ están pensados para
+  // verse (señuelo visible o peligro en movimiento), así que se quedan
+  // dibujándose después de las plataformas como antes.
   for (const hz of TRAMPAS.hazards) {
-    if (hz.type === 'spike') {
-      trDrawSpikeRow(ctx, hz.x, hz.y, hz.w, hz.h);
-    } else if (hz.type === 'star') {
+    if (hz.type === 'star') {
       ctx.fillStyle = '#fde047';
       ctx.beginPath();
       const cx = hz.x + hz.w / 2, cy = hz.y + hz.h / 2, r = hz.w / 2;
@@ -1255,17 +1534,35 @@ function drawTrampas() {
     }
   }
 
-  // Flechas activas
+  // Flechas activas (horizontales: sprites arrow_left/right; verticales:
+  // mismo sprite arrow_right rotado 90° para que apunte arriba/abajo).
   {
     const assets = trGetMapaAssets();
     TRAMPAS.arrows.forEach(a => {
       if (!a.active) return;
       if (assets) {
-        const f = a.dir < 0 ? assets.atlas.frames.arrow_left : assets.atlas.frames.arrow_right;
-        if (f) { ctx.drawImage(assets.img, f.x, f.y, f.w, f.h, a.x, a.y, a.w, a.h); return; }
+        let f, rot = 0;
+        if (a.dir === 'up')        { f = assets.atlas.frames.arrow_right; rot = -Math.PI / 2; }
+        else if (a.dir === 'down') { f = assets.atlas.frames.arrow_right; rot =  Math.PI / 2; }
+        else                       { f = a.dir < 0 ? assets.atlas.frames.arrow_left : assets.atlas.frames.arrow_right; }
+        if (f) {
+          ctx.save();
+          ctx.translate(a.x + a.w / 2, a.y + a.h / 2);
+          if (rot) ctx.rotate(rot);
+          ctx.drawImage(assets.img, f.x, f.y, f.w, f.h, -a.w / 2, -a.h / 2, a.w, a.h);
+          ctx.restore();
+          return;
+        }
       }
+      // Fallback vectorial (sin assets): triángulo según dirección.
       ctx.fillStyle = '#facc15';
-      ctx.fillRect(a.x, a.y, a.w, a.h);
+      ctx.beginPath();
+      if (a.dir === 'up')        { ctx.moveTo(a.x + a.w/2, a.y); ctx.lineTo(a.x, a.y + a.h); ctx.lineTo(a.x + a.w, a.y + a.h); }
+      else if (a.dir === 'down') { ctx.moveTo(a.x + a.w/2, a.y + a.h); ctx.lineTo(a.x, a.y); ctx.lineTo(a.x + a.w, a.y); }
+      else if (a.dir < 0)        { ctx.moveTo(a.x, a.y + a.h/2); ctx.lineTo(a.x + a.w, a.y); ctx.lineTo(a.x + a.w, a.y + a.h); }
+      else                       { ctx.moveTo(a.x + a.w, a.y + a.h/2); ctx.lineTo(a.x, a.y); ctx.lineTo(a.x, a.y + a.h); }
+      ctx.closePath();
+      ctx.fill();
     });
   }
 
@@ -1290,4 +1587,7 @@ function drawTrampas() {
   // Explosiones
   updateExplosions();
   drawExplosions(ctx);
+
+  // Salir del espacio de world (cámara)
+  ctx.restore();
 }
