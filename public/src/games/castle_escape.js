@@ -41,504 +41,42 @@ const TR_DEATH_DELAY = 450; // ms antes de reiniciar el nivel tras morir (ver tr
 const TR_TIME_LIMITS = [30, 35, 35, 40, 40, 45, 45, 50, 50, 55, 60, 55, 55, 60, 60, 65, 65, 70, 70, 75];
 const TR_DEATH_LIMITS = [5, 5, 5, 4, 4, 3, 3, 3, 2, 2, 1, 3, 3, 2, 2, 2, 1, 1, 1, 1];
 
-// Niveles: cada uno define plataformas, peligros, flechas-trampa, inicio y salida.
-// type de plataforma: 'normal' | 'fake' (sin colisión, se ve igual a una normal)
-// | 'crumble' (colisiona pero se derrumba unos frames después de pisarla)
-const TR_LEVELS = [
-  {
-    nombre: 'El piso falso',
-    hint: 'Caminá tranquilo... o no.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0,   y: 240, w: 130, h: 30, type: 'normal' },
-      { x: 130, y: 240, w: 60,  h: 30, type: 'fake'   },
-      { x: 190, y: 240, w: 20,  h: 30, type: 'fake'   },
-      { x: 210, y: 240, w: 270, h: 30, type: 'normal' },
-    ],
-    hazards: [],
-    arrows: [],
-    exit: { x: 430, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 20,  y: 40, h: 38 },
-      { type: 'torch', x: 440, y: 40, h: 38 },
-      { type: 'ivy',   x: 150, y: 0,  h: 55 },
-      { type: 'banner', x: 300, y: 0, h: 70 },
-    ],
-  },
-  {
-    nombre: 'Doble piso falso',
-    hint: 'El piso te puede fallar dos veces.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0,   y: 240, w: 150, h: 30, type: 'normal' },
-      { x: 150, y: 240, w: 60,  h: 30, type: 'fake'   },
-      { x: 210, y: 240, w: 140, h: 30, type: 'normal' },
-      { x: 350, y: 240, w: 60,  h: 30, type: 'fake'   },
-      { x: 410, y: 240, w: 70,  h: 30, type: 'normal' },
-    ],
-    hazards: [],
-    arrows: [],
-    exit: { x: 430, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 30,  y: 45, h: 36 },
-      { type: 'torch', x: 410, y: 45, h: 36 },
-      { type: 'ivy_2', x: 250, y: 0,  h: 50 },
-    ],
-  },
-  {
-    nombre: 'Flecha en la pared',
-    hint: 'Algo se acerca desde la derecha.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0,   y: 240, w: 170, h: 30, type: 'normal' },
-      // Tramo falso justo en la zona donde hay que esquivar la flecha —
-      // no te podés quedar parado ahí adelante ni aunque el piso se vea igual.
-      { x: 170, y: 240, w: 80,  h: 30, type: 'fake'   },
-      { x: 250, y: 240, w: 230, h: 30, type: 'normal' },
-    ],
-    hazards: [],
-    arrows: [
-      { triggerX: 160, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.2, active: false, fired: false },
-    ],
-    exit: { x: 430, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'torch',          x: 25,  y: 50, h: 34 },
-      { type: 'chain_hook',     x: 200, y: 0,  h: 60 },
-      { type: 'banner_tattered', x: 400, y: 0, h: 55 },
-    ],
-  },
-  {
-    nombre: 'Se cae a pedazos',
-    hint: 'No te quedes parado mucho tiempo.',
-    start: { x: 20, y: 170 },
-    platforms: [
-      { x: 0,   y: 210, w: 90,  h: 20, type: 'normal'  },
-      // Parece un escalón de paso para no saltar el hueco entero — es
-      // falso, si pisás ahí seguís cayendo directo a los pinchos.
-      { x: 110, y: 210, w: 26,  h: 14, type: 'fake'     },
-      { x: 150, y: 210, w: 80,  h: 20, type: 'crumble' },
-      { x: 300, y: 210, w: 90,  h: 20, type: 'normal'  },
-      { x: 430, y: 210, w: 50,  h: 20, type: 'normal'  },
-    ],
-    hazards: [
-      { x: 0, y: 255, w: 480, h: 15, type: 'spike' },
-    ],
-    arrows: [],
-    exit: { x: 440, y: 170, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 15,  y: 20, h: 34 },
-      { type: 'ivy_1', x: 160, y: 0,  h: 60 },
-      { type: 'torch', x: 450, y: 20, h: 34 },
-      { type: 'rat',   x: 330, y: 194, h: 16 },
-    ],
-  },
-  {
-    nombre: 'Salto de fe',
-    hint: 'Donde ves pinchos, pisá. Donde ves piso, ¡no!',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0,   y: 240, w: 110, h: 30, type: 'normal' },
-      { x: 110, y: 240, w: 40,  h: 30, type: 'normal', decor: 'spike' },
-      { x: 150, y: 240, w: 90,  h: 30, type: 'fake'   },
-      { x: 240, y: 240, w: 40,  h: 30, type: 'normal', decor: 'spike' },
-      { x: 280, y: 240, w: 200, h: 30, type: 'normal' },
-    ],
-    hazards: [],
-    arrows: [
-      { triggerX: 340, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.6, active: false, fired: false },
-    ],
-    exit: { x: 440, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 20,  y: 45, h: 36 },
-      { type: 'banner', x: 340, y: 0, h: 65 },
-      { type: 'ivy_2', x: 60,  y: 0, h: 45 },
-    ],
-  },
-  {
-    nombre: 'El puente quebradizo',
-    hint: 'Todo se derrumba, movete rápido.',
-    start: { x: 20, y: 170 },
-    platforms: [
-      { x: 0,   y: 210, w: 70,  h: 20, type: 'normal'  },
-      { x: 100, y: 210, w: 60,  h: 20, type: 'crumble' },
-      { x: 190, y: 180, w: 50,  h: 20, type: 'crumble' },
-      { x: 270, y: 210, w: 60,  h: 20, type: 'crumble' },
-      { x: 360, y: 210, w: 120, h: 20, type: 'normal'  },
-      // Falsa "red de seguridad" más abajo, justo sobre los pinchos —
-      // parece piso normal pero no frena la caída. Acá no hay red.
-      { x: 140, y: 236, w: 90,  h: 14, type: 'fake'     },
-    ],
-    hazards: [
-      { x: 0, y: 255, w: 480, h: 15, type: 'spike' },
-    ],
-    arrows: [],
-    exit: { x: 430, y: 170, w: 26, h: 40 },
-    decor: [
-      { type: 'chain_straight', x: 30,  y: 0, h: 80 },
-      { type: 'torch',          x: 250, y: 30, h: 34 },
-      { type: 'chain_hook',     x: 430, y: 0, h: 70 },
-    ],
-  },
-  {
-    nombre: 'Doble trampa',
-    hint: 'Flechas y pisos falsos juntos. Dificil.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0,   y: 240, w: 100, h: 30, type: 'normal' },
-      { x: 100, y: 240, w: 15,  h: 30, type: 'fake'   },
-      { x: 115, y: 240, w: 45,  h: 30, type: 'fake'   },
-      { x: 160, y: 240, w: 100, h: 30, type: 'normal' },
-      { x: 340, y: 220, w: 140, h: 30, type: 'normal' },
-      // Señuelo elevado cerca de la segunda flecha — tienta a treparse
-      // ahí para "esquivarla" pero es falso y la flecha pasa justo por ahí.
-      { x: 290, y: 176, w: 40,  h: 14, type: 'fake'   },
-    ],
-    hazards: [
-      { x: 115, y: 255, w: 45,  h: 15, type: 'spike' },
-    ],
-    arrows: [
-      { triggerX: 100, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.5, active: false, fired: false },
-      { triggerX: 300, x: 480, y: 194, w: 22, h: 8, dir: -1, speed: 5.0, active: false, fired: false },
-    ],
-    exit: { x: 430, y: 180, w: 26, h: 40 },
-    decor: [
-      { type: 'torch',          x: 20,  y: 45, h: 36 },
-      { type: 'ivy_1',          x: 200, y: 0,  h: 55 },
-      { type: 'banner_tattered', x: 400, y: 0, h: 60 },
-    ],
-  },
-  {
-    nombre: 'Laberinto invisible',
-    hint: 'Los caminos seguros no se ven.',
-    start: { x: 20, y: 170 },
-    platforms: [
-      { x: 0,   y: 210, w: 80,  h: 20, type: 'normal'  },
-      { x: 120, y: 180, w: 60,  h: 20, type: 'fake'    },
-      { x: 120, y: 210, w: 60,  h: 20, type: 'normal'  },
-      { x: 220, y: 150, w: 60,  h: 20, type: 'fake'    },
-      { x: 220, y: 210, w: 60,  h: 20, type: 'normal'  },
-      { x: 320, y: 180, w: 60,  h: 20, type: 'crumble' },
-      { x: 400, y: 210, w: 80,  h: 20, type: 'normal'  },
-    ],
-    hazards: [
-      { x: 0, y: 255, w: 480, h: 15, type: 'spike' },
-    ],
-    arrows: [
-      { triggerX: 250, x: 480, y: 190, w: 22, h: 8, dir: -1, speed: 5.2, active: false, fired: false },
-    ],
-    exit: { x: 430, y: 170, w: 26, h: 40 },
-    decor: [
-      { type: 'torch',      x: 15,  y: 30, h: 32 },
-      { type: 'ivy_2',      x: 140, y: 0,  h: 50 },
-      { type: 'chain_hook', x: 260, y: 0,  h: 65 },
-      { type: 'torch',      x: 440, y: 30, h: 32 },
-    ],
-  },
-  {
-    nombre: 'Lluvia de flechas',
-    hint: 'Miras a la derecha y te alcanzan.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0,   y: 240, w: 480, h: 30, type: 'normal' },
-      // Tienta a treparse "arriba de todo" para esquivar las 4 flechas
-      // de una — es falso, si intentás pararte ahí seguís cayendo.
-      { x: 110, y: 172, w: 50,  h: 14, type: 'fake'   },
-    ],
-    hazards: [],
-    arrows: [
-      { triggerX: 80,  x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.0, active: false, fired: false },
-      { triggerX: 160, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.8, active: false, fired: false },
-      { triggerX: 240, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 5.5, active: false, fired: false },
-      { triggerX: 320, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 6.0, active: false, fired: false },
-    ],
-    exit: { x: 430, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'banner_tattered', x: 60,  y: 0, h: 60 },
-      { type: 'banner_tattered', x: 220, y: 0, h: 60 },
-      { type: 'banner_tattered', x: 380, y: 0, h: 60 },
-      { type: 'rat', x: 20, y: 224, h: 16 },
-    ],
-  },
-  {
-    nombre: 'Todo es mentira',
-    hint: 'Nada es lo que parece. Desconfiá de todo.',
-    start: { x: 20, y: 170 },
-    platforms: [
-      { x: 0,   y: 210, w: 80,  h: 20, type: 'normal'  },
-      { x: 80,  y: 210, w: 20,  h: 20, type: 'fake'    },
-      { x: 100, y: 210, w: 50,  h: 20, type: 'fake'    },
-      { x: 140, y: 180, w: 50,  h: 20, type: 'crumble' },
-      { x: 210, y: 210, w: 40,  h: 20, type: 'normal'  },
-      { x: 250, y: 210, w: 20,  h: 20, type: 'fake'    },
-      { x: 270, y: 210, w: 50,  h: 20, type: 'fake'    },
-      { x: 330, y: 180, w: 150, h: 20, type: 'normal'  },
-      // "Atajo" falso cerca de la salida — ni al final hay que confiar.
-      { x: 370, y: 140, w: 30,  h: 14, type: 'fake'    },
-    ],
-    hazards: [
-      { x: 100, y: 255, w: 50,  h: 15, type: 'spike' },
-      { x: 270, y: 255, w: 50,  h: 15, type: 'spike' },
-    ],
-    arrows: [
-      { triggerX: 150, x: 480, y: 154, w: 22, h: 8, dir: -1, speed: 5.0, active: false, fired: false },
-      { triggerX: 300, x: 480, y: 194, w: 22, h: 8, dir: -1, speed: 5.5, active: false, fired: false },
-    ],
-    exit: { x: 400, y: 140, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 10,  y: 60, h: 30 },
-      { type: 'ivy_1', x: 160, y: 0,  h: 60 },
-      { type: 'ivy_2', x: 300, y: 0,  h: 55 },
-      { type: 'torch', x: 450, y: 40, h: 30 },
-    ],
-  },
-  {
-    nombre: 'La prueba final',
-    hint: 'Un poco de todo. No hay margen para error.',
-    start: { x: 20, y: 140 },
-    platforms: [
-      { x: 0,   y: 180, w: 70,  h: 20, type: 'normal'  },
-      { x: 100, y: 180, w: 50,  h: 20, type: 'fake'    },
-      { x: 100, y: 210, w: 50,  h: 20, type: 'crumble' },
-      { x: 180, y: 150, w: 50,  h: 20, type: 'fake'    },
-      { x: 180, y: 210, w: 50,  h: 20, type: 'normal'  },
-      { x: 260, y: 180, w: 40,  h: 20, type: 'crumble' },
-      { x: 330, y: 210, w: 50,  h: 20, type: 'normal'  },
-      { x: 410, y: 180, w: 70,  h: 20, type: 'normal'  },
-    ],
-    hazards: [
-      { x: 0,   y: 255, w: 480, h: 15, type: 'spike' },
-    ],
-    arrows: [
-      { triggerX: 120, x: 480, y: 190, w: 22, h: 8, dir: -1, speed: 5.0, active: false, fired: false },
-      { triggerX: 280, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 5.8, active: false, fired: false },
-      { triggerX: 370, x: 480, y: 180, w: 22, h: 8, dir: -1, speed: 6.5, active: false, fired: false },
-    ],
-    exit: { x: 420, y: 140, w: 26, h: 40 },
-    decor: [
-      { type: 'chain_hook', x: 20,  y: 0, h: 75 },
-      { type: 'torch',      x: 210, y: 10, h: 30 },
-      { type: 'banner',     x: 350, y: 0, h: 60 },
-    ],
-  },
-  // ─── Nivel 12: mecánica nueva — plataformas móviles ('moving') ───
-  // Se paran arriba tuyo y te llevan con ellas mientras las estás pisando
-  // (ver trOscillate/ridingPlatform en updateTrampas). Nivel intro: es la
-  // única forma de subir, sin nada más que lo complique.
-  {
-    nombre: 'El ascensor traidor',
-    hint: 'Subite y esperá. No te tires.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0,   y: 240, w: 80,  h: 30, type: 'normal' },
-      { x: 150, y: 240, w: 60,  h: 16, type: 'moving', move: { axis: 'y', from: 140, to: 240, speed: 0.8 } },
-      { x: 250, y: 140, w: 230, h: 30, type: 'normal' },
-    ],
-    hazards: [],
-    arrows: [],
-    exit: { x: 430, y: 100, w: 26, h: 40 },
-    decor: [
-      { type: 'chain', x: 145, y: 0, h: 90 },
-      { type: 'torch', x: 260, y: 90, h: 34 },
-      { type: 'banner_tattered', x: 420, y: 0, h: 65 },
-    ],
-  },
-  // ─── Nivel 13: mecánica nueva — sierra móvil ('saw') ───
-  // Peligro que se mueve solo (no es pisable), mata al tocarlo. Nivel
-  // intro de la mecánica: piso plano, solo hay que timear el salto.
-  {
-    nombre: 'La sierra viviente',
-    hint: 'Algo afilado va y viene por el piso.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0, y: 240, w: 480, h: 30, type: 'normal' },
-    ],
-    hazards: [
-      { x: 190, y: 214, w: 26, h: 26, type: 'saw', move: { axis: 'x', from: 150, to: 330, speed: 1.6 } },
-    ],
-    arrows: [],
-    exit: { x: 430, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 30,  y: 45, h: 36 },
-      { type: 'torch', x: 430, y: 45, h: 36 },
-      { type: 'rat',   x: 400, y: 224, h: 16 },
-    ],
-  },
-  {
-    nombre: 'Doble ascensor',
-    hint: 'Un elevador te sube, otro te cruza.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0,   y: 240, w: 70, h: 30, type: 'normal' },
-      { x: 100, y: 240, w: 50, h: 16, type: 'moving', move: { axis: 'y', from: 150, to: 240, speed: 0.9 } },
-      { x: 170, y: 150, w: 60, h: 20, type: 'normal' },
-      { x: 250, y: 150, w: 60, h: 16, type: 'moving', move: { axis: 'x', from: 250, to: 370, speed: 1.1 } },
-      { x: 390, y: 150, w: 90, h: 20, type: 'normal' },
-      // Tienta a cruzar de un salto sin esperar el segundo ascensor —
-      // es falso, y abajo están los pinchos.
-      { x: 300, y: 108, w: 40, h: 14, type: 'fake' },
-    ],
-    hazards: [
-      { x: 230, y: 255, w: 250, h: 15, type: 'spike' },
-    ],
-    arrows: [],
-    exit: { x: 440, y: 110, w: 26, h: 40 },
-    decor: [
-      { type: 'chain_straight',  x: 120, y: 0, h: 150 },
-      { type: 'torch',           x: 20,  y: 45, h: 34 },
-      { type: 'banner_tattered', x: 440, y: 0, h: 55 },
-    ],
-  },
-  {
-    nombre: 'Salto de fe (parte 2)',
-    hint: 'Piso falso arriba, sierra abajo.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0,   y: 240, w: 100, h: 30, type: 'normal' },
-      { x: 100, y: 240, w: 20,  h: 30, type: 'fake'   },
-      { x: 120, y: 240, w: 50,  h: 30, type: 'fake'   },
-      { x: 170, y: 240, w: 310, h: 30, type: 'normal' },
-    ],
-    hazards: [
-      { x: 120, y: 255, w: 50, h: 15, type: 'spike' },
-      { x: 270, y: 214, w: 26, h: 26, type: 'saw', move: { axis: 'x', from: 270, to: 440, speed: 1.8 } },
-    ],
-    arrows: [],
-    exit: { x: 440, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 20,  y: 45, h: 36 },
-      { type: 'ivy_2', x: 220, y: 0,  h: 50 },
-      { type: 'banner', x: 400, y: 0, h: 65 },
-    ],
-  },
-  {
-    nombre: 'Torres gemelas',
-    hint: 'Dos ascensores, dos ritmos distintos.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0,   y: 240, w: 60, h: 30, type: 'normal' },
-      { x: 90,  y: 240, w: 50, h: 16, type: 'moving', move: { axis: 'y', from: 120, to: 240, speed: 1.0 } },
-      { x: 200, y: 220, w: 50, h: 16, type: 'moving', move: { axis: 'y', from: 100, to: 220, speed: 1.2 } },
-      { x: 310, y: 100, w: 170, h: 20, type: 'normal' },
-      // Tienta a cruzar de un salto entre los dos ascensores sin
-      // esperarlos — es falso, y ahí abajo siguen los pinchos.
-      { x: 150, y: 168, w: 36, h: 14, type: 'fake' },
-    ],
-    hazards: [
-      { x: 60, y: 255, w: 420, h: 15, type: 'spike' },
-    ],
-    arrows: [
-      { triggerX: 250, x: 480, y: 80, w: 22, h: 8, dir: -1, speed: 5.0, active: false, fired: false },
-    ],
-    exit: { x: 440, y: 60, w: 26, h: 40 },
-    decor: [
-      { type: 'chain_straight', x: 105, y: 0, h: 120 },
-      { type: 'chain_hook',     x: 215, y: 0, h: 100 },
-      { type: 'torch',          x: 350, y: 20, h: 32 },
-    ],
-  },
-  {
-    nombre: 'Todo se mueve',
-    hint: 'Nada se queda quieto acá adentro.',
-    start: { x: 20, y: 170 },
-    platforms: [
-      { x: 0,   y: 210, w: 70, h: 20, type: 'normal'  },
-      { x: 110, y: 210, w: 60, h: 20, type: 'crumble' },
-      { x: 200, y: 180, w: 60, h: 16, type: 'moving',  move: { axis: 'x', from: 200, to: 320, speed: 1.3 } },
-      { x: 350, y: 180, w: 130, h: 20, type: 'normal' },
-      // Tienta a saltar directo desde el inicio ignorando el piso
-      // quebradizo — es falso.
-      { x: 90,  y: 172, w: 34, h: 14, type: 'fake' },
-    ],
-    hazards: [
-      { x: 0,   y: 255, w: 480, h: 15, type: 'spike' },
-      { x: 360, y: 154, w: 26,  h: 26, type: 'saw', move: { axis: 'x', from: 360, to: 450, speed: 2.0 } },
-    ],
-    arrows: [],
-    exit: { x: 440, y: 140, w: 26, h: 40 },
-    decor: [
-      { type: 'torch',      x: 15,  y: 30, h: 32 },
-      { type: 'ivy_1',      x: 250, y: 0,  h: 55 },
-      { type: 'chain_hook', x: 400, y: 0,  h: 60 },
-    ],
-  },
-  {
-    nombre: 'Lluvia y sierra',
-    hint: 'Esquivá flechas sin dejar de mirar el piso.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0,   y: 240, w: 150, h: 30, type: 'normal' },
-      { x: 150, y: 240, w: 60,  h: 30, type: 'fake'   },
-      { x: 210, y: 240, w: 270, h: 30, type: 'normal' },
-    ],
-    hazards: [
-      { x: 250, y: 214, w: 26, h: 26, type: 'saw', move: { axis: 'x', from: 80, to: 400, speed: 2.2 } },
-    ],
-    arrows: [
-      { triggerX: 100, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.5, active: false, fired: false },
-      { triggerX: 220, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 5.5, active: false, fired: false },
-      { triggerX: 340, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 6.5, active: false, fired: false },
-    ],
-    exit: { x: 430, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'torch',          x: 20,  y: 45, h: 36 },
-      { type: 'banner_tattered', x: 180, y: 0, h: 60 },
-      { type: 'banner_tattered', x: 340, y: 0, h: 60 },
-    ],
-  },
-  {
-    nombre: 'El ascensor invisible',
-    hint: 'La plataforma de arriba miente. La de abajo, no.',
-    start: { x: 20, y: 150 },
-    platforms: [
-      { x: 0,   y: 180, w: 70, h: 20, type: 'normal'  },
-      { x: 100, y: 150, w: 50, h: 20, type: 'fake'    },
-      { x: 170, y: 150, w: 50, h: 16, type: 'moving',  move: { axis: 'y', from: 150, to: 230, speed: 1.1 } },
-      { x: 250, y: 150, w: 60, h: 20, type: 'crumble' },
-      { x: 340, y: 180, w: 140, h: 20, type: 'normal' },
-    ],
-    hazards: [
-      { x: 0, y: 255, w: 480, h: 15, type: 'spike' },
-    ],
-    arrows: [
-      { triggerX: 280, x: 480, y: 154, w: 22, h: 8, dir: -1, speed: 5.5, active: false, fired: false },
-    ],
-    exit: { x: 440, y: 140, w: 26, h: 40 },
-    decor: [
-      { type: 'chain_straight', x: 190, y: 0, h: 150 },
-      { type: 'torch',          x: 20,  y: 20, h: 32 },
-      { type: 'ivy_2',          x: 400, y: 0, h: 55 },
-    ],
-  },
-  {
-    nombre: 'La prueba definitiva',
-    hint: 'Todo lo que aprendiste, junto y sin piedad.',
-    start: { x: 20, y: 150 },
-    platforms: [
-      { x: 0,   y: 180, w: 60, h: 20, type: 'normal'  },
-      { x: 90,  y: 180, w: 40, h: 20, type: 'fake'    },
-      { x: 90,  y: 210, w: 40, h: 20, type: 'crumble' },
-      { x: 160, y: 210, w: 50, h: 16, type: 'moving',  move: { axis: 'x', from: 160, to: 260, speed: 1.2 } },
-      { x: 290, y: 150, w: 50, h: 16, type: 'moving',  move: { axis: 'y', from: 150, to: 230, speed: 1.3 } },
-      { x: 380, y: 110, w: 100, h: 20, type: 'normal' },
-    ],
-    hazards: [
-      { x: 0,   y: 255, w: 480, h: 15, type: 'spike' },
-      { x: 390, y: 84,  w: 26,  h: 26, type: 'saw', move: { axis: 'x', from: 390, to: 450, speed: 2.4 } },
-    ],
-    arrows: [
-      { triggerX: 200, x: 480, y: 184, w: 22, h: 8, dir: -1, speed: 5.5, active: false, fired: false },
-      { triggerX: 320, x: 480, y: 124, w: 22, h: 8, dir: -1, speed: 6.5, active: false, fired: false },
-    ],
-    exit: { x: 440, y: 70, w: 26, h: 40 },
-    decor: [
-      { type: 'torch',          x: 15,  y: 30, h: 30 },
-      { type: 'chain_straight', x: 310, y: 0,  h: 150 },
-      { type: 'banner_tattered', x: 130, y: 0,  h: 60 },
-      { type: 'ivy_1',          x: 440, y: 0,  h: 55 },
-      { type: 'rat',            x: 15,  y: 164, h: 16 },
-    ],
-  },
-];
+// ─── NIVELES: se cargan dinámicamente desde el Editor de Niveles ───
+// Ya no hay niveles "oficiales" fijos acá — el juego siempre usa los
+// niveles creados/editados en level-editor.html. Prioridad de carga:
+//   1) Datos en vivo del editor guardados en localStorage (mismo origen
+//      y mismo navegador: cualquier cambio en el editor se refleja acá
+//      apenas se recarga esta pantalla, sin pasos manuales).
+//   2) El archivo estático exportado con "💾 Descargar .js" desde el
+//      editor (src/games/castle_escape_levels.js), incluido en index.html
+//      con un <script> ANTES de este archivo. Sirve para que el juego
+//      funcione en otra máquina/navegador donde no existe el
+//      localStorage del editor (por ejemplo, al publicar el sitio) — y es
+//      la fuente que termina usándose siempre que jugás sin haber tocado
+//      el editor en ESE mismo navegador.
+//   3) Si no hay nada en ninguno de los dos lugares, arranca con un
+//      array vacío — el menú de niveles muestra un aviso en vez de
+//      romperse (ver trUpdateLevelCard).
+const TR_CUSTOM_LEVELS_LS_KEY = 'castleEscapeLevelEditorData_v3';
+
+function trLoadCustomLevels() {
+  try {
+    const raw = localStorage.getItem(TR_CUSTOM_LEVELS_LS_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data && Array.isArray(data.levels) && data.levels.length) {
+        return data.levels;
+      }
+    }
+  } catch (e) {}
+  if (typeof CASTLE_ESCAPE_CUSTOM_LEVELS !== 'undefined' &&
+      Array.isArray(CASTLE_ESCAPE_CUSTOM_LEVELS) && CASTLE_ESCAPE_CUSTOM_LEVELS.length) {
+    return CASTLE_ESCAPE_CUSTOM_LEVELS;
+  }
+  return [];
+}
+
+let TR_LEVELS = trLoadCustomLevels();
 
 const TRAMPAS = {
   canvas: null, ctx: null,
@@ -576,6 +114,14 @@ const TRAMPAS = {
   camera: { x: 0, y: 0 },
   levelW: TR_W,
   levelH: TR_H,
+
+  // Campo de visión del nivel actual (definido en el editor). 1 = vista
+  // normal (se ve exactamente el área de TR_W×TR_H). Mayor a 1 = la cámara
+  // se aleja y se ve MÁS mapa comprimido en el mismo canvas de 480x270.
+  // Menor a 1 = la cámara se acerca (zoom in) y se ve MENOS mapa, más
+  // grande. Ver trLoadLevel (de dónde sale) y drawTrampas/updateTrampas
+  // (dónde se aplica el scale y el clamp de cámara).
+  fov: 1,
 };
 
 // ─── Loop y teclado — ahora con Engine2D en vez de raf/keydown a mano ───
@@ -656,8 +202,21 @@ function trHideAll() {
     if (el) el.classList.add('hidden');
   });
 }
+// trLoadLevel() pinta el fondo del castillo (back.png) directo en
+// .trampas-container vía style.background inline — y ese inline se queda
+// pegado ahí para siempre (un inline style le gana al CSS) aunque
+// volvamos al menú. Por eso, después de jugar un nivel, "Ajustes",
+// "Cómo jugar" y "Ver niveles" mostraban el fondo del juego en vez de la
+// imagen de menú del CSS. Esta función saca ese inline y deja que el CSS
+// (la foto de menú) se vea de nuevo — se llama desde toda pantalla que
+// NO sea el juego en sí.
+function trResetMenuBackground() {
+  const cont = document.querySelector('.trampas-container');
+  if (cont) cont.style.background = '';
+}
 function trShowMainMenu() {
   trHideAll();
+  trResetMenuBackground();
   document.getElementById('trampasMainMenu').classList.remove('hidden');
   document.getElementById('trampasPauseMenu').classList.add('hidden');
   stopTrampas();
@@ -665,11 +224,13 @@ function trShowMainMenu() {
 }
 function trShowLevelSelect() {
   trHideAll();
+  trResetMenuBackground();
   document.getElementById('trampasLevelSelect').classList.remove('hidden');
   trUpdateLevelCard();
 }
 function trShowSettings() {
   trHideAll();
+  trResetMenuBackground();
   document.getElementById('trampasSettings').classList.remove('hidden');
   // Sincronizar los sliders con el volumen global actual
   const musicPct = Math.round((typeof getGlobalMusicVolume === 'function' ? getGlobalMusicVolume() : 0.5) * 100);
@@ -729,6 +290,7 @@ document.addEventListener('webkitfullscreenchange', trSyncFullscreenBtn);
 
 function trShowHowToPlay() {
   trHideAll();
+  trResetMenuBackground();
   document.getElementById('trampasHowToPlay').classList.remove('hidden');
 }
 
@@ -748,6 +310,26 @@ function trBackToLevelSelect() {
 }
 
 function trUpdateLevelCard() {
+  // Sin niveles cargados (todavía no se creó ninguno en el editor): en vez
+  // de romper (lvl sería undefined), mostramos un aviso y deshabilitamos
+  // todo lo que dependa de un nivel real.
+  if (!TR_LEVELS.length) {
+    document.getElementById('trBigLevelNum').textContent = '–';
+    document.getElementById('trBigLevelName').textContent = 'Sin niveles — creá uno en el Editor de Niveles';
+    const starEls0 = document.querySelectorAll('#trBigStars .star');
+    starEls0.forEach(el => el.classList.remove('earned'));
+    const card0 = document.querySelector('.trampas-level-card-big');
+    if (card0) card0.classList.add('locked');
+    const navLeft0 = document.getElementById('trNavLeft');
+    const navRight0 = document.getElementById('trNavRight');
+    const playBtn0 = document.getElementById('trLevelPlayBtn');
+    if (navLeft0) navLeft0.disabled = true;
+    if (navRight0) navRight0.disabled = true;
+    if (playBtn0) playBtn0.disabled = true;
+    document.querySelectorAll('.trampas-level-dot').forEach(d => d.classList.remove('active'));
+    return;
+  }
+
   const i = trSelectedLevel;
   const lvl = TR_LEVELS[i];
   const stars = trGetLevelStars(i);
@@ -773,16 +355,19 @@ function trUpdateLevelCard() {
 }
 
 function trNavLevel(dir) {
+  if (!TR_LEVELS.length) return;
   trSelectedLevel = Math.max(0, Math.min(TR_LEVELS.length - 1, trSelectedLevel + dir));
   trUpdateLevelCard();
 }
 
 function trPlaySelectedLevel() {
+  if (!TR_LEVELS.length) return;
   if (!trIsUnlocked(trSelectedLevel)) return;
   trStartLevel(trSelectedLevel);
 }
 
 function trStartLevel(i) {
+  if (!TR_LEVELS.length || !TR_LEVELS[i]) return;
   TRAMPAS.levelIndex = i;
   TRAMPAS.totalScore = 0;
   TRAMPAS.totalDeaths = 0;
@@ -838,6 +423,7 @@ function trLoadLevel(index) {
   // no declara width/height, así los niveles viejos siguen funcionando).
   TRAMPAS.levelW = lvl.width  || TR_W;
   TRAMPAS.levelH = lvl.height || TR_H;
+  TRAMPAS.fov = lvl.fov || 1;
   TRAMPAS.camera.x = 0;
   TRAMPAS.camera.y = 0;
 
@@ -1225,12 +811,18 @@ function updateTrampas(step) {
   // Caerse del mapa
   if (p.y > TRAMPAS.levelH + 20) { trPlayerDie(); return; }
 
-  // Cámara: sigue al jugador y se recorta al tamaño del nivel.
+  // Cámara: sigue al jugador y se recorta al tamaño del nivel. El área
+  // visible (viewW×viewH) no es siempre TR_W×TR_H: se escala según el
+  // "campo de visión" del nivel (TRAMPAS.fov) — ver drawTrampas, donde se
+  // aplica el ctx.scale correspondiente para que esta misma área encaje
+  // en el canvas físico de 480x270.
   const cam = TRAMPAS.camera;
-  const maxX = Math.max(0, TRAMPAS.levelW - TR_W);
-  const maxY = Math.max(0, TRAMPAS.levelH - TR_H);
-  cam.x = Math.max(0, Math.min(maxX, p.x + p.w / 2 - TR_W / 2));
-  cam.y = Math.max(0, Math.min(maxY, p.y + p.h / 2 - TR_H / 2));
+  const fov = TRAMPAS.fov || 1;
+  const viewW = TR_W * fov, viewH = TR_H * fov;
+  const maxX = Math.max(0, TRAMPAS.levelW - viewW);
+  const maxY = Math.max(0, TRAMPAS.levelH - viewH);
+  cam.x = Math.max(0, Math.min(maxX, p.x + p.w / 2 - viewW / 2));
+  cam.y = Math.max(0, Math.min(maxY, p.y + p.h / 2 - viewH / 2));
 
   // Llegar a la salida
   if (trRectsOverlap(p, lvl.exit)) { trLevelComplete(); }
@@ -1462,6 +1054,12 @@ function drawTrampas() {
   // Todo el dibujo de world-space va dentro del translate de la cámara.
   ctx.clearRect(0, 0, TR_W, TR_H);
   ctx.save();
+  // Escala inversa al fov: fov>1 (ve más mapa) => escala <1 (todo se dibuja
+  // más chico); fov<1 (ve menos mapa) => escala >1 (todo se dibuja más
+  // grande/zoom in). Con fov=1 esto es un scale(1,1), o sea no cambia nada
+  // respecto al comportamiento original.
+  const trFovScale = 1 / (TRAMPAS.fov || 1);
+  ctx.scale(trFovScale, trFovScale);
   ctx.translate(-TRAMPAS.camera.x, -TRAMPAS.camera.y);
 
   // Decoración de fondo (antorchas/hiedra/cadenas/estandartes) — va antes

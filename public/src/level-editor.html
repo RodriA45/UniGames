@@ -108,7 +108,7 @@
   .checkbox-row{display:flex;align-items:center;gap:7px;margin-top:7px;font-size:11.5px;color:var(--text);cursor:pointer;}
   .checkbox-row input{width:auto;margin:0;cursor:pointer;}
   
-  .level-tabs{display:flex;gap:4px;flex-wrap:wrap;max-height:90px;overflow-y:auto;padding:2px;background:rgba(0,0,0,0.2);border-radius:6px;border:1px solid var(--line);}
+  .level-tabs{display:flex;gap:4px;flex-wrap:wrap;max-height:160px;overflow-y:auto;padding:2px;background:rgba(0,0,0,0.2);border-radius:6px;border:1px solid var(--line);margin-bottom:8px;}
   .level-tab{background:var(--panel2);border:1px solid var(--line);color:var(--dim);padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11.5px;font-weight:600;}
   .level-tab:hover{border-color:var(--gold);color:var(--text);}
   .level-tab.active{background:var(--gold);color:#1f1300;border-color:var(--gold);font-weight:800;}
@@ -134,6 +134,62 @@
     transition:all .25s ease;pointer-events:none;z-index:99;
   }
   .toast.show{opacity:1;transform:translateY(0);}
+
+  /* ── Botón "Niveles" del header (con contador) ── */
+  .levels-count-badge{
+    display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;
+    padding:0 4px;border-radius:8px;background:rgba(0,0,0,0.35);font-size:10px;font-weight:800;
+  }
+
+  /* ── Modal "Gestionar Niveles" ── */
+  .levels-modal-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(5,1,10,0.75);backdrop-filter:blur(2px);
+    z-index:200;align-items:center;justify-content:center;padding:20px;
+  }
+  .levels-modal-backdrop.show{display:flex;}
+  .levels-modal{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    width:min(960px,100%);max-height:min(720px,90vh);display:flex;flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,0.7);overflow:hidden;
+  }
+  .levels-modal-header{
+    display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);
+    background:var(--panel2);flex-wrap:wrap;
+  }
+  .levels-modal-header h2{margin:0;font-size:16px;color:var(--gold);display:flex;align-items:center;gap:8px;}
+  .levels-modal-header .muted{font-size:11.5px;color:var(--dim);margin-right:auto;}
+  .levels-modal-body{flex:1;overflow-y:auto;padding:16px 18px;}
+  .levels-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;
+  }
+  .level-card{
+    background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+    display:flex;flex-direction:column;gap:6px;cursor:pointer;transition:all .15s ease;
+  }
+  .level-card:hover{border-color:var(--gold);}
+  .level-card.active{border-color:var(--gold);background:#331e08;box-shadow:0 0 0 1px var(--gold) inset;}
+  .level-card-top{display:flex;align-items:baseline;gap:8px;}
+  .level-card-num{
+    font-size:11px;font-weight:800;color:#1f1300;background:var(--gold);border-radius:5px;
+    padding:1px 6px;flex-shrink:0;
+  }
+  .level-card-name{font-size:13px;font-weight:700;color:var(--text);word-break:break-word;}
+  .level-card-hint{font-size:11px;color:var(--dim);font-style:italic;min-height:14px;line-height:1.4;}
+  .level-card-stats{font-size:10.5px;color:var(--dim);display:flex;gap:8px;flex-wrap:wrap;}
+  .level-card-actions{display:flex;gap:6px;margin-top:4px;}
+  .btn-sm{padding:4px 8px;font-size:11px;}
+  .levels-modal-empty{color:var(--dim);font-size:12.5px;font-style:italic;text-align:center;padding:30px 10px;}
+
+  @media (max-width: 1050px){
+    .toolbar{width:180px;}
+    .side{width:260px;}
+  }
+  @media (max-width: 820px){
+    .layout{flex-direction:column;overflow-y:auto;}
+    .toolbar, .side{width:100%;max-height:220px;border:none;border-bottom:1px solid var(--line);}
+    .center{min-height:360px;}
+    header .sub{display:none;}
+  }
 </style>
 </head>
 <body>
@@ -146,7 +202,7 @@
     <button class="btn play-btn" id="btnPlayToggle">▶️ PROBAR NIVEL <span style="font-size:10px;opacity:.8">(Espacio / P)</span></button>
     <button class="btn" id="btnUndo" title="Deshacer (Ctrl+Z)">↩️</button>
     <button class="btn" id="btnRedo" title="Rehacer (Ctrl+Y)">↪️</button>
-    <button class="btn" id="btnLoadOfficial" title="Carga los 20 niveles originales del juego">📥 Cargar 20 Oficiales</button>
+    <button class="btn primary" id="btnLevelsMenu" title="Elegir, agregar o borrar niveles">🗺️ Niveles <span class="levels-count-badge" id="levelsCountBadge">1</span></button>
     <a href="../index.html" class="btn" style="text-decoration:none;">🚪 Volver al Juego</a>
   </div>
 </header>
@@ -294,14 +350,11 @@
 
   <!-- ─────────── PANEL DERECHO ─────────── -->
   <div class="side" id="rightSidebar">
-    <h3>Gestión de Niveles</h3>
-    <div class="level-tabs" id="levelTabs"></div>
-    <div class="btn-row">
-      <button class="btn primary" id="btnAddLevel">+ Nuevo</button>
-      <button class="btn" id="btnDupLevel">⧉ Duplicar</button>
-      <button class="btn danger" id="btnDelLevel">🗑️ Borrar</button>
+    <h3>Nivel Actual</h3>
+    <div class="btn-row" style="margin-top:0;">
+      <button class="btn primary" id="btnOpenLevelsFromSide" style="flex:1;" title="Elegir, agregar o borrar niveles">🗺️ Gestionar Niveles (<span id="levelsSideCount">1</span>)</button>
     </div>
-    
+
     <div class="row2">
       <div><label>Nombre del Nivel</label><input type="text" id="lvlNombre"></div>
       <div><label>Pista (hint)</label><input type="text" id="lvlHint"></div>
@@ -310,6 +363,14 @@
       <div><label>Ancho (px)</label><input type="number" id="lvlWidth" min="480" step="10" value="480"></div>
       <div><label>Alto (px)</label><input type="number" id="lvlHeight" min="270" step="10" value="270"></div>
     </div>
+    <label>Campo de visión (zoom de cámara)</label>
+    <div class="row2">
+      <input type="number" id="lvlFov" min="0.4" max="3" step="0.1" value="1">
+      <button class="btn" id="btnFovReset" title="Volver a 1x (vista normal)">↺ Reset</button>
+    </div>
+    <div class="empty-hint" style="margin-top:2px;">
+      1 = vista normal (480×270 visibles). Más de 1 = se ve MÁS mapa (cámara alejada). Menos de 1 = se ve MENOS (cámara acercada/zoom in).
+    </div>
 
     <h3>Propiedades del Objeto</h3>
     <div id="propsPanel"><div class="no-sel">Nada seleccionado. Hacé clic en un objeto o elegí una herramienta para crearlo.</div></div>
@@ -317,26 +378,48 @@
     <h3>Objetos en este Nivel</h3>
     <div id="objList" style="max-height:180px;overflow-y:auto;"></div>
 
-    <h3>Exportar a Castle Escape</h3>
+    <h3>Exportar / Guardar</h3>
+    <div class="empty-hint" style="margin-bottom:4px;">
+      Mientras editás, los niveles se guardan solos en ESTE navegador (el juego los usa al toque si lo abrís acá mismo).
+      Para que se vean SIEMPRE — en cualquier navegador o al publicar el sitio — descargá el .js y reemplazá
+      <code>src/games/castle_escape_levels.js</code> con el archivo descargado.
+    </div>
     <div class="btn-row">
       <button class="btn primary" id="btnExportOne" title="Copia el objeto JS de este nivel">📋 Copiar este nivel</button>
-      <button class="btn" id="btnExportAll" title="Copia el array TR_LEVELS completo">📦 Copiar TR_LEVELS</button>
-      <button class="btn" id="btnDownloadJs" title="Descargar como archivo JavaScript">💾 Descargar .js</button>
+      <button class="btn" id="btnExportAll" title="Copia el array completo de niveles">📦 Copiar todos</button>
+      <button class="btn" id="btnDownloadJs" title="Descargar castle_escape_levels.js — reemplazá el de src/games/ con este archivo">💾 Descargar castle_escape_levels.js</button>
     </div>
-    <textarea id="exportBox" rows="6" readonly placeholder="El código listo para pegar en castle_escape.js aparecerá acá..."></textarea>
+    <textarea id="exportBox" rows="6" readonly placeholder="El código listo para copiar/pegar aparecerá acá..."></textarea>
 
     <h3>Importar Código</h3>
-    <textarea id="importBox" rows="4" placeholder="Pegá acá un objeto de nivel o array TR_LEVELS para cargarlo..."></textarea>
+    <textarea id="importBox" rows="4" placeholder="Pegá acá un nivel, un array de niveles, o el contenido completo de un .js exportado..."></textarea>
     <div class="btn-row">
       <button class="btn" id="btnImport">📥 Cargar Código</button>
+      <button class="btn" id="btnImportFile">📂 Importar archivo .js</button>
       <button class="btn" id="btnClearImport">Limpiar</button>
     </div>
+    <input type="file" id="importFileInput" accept=".js,.txt" style="display:none;">
   </div>
 
 </div>
 
 <!-- Notificación Toast -->
 <div class="toast" id="toastMsg">Mensaje</div>
+
+<!-- ─────────── MODAL: GESTIONAR NIVELES ─────────── -->
+<div class="levels-modal-backdrop" id="levelsModalBackdrop">
+  <div class="levels-modal">
+    <div class="levels-modal-header">
+      <h2>🗺️ Niveles <span class="levels-count-badge" id="levelsModalCount">1</span></h2>
+      <span class="muted">Elegí un nivel para editarlo, o agregá / duplicá / borrá desde acá.</span>
+      <button class="btn primary btn-sm" id="btnAddLevelModal">+ Nuevo nivel</button>
+      <button class="btn btn-sm" id="btnCloseLevelsModal">✕ Cerrar</button>
+    </div>
+    <div class="levels-modal-body">
+      <div class="levels-grid" id="levelsGrid"></div>
+    </div>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -446,108 +529,6 @@ Promise.all([
   render();
 });
 
-// ─── LOS NIVELES OFICIALES ───
-const OFFICIAL_LEVELS = [
-  {
-    nombre: 'El piso falso', hint: 'Caminá tranquilo... o no.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0, y: 240, w: 130, h: 30, type: 'normal' },
-      { x: 130, y: 240, w: 60, h: 30, type: 'fake' },
-      { x: 190, y: 240, w: 20, h: 30, type: 'fake' },
-      { x: 210, y: 240, w: 270, h: 30, type: 'normal' },
-    ],
-    hazards: [], arrows: [],
-    exit: { x: 430, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 20, y: 40, h: 38 },
-      { type: 'torch', x: 440, y: 40, h: 38 },
-      { type: 'ivy', x: 150, y: 0, h: 55 },
-      { type: 'banner', x: 300, y: 0, h: 70 },
-    ],
-  },
-  {
-    nombre: 'Doble piso falso', hint: 'El piso te puede fallar dos veces.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0, y: 240, w: 150, h: 30, type: 'normal' },
-      { x: 150, y: 240, w: 60, h: 30, type: 'fake' },
-      { x: 210, y: 240, w: 140, h: 30, type: 'normal' },
-      { x: 350, y: 240, w: 60, h: 30, type: 'fake' },
-      { x: 410, y: 240, w: 70, h: 30, type: 'normal' },
-    ],
-    hazards: [], arrows: [],
-    exit: { x: 430, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 30, y: 45, h: 36 },
-      { type: 'torch', x: 410, y: 45, h: 36 },
-      { type: 'ivy_2', x: 250, y: 0, h: 50 },
-    ],
-  },
-  {
-    nombre: 'Flecha en la pared', hint: 'Algo se acerca desde la derecha.',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0, y: 240, w: 170, h: 30, type: 'normal' },
-      { x: 170, y: 240, w: 80, h: 30, type: 'fake' },
-      { x: 250, y: 240, w: 230, h: 30, type: 'normal' },
-    ],
-    hazards: [],
-    arrows: [
-      { triggerX: 160, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.2, active: false, fired: false },
-    ],
-    exit: { x: 430, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 25, y: 50, h: 34 },
-      { type: 'chain_hook', x: 200, y: 0, h: 60 },
-      { type: 'banner_tattered', x: 400, y: 0, h: 55 },
-    ],
-  },
-  {
-    nombre: 'Se cae a pedazos', hint: 'No te quedes parado mucho tiempo.',
-    start: { x: 20, y: 170 },
-    platforms: [
-      { x: 0, y: 210, w: 90, h: 20, type: 'normal' },
-      { x: 110, y: 210, w: 26, h: 14, type: 'fake' },
-      { x: 150, y: 210, w: 80, h: 20, type: 'crumble' },
-      { x: 300, y: 210, w: 90, h: 20, type: 'normal' },
-      { x: 430, y: 210, w: 50, h: 20, type: 'normal' },
-    ],
-    hazards: [
-      { x: 0, y: 255, w: 480, h: 15, type: 'spike' },
-    ],
-    arrows: [],
-    exit: { x: 440, y: 170, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 15, y: 20, h: 34 },
-      { type: 'ivy_1', x: 160, y: 0, h: 60 },
-      { type: 'torch', x: 450, y: 20, h: 34 },
-      { type: 'rat', x: 330, y: 194, h: 16 },
-    ],
-  },
-  {
-    nombre: 'Salto de fe', hint: 'Donde ves pinchos, pisá. Donde ves piso, ¡no!',
-    start: { x: 20, y: 200 },
-    platforms: [
-      { x: 0, y: 240, w: 110, h: 30, type: 'normal' },
-      { x: 110, y: 240, w: 40, h: 30, type: 'normal', decor: 'spike' },
-      { x: 150, y: 240, w: 90, h: 30, type: 'fake' },
-      { x: 240, y: 240, w: 40, h: 30, type: 'normal', decor: 'spike' },
-      { x: 280, y: 240, w: 200, h: 30, type: 'normal' },
-    ],
-    hazards: [],
-    arrows: [
-      { triggerX: 340, x: 480, y: 214, w: 22, h: 8, dir: -1, speed: 4.6, active: false, fired: false },
-    ],
-    exit: { x: 440, y: 200, w: 26, h: 40 },
-    decor: [
-      { type: 'torch', x: 20, y: 45, h: 36 },
-      { type: 'banner', x: 340, y: 0, h: 65 },
-      { type: 'ivy_2', x: 60, y: 0, h: 45 },
-    ],
-  }
-];
-
 // ─── CREACIÓN DE NIVEL DEFAULT ───
 function defaultLevel(num) {
   return {
@@ -555,6 +536,7 @@ function defaultLevel(num) {
     hint: '',
     width: TR_W,
     height: TR_H,
+    fov: 1,
     start: { x: 20, y: 200 },
     platforms: [
       { x: 0, y: 240, w: 480, h: 30, type: 'normal' }
@@ -571,6 +553,7 @@ function defaultLevel(num) {
 
 function lvlW(lvl) { return (lvl && lvl.width) || TR_W; }
 function lvlH(lvl) { return (lvl && lvl.height) || TR_H; }
+function lvlFov(lvl) { return (lvl && lvl.fov) || 1; }
 
 // ─── ESTADO GLOBAL ───
 const state = {
@@ -1152,16 +1135,21 @@ function render() {
 
   drawGrid();
 
-  // Marco de vista estándar de juego (480x270)
+  // Marco de vista estándar de juego (480x270 × el campo de visión del nivel).
+  // El canvas del juego siempre es 480x270 px, pero con fov != 1 la cámara
+  // muestra un área más grande o más chica del mundo comprimida/estirada
+  // a ese mismo canvas — este rectángulo es justamente esa área.
+  const fovNow = lvlFov(curLevel());
+  const viewW = TR_W * fovNow, viewH = TR_H * fovNow;
   ctx.save();
   ctx.strokeStyle = 'rgba(96,165,250,0.4)';
   ctx.setLineDash([6 / state.zoom, 4 / state.zoom]);
   ctx.lineWidth = 1.5 / state.zoom;
-  ctx.strokeRect(0, 0, TR_W, TR_H);
+  ctx.strokeRect(0, 0, viewW, viewH);
   ctx.setLineDash([]);
   ctx.fillStyle = 'rgba(96,165,250,0.7)';
   ctx.font = (9 / state.zoom) + 'px sans-serif';
-  ctx.fillText('Vista de pantalla (480×270)', 4 / state.zoom, 12 / state.zoom);
+  ctx.fillText('Vista de pantalla (' + Math.round(viewW) + '×' + Math.round(viewH) + ')', 4 / state.zoom, 12 / state.zoom);
   ctx.restore();
 
   const lvl = curLevel();
@@ -1660,6 +1648,115 @@ document.getElementById('btnRedo').addEventListener('click', redo);
 document.getElementById('btnDelete').addEventListener('click', deleteSelected);
 document.getElementById('btnDuplicate').addEventListener('click', duplicateSelected);
 
+// ══════════════════════════════════════
+//  MODAL "GESTIONAR NIVELES"
+// ══════════════════════════════════════
+function openLevelsModal() {
+  renderLevelsModal();
+  document.getElementById('levelsModalBackdrop').classList.add('show');
+}
+function closeLevelsModal() {
+  document.getElementById('levelsModalBackdrop').classList.remove('show');
+}
+function renderLevelsModal() {
+  const grid = document.getElementById('levelsGrid');
+  document.getElementById('levelsModalCount').textContent = state.levels.length;
+  if (!state.levels.length) {
+    grid.innerHTML = '<div class="levels-modal-empty">No hay niveles todavía. Tocá "+ Nuevo nivel" para crear el primero.</div>';
+    return;
+  }
+  grid.innerHTML = state.levels.map((lvl, i) => {
+    const active = i === state.currentLevel;
+    const nombre = (lvl.nombre || 'Sin nombre').replace(/</g, '&lt;');
+    const hint = (lvl.hint || 'Sin pista').replace(/</g, '&lt;');
+    return `<div class="level-card ${active ? 'active' : ''}" data-i="${i}">
+      <div class="level-card-top">
+        <span class="level-card-num">#${i + 1}</span>
+        <span class="level-card-name">${nombre}</span>
+      </div>
+      <div class="level-card-hint">${hint}</div>
+      <div class="level-card-stats">
+        <span>▭ ${(lvl.platforms || []).length}</span>
+        <span>☠️ ${(lvl.hazards || []).length}</span>
+        <span>➡️ ${(lvl.arrows || []).length}</span>
+        <span>🌿 ${(lvl.decor || []).length}</span>
+      </div>
+      <div class="level-card-actions">
+        <button class="btn primary btn-sm" data-act="edit" data-i="${i}" style="flex:1;">✏️ Editar</button>
+        <button class="btn btn-sm" data-act="dup" data-i="${i}" title="Duplicar">⧉</button>
+        <button class="btn danger btn-sm" data-act="del" data-i="${i}" title="Borrar">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.level-card').forEach(card => {
+    card.addEventListener('click', (ev) => {
+      if (ev.target.closest('button')) return;
+      selectLevel(parseInt(card.dataset.i, 10));
+    });
+  });
+  grid.querySelectorAll('button[data-act]').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const i = parseInt(btn.dataset.i, 10);
+      const act = btn.dataset.act;
+      if (act === 'edit') selectLevel(i);
+      else if (act === 'dup') duplicateLevelAt(i);
+      else if (act === 'del') deleteLevelAt(i);
+    });
+  });
+}
+function selectLevel(i) {
+  state.currentLevel = i;
+  state.selected = null;
+  refreshAll();
+  closeLevelsModal();
+}
+function duplicateLevelAt(i) {
+  pushHistory();
+  const copy = JSON.parse(JSON.stringify(state.levels[i]));
+  copy.nombre = (copy.nombre || 'Nivel') + ' (Copia)';
+  state.levels.splice(i + 1, 0, copy);
+  if (i <= state.currentLevel) state.currentLevel++;
+  refreshAll();
+  renderLevelsModal();
+  showToast('Nivel duplicado');
+}
+function deleteLevelAt(i) {
+  if (state.levels.length <= 1) { alert('Necesitás tener al menos un nivel.'); return; }
+  if (!confirm('¿Borrar "' + (state.levels[i].nombre || 'este nivel') + '"?')) return;
+  pushHistory();
+  state.levels.splice(i, 1);
+  if (state.currentLevel >= state.levels.length) state.currentLevel = state.levels.length - 1;
+  else if (i < state.currentLevel) state.currentLevel--;
+  state.selected = null;
+  refreshAll();
+  renderLevelsModal();
+  showToast('Nivel eliminado');
+}
+function addNewLevel() {
+  pushHistory();
+  state.levels.push(defaultLevel(state.levels.length + 1));
+  state.currentLevel = state.levels.length - 1;
+  state.selected = null;
+  refreshAll();
+  renderLevelsModal();
+  showToast('Nuevo nivel agregado');
+}
+
+document.getElementById('btnLevelsMenu').addEventListener('click', openLevelsModal);
+document.getElementById('btnOpenLevelsFromSide').addEventListener('click', openLevelsModal);
+document.getElementById('btnCloseLevelsModal').addEventListener('click', closeLevelsModal);
+document.getElementById('btnAddLevelModal').addEventListener('click', addNewLevel);
+document.getElementById('levelsModalBackdrop').addEventListener('click', (ev) => {
+  if (ev.target.id === 'levelsModalBackdrop') closeLevelsModal();
+});
+window.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && document.getElementById('levelsModalBackdrop').classList.contains('show')) {
+    closeLevelsModal();
+  }
+});
+
 document.getElementById('btnFullscreen').addEventListener('click', () => {
   const el = document.getElementById('canvasWrap');
   if (!document.fullscreenElement) {
@@ -1917,64 +2014,23 @@ function refreshList() {
 }
 
 // ══════════════════════════════════════
-//  PESTAÑAS DE NIVELES Y CONFIGURACIÓN
+//  INFO DEL NIVEL ACTUAL (el detalle de todos los niveles vive en el
+//  modal "Gestionar Niveles" — ver openLevelsModal / renderLevelsModal)
 // ══════════════════════════════════════
 function refreshLevelTabs() {
-  const tabs = document.getElementById('levelTabs');
-  tabs.innerHTML = state.levels.map((lvl, i) =>
-    `<button class="level-tab ${i===state.currentLevel?'active':''}" data-i="${i}">${i+1}</button>`).join('');
-  tabs.querySelectorAll('.level-tab').forEach(b => b.addEventListener('click', () => {
-    state.currentLevel = parseInt(b.dataset.i, 10);
-    state.selected = null;
-    refreshAll();
-  }));
-  document.getElementById('lvlNombre').value = curLevel().nombre || '';
-  document.getElementById('lvlHint').value = curLevel().hint || '';
-  document.getElementById('lvlWidth').value = lvlW(curLevel());
-  document.getElementById('lvlHeight').value = lvlH(curLevel());
-}
-
-document.getElementById('btnAddLevel').addEventListener('click', () => {
-  pushHistory();
-  state.levels.push(defaultLevel(state.levels.length + 1));
-  state.currentLevel = state.levels.length - 1;
-  state.selected = null;
-  refreshAll();
-  showToast('Nuevo nivel agregado');
-});
-
-document.getElementById('btnDupLevel').addEventListener('click', () => {
-  pushHistory();
-  const copy = JSON.parse(JSON.stringify(curLevel()));
-  copy.nombre = (copy.nombre || 'Nivel') + ' (Copia)';
-  state.levels.push(copy);
-  state.currentLevel = state.levels.length - 1;
-  state.selected = null;
-  refreshAll();
-  showToast('Nivel duplicado');
-});
-
-document.getElementById('btnDelLevel').addEventListener('click', () => {
-  if (state.levels.length <= 1) { alert('Necesitás tener al menos un nivel.'); return; }
-  if (!confirm('¿Borrar este nivel?')) return;
-  pushHistory();
-  state.levels.splice(state.currentLevel, 1);
-  state.currentLevel = Math.max(0, state.currentLevel - 1);
-  state.selected = null;
-  refreshAll();
-  showToast('Nivel eliminado');
-});
-
-document.getElementById('btnLoadOfficial').addEventListener('click', () => {
-  if (confirm('¿Cargar los 20 niveles oficiales de Castle Escape? (Esto reemplazará la lista actual)')) {
-    pushHistory();
-    state.levels = OFFICIAL_LEVELS.map(normalizeLevel);
-    state.currentLevel = 0;
-    state.selected = null;
-    refreshAll();
-    showToast('¡20 niveles oficiales cargados!');
+  document.getElementById('levelsCountBadge').textContent = state.levels.length;
+  document.getElementById('levelsSideCount').textContent = state.levels.length;
+  document.getElementById('lvlNombre').value = curLevel() ? (curLevel().nombre || '') : '';
+  document.getElementById('lvlHint').value = curLevel() ? (curLevel().hint || '') : '';
+  document.getElementById('lvlWidth').value = curLevel() ? lvlW(curLevel()) : TR_W;
+  document.getElementById('lvlHeight').value = curLevel() ? lvlH(curLevel()) : TR_H;
+  document.getElementById('lvlFov').value = curLevel() ? lvlFov(curLevel()) : 1;
+  // Si el modal está abierto, lo mantenemos sincronizado con cualquier
+  // cambio (ej: se editó el nombre del nivel mientras estaba abierto).
+  if (document.getElementById('levelsModalBackdrop').classList.contains('show')) {
+    renderLevelsModal();
   }
-});
+}
 
 document.getElementById('lvlNombre').addEventListener('input', e => { curLevel().nombre = e.target.value; save(); });
 document.getElementById('lvlHint').addEventListener('input', e => { curLevel().hint = e.target.value; save(); });
@@ -1985,6 +2041,18 @@ document.getElementById('lvlWidth').addEventListener('input', e => {
 document.getElementById('lvlHeight').addEventListener('input', e => {
   curLevel().height = Math.max(TR_H, parseInt(e.target.value, 10) || TR_H);
   resizeCanvas(); render(); save();
+});
+document.getElementById('lvlFov').addEventListener('input', e => {
+  let v = parseFloat(e.target.value);
+  if (!isFinite(v) || v <= 0) v = 1;
+  v = Math.max(0.4, Math.min(3, v));
+  curLevel().fov = v;
+  render(); save();
+});
+document.getElementById('btnFovReset').addEventListener('click', () => {
+  curLevel().fov = 1;
+  document.getElementById('lvlFov').value = 1;
+  render(); save();
 });
 
 // ══════════════════════════════════════
@@ -2000,6 +2068,7 @@ function formatLevel(lvl, indent) {
   lines.push(`${ind}hint: ${JSON.stringify(lvl.hint || '')},`);
   if (lvl.width && lvl.width !== TR_W) lines.push(`${ind}width: ${lvl.width},`);
   if (lvl.height && lvl.height !== TR_H) lines.push(`${ind}height: ${lvl.height},`);
+  if (lvl.fov && lvl.fov !== 1) lines.push(`${ind}fov: ${fmtNum(lvl.fov)},`);
   lines.push(`${ind}start: { x: ${fmtNum(lvl.start.x)}, y: ${fmtNum(lvl.start.y)} },`);
 
   lines.push(`${ind}platforms: [`);
@@ -2053,31 +2122,54 @@ document.getElementById('btnExportOne').addEventListener('click', () => {
 
 document.getElementById('btnExportAll').addEventListener('click', () => {
   const body = state.levels.map(l => `  {\n${formatLevel(l, '    ')}\n  },`).join('\n');
-  const txt = `const TR_LEVELS = [\n${body}\n];`;
+  const txt = `const CASTLE_ESCAPE_CUSTOM_LEVELS = [\n${body}\n];`;
   document.getElementById('exportBox').value = txt;
   navigator.clipboard && navigator.clipboard.writeText(txt).catch(() => {});
-  showToast('¡Array TR_LEVELS copiado!');
+  showToast('¡Array de niveles copiado!');
 });
 
 document.getElementById('btnDownloadJs').addEventListener('click', () => {
   const body = state.levels.map(l => `  {\n${formatLevel(l, '    ')}\n  },`).join('\n');
-  const txt = `// Exportado desde Castle Escape Level Editor\nconst TR_LEVELS = [\n${body}\n];\n`;
+  const txt = `// Exportado desde Castle Escape Level Editor\n// Guardá este archivo como src/games/castle_escape_levels.js (reemplazando\n// el que ya esté ahí) e incluilo con un <script> ANTES de castle_escape.js\n// en index.html — así el juego usa estos niveles siempre, en cualquier\n// navegador, sin depender del localStorage del editor.\nconst CASTLE_ESCAPE_CUSTOM_LEVELS = [\n${body}\n];\n`;
   const blob = new Blob([txt], { type: 'application/javascript' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'castle_escape_custom_levels.js';
+  a.download = 'castle_escape_levels.js';
   a.click();
   URL.revokeObjectURL(url);
-  showToast('Archivo .js descargado');
+  showToast('Descargado: castle_escape_levels.js — reemplazalo en src/games/');
 });
 
-document.getElementById('btnImport').addEventListener('click', () => {
-  const raw = document.getElementById('importBox').value.trim();
+// Acepta tres formas de código pegado/importado:
+//  1) Un objeto de nivel suelto: { nombre: '...', platforms: [...], ... }
+//  2) Un array de niveles suelto: [ {...}, {...} ]
+//  3) Un archivo completo como el que descarga "💾 Descargar .js":
+//     const CASTLE_ESCAPE_CUSTOM_LEVELS = [ ... ];  (o el viejo TR_LEVELS)
+function parseLevelInput(raw) {
+  // Primero probamos como expresión suelta (array u objeto literal).
+  try {
+    const val = new Function('return (' + raw + ')')();
+    if (val) return val;
+  } catch (e) {}
+  // Si no, probamos como un archivo/sentencia completa: lo ejecutamos y
+  // devolvemos la variable que haya quedado definida.
+  try {
+    const fn = new Function(raw + '\n' +
+      'if (typeof CASTLE_ESCAPE_CUSTOM_LEVELS !== "undefined") return CASTLE_ESCAPE_CUSTOM_LEVELS;\n' +
+      'if (typeof TR_LEVELS !== "undefined") return TR_LEVELS;\n' +
+      'return null;');
+    const val = fn();
+    if (val) return val;
+  } catch (e) {}
+  throw new Error('No se pudo interpretar el código pegado.');
+}
+
+function importLevelCode(raw) {
+  raw = (raw || '').trim();
   if (!raw) return;
   try {
-    // eslint-disable-next-line no-new-func
-    const parsed = new Function('return (' + raw + ')')();
+    const parsed = parseLevelInput(raw);
     pushHistory();
     if (Array.isArray(parsed)) {
       state.levels = parsed.map(normalizeLevel);
@@ -2089,10 +2181,30 @@ document.getElementById('btnImport').addEventListener('click', () => {
     }
     state.selected = null;
     refreshAll();
-    showToast('¡Nivel importado con éxito!');
+    showToast('¡Niveles importados con éxito!');
   } catch (err) {
     alert('Error al interpretar el código: ' + err.message);
   }
+}
+
+document.getElementById('btnImport').addEventListener('click', () => {
+  importLevelCode(document.getElementById('importBox').value);
+});
+
+document.getElementById('btnImportFile').addEventListener('click', () => {
+  document.getElementById('importFileInput').click();
+});
+document.getElementById('importFileInput').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('importBox').value = reader.result;
+    importLevelCode(reader.result);
+  };
+  reader.onerror = () => alert('No se pudo leer el archivo.');
+  reader.readAsText(file);
+  e.target.value = '';
 });
 
 document.getElementById('btnClearImport').addEventListener('click', () => {
@@ -2105,6 +2217,7 @@ function normalizeLevel(l) {
     hint: l.hint || '',
     width: l.width || TR_W,
     height: l.height || TR_H,
+    fov: l.fov || 1,
     start: l.start || { x: 20, y: 200 },
     platforms: (l.platforms || []).map(p => ({ ...p })),
     hazards: (l.hazards || []).map(h => ({ ...h })),
@@ -2141,8 +2254,10 @@ function load() {
       }
     }
   } catch (e) {}
-  // Default: cargar oficiales
-  state.levels = OFFICIAL_LEVELS.map(normalizeLevel);
+  // Primera vez que se abre el editor (o localStorage vacío/corrupto):
+  // arrancamos con un único nivel en blanco para editar, no con niveles
+  // oficiales — el juego solo debe mostrar lo que se crea acá.
+  state.levels = [defaultLevel(1)];
 }
 
 // ─── LOOP PRINCIPAL DE RENDER & PLAYTEST ───
