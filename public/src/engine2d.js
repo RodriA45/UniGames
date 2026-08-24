@@ -1831,33 +1831,51 @@ const Engine2D = (function () {
   // mueven con la cámara).
   //
   // Uso:
-  //   const touch = new Engine2D.TouchControls(canvas);
-  //   touch.addJoystick({ id: 'move', x: 55, y: 210, radius: 32 });
+  //   const touch = new Engine2D.TouchControls(canvas, { logicalWidth: 480, logicalHeight: 270 });
+  //   touch.addJoystick({ id: 'move', x: 55, y: 210, radius: 32, color: '74,222,128' });
   //   touch.addButton({ id: 'jump', x: 430, y: 210, radius: 22, label: '⬆' });
   //   touch.attach();
   //   // en el update: const dir = touch.state.move; // {x,y} entre -1 y 1
   //   //               if (touch.state.jump) { ... }
   //   // en el draw (después de dibujar el mundo, encima de todo):
   //   touch.draw(ctx);
+  //
+  // logicalWidth/logicalHeight: pasalos SIEMPRE que el juego escale el
+  // buffer real del canvas (canvas.width/height) por devicePixelRatio u
+  // otro factor — si no, el hit-test de los toques queda desalineado
+  // (compara contra el tamaño real del buffer en vez del espacio lógico
+  // en el que se definieron x/y de cada zona). Si el canvas.width/height
+  // YA es el tamaño lógico (sin reescalar), se pueden omitir.
   class TouchControls {
     constructor(canvas, opts = {}) {
       this.canvas = canvas;
       this.zones = [];      // [{id,type,x,y,radius,label}]
       this.state = {};      // { move:{x,y}, jump:true/false, ... }
       this.visible = opts.visible !== false; // por si querés ocultarlos en desktop
+      // Coordenadas en las que se definen las zonas (addJoystick/addButton)
+      // y en las que se dibujan. Por defecto es el buffer real del canvas
+      // (canvas.width/height) — pero si el juego escala ese buffer por
+      // devicePixelRatio para verse nítido en HiDPI (canvas.width bastante
+      // más grande que el tamaño lógico con el que se calcula todo lo
+      // demás, ej. RPG_LOGICAL_W/H de RPG Pixel), hay que pasarle acá esas
+      // dimensiones lógicas explícitas — si no, el hit-test de _canvasPos
+      // queda desalineado (compara contra el buffer grande en vez del
+      // espacio lógico) y los controles no responden.
+      this.logicalWidth = opts.logicalWidth || null;
+      this.logicalHeight = opts.logicalHeight || null;
       this._active = new Map(); // pointerId → zone
       this._onDown = this._onDown.bind(this);
       this._onMove = this._onMove.bind(this);
       this._onUp = this._onUp.bind(this);
     }
 
-    addButton({ id, x, y, radius = 24, label = '' }) {
-      this.zones.push({ id, type: 'button', x, y, radius, label });
+    addButton({ id, x, y, radius = 24, label = '', color = null }) {
+      this.zones.push({ id, type: 'button', x, y, radius, label, color });
       this.state[id] = false;
     }
 
-    addJoystick({ id, x, y, radius = 32 }) {
-      this.zones.push({ id, type: 'joystick', x, y, radius });
+    addJoystick({ id, x, y, radius = 32, color = null }) {
+      this.zones.push({ id, type: 'joystick', x, y, radius, color });
       this.state[id] = { x: 0, y: 0 };
     }
 
@@ -1884,10 +1902,15 @@ const Engine2D = (function () {
     // grande en pantalla) — hay que convertir la posición del evento a
     // coordenadas internas del canvas, si no el joystick queda desalineado
     // en cualquier pantalla que no sea exactamente la resolución interna.
+    // Usa logicalWidth/Height si se pasaron (ver constructor); si no, cae
+    // al tamaño real del buffer (canvas.width/height), que es correcto
+    // solo cuando el juego NO escala el canvas por devicePixelRatio.
     _canvasPos(e) {
       const rect = this.canvas.getBoundingClientRect();
-      const scaleX = this.canvas.width / rect.width;
-      const scaleY = this.canvas.height / rect.height;
+      const refW = this.logicalWidth || this.canvas.width;
+      const refH = this.logicalHeight || this.canvas.height;
+      const scaleX = refW / rect.width;
+      const scaleY = refH / rect.height;
       return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
     }
 
@@ -1947,37 +1970,60 @@ const Engine2D = (function () {
       ctx.save();
       this.zones.forEach(zone => {
         const active = this._isZoneActive(zone);
+        // zone.color: string "R,G,B" (ej. '185,28,28' para rojo) — opcional,
+        // tiñe el botón/joystick para diferenciarlos a simple vista (fuego
+        // rojo, bloqueo azul, etc.) en vez de que todos sean el mismo blanco
+        // translúcido. Si no se pasa, cae al gris/blanco neutro de siempre.
+        const rgb = zone.color || '255,255,255';
         if (zone.type === 'button') {
+          // Contorno oscuro por detrás: sin esto, un botón blanco translúcido
+          // se pierde contra fondos claros (cielo, nieve, etc.) — con este
+          // borde queda legible encima de cualquier escena.
+          ctx.beginPath();
+          ctx.arc(zone.x, zone.y, zone.radius + 1.5, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
           ctx.beginPath();
           ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
-          ctx.fillStyle = active ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.15)';
+          ctx.fillStyle = `rgba(${rgb},${active ? 0.55 : 0.32})`;
           ctx.fill();
           ctx.lineWidth = 2;
-          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+          ctx.strokeStyle = `rgba(${rgb},0.9)`;
           ctx.stroke();
           if (zone.label) {
             ctx.fillStyle = '#fff';
-            ctx.font = `${Math.round(zone.radius)}px sans-serif`;
+            ctx.font = `700 ${Math.round(zone.radius)}px sans-serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(zone.label, zone.x, zone.y);
           }
         } else {
-          // Base fija del joystick
+          // Base fija del joystick (con el mismo contorno oscuro de contraste)
+          ctx.beginPath();
+          ctx.arc(zone.x, zone.y, zone.radius + 1.5, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
           ctx.beginPath();
           ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(255,255,255,0.12)';
+          ctx.fillStyle = `rgba(${rgb},0.18)`;
           ctx.fill();
           ctx.lineWidth = 2;
-          ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+          ctx.strokeStyle = `rgba(${rgb},0.55)`;
           ctx.stroke();
           // Stick — se mueve dentro de la base según el dedo
           const sx = zone.x + (zone._stickX || 0);
           const sy = zone.y + (zone._stickY || 0);
           ctx.beginPath();
           ctx.arc(sx, sy, zone.radius * 0.5, 0, Math.PI * 2);
-          ctx.fillStyle = active ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.35)';
+          ctx.fillStyle = `rgba(${rgb},${active ? 0.85 : 0.55})`;
           ctx.fill();
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+          ctx.stroke();
         }
       });
       ctx.restore();
@@ -2133,11 +2179,18 @@ const Engine2D = (function () {
       // Retrato — arriba a la izquierda adentro de la caja, como el
       // recuadro de cara en Deltarune. Si no hay portraitSrc o todavía no
       // cargó la imagen, se deja el espacio vacío (no rompe el layout).
+      // portraitRect es opcional: {x,y,w,h} para recortar una región de un
+      // spritesheet de expresiones en vez de usar la imagen completa.
       const textX = x + padding + (this.current.portraitSrc ? portraitSize + padding : 0);
       if (this.current.portraitSrc) {
         const img = getImage(this.current.portraitSrc);
         if (img && img.complete) {
-          ctx.drawImage(img, x + padding, y + padding, portraitSize, portraitSize);
+          const rect = this.current.portraitRect;
+          if (rect) {
+            ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h, x + padding, y + padding, portraitSize, portraitSize);
+          } else {
+            ctx.drawImage(img, x + padding, y + padding, portraitSize, portraitSize);
+          }
         }
       }
 

@@ -775,32 +775,120 @@
     <div class="rpg-container">
       <canvas id="rpgCanvas"></canvas>
 
-      <!-- Menú principal del RPG (selección de nivel) -->
+      <!-- Menú principal del RPG: primero slots de guardado, después capítulos -->
       <div class="rpg-menu" id="rpgMenu">
         <div class="rpg-menu-background" style="background-image: url('assert/rpg pixel/menu.jpg'); background-size: cover; background-position: center;">
-          <div class="rpg-menu-content">
+
+          <!-- Vista 0: menú principal -->
+          <div class="rpg-menu-content" id="rpgMainMenuView">
             <h2 class="rpg-menu-title">RPG Pixel</h2>
-            <p class="rpg-menu-sub">Elegí un nivel para enfrentar al jefe</p>
-            <div class="rpg-menu-buttons" id="rpgLevelButtons">
-              <button class="btn-play" onclick="rpgStartLevel(1)">⚔️ Nivel 1 · Caballero</button>
-              <button class="btn-play" onclick="rpgStartLevel(2)">👻 Nivel 2 · Fantasma</button>
-              <button class="btn-play" onclick="rpgStartLevel(3)">🧛 Nivel 3 · Rey Vampiro</button>
-              <button class="btn-play rpg-btn-secondary" onclick="proximamente()">🔒 Jefe Secreto</button>
+            <div class="rpg-menu-buttons">
+              <button class="btn-play" onclick="rpgGoToPlay()">Jugar</button>
+              <button class="btn-play" onclick="rpgGoToMejoras()">Mejoras</button>
+              <button class="btn-play" onclick="rpgGoToAjustes()">Ajustes</button>
+              <button class="btn-play" onclick="rpgGoToComoJugar()">Cómo jugar</button>
             </div>
           </div>
+
+          <!-- Vista 1: elegir slot de guardado -->
+          <div class="rpg-menu-content hidden" id="rpgSlotsView">
+            <h2 class="rpg-menu-title">RPG Pixel</h2>
+            <p class="rpg-menu-sub">Elegí una partida guardada o empezá una nueva</p>
+            <div class="rpg-menu-buttons" id="rpgSlotsButtons">
+              <!-- Se completa dinámicamente desde rpg.js (rpgRenderSlots) -->
+            </div>
+            <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgShowMainMenu()">Menú principal</button>
+          </div>
+
+          <!-- Vista 1.5: elegir dificultad (solo al crear partida nueva) -->
+          <div class="rpg-menu-content hidden" id="rpgDifficultyView">
+            <h2 class="rpg-menu-title">RPG Pixel</h2>
+            <p class="rpg-menu-sub">Elegí la dificultad</p>
+            <div class="rpg-menu-buttons">
+              <button class="btn-play" onclick="rpgSelectDifficulty('normal')">Normal</button>
+              <button class="btn-play rpg-diff-elite" onclick="rpgSelectDifficulty('elite')">Elite</button>
+            </div>
+            <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgShowSlotsView()">Volver</button>
+          </div>
+
+          <!-- Vista 2: elegir capítulo dentro del slot elegido -->
+          <div class="rpg-menu-content hidden" id="rpgChaptersView">
+            <h2 class="rpg-menu-title">RPG Pixel</h2>
+            <p class="rpg-menu-sub">Elegí un capítulo</p>
+            <div class="rpg-menu-buttons" id="rpgChapterButtons">
+              <!-- Se completa dinámicamente desde rpg.js (rpgRenderChapters) -->
+            </div>
+            <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgBackToSlots()">Cambiar partida</button>
+          </div>
+
+          <!-- Vista 3: Mejoras permanentes del personaje (tienda de oro) -->
+          <div class="rpg-menu-content rpg-menu-content-wide hidden" id="rpgMejorasView">
+            <h2 class="rpg-menu-title">Mejoras</h2>
+            <p class="rpg-menu-sub">🪙 <span id="rpgMejorasGold">0</span> oro · mejoras permanentes de Junior</p>
+            <div class="rpg-mejoras-list" id="rpgMejorasList">
+              <!-- Se completa dinámicamente desde rpg.js (rpgRenderMejoras) -->
+            </div>
+            <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgShowMainMenu()">Volver</button>
+          </div>
+
+          <!-- Vista 4: Ajustes -->
+          <div class="rpg-menu-content hidden" id="rpgAjustesView">
+            <h2 class="rpg-menu-title">Ajustes</h2>
+            <div class="trampas-settings-content rpg-ajustes-content">
+              <div class="trampas-slider-row">
+                <label>🎵 Música</label>
+                <input type="range" class="rpg-music-volume-input" min="0" max="100" value="50" oninput="rpgOnMusicVolumeChange(this.value)">
+                <span class="trampas-slider-value rpg-music-volume-value">50%</span>
+              </div>
+              <div class="trampas-slider-row">
+                <label>🔊 Efectos</label>
+                <input type="range" class="rpg-sfx-volume-input" min="0" max="100" value="80" oninput="rpgOnSfxVolumeChange(this.value)">
+                <span class="trampas-slider-value rpg-sfx-volume-value">80%</span>
+              </div>
+              <div class="trampas-slider-row runner-fullscreen-row rpg-fullscreen-row">
+                <label>🖥️ Pantalla completa</label>
+                <button type="button" class="runner-fullscreen-btn rpg-fullscreen-btn" onclick="rpgToggleFullscreen()">Activar</button>
+              </div>
+            </div>
+            <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgShowMainMenu()">Volver</button>
+          </div>
+
+          <!-- Vista 5: Cómo jugar -->
+          <div class="rpg-menu-content rpg-menu-content-wide hidden" id="rpgComoJugarView">
+            <h2 class="rpg-menu-title">Cómo jugar</h2>
+            <div class="rpg-howto-list">
+              <div class="rpg-howto-row"><span class="rpg-howto-key">WASD / Flechas</span><span>Mover a Junior</span></div>
+              <div class="rpg-howto-row"><span class="rpg-howto-key">Espacio / A</span><span>Disparar (Atacar) hacia donde mira Junior</span></div>
+              <div class="rpg-howto-row"><span class="rpg-howto-key">Shift / D</span><span>Defender / bloquear (mantené apretado)</span></div>
+              <div class="rpg-howto-row"><span class="rpg-howto-key">E / I</span><span>Interactuar (hablar, abrir cofres)</span></div>
+              <div class="rpg-howto-row"><span class="rpg-howto-key">Joystick táctil</span><span>Mover en pantallas táctiles</span></div>
+              <div class="rpg-howto-row"><span class="rpg-howto-key">Botones A · D · I</span><span>Atacar · Defender · Interactuar en pantallas táctiles</span></div>
+            </div>
+            <p class="rpg-menu-sub">Limpiá las 4 habitaciones de cada capítulo y derrotá al jefe de la habitación 5 para avanzar. Si Junior muere, la partida de ese slot se borra — hay que reintentar desde la habitación 1.</p>
+            <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgShowMainMenu()">Volver</button>
+          </div>
+
         </div>
       </div>
 
       <!-- HUD superpuesto al juego -->
       <div class="rpg-hud hidden" id="rpgHud">
-        <div class="rpg-hud-bar-wrap">
-          <span class="rpg-hud-label">Junior</span>
-          <div class="rpg-hud-bar"><div class="rpg-hud-bar-fill rpg-hud-bar-player" id="rpgPlayerHpFill"></div></div>
+        <div class="rpg-hud-frame rpg-hud-frame-player">
+          <img class="rpg-hud-frame-img" src="assert/rpg pixel/models/hud/hud_display.png" alt="">
+          <div class="rpg-hud-avatar" id="rpgPlayerAvatar"></div>
+          <div class="rpg-hud-fill-track rpg-hud-fill-track-player">
+            <div class="rpg-hud-fill-bar rpg-hud-fill-player" id="rpgPlayerHpFill"></div>
+          </div>
+          <div class="rpg-hud-hp-text rpg-hud-hp-text-player" id="rpgPlayerHpText">100/100</div>
         </div>
+        <div class="rpg-hud-ammo" id="rpgAmmoText">8/8</div>
         <div class="rpg-hud-timer" id="rpgTimeLeft"></div>
-        <div class="rpg-hud-bar-wrap rpg-hud-bar-wrap-enemy">
-          <span class="rpg-hud-label" id="rpgEnemyName">Enemigo</span>
-          <div class="rpg-hud-bar"><div class="rpg-hud-bar-fill rpg-hud-bar-enemy" id="rpgEnemyHpFill"></div></div>
+        <div class="rpg-hud-frame rpg-hud-frame-boss hidden" id="rpgEnemyHudWrap">
+          <img class="rpg-hud-frame-img" src="assert/rpg pixel/models/hud/lifeboss1.png" alt="">
+          <span class="rpg-hud-label rpg-hud-label-boss" id="rpgEnemyName">Enemigo</span>
+          <div class="rpg-hud-fill-track rpg-hud-fill-track-boss">
+            <div class="rpg-hud-fill-bar rpg-hud-fill-enemy" id="rpgEnemyHpFill"></div>
+          </div>
         </div>
         <button class="rpg-hud-btn" onclick="rpgPauseGame()" title="Pausa">⏸</button>
       </div>
@@ -817,20 +905,12 @@
       </div>
     </div>
 
-    <!-- Controles táctiles -->
-    <div class="rpg-controls">
-      <div class="rpg-dpad">
-        <button class="runner-ctrl-btn rpg-dpad-btn rpg-dpad-up" onpointerdown="event.preventDefault(); rpgMove('up', true);" onpointerup="rpgMove('up', false);" onpointerleave="rpgMove('up', false);">▲</button>
-        <button class="runner-ctrl-btn rpg-dpad-btn rpg-dpad-left" onpointerdown="event.preventDefault(); rpgMove('left', true);" onpointerup="rpgMove('left', false);" onpointerleave="rpgMove('left', false);">◀</button>
-        <button class="runner-ctrl-btn rpg-dpad-btn rpg-dpad-right" onpointerdown="event.preventDefault(); rpgMove('right', true);" onpointerup="rpgMove('right', false);" onpointerleave="rpgMove('right', false);">▶</button>
-        <button class="runner-ctrl-btn rpg-dpad-btn rpg-dpad-down" onpointerdown="event.preventDefault(); rpgMove('down', true);" onpointerup="rpgMove('down', false);" onpointerleave="rpgMove('down', false);">▼</button>
-      </div>
-      <div class="rpg-action-buttons">
-        <button class="runner-ctrl-btn rpg-btn-block" onpointerdown="event.preventDefault(); rpgBlock(true);" onpointerup="rpgBlock(false);" onpointerleave="rpgBlock(false);">🛡️</button>
-        <button class="runner-ctrl-btn rpg-btn-fire" onpointerdown="event.preventDefault(); rpgFire();">🔫</button>
-      </div>
-    </div>
+    <!-- Controles táctiles: joystick de movimiento + disparar/bloquear/
+         interactuar ahora se dibujan DENTRO del canvas (ver
+         rpgSetupTouchControls / Engine2D.TouchControls en rpg.js), así que
+         ya no hace falta esta fila de botones HTML debajo del juego. -->
   </section>
+
 
 </main>
 

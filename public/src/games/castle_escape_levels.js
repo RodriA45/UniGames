@@ -122,8 +122,8 @@ const CASTLE_ESCAPE_CUSTOM_LEVELS = [
     ],
   },
   {
-    nombre: "Nivel 6",
-    hint: "",
+    nombre: "Saltos Precisos",
+    hint: "Al limite los saltos",
     width: 600,
     height: 280,
     start: { x: 20, y: 200 },
@@ -149,6 +149,41 @@ const CASTLE_ESCAPE_CUSTOM_LEVELS = [
     exit: { x: 550, y: 80, w: 26, h: 40 },
     decor: [
       { type: 'torch', x: 340, y: 70, h: 38 },
+    ],
+  },
+  {
+    nombre: "Prueba extrema",
+    hint: "mucho cuidado con lo saltos",
+    width: 640,
+    height: 440,
+    fov: 1.3,
+    start: { x: 20, y: 80 },
+    platforms: [
+      { x: 0, y: 120, w: 100, h: 20, type: 'normal' },
+      { x: 140, y: 120, w: 180, h: 20, type: 'normal' },
+      { x: 590, y: 100, w: 50, h: 20, type: 'normal' },
+      { x: 0, y: 232, w: 310, h: 20, type: 'normal' },
+      { x: 170, y: 350, w: 250, h: 20, type: 'normal' },
+      { x: 30, y: 390, w: 50, h: 30, type: 'crumble' },
+      { x: 310, y: 280, w: 50, h: 30, type: 'moving', move: { axis: 'x', from: 160, to: 317, speed: 1.2 } },
+      { x: 290, y: 420, w: 60, h: 20, type: 'moving', move: { axis: 'x', from: 100, to: 400, speed: 2 } },
+      { x: 540, y: 400, w: 30, h: 20, type: 'moving', move: { axis: 'y', from: 200, to: 400, speed: 1.2 } },
+      { x: 470, y: 410, w: 30, h: 20, type: 'normal' },
+      { x: 490, y: 170, w: 35, h: 20, type: 'moving', move: { axis: 'y', from: 10, to: 200, speed: 2 } },
+    ],
+    hazards: [
+      { x: 120, y: 200, w: 40, h: 36, type: 'saw', move: { axis: 'x', from: 113, to: 246, speed: 1.8 } },
+      { x: 140, y: 112, w: 180, h: 8, type: 'spike', size: 'medium' },
+      { x: 220, y: 150, w: 30, h: 10, type: 'saw', move: { axis: 'x', from: 128, to: 261, speed: 1.8 } },
+      { x: 170, y: 340, w: 250, h: 8, type: 'spike', size: 'medium' },
+      { x: 430, y: 160, w: 26, h: 26, type: 'saw', move: { axis: 'y', from: 10, to: 300, speed: 20 } },
+    ],
+    arrows: [
+    ],
+    exit: { x: 600, y: 60, w: 26, h: 40 },
+    decor: [
+      { type: 'torch', x: 70, y: 70, h: 38 },
+      { type: 'torch', x: 360, y: 70, h: 38 },
     ],
   },
 ];
