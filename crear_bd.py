@@ -427,15 +427,4 @@ conexion.commit()
 conexion.close()
 
 print("Base de datos unigames.db creada/actualizada correctamente.")
-# Tabla de avisos
-cursor.execute('''
-CREATE TABLE IF NOT EXISTS avisos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    texto TEXT,
-    icono TEXT,
-    color TEXT,
-    activo INTEGER DEFAULT 0
-);
-''')
-conexion.commit()
 
