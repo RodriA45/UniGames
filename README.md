@@ -23,10 +23,16 @@ Actualmente incluye:
 - *(En desarrollo)* Sopa de Letras, Preguntados, Termina la Palabra, Salto Traicionero.
 
 ### 🛡️ Características Principales
-- **Autenticación Segura (JWT):** Login y registro usando Json Web Tokens guardados en `localStorage`. Las contraseñas se encriptan con `bcrypt`.
+- **Autenticación Segura (JWT):** Login y registro usando Json Web Tokens guardados en `localStorage`. Las contraseñas se encriptan con `bcrypt`. 
+- **Roles y Usuarios:** Sistema de avatares (con imágenes pixel-art predeterminadas) y roles de usuario (`user`, `admin`).
+- **Panel de Administración (NUEVO):** Un potente panel exclusivo para administradores que permite:
+  - Ver estadísticas en tiempo real (usuarios totales, partidas jugadas, actividad gráfica).
+  - Gestionar usuarios (buscar, banear/desbanear, promover a admin).
+  - Personalizar la apariencia del sitio (cambiar color del tema a Oscuro, Claro o Rojo).
+  - Gestionar anuncios globales (historial de avisos y activación dinámica de un banner público).
 - **Sistema de Audio:** Efectos de sonido y música de fondo dinámica que cambia según el juego, con un botón global de "Mute".
 - **Leaderboard Global:** Tabla de puntuaciones donde los jugadores compiten por el primer lugar en cada juego.
-- **Preparado para Deploy:** Configurado con variables de entorno (`.env`) listo para ser desplegado en servicios como **Render**. *(Nota: Actualmente usa SQLite para la presentación local, pero se planea migración a PostgreSQL para producción).*
+- **Preparado para Deploy:** Configurado con variables de entorno (`.env`) listo para ser desplegado. *(Usa SQLite localmente).*
 
 ## 🚀 Instalación y Uso Local
 
@@ -56,7 +62,7 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
    ```
 
 4. **Generar la Base de Datos y Correr el Servidor:**
-   El proyecto usa `sqlite` con Promesas. La base de datos `.db` NO se sube a GitHub para proteger los puntajes de los usuarios en producción.
+   El proyecto usa `sqlite` con Promesas. La base de datos `.db` NO se sube a GitHub para proteger los puntajes de los usuarios.
    
    Para arrancar el servidor de desarrollo y generar la base de datos automáticamente (ejecuta el script de Python por detrás):
    ```bash
@@ -69,22 +75,18 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
 
 ---
 
-### 📦 Cómo subir cambios y nuevas palabras (Para Desarrolladores)
+### 📦 Cómo subir cambios y Modo Administrador (Para Desarrolladores)
 
-Si deseas agregar nuevas preguntas o palabras a la base de datos, agrégalas en el archivo `crear_bd.py`. Luego, en vez de usar comandos de Git manualmente, simplemente:
-1. Da doble clic en el archivo **`subir.bat`** (solo Windows).
+**Modo Administrador Automático:** 
+Si necesitas convertir tu usuario a Administrador rápidamente, simplemente haz doble clic en `hacer_admin.bat` y escribe tu nombre de usuario. Al recargar la página, verás el botón de "Panel Admin".
+
+**Despliegue y Cambios:**
+Si deseas agregar nuevas preguntas o palabras a la base de datos, agrégalas en el archivo `crear_bd.py`. Luego, en vez de usar comandos de Git manualmente:
+1. Da doble clic en el archivo **`subir_cambios_Github.bat`** (solo Windows).
 2. Sigue las instrucciones en la consola para describir tu cambio.
 
-El script actualizará tu base de datos local para verificar que no haya errores de sintaxis, y luego subirá el código a GitHub de forma segura. El servidor en producción (ej. Render) detectará el cambio y usará su propio `npm start` para inyectar tus palabras nuevas en la base de datos viva sin borrar a los usuarios.
-
-### ⚠️ Importante para Deploy en Render (Plan Gratuito)
-Para asegurarte de que tu base de datos SQLite y tus juegos funcionen correctamente en el servidor gratuito de Render:
-1. Ve a **Settings** en tu proyecto de Render.
-2. Asegúrate de configurar el **Build Command** como: `npm install && python crear_bd.py`.
-3. Configura el **Start Command** como: `node server.js`.
-Esto garantiza que tu base de datos de palabras se genere en la imagen del sistema y no se borre cuando Render ponga a dormir el servidor.
-
 ### 🛠️ Últimas Mejoras UI/UX
+- **Gestión Visual Avanzada:** Ahora puedes elegir el tema de la aplicación desde el panel de administrador y los colores se sincronizan en toda la plataforma instantáneamente.
 - **Navegación Dinámica:** Los Juegos Destacados del inicio ahora scrollean suavemente hacia la tarjeta de juego exacta sin conflictos de animación.
 - **Adivina la Cosa:** Se rediseñó el modal de introducción y el fondo translúcido para asegurar que cubra exactamente el área de juego sin pisar el menú superior.
 
@@ -97,10 +99,10 @@ UniGames/
 │   ├── src/                # Scripts y Estilos del cliente (app.js, styles.css)
 │   ├── logos/              # Imágenes para "Adivina la Cosa"
 │   ├── sounds/             # Efectos de sonido y música (.mp3)
-│   └── index.html          # Vista principal y punto de entrada SPA
+│   └── index.html          # Vista principal, Modales, Panel Admin y SPA
 │
-├── server.js               # Servidor Backend (API REST con Express, Async/Await)
-├── crear_bd.py             # Script para generar las tablas y diccionarios de palabras
+├── server.js               # Servidor Backend (API REST con Express, Async/Await, Endpoints de Admin)
+├── crear_bd.py             # Script para generar las tablas (usuarios, avisos, configuracion) y diccionarios
 ├── .env                    # Variables de entorno (no subido a GitHub)
 ├── iniciar.bat             # Acceso directo para inicializar en Windows
 └── package.json            # Configuración de dependencias (express, sqlite, jsonwebtoken...)
@@ -108,10 +110,10 @@ UniGames/
 
 ## 🔌 Endpoints de la API (Protegida)
 
-- `POST /api/register`: Registra usuario y devuelve un token JWT.
-- `POST /api/login`: Verifica credenciales y devuelve token JWT.
+- `POST /api/register` & `POST /api/login`: Autenticación.
 - `GET /api/leaderboard`: Devuelve el top de jugadores globales.
 - `POST /api/partidas`: Guarda el puntaje. **(Requiere header `Authorization: Bearer <token>`)**
+- `GET /api/admin/*` & `PUT /api/admin/*`: Rutas exclusivas del Panel de Administración. Protegidas con token JWT y validación de rol `admin` en el backend.
 
 ---
 

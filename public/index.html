@@ -6,8 +6,9 @@
   <title>UniGames</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="src/styles.css" />
+  <link rel="stylesheet" href="src/styles.css?v=3.1" />
   <link rel="stylesheet" href="src/games/rpg.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="has-bg-gif">
 
@@ -26,13 +27,13 @@
     <div class="logo" onclick="goTo('inicio')">UniGames</div>
 
     <!-- Audio -->
-    <div class="audio-toggle" style="margin-right: auto; margin-left: 1rem; cursor: pointer; font-size: 1.5rem;" onclick="toggleGlobalAudio()" id="globalAudioBtn" title="Activar/Desactivar Sonido">
-      🔊
+    <div class="audio-toggle" style="display: flex; align-items: center; margin-right: auto; margin-left: 1rem; cursor: pointer; font-size: 1.5rem;" onclick="toggleGlobalAudio()" id="globalAudioBtn" title="Activar/Desactivar Sonido">
+      <svg style="width:1.8rem;height:1.8rem;fill:#FFF;filter:drop-shadow(0 0 2px rgba(255,255,255,0.8));" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
     </div>
 
     <!-- Info -->
-    <div class="info-toggle" style="cursor: pointer; font-size: 1.5rem; margin-right: 1rem;" onclick="openInfoModal()" title="Acerca del Proyecto">
-      ℹ️
+    <div class="info-toggle" style="display: flex; align-items: center; cursor: pointer; font-size: 1.5rem; margin-right: 1rem;" onclick="openInfoModal()" title="Acerca del Proyecto">
+      <svg style="width:1.8rem;height:1.8rem;fill:#FFF;filter:drop-shadow(0 0 2px rgba(255,255,255,0.8));" viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>
     </div>
 
     <!-- Autenticación -->
@@ -46,10 +47,10 @@
   <!-- Menú desplegable -->
   <nav class="nav-menu" id="navMenu">
     <ul>
-      <li><a href="#" class="active" onclick="goTo('inicio')">     <span class="nav-icon">🏠</span> Inicio      </a></li>
-      <li><a href="#"               onclick="goTo('juegos')">      <span class="nav-icon">🎮</span> Juegos      </a></li>
-      <li><a href="#"               onclick="goTo('puntuacion')">  <span class="nav-icon">🏆</span> Puntuación  </a></li>
-    </ul>
+      <li><a href="#" class="active" onclick="goTo('inicio')">     <svg class="nav-icon" style="width:1.2rem;height:1.2rem;fill:currentColor;vertical-align:middle;margin-right:8px;" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg> Inicio      </a></li>
+      <li><a href="#"               onclick="goTo('juegos')">      <svg class="nav-icon" style="width:1.2rem;height:1.2rem;fill:currentColor;vertical-align:middle;margin-right:8px;" viewBox="0 0 24 24"><path d="M21.58 16.09l-1.09-7.66C20.18 6.27 18.4 5 16.33 5H7.67C5.6 5 3.82 6.27 3.51 8.43l-1.09 7.66c-.19 1.3.18 2.62 1.01 3.55.84.94 2.11 1.41 3.44 1.31l1.58-.12.44-1.28c.36-1.07 1.4-1.8 2.55-1.8h1.12c1.15 0 2.19.73 2.55 1.8l.44 1.28 1.58.12c1.33.1 2.6-.37 3.44-1.31.83-.93 1.2-2.25 1.01-3.55zM9 11H7v2H5v-2H3V9h2V7h2v2h2v2zm6.5 2c-.83 0-1.5-.67-1.5-1.5S14.67 10 15.5 10s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm3-3c-.83 0-1.5-.67-1.5-1.5S17.67 7 18.5 7 20 7.67 20 8.5 19.33 10 18.5 10z"/></svg> Juegos      </a></li>
+      <li><a href="#"               onclick="goTo('puntuacion')">  <svg class="nav-icon" style="width:1.2rem;height:1.2rem;fill:currentColor;vertical-align:middle;margin-right:8px;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg> Puntuación  </a></li>
+      </ul>
   </nav>
 </header>
 
@@ -60,7 +61,7 @@
   <section class="section active" id="sec-inicio">
 
     <div class="hero">
-      <span class="hero-badge">🎮 Mini Juegos Gratis</span>
+      <span class="hero-badge">Mini Juegos Gratis</span>
       <h1>Bienvenido a <span>UniGames</span></h1>
       <p>Tu plataforma de mini juegos de palabras, cultura pop y entretenimiento.
          Desafíate con trivias, sopas de letras, ahorcado y más.
@@ -68,21 +69,21 @@
     </div>
 
     <div style="text-align:center; margin-bottom:1.5rem;">
-      <span class="section-title">⚡ Juegos Destacados</span>
+      <span class="section-title">Juegos Destacados</span>
     </div>
 
     <!-- Se llena dinámicamente desde app.js -->
     <div class="featured-grid" id="featuredGrid"></div>
 
     <div style="text-align:center; margin:2.5rem 0 1.5rem;">
-      <span class="section-title">🧩 Juegos Sencillos</span>
+      <span class="section-title">Juegos Sencillos</span>
     </div>
 
     <!-- Se llena dinámicamente desde app.js -->
     <div class="featured-grid" id="simpleGrid"></div>
 
     <div style="text-align:center; margin:2.5rem 0 1.5rem;">
-      <span class="section-title">⚔️ Juegos de Acción</span>
+      <span class="section-title"> Juegos de Acción</span>
     </div>
 
     <!-- Se llena dinámicamente desde app.js -->
@@ -115,7 +116,7 @@
           <p class="card-desc">Encontrá las palabras ocultas en la grilla antes de que se acabe el tiempo. Mientras más rápido, más puntos.</p>
           <div class="theme-selector">
             <span>Temática:</span>
-            <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)">🎮 Videojuegos</button>
+            <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)"> Videojuegos</button>
             <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)">🎬 Películas</button>
             <button class="theme-btn"          data-tematica="3" onclick="selectTheme(this)">⛩️ Anime</button>
             <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)">💻 Programación</button>
@@ -134,7 +135,7 @@
           <p class="card-desc">Respondé preguntas de trivia de múltiple opción. Cada respuesta correcta suma puntos. ¿Cuántas acertás?</p>
           <div class="theme-selector">
             <span>Temática:</span>
-            <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)">🎮 Videojuegos</button>
+            <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)"> Videojuegos</button>
             <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)">🎬 Películas</button>
             <button class="theme-btn"          data-tematica="3" onclick="selectTheme(this)">⛩️ Anime</button>
             <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)">💻 Programación</button>
@@ -153,7 +154,7 @@
           <p class="card-desc">Te mostramos una palabra incompleta y tenés 5 intentos para adivinarla. Pensá bien cada letra que elegís.</p>
           <div class="theme-selector">
             <span>Temática:</span>
-            <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)">🎮 Videojuegos</button>
+            <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)"> Videojuegos</button>
             <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)">🎬 Películas</button>
             <button class="theme-btn"          data-tematica="3" onclick="selectTheme(this)">⛩️ Anime</button>
             <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)">💻 Programación</button>
@@ -173,7 +174,7 @@
           <div class="theme-selector">
             <span>Temática:</span>
             <button class="theme-btn selected" data-tematica="normal" onclick="selectTheme(this)">🙂 Normal</button>
-            <button class="theme-btn"          data-tematica="1"      onclick="selectTheme(this)">🎮 Videojuegos</button>
+            <button class="theme-btn"          data-tematica="1"      onclick="selectTheme(this)"> Videojuegos</button>
             <button class="theme-btn"          data-tematica="2"      onclick="selectTheme(this)">🎬 Películas</button>
             <button class="theme-btn"          data-tematica="3"      onclick="selectTheme(this)">⛩️ Anime</button>
             <button class="theme-btn"          data-tematica="4"      onclick="selectTheme(this)">💻 Programación</button>
@@ -192,7 +193,7 @@
           <p class="card-desc">Modo difícil. Te decimos cuántas letras tiene la palabra y tenés 5 intentos para adivinarla. Verde = letra correcta en ese lugar, amarillo = la letra está pero en otro lugar, gris = la letra no está.</p>
           <div class="theme-selector">
             <span>Temática:</span>
-            <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)">🎮 Videojuegos</button>
+            <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)"> Videojuegos</button>
             <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)">🎬 Películas</button>
             <button class="theme-btn"          data-tematica="3" onclick="selectTheme(this)">⛩️ Anime</button>
             <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)">💻 Programación</button>
@@ -211,7 +212,7 @@
           <p class="card-desc">Te damos pistas y tenés que adivinar de qué juego, película, actor o anime se trata. ¡Cuantas menos pistas uses, más puntos ganás!</p>
           <div class="theme-selector">
             <span>Temática:</span>
-            <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)">🎮 Videojuegos</button>
+            <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)"> Videojuegos</button>
             <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)">🎬 Películas</button>
             <button class="theme-btn"          data-tematica="3" onclick="selectTheme(this)">⛩️ Anime</button>
             <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)">💻 Programación</button>
@@ -527,7 +528,7 @@
         <div class="runner-panel-box">
           <div class="runner-panel-header">
             <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
-            <div class="runner-panel-title">🎮 Elegí tu modo</div>
+            <div class="runner-panel-title"> Elegí tu modo</div>
           </div>
           <div class="runner-panel-content runner-mode-content">
             <button class="runner-mode-card" id="runnerModoHistoriaBtn" onclick="elegirModoRunner('historia')">
@@ -595,7 +596,7 @@
               <span class="trampas-slider-value" id="runnerMusicVolumeValue">50%</span>
             </div>
             <div class="trampas-slider-row">
-              <label for="runnerSfxVolume">🔊 Efectos</label>
+              <label for="runnerSfxVolume"><svg style="width:1.5rem;height:1.5rem;fill:currentColor;" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg> Efectos</label>
               <input type="range" id="runnerSfxVolume" min="0" max="100" value="80" oninput="runnerOnSfxVolumeChange(this.value)">
               <span class="trampas-slider-value" id="runnerSfxVolumeValue">80%</span>
             </div>
@@ -649,7 +650,7 @@
       <div class="trampas-hud">
         <div class="trampas-hud-left">
           <button class="trampas-hud-btn" onclick="trPauseGame()">⏸</button>
-          <button class="trampas-hud-btn" onclick="toggleCastleMusic()" title="Mute música">🔊</button>
+          <button class="trampas-hud-btn" onclick="toggleCastleMusic()" title="Mute música"><svg style="width:1.5rem;height:1.5rem;fill:currentColor;" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg></button>
           <button class="trampas-hud-btn" onclick="trToggleControlsSign()" title="Controles">❓</button>
         </div>
         <div class="trampas-hud-info">
@@ -841,7 +842,7 @@
                 <span class="trampas-slider-value rpg-music-volume-value">50%</span>
               </div>
               <div class="trampas-slider-row">
-                <label>🔊 Efectos</label>
+                <label><svg style="width:1.5rem;height:1.5rem;fill:currentColor;" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg> Efectos</label>
                 <input type="range" class="rpg-sfx-volume-input" min="0" max="100" value="80" oninput="rpgOnSfxVolumeChange(this.value)">
                 <span class="trampas-slider-value rpg-sfx-volume-value">80%</span>
               </div>
@@ -1029,11 +1030,18 @@
     font-family: 'Inter', sans-serif; font-size: 14px; outline: none;
     transition: all 0.25s ease;
   }
-  .auth-input::placeholder { color: #2D3748; }
+  .auth-input::placeholder { color: #94A3B8; }
   .auth-input:hover { border-color: rgba(167,139,250,0.3); }
   .auth-input:focus {
     border-color: #7C3AED; background: rgba(108,43,217,0.08);
     box-shadow: 0 0 0 3px rgba(108,43,217,0.18);
+  }
+  .auth-input option {
+    background-color: #0f1e3d;
+    color: #F1F5F9;
+  }
+  select.auth-input {
+    padding-left: 12px; /* override the 36px left padding since there is no icon */
   }
 
   .auth-btn-submit {
@@ -1185,27 +1193,27 @@
 
     <!-- PÁGINA 3: EQUIPO -->
     <div class="info-page" id="infoPage3">
-      <h2>👨‍💻 Equipo de Desarrollo</h2>
+      <h2 onclick="triggerEasterEgg()" style="cursor:pointer;"><svg style="width:1.5rem;height:1.5rem;fill:currentColor;" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg> Equipo de Desarrollo</h2>
       <p class="info-subtitle">Estudiantes a cargo del proyecto</p>
       <div class="info-content-box team-list">
         <div class="team-member">
-          <div class="team-avatar">👨‍💻</div>
+          <div class="team-avatar"><svg style="width:1.5rem;height:1.5rem;fill:currentColor;" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
           <div><b>Rodrigo Antunez</b><br><span>Backend / Scrum Master</span></div>
         </div>
         <div class="team-member">
-          <div class="team-avatar">👨‍💻</div>
+          <div class="team-avatar"><svg style="width:1.5rem;height:1.5rem;fill:currentColor;" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
           <div><b>Veliz Santiago</b><br><span>QA Testing / Product Owner</span></div>
         </div>
         <div class="team-member">
-          <div class="team-avatar">👨‍💻</div>
+          <div class="team-avatar"><svg style="width:1.5rem;height:1.5rem;fill:currentColor;" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
           <div><b>Juarez Kevin</b><br><span>Frontend / UI·UX</span></div>
         </div>
-      </div>
+        </div>
     </div>
 
     <!-- PÁGINA 4: TUTORIAL -->
     <div class="info-page" id="infoPage4">
-      <h2>🎮 Tutorial Rápido</h2>
+      <h2> Tutorial Rápido</h2>
       <p class="info-subtitle">¿Cómo usar UniGames?</p>
       <div class="info-content-box">
         <ul class="info-tutorial-list">
@@ -1231,6 +1239,139 @@
   </div>
 </div>
 
+
+<!-- MODAL ADMINISTRADOR -->
+<div class="info-overlay" id="adminOverlay">
+  <div class="info-modal admin-modal" style="max-width: 800px; width: 90vw; max-height: 90vh; overflow-y: auto; position: relative;">
+    
+    <button class="info-close" onclick="closeAdminModal()" aria-label="Cerrar modal">✖</button>
+
+    <!-- Título Principal -->
+    <div style="text-align: center; margin-bottom: 20px;">
+      <h2 onclick="triggerEasterEgg()" style="cursor:pointer; display:flex; justify-content:center; align-items:center; gap: 10px; color: var(--yellow);">
+        <svg style="width:1.8rem;height:1.8rem;fill:currentColor;" viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.5 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg> 
+        Panel de Administración
+      </h2>
+      <p class="info-subtitle" style="margin-top: 5px;">Gestión y configuración del sistema</p>
+    </div>
+
+    <!-- Pestañas -->
+    <div class="admin-tabs" style="display:flex; justify-content:center; gap:10px; margin-bottom:25px; border-bottom:2px solid rgba(255,255,255,0.05); padding-bottom:10px;">
+      <button class="info-btn-nav admin-tab active" onclick="switchAdminTab('Dashboard')">Dashboard</button>
+      <button class="info-btn-nav admin-tab" onclick="switchAdminTab('Usuarios')">Usuarios</button>
+      <button class="info-btn-nav admin-tab" onclick="switchAdminTab('Apariencia')">Apariencia</button>
+      <button class="info-btn-nav admin-tab" onclick="switchAdminTab('Avisos')">Avisos</button>
+    </div>
+
+    <div class="admin-body">
+      
+      <!-- Tab: Dashboard -->
+            <div id="adminTabDashboard" class="admin-tab-content active" style="display: block;">
+          <div class="info-content-box" style="margin-bottom: 15px;">
+            <h3 style="color:var(--yellow); font-size:14px; margin-bottom:15px; font-family:'Press Start 2P', cursive; text-transform:uppercase; font-size:10px;">ESTADÍSTICAS GENERALES</h3>
+            <div style="display:flex; gap:15px; text-align:center;">
+              <div style="flex:1; background:rgba(0,0,0,0.25); padding:20px; border-radius:8px; border:2px solid var(--blue-accent);">
+                <div style="font-size:32px; font-family:'Press Start 2P', cursive; color:#facc15;" id="adminStatUsuarios">0</div>
+                <div style="font-size:11px; margin-top:10px; color:rgba(255,255,255,0.7); text-transform:uppercase;">Usuarios</div>
+              </div>
+              <div style="flex:1; background:rgba(0,0,0,0.25); padding:20px; border-radius:8px; border:2px solid var(--blue-accent);">
+                <div style="font-size:32px; font-family:'Press Start 2P', cursive; color:#4ade80;" id="adminStatPartidas">0</div>
+                <div style="font-size:11px; margin-top:10px; color:rgba(255,255,255,0.7); text-transform:uppercase;">Partidas</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="info-content-box">
+             <h3 style="color:var(--yellow); font-size:14px; margin-bottom:15px; font-family:'Press Start 2P', cursive; text-transform:uppercase; font-size:10px;">ACTIVIDAD</h3>
+             <div style="background:rgba(0,0,0,0.25); border-radius:8px; border:2px solid var(--blue-accent); padding:15px; height:180px; display:flex; align-items:center; justify-content:center;">
+                <canvas id="adminChartJuegos" style="max-height:100%;"></canvas>
+             </div>
+          </div>
+        </div>
+
+        <!-- Tab: Usuarios -->
+      <div id="adminTabUsuarios" class="admin-tab-content" style="display:none;">
+        <h3 style="color:#A78BFA; font-size:14px; margin-bottom:10px;">👥 Gestión de Usuarios</h3>
+        
+        <div class="auth-input-wrap" style="margin-bottom:15px;">
+          <input type="text" id="adminSearchUsers" class="auth-input" placeholder="Buscar por usuario o email..." onkeyup="renderAdminUsers()">
+          <svg style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:#94A3B8;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        </div>
+
+        <div id="adminUsersList" style="max-height: 240px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; border:1px solid rgba(255,255,255,0.05);">
+          <!-- Lista de usuarios renderizada desde app.js -->
+        </div>
+      </div>
+
+      <!-- Tab: Apariencia -->
+      <div id="adminTabApariencia" class="admin-tab-content" style="display:none;">
+        <h3 style="color:#A78BFA; font-size:14px; margin-bottom:10px;">🎨 Apariencia y Vínculos</h3>
+        
+        <div style="margin-bottom:15px;">
+          <label style="display:block; font-size:12px; color:#94A3B8; margin-bottom:5px;">Color del Tema de la Plataforma:</label>
+          <select id="adminTema" class="auth-input" style="width:100%; padding-left:12px;">
+            <option value="dark">Oscuro (Defecto)</option>
+            <option value="light">Claro</option>
+            <option value="red">Rojo</option>
+          </select>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:8px; padding:12px;">
+          <h3 style="color:#A78BFA; font-size:13px; margin-bottom:8px;">Enlaces de Equipo (Opcional)</h3>
+          
+          <label style="display:block; font-size:11px; color:#94A3B8;">Rodrigo (URL):</label>
+          <input type="text" id="adminGitRodrigo" class="auth-input" placeholder="https://github.com/usuario" style="margin-bottom:8px; padding-left:12px;">
+          
+          <label style="display:block; font-size:11px; color:#94A3B8;">Santiago (URL):</label>
+          <input type="text" id="adminGitSantiago" class="auth-input" placeholder="https://github.com/usuario" style="margin-bottom:8px; padding-left:12px;">
+          
+          <label style="display:block; font-size:11px; color:#94A3B8;">Kevin (URL):</label>
+          <input type="text" id="adminGitKevin" class="auth-input" placeholder="https://github.com/usuario" style="margin-bottom:8px; padding-left:12px;">
+        </div>
+        
+        <button class="auth-btn-submit" onclick="saveAdminConfig()" style="margin-top:15px;"><span>Guardar Cambios →</span></button>
+      </div>
+
+              <!-- Tab: Avisos -->
+        <div id="adminTabAvisos" class="admin-tab-content" style="display:none;">
+          <h3 style="color:#A78BFA; font-size:14px; margin-bottom:10px;">📢 Gestión de Avisos</h3>
+          <p style="font-size:12px; color:#94A3B8; margin-bottom:10px;">Crea y administra avisos globales. Solo un aviso puede estar activo a la vez para mantener un diseño limpio.</p>
+          
+          <!-- Crear nuevo -->
+          <div style="background:rgba(0,0,0,0.25); border-radius:8px; padding:15px; border:1px solid rgba(255,255,255,0.05); margin-bottom:15px;">
+              <input type="text" id="adminAvisoNuevoTexto" class="auth-input" placeholder="Texto (ej: ¡Mantenimiento programado hoy!)..." style="margin-bottom:10px; padding-left:12px;">
+              <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                  <select id="adminAvisoNuevoIcono" class="auth-input" style="flex:0 0 auto; width:70px; padding:6px 4px; text-align:center; font-size:20px; cursor:pointer; appearance:none; -webkit-appearance:none;">
+                      <option value="📢">📢</option>
+                      <option value="⚠️">⚠️</option>
+                      <option value="🔧">🔧</option>
+                      <option value="🎉">🎉</option>
+                      <option value="🚀">🚀</option>
+                      <option value="🔥">🔥</option>
+                      <option value="💡">💡</option>
+                      <option value="🎮">🎮</option>
+                      <option value="⭐">⭐</option>
+                      <option value="🏆">🏆</option>
+                      <option value="❗">❗</option>
+                      <option value="📌">📌</option>
+                  </select>
+                  <input type="color" id="adminAvisoNuevoColor" value="#3b82f6" style="height:38px; width:50px; border:none; border-radius:4px; cursor:pointer; background:transparent;">
+                  <span style="font-size:11px; color:#64748b;">Icono & Color</span>
+              </div>
+              <button class="auth-btn-submit" onclick="crearAvisoAdmin()"><span>Agregar a la lista ➕</span></button>
+          </div>
+
+          <!-- Lista de avisos -->
+          <div id="adminAvisosList" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 5px;">
+              <!-- Renderizado desde app2.js -->
+              <div style="text-align:center; color:#94A3B8; font-size:12px; padding:10px;">Cargando avisos...</div>
+          </div>
+        </div>
+
+    </div>
+  </div>
+</div>
+
 <!-- Script -->
 <script src="assert/rpg pixel/models/sprites.js"></script>
 <script src="src/engine2d.js"></script>
@@ -1238,6 +1379,7 @@
 <script src="src/games/castle_escape_levels.js"></script>
 <script src="src/games/castle_escape.js"></script>
 <script src="src/games/rpg.js"></script>
-<script src="src/app.js"></script>
+<script src="src/security.js"></script>
+<script src="src/app2.js?v=3.2"></script>
 </body>
 </html>

@@ -8,6 +8,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 :root {
@@ -170,14 +171,15 @@ header {
 /* ─── MENÚ DESPLEGABLE ─── */
 .nav-menu {
   background: var(--blue-mid);
-  border-top: 2px solid var(--blue-accent);
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.35s ease, padding 0.35s ease;
+  border-top: 0px solid var(--blue-accent);
 }
 
 .nav-menu.open {
   max-height: 300px;
+  border-top: 2px solid var(--blue-accent);
 }
 
 .nav-menu ul {
@@ -4181,3 +4183,98 @@ footer span {
       font-size: 0.68rem;
     }
   }
+
+
+body.game-active {
+  overflow: hidden !important;
+  touch-action: none !important;
+}
+
+body.theme-light {
+  --blue-dark: #cbd5e1;
+  --blue-mid: #f1f5f9;
+  --blue-accent: #3b82f6;
+  --white: #ffffff;
+  --text-dark: #0f1e3d;
+  color: var(--text-dark);
+}
+body.theme-red {
+    --blue-dark: #2b0606;
+    --blue-mid: #4a0a0a;
+    --blue-accent: #dc2626;
+  }
+
+/* Admin Tabs */
+.admin-tabs {
+  display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.admin-tab {
+  background: transparent; border: none; color: #94A3B8; cursor: pointer; padding: 8px 12px;
+  font-size: 13px; font-weight: 500; font-family: 'Inter', sans-serif;
+  border-bottom: 2px solid transparent; transition: all 0.2s;
+}
+.admin-tab:hover { color: #F1F5F9; }
+.admin-tab.active { color: #A78BFA; border-bottom-color: #A78BFA; }
+.admin-tab-content { display: none; }
+
+/* Admin Users List */
+.admin-list { list-style: none; padding: 0; margin: 0; }
+.admin-list li {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.admin-list li:last-child { border-bottom: none; }
+
+/* Easter Egg */
+body.gravity-inverted {
+  transform: rotate(180deg);
+  transition: transform 1.5s ease-in-out;
+  overflow: hidden; /* Prevents scrollbars from acting weird */
+}
+#gravityRestoreBtn {
+  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+  z-index: 999999; display: none; background: #EF4444; color: white;
+  padding: 10px 20px; border-radius: 20px; border: none; cursor: pointer;
+  font-weight: bold; box-shadow: 0 4px 10px rgba(239,68,68,0.4);
+}
+body.gravity-inverted #gravityRestoreBtn { display: block; }
+
+/* Overrides for Light Theme */
+body.theme-light header,
+body.theme-light footer {
+    color: var(--text-dark);
+}
+body.theme-light .logo {
+    color: var(--text-dark);
+    text-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+body.theme-light .hamburger span {
+    background: var(--text-dark);
+}
+body.theme-light .hamburger {
+    border-color: rgba(0, 0, 0, 0.2);
+}
+body.theme-light .nav-menu ul li a {
+    color: var(--text-dark);
+}
+body.theme-light .nav-menu ul li a:hover,
+body.theme-light .nav-menu ul li a.active {
+    background: rgba(37, 99, 235, 0.1);
+}
+body.theme-light .audio-toggle svg,
+body.theme-light .info-toggle svg {
+    fill: var(--text-dark);
+    filter: none;
+}
+body.theme-light footer p {
+    color: var(--text-dark);
+}
+body.theme-light footer span {
+    color: var(--blue-accent);
+}
+
+/* Better contrast for titles in Light Theme */
+body.theme-light .hero h1,
+body.theme-light .section-title {
+    color: var(--text-dark);
+}

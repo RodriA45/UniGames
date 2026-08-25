@@ -71,7 +71,17 @@ app.use((req, res, next) => {
     next();
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+// Sirviendo archivos estáticos con configuración de caché para desarrollo
+app.use(express.static(path.join(__dirname, 'public'), {
+    setHeaders: function (res, path) {
+        if (path.endsWith('.html')) {
+            // Evitar caché de index.html para asegurar que los cambios se reflejen
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+        }
+    }
+}));
 
 let db;
 
@@ -104,13 +114,13 @@ app.post('/api/register', authRateLimit, async (req, res) => {
         const sql = `INSERT INTO usuarios (nombre_usuario, email, password_hash) VALUES (?, ?, ?)`;
         const result = await db.run(sql, [username, email, hash]);
         
-        // Generar JWT
-        const token = jwt.sign({ id: result.lastID, username }, JWT_SECRET, { expiresIn: '7d' });
+        // Generar JWT (un usuario nuevo siempre es 'user' por defecto)
+        const token = jwt.sign({ id: result.lastID, username, rol: 'user' }, JWT_SECRET, { expiresIn: '7d' });
         
         res.status(201).json({ 
             message: 'Usuario registrado exitosamente', 
             token,
-            user: { id: result.lastID, username } 
+            user: { id: result.lastID, username, rol: 'user' } 
         });
     } catch (error) {
         if (error.message.includes('UNIQUE constraint failed: usuarios.nombre_usuario')) {
@@ -139,15 +149,18 @@ app.post('/api/login', authRateLimit, async (req, res) => {
         if (!row) {
             return res.status(400).json({ error: 'Usuario no encontrado' });
         }
+        if (row.estado === 'suspendido') {
+            return res.status(403).json({ error: 'Tu cuenta ha sido suspendida' });
+        }
 
         const match = await bcrypt.compare(password, row.password_hash);
         if (match) {
             // Generar JWT
-            const token = jwt.sign({ id: row.id, username: row.nombre_usuario }, JWT_SECRET, { expiresIn: '7d' });
+            const token = jwt.sign({ id: row.id, username: row.nombre_usuario, rol: row.rol || 'user' }, JWT_SECRET, { expiresIn: '7d' });
             res.json({ 
                 message: 'Inicio de sesión exitoso', 
                 token,
-                user: { id: row.id, username: row.nombre_usuario } 
+                user: { id: row.id, username: row.nombre_usuario, rol: row.rol || 'user' } 
             });
         } else {
             res.status(400).json({ error: 'Contraseña incorrecta' });
@@ -341,10 +354,7 @@ app.get('/api/preguntas', async (req, res) => {
     }
 });
 
-// Fallback para SPA (Single Page Application) en caso de recargar
-app.use((req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+
 
 // Función para inicializar DB y Servidor
 async function startServer() {
@@ -356,9 +366,231 @@ async function startServer() {
         console.log('Conectado a unigames.db exitosamente con soporte para Promesas.');
         await db.exec('PRAGMA foreign_keys = ON');
 
-        app.listen(PORT, () => {
-            console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    // ==========================================
+// ENDPOINTS DE ADMINISTRADOR (NUEVOS)
+// ==========================================
+
+// Middleware para verificar si es Admin
+const verificarAdmin = (req, res, next) => {
+    verificarToken(req, res, () => {
+        if (req.user && req.user.rol === 'admin') {
+            next();
+        } else {
+            return res.status(403).json({ error: 'Acceso denegado. Se requieren permisos de administrador.' });
+        }
+    });
+};
+
+// Obtener Configuración Global (Público, para que el frontend se adapte al cargar)
+app.get('/api/config', async (req, res) => {
+    try {
+        const rows = await db.all(`SELECT clave, valor FROM configuracion_global`);
+        const config = {};
+        rows.forEach(row => {
+            config[row.clave] = row.valor;
         });
+        res.json(config);
+    } catch (error) {
+        console.error('Error al obtener config:', error);
+        res.status(500).json({ error: 'Error del servidor' });
+    }
+});
+
+// Actualizar Configuración Global (Solo Admin)
+app.put('/api/admin/config', verificarAdmin, async (req, res) => {
+    const configData = req.body; 
+    
+    try {
+        for (const [clave, valor] of Object.entries(configData)) {
+            await db.run(
+                `INSERT INTO configuracion_global (clave, valor) VALUES (?, ?) 
+                 ON CONFLICT(clave) DO UPDATE SET valor=excluded.valor`,
+                [clave, valor]
+            );
+        }
+        res.json({ message: 'Configuración actualizada con éxito' });
+    } catch (error) {
+        console.error('Error al actualizar config:', error);
+        res.status(500).json({ error: 'Error al actualizar configuración' });
+    }
+});
+
+// Obtener todos los usuarios (Solo Admin)
+app.get('/api/admin/usuarios', verificarAdmin, async (req, res) => {
+    try {
+        const usuarios = await db.all(`SELECT id, nombre_usuario, email, rol, fecha_registro, estado FROM usuarios ORDER BY id DESC`);
+        res.json(usuarios);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al obtener usuarios' });
+    }
+});
+
+// Cambiar rol de un usuario (Solo Admin)
+
+// Actualizar estado usuario
+app.put('/api/admin/usuarios/:id/estado', verificarAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { estado } = req.body;
+    if (estado !== 'activo' && estado !== 'suspendido') {
+        return res.status(400).json({ error: 'Estado invǭlido' });
+    }
+    try {
+        await db.run('UPDATE usuarios SET estado = ? WHERE id = ?', [estado, id]);
+        res.json({ message: 'Estado actualizado' });
+    } catch(err) {
+        res.status(500).json({ error: 'Error al actualizar estado' });
+    }
+});
+
+// Dashboard stats
+app.get('/api/admin/dashboard', verificarAdmin, async (req, res) => {
+    try {
+        const stats = {};
+        const totalUsuarios = await db.get('SELECT COUNT(*) as count FROM usuarios');
+        stats.totalUsuarios = totalUsuarios.count;
+        
+        const activos = await db.get('SELECT COUNT(*) as count FROM usuarios WHERE estado="activo"');
+        stats.activos = activos.count;
+        
+        const partidasPorJuego = await db.all(`
+            SELECT j.nombre, COUNT(p.id) as cantidad 
+            FROM juegos j 
+            LEFT JOIN partidas p ON j.id = p.juego_id 
+            GROUP BY j.id
+        `);
+        stats.partidasPorJuego = partidasPorJuego;
+        
+        const top5 = await db.all(`
+            SELECT u.nombre_usuario as jugador, SUM(p.puntos) as puntosTotales 
+            FROM partidas p 
+            JOIN usuarios u ON p.usuario_id = u.id 
+            GROUP BY u.id 
+            ORDER BY puntosTotales DESC 
+            LIMIT 5
+        `);
+        stats.top5 = top5;
+        
+        res.json(stats);
+    } catch(err) {
+        console.error(err);
+        res.status(500).json({ error: 'Error cargando dashboard' });
+    }
+});
+
+app.put('/api/admin/usuarios/:id/rol', verificarAdmin, async (req, res) => {
+    const { rol } = req.body;
+    if (rol !== 'admin' && rol !== 'user') return res.status(400).json({ error: 'Rol inválido' });
+    
+    try {
+        await db.run(`UPDATE usuarios SET rol = ? WHERE id = ?`, [rol, req.params.id]);
+        res.json({ message: `Rol actualizado a ${rol}` });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al actualizar rol' });
+    }
+});
+
+// === RUTA PARA AUTO-LOGIN ADMIN DESDE EL SCRIPT ===
+app.get('/api/admin/dev-login', (req, res) => {
+    // SEGURIDAD: Esto SOLO debe funcionar en local (localhost), nunca en producción (ej. Render)
+    const host = req.hostname || req.get('host') || '';
+    if (!host.includes('localhost') && !host.includes('127.0.0.1')) {
+        return res.status(403).send('Acceso denegado. Este atajo de desarrollador solo funciona en el entorno local.');
+    }
+
+    // Modo Desarrollador: Iniciamos sesión mágicamente sin consultar la base de datos
+    const token = jwt.sign({ id: 9999, username: 'DevAdmin', rol: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
+    const userStr = encodeURIComponent(JSON.stringify({ id: 9999, username: 'DevAdmin', rol: 'admin' }));
+    
+    res.redirect(`/?dev_token=${token}&dev_user=${userStr}&open_admin=true`);
+});
+
+// Fallback para SPA (Single Page Application) en caso de recargar
+    
+// ==========================================
+// AVISOS (ANUNCIOS MULTIPLES)
+// ==========================================
+
+// Obtener el aviso activo (Publico)
+app.get('/api/avisos/activo', async (req, res) => {
+    try {
+        const row = await db.get("SELECT * FROM avisos WHERE activo = 1 ORDER BY id DESC LIMIT 1");
+        res.json(row || null);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Obtener todos los avisos (Admin)
+app.get('/api/admin/avisos', verificarAdmin, async (req, res) => {
+    try {
+        const rows = await db.all("SELECT * FROM avisos ORDER BY id DESC");
+        res.json(rows || []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Crear un nuevo aviso (Admin)
+app.post('/api/admin/avisos', verificarAdmin, async (req, res) => {
+    const { texto, icono, color, activo } = req.body;
+    if (!texto) return res.status(400).json({ error: 'Texto es requerido' });
+    
+    const isActivo = activo ? 1 : 0;
+    
+    try {
+        if (isActivo) {
+            await db.run("UPDATE avisos SET activo = 0");
+        }
+        
+        const result = await db.run(
+            "INSERT INTO avisos (texto, icono, color, activo) VALUES (?, ?, ?, ?)", 
+            [texto, icono || '📢', color || '#3b82f6', isActivo]
+        );
+        // en 'sqlite' (promise) result.lastID nos da el ID insertado
+        res.json({ id: result.lastID, success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Activar/Desactivar aviso (Admin)
+app.put('/api/admin/avisos/:id/toggle', verificarAdmin, async (req, res) => {
+    const id = req.params.id;
+    const { activo } = req.body;
+    const isActivo = activo ? 1 : 0;
+    
+    try {
+        if (isActivo) {
+            await db.run("UPDATE avisos SET activo = 0");
+            await db.run("UPDATE avisos SET activo = 1 WHERE id = ?", [id]);
+        } else {
+            await db.run("UPDATE avisos SET activo = 0 WHERE id = ?", [id]);
+        }
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Eliminar aviso (Admin)
+app.delete('/api/admin/avisos/:id', verificarAdmin, async (req, res) => {
+    const id = req.params.id;
+    try {
+        await db.run("DELETE FROM avisos WHERE id = ?", [id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+
+app.use((req, res) => {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    });
+
+    app.listen(PORT, () => {
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
+});
     } catch (error) {
         console.error('Error crítico al iniciar el servidor:', error);
         process.exit(1);

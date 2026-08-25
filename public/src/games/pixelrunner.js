@@ -1299,13 +1299,24 @@ function lerpColorHex(hexA, hexB, t) {
 function drawTiledFrame(ctx, img, atlas, frameName, x, y, width, height) {
   const f = atlas.frames[frameName];
   if (!f) return;
-  const tileW = height * (f.w / f.h);
-  let cx = x;
-  while (cx < x + width) {
-    const w = Math.min(tileW, x + width - cx) + 1;
-    ctx.drawImage(img, f.x, f.y, f.w * (w / tileW), f.h, Math.round(cx), y, Math.ceil(w), height);
-    cx += tileW;
+  if (!RUNNER._cachedTiles) RUNNER._cachedTiles = {};
+  const cacheKey = frameName + '_' + Math.round(width) + '_' + Math.round(height);
+  
+  if (!RUNNER._cachedTiles[cacheKey]) {
+    const cvs = document.createElement('canvas');
+    cvs.width = Math.ceil(width);
+    cvs.height = Math.ceil(height);
+    const cctx = cvs.getContext('2d');
+    const tileW = height * (f.w / f.h);
+    let cx = 0;
+    while (cx < width) {
+      const w = Math.min(tileW, width - cx) + 1;
+      cctx.drawImage(img, f.x, f.y, f.w * (w / tileW), f.h, Math.round(cx), 0, Math.ceil(w), height);
+      cx += tileW;
+    }
+    RUNNER._cachedTiles[cacheKey] = cvs;
   }
+  ctx.drawImage(RUNNER._cachedTiles[cacheKey], Math.round(x), Math.round(y));
 }
 
 function drawSky(ctx, W, H, groundY, skyH) {
@@ -1319,16 +1330,36 @@ function drawSky(ctx, W, H, groundY, skyH) {
   // de mitad, todo es una interpolación suave).
   const L = (Math.cos(2 * Math.PI * (phase - 0.25)) + 1) / 2;
 
-  // Fondo: 3 franjas (arriba/medio/horizonte) interpoladas entre paleta
-  // de día y de noche según L.
+  // Fondo: 3 franjas interpoladas con offscreen canvas para no recrear gradientes cada frame
   const nightColors = ['#0d1b2a', '#162032', '#1a2a1a'];
   const dayColors   = ['#7ec8e3', '#bfe3e0', '#cfe8b0'];
-  const bg = ctx.createLinearGradient(0, 0, 0, H);
-  bg.addColorStop(0,   lerpColorHex(nightColors[0], dayColors[0], L));
-  bg.addColorStop(0.6, lerpColorHex(nightColors[1], dayColors[1], L));
-  bg.addColorStop(1,   lerpColorHex(nightColors[2], dayColors[2], L));
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, W, H);
+  
+  if (!RUNNER._bgNight) {
+    RUNNER._bgNight = document.createElement('canvas');
+    RUNNER._bgNight.width = W; RUNNER._bgNight.height = H;
+    const nctx = RUNNER._bgNight.getContext('2d');
+    const nbg = nctx.createLinearGradient(0, 0, 0, H);
+    nbg.addColorStop(0, nightColors[0]); nbg.addColorStop(0.6, nightColors[1]); nbg.addColorStop(1, nightColors[2]);
+    nctx.fillStyle = nbg; nctx.fillRect(0, 0, W, H);
+
+    RUNNER._bgDay = document.createElement('canvas');
+    RUNNER._bgDay.width = W; RUNNER._bgDay.height = H;
+    const dctx = RUNNER._bgDay.getContext('2d');
+    const dbg = dctx.createLinearGradient(0, 0, 0, H);
+    dbg.addColorStop(0, dayColors[0]); dbg.addColorStop(0.6, dayColors[1]); dbg.addColorStop(1, dayColors[2]);
+    dctx.fillStyle = dbg; dctx.fillRect(0, 0, W, H);
+  }
+
+  // Dibujar base de noche
+  ctx.drawImage(RUNNER._bgNight, 0, 0);
+  
+  // Superponer día con alpha (muchísimo más rápido que lerpColorHex)
+  if (L > 0.01) {
+    ctx.save();
+    ctx.globalAlpha = L;
+    ctx.drawImage(RUNNER._bgDay, 0, 0);
+    ctx.restore();
+  }
 
   // Estrellas — solo de noche, se desvanecen con L (más L = más de día = menos visibles)
   const mapaImg = Engine2D.getImage(RUNNER_ASSETS.mapa);
@@ -1336,9 +1367,7 @@ function drawSky(ctx, W, H, groundY, skyH) {
   if (mapaImg && mapaAtlas && L < 0.6) {
     ctx.save();
     ctx.globalAlpha = (0.6 - L) / 0.6; // 1 en plena noche, 0 apenas empieza a clarear
-    ctx.beginPath();
-    ctx.rect(0, skyH, W, groundY - skyH - 30);
-    ctx.clip();
+    // Eliminado el ctx.clip() porque consumía mucha CPU y las estrellas ya están acotadas a Y=50
     drawTiledFrame(ctx, mapaImg, mapaAtlas, 'stars_dense', 0, skyH + 4, W, 50);
     ctx.restore();
   }

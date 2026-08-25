@@ -1,9 +1,23 @@
+window.onerror = function(msg, url, line, col, err) {
+  alert("Error: " + msg + " at line " + line);
+  return false;
+};
 // ══════════════════════════════════════
 //   UniGames — app.js
 // ══════════════════════════════════════
 
 let currentUser = null;
 
+// === AUTO-LOGIN DEV ===
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('dev_token') && urlParams.has('dev_user')) {
+  localStorage.setItem('unigames_token', urlParams.get('dev_token'));
+  localStorage.setItem('unigames_user', decodeURIComponent(urlParams.get('dev_user')));
+  window.history.replaceState({}, document.title, "/");
+  // Refrescar para aplicar los cambios de sesión de inmediato
+  window.location.reload();
+}
+// ======================
 // ─── Audio Manager ─────────────────────
 let globalAudioEnabled = true;
 let pageMusicMuted = false;
@@ -55,7 +69,7 @@ const gameMusicMap = {
 // apenas carga la página.
 function initAudio() {
   const btn = document.getElementById('globalAudioBtn');
-  if (btn) btn.textContent = '🔊';
+  if (btn) btn.innerHTML = '<svg style="width:1.8rem;height:1.8rem;fill:#FFF;filter:drop-shadow(0 0 2px rgba(255,255,255,0.8));" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
   attemptPlayMusic();
 }
 
@@ -92,10 +106,10 @@ function armFirstInteractionUnlock() {
 function toggleGlobalAudio() {
   globalAudioEnabled = !globalAudioEnabled;
   if (globalAudioEnabled) {
-    document.getElementById('globalAudioBtn').textContent = '🔊';
+    document.getElementById('globalAudioBtn').innerHTML = '<svg style="width:1.8rem;height:1.8rem;fill:#FFF;filter:drop-shadow(0 0 2px rgba(255,255,255,0.8));" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
     unmutepageMusic();
   } else {
-    document.getElementById('globalAudioBtn').textContent = '🔇';
+    document.getElementById('globalAudioBtn').innerHTML = '<svg style="width:1.8rem;height:1.8rem;fill:#FFF;filter:drop-shadow(0 0 2px rgba(255,255,255,0.8));" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>';
     bgMusic.pause();
   }
 }
@@ -728,7 +742,7 @@ function guessLetter(letter) {
 // ══════════════════════════════════════
 
 const WORDLE_MAX_ATTEMPTS = 5;
-const WORDLE_TEMATICAS = { 1: '🎮 Videojuegos', 2: '🎬 Películas', 3: '⛩️ Anime', 4: '💻 Programación' };
+const WORDLE_TEMATICAS = { 1: 'Videojuegos', 2: 'Películas', 3: 'Anime', 4: 'Programación' };
 
 let wordleState = {
   word: '',
@@ -956,6 +970,29 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem('unigames_token');
   }
 
+  const params = new URLSearchParams(window.location.search);
+  const dToken = params.get('dev_token');
+  const dUserStr = params.get('dev_user');
+  const openAdmin = params.get('open_admin');
+  
+  if (dToken && dUserStr) {
+    try {
+      const u = JSON.parse(decodeURIComponent(dUserStr));
+      localStorage.setItem('unigames_token', dToken);
+      localStorage.setItem('unigames_user', JSON.stringify(u));
+      currentUser = u;
+      updateAuthUI();
+      
+      // Remove params from URL to clean it up
+      window.history.replaceState({}, document.title, "/");
+      
+      // Open admin modal if requested
+      if (openAdmin === 'true') {
+          setTimeout(() => { openAdminModal(); }, 500);
+      }
+    } catch(e) {}
+  }
+
   // Guardar HTML original de secciones de juego (antes de que se modifiquen)
   saveOriginalSections();
 
@@ -1054,20 +1091,24 @@ async function handleRegister(e) {
   }
 }
 
-function updateAuthUI() {
-  const authArea = document.getElementById('authArea');
-  if (currentUser) {
-    authArea.innerHTML = `
-      <span style="color: #fff; margin-right: 15px; font-weight: bold;">Hola, ${sanitizeHTML(currentUser.username)}</span>
-      <button class="btn-auth btn-register" onclick="logout()">Cerrar sesión</button>
-    `;
-  } else {
-    authArea.innerHTML = `
-      <button class="btn-auth btn-login" onclick="openModal('login')">Iniciar sesión</button>
-      <button class="btn-auth btn-register" onclick="openModal('register')">Registrarse</button>
-    `;
+  function updateAuthUI() {
+    const authArea = document.getElementById('authArea');
+    const adminBtn = document.getElementById('navAdminBtn');
+    if (currentUser) {
+      authArea.innerHTML = `
+        <span style="color: #fff; margin-right: 15px; font-weight: bold;">Hola, ${sanitizeHTML(currentUser.username)}</span>
+        ${currentUser.rol === 'admin' ? '<button class="btn-auth btn-login" style="margin-right: 10px; background-color: var(--primary);" onclick="openAdminModal()">⚙️ Panel Admin</button>' : ''}
+        <button class="btn-auth btn-register" onclick="logout()">Cerrar sesión</button>
+      `;
+      if (adminBtn) adminBtn.style.display = (currentUser.rol === 'admin') ? 'inline-block' : 'none';
+    } else {
+      authArea.innerHTML = `
+        <button class="btn-auth btn-login" onclick="openModal('login')">Iniciar sesión</button>
+        <button class="btn-auth btn-register" onclick="openModal('register')">Registrarse</button>
+      `;
+      if (adminBtn) adminBtn.style.display = 'none';
+    }
   }
-}
 
 function logout() {
   currentUser = null;
@@ -1126,7 +1167,7 @@ async function fetchLeaderboardGlobal() {
     container.innerHTML = keys.map(jid => {
       const g = data[jid];
       const rowsHTML = g.entries.map((e, i) => {
-        const medals = ['🥇','🥈','🥉'];
+        const medals = ['<svg style="width:1.2rem;height:1.2rem;fill:#ffd700;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>','<svg style="width:1.2rem;height:1.2rem;fill:#c0c0c0;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>','<svg style="width:1.2rem;height:1.2rem;fill:#cd7f32;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>'];
         const medal  = medals[i] || (i + 1);
         const cls    = i < 3 ? `rank-${i+1}` : '';
         return `<tr>
@@ -1138,7 +1179,7 @@ async function fetchLeaderboardGlobal() {
 
       return `
         <div class="lb-game-card">
-          <div class="lb-game-title">${sanitizeHTML(GAME_ICONS[jid] || '🎮')} ${sanitizeHTML(g.juego)}</div>
+          <div class="lb-game-title">${sanitizeHTML(GAME_ICONS[jid] || '')} ${sanitizeHTML(g.juego)}</div>
           <table class="lb-mini-table">
             <thead><tr><th>#</th><th>Jugador</th><th>Puntos</th></tr></thead>
             <tbody>${rowsHTML || '<tr><td colspan="3" style="text-align:center;color:#94a3b8;font-size:.8rem;">Sin partidas aún</td></tr>'}</tbody>
@@ -1169,7 +1210,7 @@ async function fetchLeaderboardByGame(juegoId) {
     }
 
     tbody.innerHTML = scores.map((s, i) => {
-      const medals = ['🥇','🥈','🥉'];
+      const medals = ['<svg style="width:1.2rem;height:1.2rem;fill:#ffd700;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>','<svg style="width:1.2rem;height:1.2rem;fill:#c0c0c0;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>','<svg style="width:1.2rem;height:1.2rem;fill:#cd7f32;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>'];
       const medal  = medals[i] || (i + 1);
       const cls    = i < 3 ? `rank-${i+1}` : '';
       return `<tr>
@@ -1213,8 +1254,8 @@ async function guardarPuntaje(juego_id, puntos, tematica_id) {
 const PREGUNTADOS_TOTAL = 10;
 const PREGUNTADOS_TIME  = 15; // segundos por pregunta
 
-const TEMATICA_NAMES = { 1: '🎮 Videojuegos', 2: '🎬 Películas', 3: '⛩️ Anime', 4: '💻 Programación' };
-const TEMATICA_MAP   = { '🎮 Videojuegos': 1, '🎬 Películas': 2, '⛩️ Anime': 3, '💻 Programación': 4 };
+const TEMATICA_NAMES = { 1: 'Videojuegos', 2: 'Películas', 3: 'Anime', 4: 'Programación' };
+const TEMATICA_MAP   = { 'Videojuegos': 1, 'Películas': 2, 'Anime': 3, 'Programación': 4 };
 
 let pregState = {
   preguntas: [], idx: 0, score: 0,
@@ -1299,7 +1340,7 @@ function renderPreguntados() {
     <div class="preg-wrap">
       <div class="preg-topbar">
         <span class="preg-counter">Pregunta ${idx+1} / ${preguntas.length}</span>
-        <span class="preg-score">⭐ ${score}</span>
+        <span class="preg-score"><svg style="width:1rem;height:1rem;fill:gold;vertical-align:middle;margin-right:2px;" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> ${score}</span>
         <div class="preg-timer-bar"><div class="preg-timer-fill" id="pregTimerFill"></div></div>
         <span class="preg-time" id="pregTimeText">${pregState.timeLeft}s</span>
       </div>
@@ -1476,7 +1517,7 @@ function renderSopa() {
     <div class="sopa-wrap">
       <div class="sopa-info">
         <span class="sopa-timer${timeLeft<=15?' sopa-timer-urgent':''}">⏱ ${timeLeft}s</span>
-        <span class="sopa-score-disp">⭐ ${sopaState.score}</span>
+        <span class="sopa-score-disp"><svg style="width:1rem;height:1rem;fill:gold;vertical-align:middle;margin-right:2px;" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> ${sopaState.score}</span>
       </div>
       <div class="sopa-main">
         <div class="sopa-grid" onmouseup="sopaEnd()" ontouchend="sopaEnd()"
@@ -1577,7 +1618,7 @@ function checkSopaSelection() {
       sopaState.found.push(p.word);
       const bonus = Math.max(10, Math.floor(sopaState.timeLeft / 2));
       sopaState.score += bonus;
-      document.querySelector('.sopa-score-disp').textContent = '⭐ ' + sopaState.score;
+      document.querySelector('.sopa-score-disp').innerHTML = '<svg style="width:1rem;height:1rem;fill:gold;vertical-align:middle;margin-right:2px;" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> ' + sopaState.score;
       // Marcar encontradas
       updateSopaHighlight();
       // Actualizar lista de palabras
@@ -2249,3 +2290,479 @@ function updateInfoModal() {
 }
 
 // ══════════════════════════════════════
+
+
+// ==========================================
+// ADMIN PANEL LOGIC
+// ==========================================
+window.openAdminModal = openAdminModal;
+function openAdminModal() {
+  document.getElementById('adminOverlay').classList.add('show');
+  loadAdminDashboard();
+  loadAdminUsers();
+  loadAdminConfig();
+  loadAdminUsers();
+}
+window.closeAdminModal = closeAdminModal;
+function closeAdminModal() {
+  document.getElementById('adminOverlay').classList.remove('show');
+}
+window.loadAdminConfig = loadAdminConfig;
+window.loadAdminConfig = loadAdminConfig;
+async function loadAdminConfig() {
+    try {
+      const res = await fetch('/api/config');
+      const config = await res.json();
+      if(config.color_tema) document.getElementById('adminTema').value = config.color_tema;
+      if(config.github_rodrigo) document.getElementById('adminGitRodrigo').value = config.github_rodrigo;
+      if(config.github_santiago) document.getElementById('adminGitSantiago').value = config.github_santiago;
+      if(config.github_kevin) document.getElementById('adminGitKevin').value = config.github_kevin;
+      
+    } catch(e) { console.error('Error cargando config:', e); }
+  }
+window.saveAdminConfig = saveAdminConfig;
+window.saveAdminConfig = saveAdminConfig;
+async function saveAdminConfig() {
+  const token = localStorage.getItem('unigames_token');
+  const data = {
+    color_tema: document.getElementById('adminTema').value,
+    github_rodrigo: document.getElementById('adminGitRodrigo').value,
+    github_santiago: document.getElementById('adminGitSantiago').value,
+    github_kevin: document.getElementById('adminGitKevin').value
+  };
+  try {
+    const res = await fetch('/api/admin/config', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify(data)
+    });
+    if(res.ok) {
+        alert('Configuración guardada! La página se recargará para aplicar los cambios.');
+        setTimeout(() => location.reload(), 500);
+      } else {
+      alert('Error guardando configuración');
+    }
+  } catch(e) { console.error(e); }
+}
+window.loadAdminUsers = loadAdminUsers;
+window.loadAdminUsers = loadAdminUsers;
+async function loadAdminUsers() {
+  const token = localStorage.getItem('unigames_token');
+  const list = document.getElementById('adminUsersList');
+  try {
+    const res = await fetch('/api/admin/usuarios', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if(!res.ok) return list.innerHTML = '<li>Error cargando usuarios</li>';
+    let users = await res.json();
+    
+    // Add Search logic
+    const searchInput = document.getElementById('adminUserSearch');
+    window.allAdminUsers = users;
+    
+    const renderUsers = (userList) => {
+        list.innerHTML = userList.map(u => `
+          <li>
+            <div>
+              <b style="${u.estado === 'suspendido' ? 'color:#EF4444;text-decoration:line-through;' : ''}">${u.nombre_usuario}</b> 
+              <span style="color:#94A3B8; font-size:11px;">(${u.email})</span>
+            </div>
+            <div style="display:flex; gap:5px; align-items:center;">
+              <select onchange="changeUserRole(${u.id}, this.value)" class="auth-input" style="width:auto; padding:2px; font-size:11px;">
+                <option value="user" ${u.rol==='user'?'selected':''}>User</option>
+                <option value="admin" ${u.rol==='admin'?'selected':''}>Admin</option>
+              </select>
+              <button onclick="changeUserStatus(${u.id}, '${u.estado === 'activo' ? 'suspendido' : 'activo'}')" 
+                      style="background:${u.estado === 'activo' ? '#EF4444' : '#10B981'}; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">
+                ${u.estado === 'activo' ? 'Suspender' : 'Activar'}
+              </button>
+            </div>
+          </li>
+        `).join('');
+    };
+    
+    renderUsers(users);
+    
+    searchInput.oninput = (e) => {
+        const query = e.target.value.toLowerCase();
+        const filtered = window.allAdminUsers.filter(u => u.nombre_usuario.toLowerCase().includes(query) || u.email.toLowerCase().includes(query));
+        renderUsers(filtered);
+    };
+    
+  } catch(e) { console.error(e); }
+}
+window.changeUserRole = changeUserRole;
+window.changeUserRole = changeUserRole;
+async function changeUserRole(id, rol) {
+  const token = localStorage.getItem('unigames_token');
+  try {
+    const res = await fetch('/api/admin/usuarios/'+id+'/rol', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ rol })
+    });
+    if(res.ok) alert('Rol actualizado correctamente');
+    else alert('Error actualizando rol');
+  } catch(e) { console.error(e); }
+}
+function applyTheme(tema) {
+  document.body.classList.remove('theme-light', 'theme-blue', 'theme-red');
+  if (tema === 'light') {
+    document.body.classList.add('theme-light');
+  } else if (tema === 'red') {
+    document.body.classList.add('theme-red');
+  }
+}
+// Init theme on load
+fetch('/api/config').then(r=>r.json()).then(c => { 
+  if(c.color_tema) applyTheme(c.color_tema); 
+  
+  // Configure system banner
+  const banner = document.getElementById('systemBanner');
+  const bannerText = document.getElementById('systemBannerText');
+  if (banner && bannerText) {
+      if (c.anuncio_activo === 'true' && c.anuncio_texto) {
+          bannerText.textContent = c.anuncio_texto;
+          banner.style.display = 'block';
+      } else {
+          banner.style.display = 'none';
+      }
+  }
+
+  // Configure Dev Profile Links & Avatars
+  const setDevProfile = async (nameText, url) => {
+      if (url) {
+          // Buscamos el elemento b por su texto en lugar de id
+          const nameEl = Array.from(document.querySelectorAll('b')).find(e => e.textContent.includes(nameText));
+          if (!nameEl || !nameEl.parentElement) return;
+          
+          const teamMemberDiv = nameEl.parentElement.parentElement;
+          const textDiv = nameEl.parentElement;
+          const avatarDiv = teamMemberDiv.querySelector('.team-avatar');
+          
+          // Aseguramos que el div del texto se pueda expandir y el link quede a la derecha
+          textDiv.style.flex = "1";
+          
+          let linkA = teamMemberDiv.querySelector('.dev-link-icon');
+          if (!linkA) {
+              // Limpiar links viejos si hubieran
+              const oldA = textDiv.querySelector('a');
+              if (oldA) oldA.remove();
+
+              linkA = document.createElement('a');
+              linkA.className = 'dev-link-icon';
+              linkA.target = '_blank';
+              
+              // Estilo de botoncito arcade
+              linkA.style.marginLeft = 'auto'; // Empuja al borde derecho
+              linkA.style.display = 'flex';
+              linkA.style.alignItems = 'center';
+              linkA.style.justifyContent = 'center';
+              linkA.style.textDecoration = 'none';
+              linkA.style.width = '45px';
+              linkA.style.height = '45px';
+              linkA.style.backgroundColor = 'rgba(255,255,255,0.03)';
+              linkA.style.borderRadius = '8px';
+              linkA.style.border = '2px solid rgba(255,255,255,0.08)';
+              linkA.style.transition = 'all 0.2s ease';
+              
+              let isGithub = url.toLowerCase().includes('github.com') || (!url.startsWith('http') && !url.includes('/'));
+              let svgPath = isGithub 
+                ? 'M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.416 22 12c0-5.523-4.477-10-10-10z'
+                : 'M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z';
+
+              linkA.innerHTML = `<svg style="width:1.8rem;height:1.8rem;fill:rgba(255,255,255,0.7);transition:fill 0.2s;" viewBox="0 0 24 24"><path d="${svgPath}"/></svg>`;
+              
+              // Efectos de hover arcade
+              linkA.onmouseover = () => { 
+                  linkA.style.backgroundColor = 'var(--yellow)'; 
+                  linkA.style.borderColor = 'var(--yellow)'; 
+                  linkA.style.boxShadow = '0 0 15px rgba(250, 204, 21, 0.4)';
+                  linkA.style.transform = 'scale(1.05)';
+                  linkA.querySelector('svg').style.fill = 'var(--bg-dark)'; 
+              };
+              linkA.onmouseout = () => { 
+                  linkA.style.backgroundColor = 'rgba(255,255,255,0.03)'; 
+                  linkA.style.borderColor = 'rgba(255,255,255,0.08)'; 
+                  linkA.style.boxShadow = 'none';
+                  linkA.style.transform = 'scale(1)';
+                  linkA.querySelector('svg').style.fill = 'rgba(255,255,255,0.7)'; 
+              };
+
+              // Lo adjuntamos AL DIV CONTENEDOR PRINCIPAL (.team-member)
+              teamMemberDiv.appendChild(linkA);
+          }
+          
+          let finalUrl = url;
+          if (!url.startsWith('http')) {
+              finalUrl = 'https://github.com/' + url;
+          }
+          linkA.href = finalUrl;
+          linkA.title = 'Visitar Perfil';
+          
+          if(avatarDiv) {
+              let githubUsername = null;
+              if (!url.startsWith('http') && !url.includes('/')) {
+                  githubUsername = url;
+              } else if (url.includes('github.com/')) {
+                  githubUsername = url.split('github.com/')[1].split('/')[0];
+              }
+              
+              if (githubUsername) {
+                  try {
+                      const res = await fetch('https://api.github.com/users/' + githubUsername);
+                      if (res.ok) {
+                          const data = await res.json();
+                          if (data.avatar_url) {
+                              avatarDiv.innerHTML = `<img src="${data.avatar_url}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;" alt="${githubUsername}">`;
+                          }
+                      }
+                  } catch(e) { }
+              }
+          }
+      }
+  };
+
+  setDevProfile('Rodrigo Antunez', c.github_rodrigo);
+  setDevProfile('Veliz Santiago', c.github_santiago);
+  setDevProfile('Juarez Kevin', c.github_kevin);
+}).catch(()=>{});
+
+window.switchAdminTab = function(tabId) {
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.admin-tab-content').forEach(c => c.style.display = 'none');
+    
+    event.target.classList.add('active');
+    document.getElementById('adminTab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).style.display = 'block';
+    
+    if (tabId === 'dashboard') loadAdminDashboard();
+    if (tabId === 'usuarios') loadAdminUsers();
+};
+
+window.loadAdminDashboard = async function() {
+    const token = localStorage.getItem('unigames_token');
+    try {
+        const res = await fetch('/api/admin/dashboard', { headers: { 'Authorization': 'Bearer ' + token } });
+        if(!res.ok) return;
+        const stats = await res.json();
+        
+        document.getElementById('dashboardActivos').textContent = stats.activos;
+        document.getElementById('dashboardTotal').textContent = stats.totalUsuarios;
+        
+        const top5 = document.getElementById('dashboardTop5');
+        top5.innerHTML = stats.top5.map((u, i) => `<li>${i+1}. <b>${u.jugador}</b> - ${u.puntosTotales} pts</li>`).join('');
+        
+        // Chart.js
+        const ctx = document.getElementById('gamesChart').getContext('2d');
+        if (window.adminChart) window.adminChart.destroy();
+        
+        window.adminChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: stats.partidasPorJuego.map(p => p.nombre),
+                datasets: [{
+                    data: stats.partidasPorJuego.map(p => p.cantidad),
+                    backgroundColor: ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'right', labels: { color: '#F1F5F9', font: {size: 11} } } }
+            }
+        });
+    } catch(e) { console.error(e); }
+};
+
+window.changeUserStatus = async function(id, estado) {
+    const token = localStorage.getItem('unigames_token');
+    try {
+        const res = await fetch(`/api/admin/usuarios/${id}/estado`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ estado })
+        });
+        if(res.ok) loadAdminUsers();
+    } catch(e) { console.error(e); }
+};
+
+// Easter Egg
+let gravityClickCount = 0;
+window.triggerEasterEgg = function() {
+    gravityClickCount++;
+    if (gravityClickCount >= 5) {
+        document.body.classList.add('gravity-inverted');
+        gravityClickCount = 0;
+    }
+};
+window.restoreGravity = function() {
+    document.body.classList.remove('gravity-inverted');
+};
+
+
+// ==========================================
+// AVISOS (ADMIN CRUD)
+// ==========================================
+window.loadAdminAvisos = async function() {
+    const token = localStorage.getItem('unigames_token');
+    if (!token) return;
+    try {
+        const res = await fetch('/api/admin/avisos', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (!res.ok) throw new Error('Error fetching avisos');
+        const avisos = await res.json();
+        
+        const listDiv = document.getElementById('adminAvisosList');
+        if (avisos.length === 0) {
+            listDiv.innerHTML = '<div style="text-align:center; color:#94A3B8; font-size:12px; padding:10px;">No hay avisos creados.</div>';
+            return;
+        }
+        
+        listDiv.innerHTML = avisos.map(aviso => `
+            <div style="background:rgba(0,0,0,0.3); border-radius:6px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; border-left: 4px solid ${aviso.color || '#3b82f6'};">
+                <div style="flex:1;">
+                    <div style="font-size:13px; color:#F1F5F9; font-weight:600; margin-bottom:4px;">
+                        ${aviso.icono || '📢'} ${aviso.texto}
+                    </div>
+                    <div style="font-size:10px; color:#94A3B8;">
+                        Estado: <span style="color: ${aviso.activo ? '#4ade80' : '#94A3B8'}">${aviso.activo ? 'Activo (Mostrándose)' : 'Inactivo'}</span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    ${aviso.activo ? 
+                        `<button onclick="toggleAvisoAdmin(${aviso.id}, false)" style="background:#334155; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">Desactivar</button>` : 
+                        `<button onclick="toggleAvisoAdmin(${aviso.id}, true)" style="background:#2563eb; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">Activar</button>`
+                    }
+                    <button onclick="eliminarAvisoAdmin(${aviso.id})" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">X</button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+window.crearAvisoAdmin = async function() {
+    const texto = document.getElementById('adminAvisoNuevoTexto').value.trim();
+    const icono = document.getElementById('adminAvisoNuevoIcono').value.trim() || '📢';
+    const color = document.getElementById('adminAvisoNuevoColor').value;
+    
+    if (!texto) {
+        alert("El texto del aviso no puede estar vacío");
+        return;
+    }
+    
+    const token = localStorage.getItem('unigames_token');
+    try {
+        const res = await fetch('/api/admin/avisos', {
+            method: 'POST',
+            headers: { 
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ texto, icono, color, activo: false })
+        });
+        
+        if (res.ok) {
+            document.getElementById('adminAvisoNuevoTexto').value = '';
+            loadAdminAvisos();
+        } else {
+            alert('Error al crear aviso');
+        }
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+window.toggleAvisoAdmin = async function(id, activar) {
+    const token = localStorage.getItem('unigames_token');
+    try {
+        const res = await fetch(`/api/admin/avisos/${id}/toggle`, {
+            method: 'PUT',
+            headers: { 
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ activo: activar })
+        });
+        
+        if (res.ok) {
+            loadAdminAvisos();
+            // Refrescar el aviso en la UI pública si es necesario
+            loadAvisoPublico();
+        }
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+window.eliminarAvisoAdmin = async function(id) {
+    if (!confirm("¿Seguro que deseas eliminar este aviso de forma permanente?")) return;
+    
+    const token = localStorage.getItem('unigames_token');
+    try {
+        const res = await fetch(`/api/admin/avisos/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        
+        if (res.ok) {
+            loadAdminAvisos();
+            loadAvisoPublico();
+        }
+    } catch(e) {
+        console.error(e);
+    }
+};
+
+window.loadAvisoPublico = async function() {
+    try {
+        const res = await fetch('/api/avisos/activo');
+        if (!res.ok) return;
+        const aviso = await res.json();
+        
+        // Remove existing aviso if any
+        const existingAviso = document.getElementById('global-aviso-banner');
+        if (existingAviso) existingAviso.remove();
+        
+        if (aviso) {
+            const avisoHTML = `
+                <div id="global-aviso-banner" style="background: ${aviso.color || '#3b82f6'}; color: white; text-align: center; padding: 12px 20px; font-weight: 600; font-size: 14px; position: relative; z-index: 50; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); animation: slideDownAviso 0.5s ease-out forwards;">
+                    <span style="margin-right:8px; font-size:16px;">${aviso.icono || '📢'}</span>
+                    ${aviso.texto}
+                </div>
+            `;
+            // Insertar justo debajo del header
+            const header = document.querySelector('header');
+            if (header) {
+                header.insertAdjacentHTML('afterend', avisoHTML);
+            }
+        }
+    } catch (e) {
+        console.error('Error cargando aviso publico:', e);
+    }
+};
+
+// Insert slide animation dynamically
+const avisoStyle = document.createElement('style');
+avisoStyle.textContent = `
+@keyframes slideDownAviso {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+`;
+document.head.appendChild(avisoStyle);
+
+// Load it when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    // wait a bit for standard init
+    setTimeout(loadAvisoPublico, 500);
+});

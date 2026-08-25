@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
     nombre_usuario TEXT NOT NULL UNIQUE,
     email TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    fecha_registro TEXT DEFAULT CURRENT_TIMESTAMP
+    fecha_registro TEXT DEFAULT CURRENT_TIMESTAMP,
+    rol TEXT DEFAULT 'user',
+    estado TEXT DEFAULT 'activo'
 );
 """)
 
@@ -372,7 +374,51 @@ INSERT OR IGNORE INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opci
 (4, '¿Cuál de estos es un sistema de control de versiones?', 'Docker', 'Git', 'Node', 'Webpack', 'B');
 """)
 
+# --- Usuarios por defecto y Configuración Global ---
+cursor.execute("SELECT COUNT(*) FROM usuarios")
+if cursor.fetchone()[0] == 0:
+    print("Insertando usuarios por defecto...")
+    from bcrypt import hashpw, gensalt
+    default_hash = hashpw('1234'.encode('utf-8'), gensalt()).decode('utf-8')
+    usuarios_default = [
+        ('rodrigo', 'rodrigo@unigames.com', default_hash, 'admin'),
+        ('kevin', 'kevin@unigames.com', default_hash, 'admin'),
+        ('santiago', 'santiago@unigames.com', default_hash, 'admin'),
+        ('testuser', 'test@unigames.com', default_hash, 'user')
+    ]
+    cursor.executemany("INSERT INTO usuarios (nombre_usuario, email, password_hash, rol) VALUES (?, ?, ?, ?)", usuarios_default)
+    print("Usuarios de prueba insertados.")
+
+cursor.execute("SELECT COUNT(*) FROM configuracion_global")
+if cursor.fetchone()[0] == 0:
+    print("Insertando configuracion por defecto...")
+    config_default = [
+        ('color_tema', 'dark'),
+        ('github_rodrigo', ''),
+        ('github_santiago', ''),
+        ('github_kevin', ''),
+        ('anuncio_texto', ''),
+        ('anuncio_activo', 'false'),
+        ('repo_url', ''),
+        ('mostrar_repo', 'false'),
+        ('mostrar_devs', 'true')
+    ]
+    cursor.executemany("INSERT INTO configuracion_global (clave, valor) VALUES (?, ?)", config_default)
+    print("Configuracion insertada.")
+
 conexion.commit()
 conexion.close()
 
 print("Base de datos unigames.db creada/actualizada correctamente.")
+# Tabla de avisos
+cursor.execute('''
+CREATE TABLE IF NOT EXISTS avisos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    texto TEXT,
+    icono TEXT,
+    color TEXT,
+    activo INTEGER DEFAULT 0
+);
+''')
+conexion.commit()
+
