@@ -162,6 +162,24 @@ CREATE TABLE IF NOT EXISTS palabras_wordle (
 );
 """)
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS avisos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    texto TEXT NOT NULL,
+    icono TEXT DEFAULT '📢',
+    color TEXT DEFAULT '#3b82f6',
+    activo INTEGER DEFAULT 0,
+    fecha_creacion TEXT DEFAULT CURRENT_TIMESTAMP
+);
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS configuracion_global (
+    clave TEXT PRIMARY KEY,
+    valor TEXT NOT NULL
+);
+""")
+
 conexion.commit()
 
 # ──────────────────────────────────────────────
