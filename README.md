@@ -55,10 +55,11 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
    npm install
    ```
 
-3. **Variables de Entorno:**
-   Crea un archivo `.env` en la raíz del proyecto y agrega tu secreto para JWT:
+   **Variables de Entorno (.env):**
+   Crea un archivo `.env` en la raíz del proyecto y agrega tus configuraciones seguras:
    ```env
    JWT_SECRET=tu_clave_secreta_super_segura
+   DEV_SECRET=clave_para_acceder_al_admin_en_produccion
    ```
 
 4. **Generar la Base de Datos y Correr el Servidor:**
@@ -66,9 +67,9 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
    
    Para arrancar el servidor de desarrollo y generar la base de datos automáticamente (ejecuta el script de Python por detrás):
    ```bash
-   npm start
+   npm run dev
    ```
-   *(Alternativa en Windows: doble clic en el archivo `iniciar.bat`).*
+   *(También puedes usar el comando estándar `npm start`).*
 
 5. **Jugar:**
    Abre tu navegador en [http://localhost:3000](http://localhost:3000).
@@ -78,17 +79,22 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
 ### 📦 Cómo subir cambios y Modo Administrador (Para Desarrolladores)
 
 **Modo Administrador Automático:** 
-Si necesitas convertir tu usuario a Administrador rápidamente, simplemente haz doble clic en `hacer_admin.bat` y escribe tu nombre de usuario. Al recargar la página, verás el botón de "Panel Admin".
+Si necesitas convertir tu usuario a Administrador rápidamente, simplemente corre este script universal (requiere configurar la variable `DEV_SECRET` en `.env`):
+```bash
+npm run admin
+```
+O haz doble clic en `hacer_admin.bat` (solo en Windows). Escribe tu email o usuario, y al recargar la página, verás el botón de "Panel Admin".
 
 **Despliegue y Cambios:**
 Si deseas agregar nuevas preguntas o palabras a la base de datos, agrégalas en el archivo `crear_bd.py`. Luego, en vez de usar comandos de Git manualmente:
 1. Da doble clic en el archivo **`subir_cambios_Github.bat`** (solo Windows).
 2. Sigue las instrucciones en la consola para describir tu cambio.
 
-### 🛠️ Últimas Mejoras UI/UX
+### 🛠️ Últimas Mejoras Técnicas y UI/UX
+- **Validación Ultra Robusta (Zod):** Todas las entradas del usuario (registro, login, puntuaciones) pasan por una validación estricta de esquemas antes de tocar la base de datos, evitando colapsos del servidor y ataques comunes.
+- **Backend Modularizado:** `server.js` fue optimizado, delegando toda la lógica a `/routes/auth.js`, `/routes/juegos.js` y `/routes/admin.js`, permitiendo un crecimiento profesional sin código espagueti.
 - **Gestión Visual Avanzada:** Ahora puedes elegir el tema de la aplicación desde el panel de administrador y los colores se sincronizan en toda la plataforma instantáneamente.
-- **Navegación Dinámica:** Los Juegos Destacados del inicio ahora scrollean suavemente hacia la tarjeta de juego exacta sin conflictos de animación.
-- **Adivina la Cosa:** Se rediseñó el modal de introducción y el fondo translúcido para asegurar que cubra exactamente el área de juego sin pisar el menú superior.
+- **Pantalla de Carga Global:** Los juegos que requieren múltiples texturas y sprites muestran una elegante animación de carga retro que garantiza que el mapa no sea invisible.
 
 ## 📂 Estructura del Proyecto
 
@@ -101,7 +107,12 @@ UniGames/
 │   ├── sounds/             # Efectos de sonido y música (.mp3)
 │   └── index.html          # Vista principal, Modales, Panel Admin y SPA
 │
-├── server.js               # Servidor Backend (API REST con Express, Async/Await, Endpoints de Admin)
+├── routes/                 # Lógica de Endpoints modulares (auth.js, admin.js, juegos.js)
+├── middlewares/            # Validaciones Zod, Rate Limiting y Control de JWT
+├── schemas/                # Esquemas estrictos de validación con Zod
+├── database/               # Módulo de conexión centralizada a SQLite (db.js)
+├── server.js               # Servidor Backend principal
+
 ├── crear_bd.py             # Script para generar las tablas (usuarios, avisos, configuracion) y diccionarios
 ├── .env                    # Variables de entorno (no subido a GitHub)
 ├── iniciar.bat             # Acceso directo para inicializar en Windows
