@@ -16,6 +16,21 @@ C_BOLD = '\033[1m'
 
 DB_PATH = 'unigames.db'
 
+def load_env():
+    env_vars = {}
+    if os.path.exists('.env'):
+        with open('.env', 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, val = line.split('=', 1)
+                    env_vars[key.strip()] = val.strip()
+    return env_vars
+
+ENV = load_env()
+PROD_URL = ENV.get('PRODUCTION_URL', 'https://unigames-dszw.onrender.com')
+DEV_SECRET = ENV.get('DEV_SECRET', 'unigames_super_secret')
+
 def limpiar_pantalla():
     os.system('cls' if os.name == 'nt' else 'clear')
 
@@ -121,22 +136,35 @@ def login_rapido_navegador():
     limpiar_pantalla()
     imprimir_banner()
     print(f"{C_BLUE}--- Inicio de Sesión Rápido (Navegador) ---{C_END}\n")
-    print(f"Esta opción abrirá el navegador e iniciará sesión automáticamente")
-    print(f"como Administrador usando la ruta de desarrollo.\n")
+    print(f"Esta opción abrirá el navegador e iniciará sesión automáticamente como Administrador.\n")
+    print(f"¿A qué entorno deseas acceder?")
+    print(f"  {C_GREEN}1.{C_END} Servidor Local (localhost:3000)")
+    print(f"  {C_GREEN}2.{C_END} Servidor Producción (Render - unigames-dszw)")
+    print(f"  {C_WARNING}0. Cancelar{C_END}\n")
     
-    opcion = input("¿Deseas abrir el navegador ahora? (s/n): ").strip().lower()
-    if opcion == 's':
-        try:
-            url = "http://localhost:3000/api/admin/dev-login"
-            webbrowser.open(url)
-            print(f"\n{C_GREEN}✅ Abriendo: {url}{C_END}")
-            print(f"Si el servidor de Node.js no está corriendo, la página no cargará.")
-        except Exception as e:
-            print(f"\n{C_FAIL}No se pudo abrir el navegador: {e}{C_END}")
-        time.sleep(2.5)
-    else:
+    opcion = input(f"{C_BOLD}Tu opción: {C_END}").strip()
+    
+    if opcion == '1':
+        url = "http://localhost:3000/api/admin/dev-login"
+    elif opcion == '2':
+        url = f"{PROD_URL}/api/admin/dev-login?secret={DEV_SECRET}"
+    elif opcion == '0':
         print(f"\n{C_WARNING}Operación cancelada.{C_END}")
         time.sleep(1)
+        return
+    else:
+        print(f"\n{C_FAIL}Opción no válida.{C_END}")
+        time.sleep(1.5)
+        return
+        
+    try:
+        webbrowser.open(url)
+        print(f"\n{C_GREEN}✅ Abriendo: {url}{C_END}")
+        if opcion == '1':
+            print(f"Si el servidor de Node.js no está corriendo, la página no cargará.")
+    except Exception as e:
+        print(f"\n{C_FAIL}No se pudo abrir el navegador: {e}{C_END}")
+    time.sleep(2.5)
 
 def menu_principal():
     while True:

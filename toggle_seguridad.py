@@ -2,6 +2,7 @@ import os
 import sys
 import webbrowser
 import time
+import re
 
 INDEX_PATH = 'public/index.html'
 
@@ -13,17 +14,17 @@ def toggle_security():
     with open(INDEX_PATH, 'r', encoding='utf-8') as f:
         content = f.read()
         
-    # Patrones posibles
-    active_pattern = '<script src="src/security.js"></script>'
-    disabled_pattern = '<!-- <script src="src/security.js"></script> -->'
+    # Patrones usando regex para ser mǭs robustos a espacios extra
+    active_pattern = r'<script\s+src=["\']?src/security\.js["\']?\s*>\s*</script>'
+    disabled_pattern = r'<!--\s*<script\s+src=["\']?src/security\.js["\']?\s*>\s*</script>\s*-->'
     
-    if disabled_pattern in content:
+    if re.search(disabled_pattern, content):
         # Activar
-        content = content.replace(disabled_pattern, active_pattern)
+        content = re.sub(disabled_pattern, '<script src="src/security.js"></script>', content)
         print("ACTIVADO")
-    elif active_pattern in content:
+    elif re.search(active_pattern, content):
         # Desactivar
-        content = content.replace(active_pattern, disabled_pattern)
+        content = re.sub(active_pattern, '<!-- <script src="src/security.js"></script> -->', content)
         print("DESACTIVADO")
     else:
         print("Error: No se encontró la etiqueta de security.js en el HTML.")

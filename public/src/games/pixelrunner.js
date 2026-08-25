@@ -369,6 +369,7 @@ function initRunner() {
 
     // Cargar sprites una sola vez (Engine2D cachea, así que si ya están
     // cargados de una sesión anterior esto resuelve al toque).
+    if (window.showGlobalLoader) window.showGlobalLoader();
     Engine2D.loadAll([
       { type: 'image', src: RUNNER_ASSETS.junior },
       { type: 'atlas', src: RUNNER_ASSETS.juniorAt },
@@ -381,8 +382,11 @@ function initRunner() {
       { type: 'image', src: RUNNER_ASSETS.item },
       { type: 'atlas', src: RUNNER_ASSETS.itemAt },
       { type: 'image', src: RUNNER_ASSETS.castillo },
-    ]).then(() => startRunner())
-      .catch(err => {
+    ]).then(() => {
+        if (window.hideGlobalLoader) window.hideGlobalLoader();
+        startRunner();
+      }).catch(err => {
+        if (window.hideGlobalLoader) window.hideGlobalLoader();
         console.error('No se pudieron cargar los sprites de Pixel Runner', err);
         startRunner(); // arranca igual — drawRunner tiene fallback a rectángulos
       });

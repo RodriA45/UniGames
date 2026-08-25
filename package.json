@@ -5,6 +5,10 @@
   "main": "server.js",
   "scripts": {
     "start": "node start.js",
+    "dev": "node start.js",
+    "db:reset": "python crear_bd.py",
+    "admin": "python hacer_admin.py",
+    "security": "python toggle_seguridad.py",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -26,6 +30,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "sqlite": "^5.1.1",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "zod": "^4.4.3"
   }
 }

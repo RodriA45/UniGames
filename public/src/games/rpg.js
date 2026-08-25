@@ -1505,7 +1505,9 @@ function rpgStartRoom(roomIndex) {
       if (portraits.length) Engine2D.loadAll(portraits).catch(() => {});
     }
 
-    Promise.all(loaders).then(() => {
+    if (window.showGlobalLoader) window.showGlobalLoader();
+      Promise.all(loaders).then(() => {
+        if (window.hideGlobalLoader) window.hideGlobalLoader();
       // Ahora que cfg.zoneImage ya está en RPG.images y cargado, se puede
       // calcular el zoom-out fijo de esta habitación puntual (cada fondo
       // puede necesitar un zoom distinto). RPG.camera.y también queda fijo

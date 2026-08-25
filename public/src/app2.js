@@ -550,6 +550,12 @@ function openModal(tab) {
 
 function closeModal() {
   document.getElementById('modalOverlay').classList.remove('open');
+  // Limpiar inputs al cerrar
+  const inputs = ['loginIdentity', 'loginPassword', 'regUsername', 'regEmail', 'regPassword'];
+  inputs.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
 }
 
 function switchTab(tab) {

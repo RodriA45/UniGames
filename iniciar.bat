@@ -42,6 +42,7 @@ where py >nul 2>&1 && (py crear_bd.py & goto :db_ok)
 where python3 >nul 2>&1 && (python3 crear_bd.py & goto :db_ok)
 where python >nul 2>&1 && (python crear_bd.py & goto :db_ok)
 echo %ESC%[91m[ERROR] No se encontró Python. Asegúrate de tenerlo instalado y en el PATH.%ESC%[0m
+pause
 goto :skip_db
 :db_ok
 echo %ESC%[92m^> Base de datos actualizada correctamente.%ESC%[0m
