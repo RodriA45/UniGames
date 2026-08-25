@@ -378,8 +378,7 @@ INSERT OR IGNORE INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opci
 cursor.execute("SELECT COUNT(*) FROM usuarios")
 if cursor.fetchone()[0] == 0:
     print("Insertando usuarios por defecto...")
-    from bcrypt import hashpw, gensalt
-    default_hash = hashpw('1234'.encode('utf-8'), gensalt()).decode('utf-8')
+    default_hash = "$2b$10$ihSR4f22dSpEhjaS8zZBSeliOqGhO4lh/a6.7GGUNieNHRfQOKWP2" # pre-hashed for Render
     usuarios_default = [
         ('rodrigo', 'rodrigo@unigames.com', default_hash, 'admin'),
         ('kevin', 'kevin@unigames.com', default_hash, 'admin'),
