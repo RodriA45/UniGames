@@ -313,11 +313,29 @@ const navMenu   = document.getElementById('navMenu');
 hamburger.addEventListener('click', () => {
   hamburger.classList.toggle('open');
   navMenu.classList.toggle('open');
+  const backdrop = document.getElementById('drawerBackdrop');
+  if (backdrop) backdrop.classList.toggle('open');
 });
 
 function closeNav() {
   hamburger.classList.remove('open');
   navMenu.classList.remove('open');
+  const backdrop = document.getElementById('drawerBackdrop');
+  if (backdrop) backdrop.classList.remove('open');
+}
+
+function toggleAccountDrawer() {
+  const drawer = document.getElementById('accountDrawer');
+  const backdrop = document.getElementById('drawerBackdrop');
+  if (drawer) drawer.classList.toggle('open');
+  if (backdrop) backdrop.classList.toggle('open');
+}
+
+function closeAccountDrawer() {
+  const drawer = document.getElementById('accountDrawer');
+  const backdrop = document.getElementById('drawerBackdrop');
+  if (drawer) drawer.classList.remove('open');
+  if (backdrop) backdrop.classList.remove('open');
 }
 
 function iniciarJuego(gameKey) {
@@ -1098,21 +1116,22 @@ async function handleRegister(e) {
 }
 
   function updateAuthUI() {
-    const authArea = document.getElementById('authArea');
-    const adminBtn = document.getElementById('navAdminBtn');
+    const drawerBody = document.getElementById('accountDrawerBody');
+    if (!drawerBody) return;
+
     if (currentUser) {
-      authArea.innerHTML = `
-        <span style="color: #fff; margin-right: 15px; font-weight: bold;">Hola, ${sanitizeHTML(currentUser.username)}</span>
-        ${currentUser.rol === 'admin' ? '<button class="btn-auth btn-login" style="margin-right: 10px; background-color: var(--primary);" onclick="openAdminModal()">⚙️ Panel Admin</button>' : ''}
-        <button class="btn-auth btn-register" onclick="logout()">Cerrar sesión</button>
+      drawerBody.innerHTML = `
+        <div class="account-greeting">Hola, ${sanitizeHTML(currentUser.username)}</div>
+        ${currentUser.rol === 'admin' ? '<button class="account-drawer-btn" onclick="closeAccountDrawer(); openAdminModal();"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Panel Admin</button>' : ''}
+        <button class="account-drawer-btn" onclick="closeAccountDrawer(); goTo('puntuacion');"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>Puntuación</button>
+        <button class="account-drawer-btn"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Amigos</button>
+        <button class="account-drawer-btn"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Logros</button>
+        <button class="account-drawer-btn btn-logout" onclick="logout()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>Cerrar sesión</button>
       `;
-      if (adminBtn) adminBtn.style.display = (currentUser.rol === 'admin') ? 'inline-block' : 'none';
     } else {
-      authArea.innerHTML = `
-        <button class="btn-auth btn-login" onclick="openModal('login')">Iniciar sesión</button>
-        <button class="btn-auth btn-register" onclick="openModal('register')">Registrarse</button>
+      drawerBody.innerHTML = `
+        <button class="account-drawer-btn btn-login-drawer" onclick="closeAccountDrawer(); openModal('login');">Iniciar sesión</button>
       `;
-      if (adminBtn) adminBtn.style.display = 'none';
     }
   }
 

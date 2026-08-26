@@ -782,7 +782,7 @@ const RPG = {
   inDialogue: false,
   dialogueOnDone: null,
 
-  keys: { up: false, down: false, left: false, right: false },
+  keys: { up: false, down: false, left: false, right: false, block: false },
   facing: 'down', // última dirección caminada; define hacia dónde se dispara
   player: {
     x: 0, y: 0,
@@ -1041,7 +1041,7 @@ function rpgPollTouchActions() {
   // propio cooldown de rpgFire, igual que mantener Espacio en teclado).
   if (st.fire) rpgFire();
   // Bloquear: es un estado, no una acción puntual — se refleja 1 a 1.
-  rpgBlock(!!st.block);
+  // rpgBlock removed from here, handled in rpgUpdate
   // Interactuar: acción puntual (abrir cofre / avanzar diálogo) — si se
   // llamara todos los frames mientras se mantiene apretado, un diálogo
   // completo se saltearía de una sola vez. Se dispara solo en el flanco
@@ -1747,7 +1747,7 @@ function setupRpgEvents() {
     if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyX','Enter','NumpadEnter'].includes(e.code)) e.preventDefault();
     if (e.code === 'Space') rpgFire();
     if (e.code === 'KeyX' || e.code === 'Enter' || e.code === 'NumpadEnter') rpgInteract();
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') rpgBlock(true);
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') RPG.keys.block = true;
   };
   RPG.keyHandlerUp = function(e) {
     if (e.code === 'ArrowUp' || e.code === 'KeyW')    RPG.keys.up = false;
@@ -1755,7 +1755,7 @@ function setupRpgEvents() {
     if (e.code === 'ArrowLeft' || e.code === 'KeyA')  RPG.keys.left = false;
     if (e.code === 'ArrowRight' || e.code === 'KeyD') RPG.keys.right = false;
     rpgUpdateFacing();
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') rpgBlock(false);
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') RPG.keys.block = false;
   };
   document.addEventListener('keydown', RPG.keyHandlerDown);
   document.addEventListener('keyup', RPG.keyHandlerUp);
@@ -1971,6 +1971,9 @@ function rpgUpdate(dt) {
   // ── Movimiento del jugador ──
   if (p.speedBoostTimer > 0) p.speedBoostTimer -= dt;
   const speedMult = p.speedBoostTimer > 0 ? (cfg.potionSpeedMult || 1.6) : 1;
+
+  const isBlocking = RPG.keys.block || (RPG.touch && RPG.touch.state && !!RPG.touch.state.block);
+  rpgBlock(isBlocking);
 
   let dx = 0, dy = 0;
   if (RPG.keys.up) dy -= 1;

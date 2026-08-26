@@ -237,6 +237,9 @@
         </select>
         <div class="checkbox-row"><input type="checkbox" id="platformFakeChk"> Falsa (móvil y traspasable)</div>
       </div>
+      <div id="platformNormalOptions" style="margin-top:6px;">
+        <div class="checkbox-row"><input type="checkbox" id="platformVerticalChk"> 🧱 Pared vertical (bloquea el paso, no solo piso)</div>
+      </div>
       <div class="checkbox-row"><input type="checkbox" id="platformSpikeChk"> Pinchos arriba (decor: 'spike')</div>
     </div>
 
@@ -270,6 +273,18 @@
       </select>
       <label>Velocidad</label>
       <input type="number" id="arrowSpeedInp" value="4.5" step="0.2" min="1" max="15">
+      <div class="field-title">Tipo de disparo (trigger)</div>
+      <select id="arrowTriggerTypeSel">
+        <option value="line">📏 Línea vertical (todo el alto)</option>
+        <option value="area">🎯 Zona de área (rectángulo)</option>
+      </select>
+      <div id="arrowAreaOptions" style="display:none;margin-top:6px;">
+        <label>Tamaño de la zona (ancho × alto)</label>
+        <div class="row2">
+          <div><input type="number" id="arrowAreaWInp" value="60" min="8"></div>
+          <div><input type="number" id="arrowAreaHInp" value="60" min="8"></div>
+        </div>
+      </div>
     </div>
 
     <!-- Opciones dinámicas de Decoración -->
@@ -301,11 +316,13 @@
 
     <div class="legend">
       <div><span class="swatch" style="background:#5a6978"></span>Plataforma normal</div>
+      <div><span class="swatch" style="background:#c084fc"></span>Plataforma normal vertical (pared)</div>
       <div><span class="swatch" style="background:#a855f7"></span>Plataforma falsa (fake)</div>
       <div><span class="swatch" style="background:#e8543f"></span>Crumble (se derrumba)</div>
       <div><span class="swatch" style="background:#60a5fa"></span>Móvil (ascensor)</div>
       <div><span class="swatch" style="background:#f87171"></span>Pinchos / Sierra</div>
-      <div><span class="swatch" style="background:#facc15"></span>Flecha trampa</div>
+      <div><span class="swatch" style="background:#facc15"></span>Flecha trampa (línea)</div>
+      <div><span class="swatch" style="background:rgba(250,204,21,0.5)"></span>Flecha trampa (zona de área)</div>
       <div><span class="swatch" style="background:#22c55e"></span>Puerta salida</div>
     </div>
   </div>
@@ -566,11 +583,15 @@ const state = {
   platformFake: false,
   platformSpike: false,
   platformAxis: 'y',
+  platformVertical: false,
   hazardType: 'spike',
   spikeSize: 'medium',
   spikeFake: false,
   arrowDir: -1,
   arrowSpeed: 4.5,
+  arrowTriggerType: 'line',
+  arrowAreaW: 60,
+  arrowAreaH: 60,
   decorType: 'torch',
   
   // Modos y grids
@@ -650,9 +671,16 @@ function bboxOf(cat, obj) {
   if (cat === 'start') return { x: obj.x - 2, y: obj.y - 2, w: 28, h: 31 };
   if (cat === 'exit' || cat === 'platforms' || cat === 'hazards') return { x: obj.x, y: obj.y, w: obj.w, h: obj.h };
   if (cat === 'arrows') {
-    const left = Math.min(obj.x, obj.triggerX);
-    const right = Math.max(obj.x + obj.w, obj.triggerX + 6);
-    return { x: left, y: obj.y, w: right - left, h: obj.h };
+    let left = Math.min(obj.x, obj.triggerX);
+    let right = Math.max(obj.x + obj.w, obj.triggerX + 6);
+    let top = obj.y, bottom = obj.y + obj.h;
+    if (obj.triggerType === 'area' && obj.triggerZone) {
+      left = Math.min(left, obj.triggerZone.x);
+      right = Math.max(right, obj.triggerZone.x + obj.triggerZone.w);
+      top = Math.min(top, obj.triggerZone.y);
+      bottom = Math.max(bottom, obj.triggerZone.y + obj.triggerZone.h);
+    }
+    return { x: left, y: top, w: right - left, h: bottom - top };
   }
   if (cat === 'decor') { const s = decorSize(obj); return { x: obj.x, y: obj.y, w: s.w, h: s.h }; }
   return { x: 0, y: 0, w: 0, h: 0 };
@@ -700,6 +728,7 @@ function addPlatform(x, y, w, h) {
     p.move = { axis, from: axis === 'x' ? x : y, to: axis === 'x' ? x + 100 : y + 80, speed: 1.2 };
     if (state.platformFake) p.fake = true;
   }
+  if (state.platformType === 'normal' && state.platformVertical) p.vertical = true;
   if (state.platformSpike) p.decor = 'spike';
   curLevel().platforms.push(p);
   return { cat: 'platforms', idx: curLevel().platforms.length - 1 };
@@ -725,7 +754,9 @@ function addHazard(x, y, w, h) {
 function addArrow(x, y) {
   pushHistory();
   const vertical = state.arrowDir === 'up' || state.arrowDir === 'down';
+  const triggerType = state.arrowTriggerType || 'line';
   const a = {
+    triggerType,
     triggerX: Math.round(x),
     x: vertical ? Math.round(x) : (state.arrowDir === 1 ? 0 : (curLevel().width || TR_W)),
     y: Math.round(y),
@@ -735,6 +766,11 @@ function addArrow(x, y) {
     speed: parseFloat(state.arrowSpeed) || 4.5,
     active: false, fired: false,
   };
+  if (triggerType === 'area') {
+    const zw = Math.max(8, parseFloat(state.arrowAreaW) || 60);
+    const zh = Math.max(8, parseFloat(state.arrowAreaH) || 60);
+    a.triggerZone = { x: Math.round(x - zw / 2), y: Math.round(y - zh / 2), w: zw, h: zh };
+  }
   curLevel().arrows.push(a);
   return { cat: 'arrows', idx: curLevel().arrows.length - 1 };
 }
@@ -816,26 +852,51 @@ function stoneShade(bx, by) {
 
 function drawStoneFloor(plat) {
   const { x, y, w, h } = plat;
+  const isWall = plat.type === 'normal' && plat.vertical;
   ctx.fillStyle = TR_STONE_MORTAR;
   ctx.fillRect(x, y, w, h);
   ctx.save();
   ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
-  const blockH = Math.max(9, Math.round(h / 2));
-  const blockW = blockH * 1.7;
-  let row = 0;
-  for (let by = y; by < y + h; by += blockH) {
-    const offset = (row % 2 === 0) ? 0 : -blockW / 2;
-    for (let bx = x + offset; bx < x + w; bx += blockW) {
-      const t = stoneShade(Math.round(bx), Math.round(by));
-      const gr = Math.round(46 + t * 26);
-      ctx.fillStyle = `rgb(${gr},${gr - 2},${gr + 3})`;
-      ctx.fillRect(bx + 1, by + 1, blockW - 2, blockH - 2);
+  if (isWall) {
+    // Pared vertical: columnas de piedra apiladas de arriba a abajo,
+    // con hiladas intercaladas (igual criterio que el piso, pero rotado 90°).
+    const blockW = Math.max(9, Math.round(w / 2));
+    const blockH = blockW * 1.7;
+    let col = 0;
+    for (let bx = x; bx < x + w; bx += blockW) {
+      const offset = (col % 2 === 0) ? 0 : -blockH / 2;
+      for (let by = y + offset; by < y + h; by += blockH) {
+        const t = stoneShade(Math.round(bx), Math.round(by));
+        const gr = Math.round(46 + t * 26);
+        ctx.fillStyle = `rgb(${gr},${gr - 2},${gr + 3})`;
+        ctx.fillRect(bx + 1, by + 1, blockW - 2, blockH - 2);
+      }
+      col++;
     }
-    row++;
+  } else {
+    const blockH = Math.max(9, Math.round(h / 2));
+    const blockW = blockH * 1.7;
+    let row = 0;
+    for (let by = y; by < y + h; by += blockH) {
+      const offset = (row % 2 === 0) ? 0 : -blockW / 2;
+      for (let bx = x + offset; bx < x + w; bx += blockW) {
+        const t = stoneShade(Math.round(bx), Math.round(by));
+        const gr = Math.round(46 + t * 26);
+        ctx.fillStyle = `rgb(${gr},${gr - 2},${gr + 3})`;
+        ctx.fillRect(bx + 1, by + 1, blockW - 2, blockH - 2);
+      }
+      row++;
+    }
   }
   ctx.restore();
-  ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y, w, 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y + h - 2, w, 2);
+  if (isWall) {
+    // Resalte/sombra en los bordes laterales (luz lateral, como una pared)
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y, 2, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x + w - 2, y, 2, h);
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y, w, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y + h - 2, w, 2);
+  }
 }
 
 function drawPlatform(plat) {
@@ -852,6 +913,10 @@ function drawPlatform(plat) {
   if (plat.type === 'moving') {
     ctx.strokeStyle = 'rgba(96,165,250,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(plat.x + 1, plat.y + 1, plat.w - 2, plat.h - 2);
     if (!state.playtest && plat.move) drawMoveGhost(plat, plat.w, plat.h);
+  }
+  if (plat.type === 'normal' && plat.vertical) {
+    ctx.fillStyle = 'rgba(192,132,252,0.16)'; ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+    ctx.strokeStyle = 'rgba(192,132,252,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(plat.x + 1, plat.y + 1, plat.w - 2, plat.h - 2);
   }
   if (plat.decor === 'spike') drawSpikeRow(plat.x, plat.y - 16, plat.w, 16);
 }
@@ -962,20 +1027,34 @@ function drawArrow(a) {
     else ctx.fillRect(a.x + a.w - 4, a.y, 4, a.h);
   }
   
-  // Línea triggerX en modo editor
+  // Visualización del trigger en modo editor
   if (!state.playtest) {
     ctx.save();
-    ctx.strokeStyle = 'rgba(250,204,21,0.6)';
-    ctx.setLineDash([4, 3]);
-    ctx.lineWidth = 1.2 / state.zoom;
-    ctx.beginPath(); ctx.moveTo(a.triggerX, 0); ctx.lineTo(a.triggerX, lvlH(curLevel())); ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#facc15';
-    ctx.beginPath();
-    ctx.moveTo(a.triggerX - 4, a.y + a.h / 2);
-    ctx.lineTo(a.triggerX + 4, a.y + a.h / 2 - 4);
-    ctx.lineTo(a.triggerX + 4, a.y + a.h / 2 + 4);
-    ctx.closePath(); ctx.fill();
+    if (a.triggerType === 'area' && a.triggerZone) {
+      const z = a.triggerZone;
+      ctx.fillStyle = 'rgba(250,204,21,0.18)';
+      ctx.fillRect(z.x, z.y, z.w, z.h);
+      ctx.strokeStyle = 'rgba(250,204,21,0.85)';
+      ctx.setLineDash([4, 3]);
+      ctx.lineWidth = 1.2 / state.zoom;
+      ctx.strokeRect(z.x, z.y, z.w, z.h);
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(250,204,21,0.9)';
+      ctx.font = `${10 / state.zoom}px monospace`;
+      ctx.fillText('🎯', z.x + 3, z.y + 12);
+    } else {
+      ctx.strokeStyle = 'rgba(250,204,21,0.6)';
+      ctx.setLineDash([4, 3]);
+      ctx.lineWidth = 1.2 / state.zoom;
+      ctx.beginPath(); ctx.moveTo(a.triggerX, 0); ctx.lineTo(a.triggerX, lvlH(curLevel())); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.moveTo(a.triggerX - 4, a.y + a.h / 2);
+      ctx.lineTo(a.triggerX + 4, a.y + a.h / 2 - 4);
+      ctx.lineTo(a.triggerX + 4, a.y + a.h / 2 + 4);
+      ctx.closePath(); ctx.fill();
+    }
     ctx.restore();
   }
 }
@@ -1321,6 +1400,19 @@ function updatePlaytest(step) {
   p.x += p.vx * step;
   p.x = Math.max(0, Math.min(p.x, W - p.w));
 
+  // Colisión de paredes verticales (plataforma normal marcada "vertical"):
+  // bloquean el paso lateral, no solo actúan como piso.
+  for (const plat of state.playPlatforms) {
+    if (plat.type !== 'normal' || !plat.vertical || plat.gone) continue;
+    const withinY = p.y + p.h > plat.y && p.y < plat.y + plat.h;
+    const overlapsX = p.x + p.w > plat.x && p.x < plat.x + plat.w;
+    if (!withinY || !overlapsX) continue;
+    const playerCenter = p.x + p.w / 2;
+    const wallCenter = plat.x + plat.w / 2;
+    if (playerCenter < wallCenter) p.x = plat.x - p.w;
+    else p.x = plat.x + plat.w;
+  }
+
   if (p.vx > 0) p.facing = 1;
   else if (p.vx < 0) p.facing = -1;
 
@@ -1360,8 +1452,11 @@ function updatePlaytest(step) {
 
   // Flechas
   state.playArrows.forEach(a => {
-    if (!a.fired && p.x >= a.triggerX) {
-      a.fired = true; a.active = true;
+    if (!a.fired) {
+      const shouldFire = (a.triggerType === 'area' && a.triggerZone)
+        ? rectsOverlap(p, a.triggerZone)
+        : p.x >= a.triggerX;
+      if (shouldFire) { a.fired = true; a.active = true; }
     }
     if (a.active) {
       if (a.dir === 'up') a.y -= a.speed * step;
@@ -1624,6 +1719,7 @@ document.getElementById('platformTypeSel').addEventListener('change', e => {
 document.getElementById('platformAxisSel').addEventListener('change', e => { state.platformAxis = e.target.value; });
 document.getElementById('platformFakeChk').addEventListener('change', e => { state.platformFake = e.target.checked; });
 document.getElementById('platformSpikeChk').addEventListener('change', e => { state.platformSpike = e.target.checked; });
+document.getElementById('platformVerticalChk').addEventListener('change', e => { state.platformVertical = e.target.checked; });
 
 document.getElementById('hazardTypeSel').addEventListener('change', e => {
   state.hazardType = e.target.value;
@@ -1636,6 +1732,12 @@ document.getElementById('arrowDirSel').addEventListener('change', e => {
   state.arrowDir = isNaN(e.target.value) ? e.target.value : parseInt(e.target.value, 10);
 });
 document.getElementById('arrowSpeedInp').addEventListener('input', e => { state.arrowSpeed = parseFloat(e.target.value) || 4.5; });
+document.getElementById('arrowTriggerTypeSel').addEventListener('change', e => {
+  state.arrowTriggerType = e.target.value;
+  document.getElementById('arrowAreaOptions').style.display = (state.arrowTriggerType === 'area') ? 'block' : 'none';
+});
+document.getElementById('arrowAreaWInp').addEventListener('input', e => { state.arrowAreaW = parseFloat(e.target.value) || 60; });
+document.getElementById('arrowAreaHInp').addEventListener('input', e => { state.arrowAreaH = parseFloat(e.target.value) || 60; });
 document.getElementById('decorTypeSel').addEventListener('change', e => { state.decorType = e.target.value; });
 
 document.getElementById('chkKeepTool').addEventListener('change', e => { state.keepTool = e.target.checked; });
@@ -1855,6 +1957,7 @@ function refreshProps() {
         <div><label>speed</label><input id="p_speed" type="number" step="0.1" value="${obj.move?obj.move.speed:1.8}"></div>
       </div>` : ''}`;
   } else if (sel.cat === 'arrows') {
+    const trigType = obj.triggerType === 'area' ? 'area' : 'line';
     html = `<div class="field-title">➡️ Flecha de Pared</div>
       <div class="row2">
         <div><label>triggerX (disparo)</label><input id="p_triggerX" type="number" value="${obj.triggerX}"></div>
@@ -1871,7 +1974,18 @@ function refreshProps() {
             <option value="down" ${obj.dir==='down'?'selected':''}>⬇️ Abajo</option>
           </select>
         </div>
-      </div>`;
+      </div>
+      <div class="field-title">Tipo de disparo (trigger)</div>
+      <select id="p_triggerType">
+        <option value="line" ${trigType==='line'?'selected':''}>📏 Línea vertical</option>
+        <option value="area" ${trigType==='area'?'selected':''}>🎯 Zona de área</option>
+      </select>
+      ${trigType === 'area' ? `
+      <label>Rango de activación (ancho × alto)</label>
+      <div class="row2">
+        <div><input id="p_zoneW" type="number" min="8" value="${obj.triggerZone ? fmtNum(obj.triggerZone.w) : 60}"></div>
+        <div><input id="p_zoneH" type="number" min="8" value="${obj.triggerZone ? fmtNum(obj.triggerZone.h) : 60}"></div>
+      </div>` : ''}`;
   } else if (sel.cat === 'decor') {
     html = `<div class="field-title">🌿 Decoración</div>
       <label>Tipo</label>
@@ -1907,6 +2021,31 @@ function wirePropInputs(sel, obj) {
       render();
     });
   });
+
+  if (sel.cat === 'arrows') {
+    const triggerTypeSel = document.getElementById('p_triggerType');
+    if (triggerTypeSel) triggerTypeSel.addEventListener('change', () => {
+      pushHistory();
+      obj.triggerType = triggerTypeSel.value;
+      if (obj.triggerType === 'area' && !obj.triggerZone) {
+        const zw = 60, zh = 60;
+        obj.triggerZone = { x: Math.round(obj.triggerX - zw / 2), y: Math.round(obj.y + obj.h / 2 - zh / 2), w: zw, h: zh };
+      }
+      refreshProps(); render();
+    });
+    const zoneWEl = document.getElementById('p_zoneW');
+    const zoneHEl = document.getElementById('p_zoneH');
+    const syncZone = () => {
+      const w = Math.max(8, parseFloat(zoneWEl.value) || 60);
+      const h = Math.max(8, parseFloat(zoneHEl.value) || 60);
+      const cx = obj.triggerZone ? obj.triggerZone.x + obj.triggerZone.w / 2 : obj.triggerX;
+      const cy = obj.triggerZone ? obj.triggerZone.y + obj.triggerZone.h / 2 : obj.y + obj.h / 2;
+      obj.triggerZone = { x: Math.round(cx - w / 2), y: Math.round(cy - h / 2), w, h };
+      render();
+    };
+    if (zoneWEl) zoneWEl.addEventListener('input', () => { pushHistory(); syncZone(); });
+    if (zoneHEl) zoneHEl.addEventListener('input', () => { pushHistory(); syncZone(); });
+  }
 
   const typeSel = document.getElementById('p_type');
   if (typeSel) typeSel.addEventListener('change', () => {
@@ -2074,6 +2213,7 @@ function formatLevel(lvl, indent) {
   lines.push(`${ind}platforms: [`);
   (lvl.platforms || []).forEach(p => {
     let s = `${i2}{ x: ${fmtNum(p.x)}, y: ${fmtNum(p.y)}, w: ${fmtNum(p.w)}, h: ${fmtNum(p.h)}, type: '${p.type}'`;
+    if (p.vertical) s += `, vertical: true`;
     if (p.decor) s += `, decor: '${p.decor}'`;
     if (p.fake) s += `, fake: true`;
     if (p.move) s += `, move: { axis: '${p.move.axis}', from: ${fmtNum(p.move.from)}, to: ${fmtNum(p.move.to)}, speed: ${fmtNum(p.move.speed)} }`;
@@ -2098,7 +2238,12 @@ function formatLevel(lvl, indent) {
   lines.push(`${ind}arrows: [`);
   (lvl.arrows || []).forEach(a => {
     const dirTxt = (typeof a.dir === 'number') ? a.dir : `'${a.dir}'`;
-    lines.push(`${i2}{ triggerX: ${fmtNum(a.triggerX)}, x: ${fmtNum(a.x)}, y: ${fmtNum(a.y)}, w: ${fmtNum(a.w)}, h: ${fmtNum(a.h)}, dir: ${dirTxt}, speed: ${fmtNum(a.speed)}, active: false, fired: false },`);
+    let s = `${i2}{ triggerX: ${fmtNum(a.triggerX)}, x: ${fmtNum(a.x)}, y: ${fmtNum(a.y)}, w: ${fmtNum(a.w)}, h: ${fmtNum(a.h)}, dir: ${dirTxt}, speed: ${fmtNum(a.speed)}`;
+    if (a.triggerType === 'area' && a.triggerZone) {
+      s += `, triggerType: 'area', triggerZone: { x: ${fmtNum(a.triggerZone.x)}, y: ${fmtNum(a.triggerZone.y)}, w: ${fmtNum(a.triggerZone.w)}, h: ${fmtNum(a.triggerZone.h)} }`;
+    }
+    s += `, active: false, fired: false },`;
+    lines.push(s);
   });
   lines.push(`${ind}],`);
 

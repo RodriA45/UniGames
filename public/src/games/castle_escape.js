@@ -153,7 +153,7 @@ const trInput = new Engine2D.KeyboardInput(
     }
   }
 );
-TRAMPAS.keys = { left: false, right: false };
+TRAMPAS.keys = { left: false, right: false, jump: false };
 
 // Enter también cierra el overlay (además de Espacio) — queda aparte
 // porque Enter no es una acción de movimiento, KeyboardInput solo mapea
@@ -419,19 +419,13 @@ function trLoadLevel(index) {
   TRAMPAS.arrows     = lvl.arrows.map(a => ({ ...a, active: false, fired: false }));
   TRAMPAS.deathsThisLevel = 0;
 
-  // Tamaño del nivel en world-space (por defecto la vista fija si el nivel
-  // no declara width/height, así los niveles viejos siguen funcionando).
+  // Tamaño del nivel en world-space
   TRAMPAS.levelW = lvl.width  || TR_W;
   TRAMPAS.levelH = lvl.height || TR_H;
   TRAMPAS.fov = lvl.fov || 1;
   TRAMPAS.camera.x = 0;
   TRAMPAS.camera.y = 0;
 
-  // Y del "piso base" del nivel: la fila más baja (mayor y) entre las
-  // plataformas normales/falsas (el suelo real). No se cuentan 'crumble'
-  // ni 'moving' acá — son islas sueltas por definición y si están más
-  // abajo que el piso (ver nivel 20) no deben "correr" el piso hacia
-  // abajo y hacer que el piso real se dibuje con textura de isla.
   const floorCandidates = lvl.platforms.filter(p => p.type === 'normal' || p.type === 'fake');
   TRAMPAS.floorY = Math.max(...(floorCandidates.length ? floorCandidates : lvl.platforms).map(p => p.y));
 
@@ -443,28 +437,46 @@ function trLoadLevel(index) {
   const starsEl = document.getElementById('trampas-hud-stars');
   if (starsEl) starsEl.textContent = (index + 1) + '/' + TR_LEVELS.length + ' - ' + lvl.nombre;
 
-  // Imagen de fondo del castillo (capa 0): una sola imagen (back.png) para
-  // todos los niveles.
   const cont = document.querySelector('.trampas-container');
   if (cont) cont.style.background = "#150620 url('assert/Castle Escape/back.png') center/cover no-repeat";
 }
 
-// ─── Spritesheets (mapa.png / deco.png) ───
-// Se cargan una sola vez, la primera vez que se entra a Castle Escape.
-// El dibujo (drawTrampas) chequea si ya están listos antes de usarlos —
-// si todavía no cargaron (primer frame o conexión lenta), cae al dibujo
-// vectorial de siempre en vez de romper, así que no hace falta await acá.
 const TR_ASSETS = [
   { type: 'image', src: 'assert/Castle Escape/mapa.png' },
   { type: 'atlas', src: 'assert/Castle Escape/mapa_atlas.json' },
   { type: 'image', src: 'assert/Castle Escape/deco.png' },
   { type: 'atlas', src: 'assert/Castle Escape/deco_atlas.json' },
-  // Personaje — reutiliza el spritesheet de Pixel Runner (junior.png):
-  // trae run_0..6 (correr), action_0..6 (acá se usa action_2 como pose de
-  // salto, igual que en Pixel Runner) y fall_0..3 (animación de morir).
   { type: 'image', src: 'assert/Castle Escape/models/junior.png' },
   { type: 'atlas', src: 'assert/Castle Escape/models/junior.atlas.json' },
 ];
+
+function setupTrampasTouch() {
+  if (TRAMPAS.touch) TRAMPAS.touch.detach();
+  const C = TRAMPAS.canvas;
+  const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+    || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+  TRAMPAS.touch = new Engine2D.TouchControls(C, { visible: isTouchDevice });
+  TRAMPAS.touch.addButton({ id: 'left', x: 40, y: 230, radius: 24, label: '◀' });
+  TRAMPAS.touch.addButton({ id: 'right', x: 100, y: 230, radius: 24, label: '▶' });
+  TRAMPAS.touch.addButton({ id: 'jump', x: 430, y: 230, radius: 30, label: '↑' });
+  TRAMPAS.touch.attach();
+  TRAMPAS._touchPrev = { left: false, right: false, jump: false };
+}
+
+function syncTrampasTouch() {
+  const t = TRAMPAS.touch;
+  if (!t) return;
+  const prev = TRAMPAS._touchPrev;
+
+  if (t.state.left !== prev.left) { TRAMPAS.keys.left = t.state.left; prev.left = t.state.left; }
+  if (t.state.right !== prev.right) { TRAMPAS.keys.right = t.state.right; prev.right = t.state.right; }
+
+  const jumpPressed = t.state.jump && !prev.jump;
+  prev.jump = t.state.jump;
+
+  TRAMPAS.keys.jump = t.state.jump;
+  if (jumpPressed) trJump();
+}
 
 function initTrampas() {
   TRAMPAS.canvas = document.getElementById('trampasCanvas');
@@ -492,11 +504,7 @@ function initTrampas() {
 function setupTrampasEvents() {
   trInput.attach();
   trAttachEnterHandler();
-}
-
-function trMove(dir, on) {
-  if (dir === 'left')  TRAMPAS.keys.left  = on;
-  if (dir === 'right') TRAMPAS.keys.right = on;
+  setupTrampasTouch();
 }
 
 function trJump() {
@@ -513,6 +521,7 @@ function startTrampas() {
   TRAMPAS.levelDeaths = 0;
   TRAMPAS.running = true;
   trLoop.start();
+  if (TRAMPAS.touch) TRAMPAS.touch.attach();
   if (typeof setMusic === 'function') setMusic('assert/Castle Escape/sounds/backsong.mp3');
 }
 
@@ -520,6 +529,10 @@ function stopTrampas() {
   TRAMPAS.running = false;
   trLoop.stop();
   trInput.detach();
+  if (TRAMPAS.touch) TRAMPAS.touch.detach();
+  TRAMPAS.keys.left = false;
+  TRAMPAS.keys.right = false;
+  TRAMPAS.keys.jump = false;
   if (trEnterHandler) { document.removeEventListener('keydown', trEnterHandler); trEnterHandler = null; }
 }
 
@@ -706,6 +719,7 @@ function trOscillate(obj, step) {
 // que antes; en pantallas de otro refresh rate el movimiento ahora se
 // mantiene igual de rápido (antes dependía del framerate real).
 function updateTrampas(step) {
+  syncTrampasTouch();
   const p = TRAMPAS.player;
   if (p.dead) return;
 
@@ -770,6 +784,14 @@ function updateTrampas(step) {
     if (plat.type === 'crumble' && plat.touchedAt !== null && !plat.gone) {
       if (performance.now() - plat.touchedAt > 400) plat.gone = true;
     }
+  }
+
+  // Salto continuo táctil: si el botón de saltar está mantenido y el jugador
+  // acaba de aterrizar, saltar automáticamente (sin necesidad de soltar y volver
+  // a tocar el botón entre cada salto).
+  if (TRAMPAS.keys.jump && p.onGround) {
+    p.vy = TR_JUMP_VY;
+    p.onGround = false;
   }
 
   // Flechas de pared: se activan al cruzar triggerX (en las verticales el
@@ -1188,4 +1210,9 @@ function drawTrampas() {
 
   // Salir del espacio de world (cámara)
   ctx.restore();
+
+  // Controles táctiles (Engine2D)
+  if (TRAMPAS.touch && TRAMPAS.touch.visible) {
+    TRAMPAS.touch.draw(ctx);
+  }
 }

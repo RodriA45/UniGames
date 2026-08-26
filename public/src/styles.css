@@ -127,64 +127,107 @@ header {
   white-space: nowrap;
 }
 
-/* Área de autenticación */
-.auth-area {
+/* Área de autenticación / perfil */
+.account-toggle {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  cursor: pointer;
   flex-shrink: 0;
 }
 
-.btn-auth {
-  font-family: 'Nunito', sans-serif;
-  font-weight: 700;
-  font-size: 0.82rem;
-  padding: 0.45rem 1rem;
-  border-radius: 8px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s;
-  white-space: nowrap;
+.account-toggle:hover svg {
+  transform: scale(1.08);
 }
 
-.btn-login {
-  background: transparent;
-  border-color: rgba(255, 255, 255, 0.5);
-  color: var(--white);
+.account-toggle svg {
+  transition: transform 0.2s ease;
+  fill: var(--white);
 }
 
-.btn-login:hover {
-  border-color: var(--yellow);
-  color: var(--yellow);
+.account-toggle {
+  background: none;
+  border: none;
+  padding: 6px;
 }
 
-.btn-register {
-  background: var(--yellow);
-  color: var(--blue-dark);
+/* ─── FONDO OSCURO DE LOS MENÚS LATERALES ─── */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 20, 0.6);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  z-index: 899;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
 }
 
-.btn-register:hover {
-  background: var(--yellow-glow);
-  transform: translateY(-1px);
+.drawer-backdrop.show {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-/* ─── MENÚ DESPLEGABLE ─── */
+/* ─── MENÚ LATERAL IZQUIERDO ─── */
 .nav-menu {
-  background: var(--blue-mid);
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s ease, padding 0.35s ease;
-  border-top: 0px solid var(--blue-accent);
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: min(300px, 82vw);
+  background: linear-gradient(160deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.45);
+  z-index: 900;
+  transform: translateX(-100%);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 .nav-menu.open {
-  max-height: 300px;
-  border-top: 2px solid var(--blue-accent);
+  transform: translateX(0);
+}
+
+.nav-menu-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.nav-menu-logo {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.85rem;
+  color: var(--yellow);
+  letter-spacing: 1px;
+}
+
+.nav-menu-close {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--white);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.nav-menu-close:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: rgba(239, 68, 68, 0.5);
 }
 
 .nav-menu ul {
   list-style: none;
-  padding: 0.5rem 1.5rem 1rem;
+  padding: 0.75rem 1rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -212,6 +255,87 @@ header {
 
 .nav-icon {
   font-size: 1.1rem;
+}
+
+/* ─── MENÚ LATERAL DERECHO: CUENTA ─── */
+.account-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: min(300px, 82vw);
+  background: linear-gradient(160deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.45);
+  z-index: 900;
+  transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.account-drawer.open {
+  transform: translateX(0);
+}
+
+.account-drawer-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.account-greeting {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--yellow);
+  margin-bottom: 0.5rem;
+  word-break: break-word;
+}
+
+.account-drawer-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--white);
+  font-weight: 700;
+  font-size: 0.95rem;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.account-drawer-btn:hover {
+  background: rgba(37, 99, 235, 0.4);
+  border-color: var(--yellow);
+  transform: translateX(2px);
+}
+
+.account-drawer-btn.btn-logout {
+  margin-top: 0.5rem;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.account-drawer-btn.btn-logout:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.6);
+}
+
+.account-drawer-btn.btn-login-drawer {
+  background: var(--yellow);
+  color: var(--blue-dark);
+  border-color: var(--yellow);
+  justify-content: center;
+}
+
+.account-drawer-btn.btn-login-drawer:hover {
+  background: var(--yellow-glow);
 }
 
 /* ─── MAIN ─── */
@@ -1738,7 +1862,7 @@ footer span {
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(76, 29, 149, 0.35);
   border: 3px solid #4c1d95;
-  background: #150620 url('assert/Castle Escape/back1.jpg') center/cover no-repeat;
+  background: #150620 url('../assert/Castle Escape/back.png') center/cover no-repeat;
   overscroll-behavior: contain;
 }
 
@@ -1803,27 +1927,7 @@ footer span {
   margin-top: 0.5rem;
 }
 
-.trampas-controls {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 0.9rem;
-}
 
-@media (max-width: 480px) {
-  .trampas-controls {
-    gap: 0.6rem;
-    margin-top: 0.75rem;
-  }
-
-  .trampas-controls .runner-ctrl-btn {
-    flex: 1;
-    padding: 1rem 0;
-    font-size: 1.15rem;
-    border-radius: 12px;
-    border-width: 3px;
-  }
-}
 
 .trampas-menu {
     position: absolute;
@@ -1840,7 +1944,7 @@ footer span {
     z-index: 20;
     overflow-y: auto;
     border-radius: 16px;
-    background: linear-gradient(180deg, rgba(42, 14, 55, 0.85) 0%, rgba(21, 6, 32, 0.92) 100%), url('assert/Castle Escape/menu.jpg') center/cover no-repeat;
+    background: linear-gradient(180deg, rgba(42, 14, 55, 0.85) 0%, rgba(21, 6, 32, 0.92) 100%), url('../assert/Castle Escape/menu.jpg') center/cover no-repeat;
   }
 
   .trampas-menu.hidden {
@@ -1849,7 +1953,7 @@ footer span {
 
   /* Menú principal: sin overlay morado, se ve la imagen limpia */
   #trampasMainMenu {
-    background: url('/assert/Castle Escape/menu.jpg') center/cover no-repeat;
+    background: url('../assert/Castle Escape/menu.jpg') center/cover no-repeat;
   }
 
   /* .trampas-menu (menú principal, selección de nivel y ajustes) usa
@@ -2304,6 +2408,150 @@ footer span {
     }
   }
 
+  /* ─── Castle Escape mobile ─── */
+  @media (max-width: 600px) {
+    /* El contenedor ocupa todo el ancho disponible sin margen extra */
+    .trampas-container {
+      max-width: 100%;
+      border-radius: 10px;
+      border-width: 2px;
+    }
+
+    /* HUD: botones más pequeños para no tapar el canvas */
+    .trampas-hud-btn {
+      padding: 3px 6px;
+      font-size: 12px;
+    }
+
+    .trampas-hud-stars,
+    .trampas-hud-deaths {
+      font-size: 8px;
+      padding: 2px 6px;
+    }
+
+    /* Overlay: texto más chico */
+    .trampas-overlay-title {
+      font-size: clamp(10px, 2.5vw, 14px);
+    }
+
+    .trampas-overlay-sub {
+      font-size: 0.75rem;
+    }
+
+    .trampas-start-btn {
+      font-size: 0.85rem;
+      padding: 0.55rem 1.5rem;
+    }
+    
+    /* Menú interno: súper compacto y scrollable desde arriba para que el botón "Jugar" siempre se vea en pantallas de 230px de alto */
+    .trampas-menu {
+      padding: 0.5rem;
+      gap: 0.4rem;
+      justify-content: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .trampas-menu-header {
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+
+    .trampas-menu-title {
+      font-size: clamp(12px, 4vw, 16px);
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+
+    .trampas-menu-title-small {
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .trampas-menu-subtitle {
+      font-size: 0.65rem;
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+
+    .trampas-back-btn {
+      padding: 0.3rem 0.6rem;
+      font-size: 0.65rem;
+    }
+
+    .trampas-menu-btn {
+      font-size: 0.7rem;
+      padding: 0.5rem 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .trampas-level-nav {
+      gap: 0.4rem;
+      flex-shrink: 0;
+    }
+
+    .trampas-level-card-big {
+      padding: 0.4rem;
+      min-width: 120px;
+      min-height: 80px;
+      width: auto;
+      gap: 0.2rem;
+    }
+
+    .trampas-nav-arrow {
+      width: 24px;
+      height: 24px;
+      font-size: 0.6rem;
+    }
+
+    .trampas-big-stars {
+      font-size: 0.8rem;
+    }
+
+    .trampas-big-level-num {
+      font-size: 1rem;
+    }
+
+    .trampas-big-level-name {
+      font-size: 0.6rem;
+    }
+
+    .trampas-level-dots {
+      display: none; /* Ocultar puntos en móvil para ahorrar espacio vertical */
+    }
+
+    .trampas-play-btn {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.65rem;
+      min-height: 30px;
+    }
+
+    .trampas-howto-content, .trampas-settings-content {
+      gap: 0.3rem;
+    }
+
+    .trampas-howto-row, .trampas-slider-row {
+      padding: 0.3rem 0.5rem;
+      font-size: 0.65rem;
+    }
+
+    /* Pausa */
+    .trampas-pause-box {
+      padding: 0.8rem 1rem;
+      gap: 0.5rem;
+    }
+
+    .trampas-pause-title {
+      font-size: 11px;
+    }
+
+    .trampas-pause-opt {
+      width: 130px;
+      font-size: 0.7rem;
+      padding: 0.4rem 0.6rem;
+    }
+  }
+
   /* Badges de color de los power-ups del Pixel Runner, dentro del cartel
    "Cómo jugar" — mismos colores que usa el juego para dibujarlos
    (ver drawRunner en pixelrunner.js: escudo azul, x2 naranja). */
@@ -2556,19 +2804,6 @@ footer span {
 
     .hide-on-mobile {
       display: none !important;
-    }
-
-    .btn-login, .btn-register {
-      font-size: 1.1rem;
-      padding: 0.35rem 0.45rem;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .auth-area {
-      display: flex;
-      gap: 0.3rem;
     }
 
     /* Hero */
@@ -3640,6 +3875,9 @@ footer span {
   color: #e2e8f0;
 }
 
+
+
+
 .info-content-box p {
   margin-bottom: 0.5rem;
 }
@@ -4199,6 +4437,7 @@ body.game-active {
   touch-action: none !important;
 }
 
+
 body.theme-light {
   --blue-dark: #cbd5e1;
   --blue-mid: #f1f5f9;
@@ -4263,6 +4502,13 @@ body.theme-light .hamburger span {
 body.theme-light .hamburger {
     border-color: rgba(0, 0, 0, 0.2);
 }
+body.theme-light .nav-menu,
+body.theme-light .account-drawer {
+    background: linear-gradient(160deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+body.theme-light .nav-menu-logo {
+    color: var(--text-dark);
+}
 body.theme-light .nav-menu ul li a {
     color: var(--text-dark);
 }
@@ -4270,8 +4516,15 @@ body.theme-light .nav-menu ul li a:hover,
 body.theme-light .nav-menu ul li a.active {
     background: rgba(37, 99, 235, 0.1);
 }
+body.theme-light .account-drawer-btn {
+    color: var(--text-dark);
+    border-color: rgba(0, 0, 0, 0.15);
+}
+body.theme-light .account-greeting {
+    color: var(--blue-accent);
+}
 body.theme-light .audio-toggle svg,
-body.theme-light .info-toggle svg {
+body.theme-light .account-toggle svg {
     fill: var(--text-dark);
     filter: none;
 }
@@ -4286,4 +4539,28 @@ body.theme-light footer span {
 body.theme-light .hero h1,
 body.theme-light .section-title {
     color: var(--text-dark);
+}
+
+/* ─── Castle Escape: pantalla completa en mobile ─── */
+@media (max-width: 600px) {
+  /* Cuando la sección del juego está activa, reducir el padding lateral
+     del main para que el canvas y los botones táctiles usen todo el ancho */
+  main:has(#sec-castle_escape.active) {
+    padding-left: 0.4rem;
+    padding-right: 0.4rem;
+  }
+
+  #sec-castle_escape .game-screen-header {
+    padding: 0.4rem 0.5rem;
+    margin-bottom: 0.6rem;
+  }
+
+  #sec-castle_escape .btn-back {
+    font-size: 0.72rem;
+    padding: 0.3rem 0.55rem;
+  }
+
+  #sec-castle_escape .game-screen-title {
+    font-size: 8px;
+  }
 }
