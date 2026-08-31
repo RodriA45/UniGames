@@ -1,0 +1,833 @@
+/* ══════════════════════════════════════
+   CASTLE ESCAPE (Salto Traicionero) — castle_escape.css
+   Estilos específicos de Castle Escape, separados de styles.css.
+   Reutiliza las variables de styles.css (--yellow, etc.) y los
+   componentes genéricos de ui-components.css (botones, slider de
+   ajustes/pantalla completa).
+
+   Nota de limpieza: se eliminaron ~35 reglas ".castle-escape-*"
+   (header, hud, menu, pause, result...) que estaban en styles.css
+   sin usarse en ningún .js del proyecto — parecen resabios de una
+   versión anterior del juego, antes de que todo pasara a usar el
+   prefijo "trampas-". Si tenés un index.html con esas clases en
+   algún lado avisame y las recupero; si no, es código muerto menos
+   para mantener.
+
+   También se unificaron dos bloques ".trampas-container:fullscreen"
+   que estaban duplicados letra por letra en styles.css (quedó uno
+   solo, con el max-height que tenía la segunda copia).
+
+   Cargar DESPUÉS de styles.css y ui-components.css.
+   ══════════════════════════════════════ */
+
+@media (max-width: 480px) {
+
+  .trampas-howto-content {
+    max-width: 100%;
+    gap: 0.4rem;
+  }
+}
+
+
+/* ─── SALTO TRAICIONERO ─── */
+
+.trampas-container {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  aspect-ratio: 480 / 270;
+  margin: 0 auto;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(76, 29, 149, 0.35);
+  border: 3px solid #4c1d95;
+  background: #150620 url('models/back.png') center/cover no-repeat;
+  overscroll-behavior: contain;
+}
+
+#trampasCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.trampas-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(21, 6, 32, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.trampas-overlay.hidden {
+  display: none;
+}
+
+.trampas-overlay-box {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  margin: auto;
+  max-width: 90%;
+}
+
+.trampas-overlay-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(12px, 2vw, 18px);
+  color: #facc15;
+  text-shadow: 0 0 12px rgba(250, 204, 21, 0.5);
+}
+
+.trampas-overlay-sub {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+  text-align: center;
+  white-space: pre-line;
+}
+
+.trampas-start-btn {
+  background: #facc15;
+  color: #2a0e37;
+  font-weight: 900;
+  font-size: 1rem;
+  padding: 0.7rem 2rem;
+  border-radius: 10px;
+  margin-top: 0.5rem;
+}
+
+
+.trampas-menu {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+    z-index: 20;
+    overflow-y: auto;
+    border-radius: 16px;
+    background-color: #150620;
+    background-image: linear-gradient(180deg, rgba(42, 14, 55, 0.85) 0%, rgba(21, 6, 32, 0.92) 100%), url('models/menu.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  .trampas-menu.hidden {
+    display: none;
+  }
+
+  /* Menú principal: sin overlay morado, se ve la imagen limpia */
+  #trampasMainMenu {
+    background-color: #150620;
+    background-image: url('models/menu.jpg');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+
+  /* .trampas-menu (menú principal, selección de nivel y ajustes) usa
+   aspect-ratio: 480/270, la misma proporción que el canvas del juego.
+   En mobile esa caja queda muy baja de alto para el contenido real
+   (título + subtítulo + botones) y todo quedaba cortado por el
+   overflow:hidden de la regla base — en selección de nivel directamente
+   no se podía tocar "Jugar Nivel". Acá lo pasamos a alto mínimo + scroll
+   y achicamos un poco todo para que entre sin necesidad de scrollear en
+   la mayoría de los celulares. */
+  @media (max-width: 480px) {
+    .trampas-menu {
+      aspect-ratio: auto;
+      min-height: 300px;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 1.25rem 1rem;
+      gap: 0.6rem;
+    }
+
+    .trampas-menu-title {
+      font-size: clamp(15px, 6vw, 22px);
+    }
+
+    .trampas-menu-subtitle {
+      font-size: 0.78rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .trampas-menu-btn {
+      padding: 0.75rem 1.5rem;
+      min-width: 160px;
+      font-size: clamp(10px, 3vw, 12px);
+    }
+
+    .trampas-level-nav {
+      gap: 0.6rem;
+      margin: 0.5rem 0;
+    }
+
+    .trampas-nav-arrow {
+      width: 38px;
+      height: 38px;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    .trampas-level-card-big {
+      padding: 1rem 0.75rem;
+      min-width: 0;
+      flex: 1;
+      min-height: 110px;
+    }
+
+    .trampas-play-btn {
+      padding: 0.6rem 1.4rem;
+      font-size: clamp(10px, 3vw, 12px);
+    }
+}
+
+
+  .trampas-menu-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(20px, 4.5vw, 36px);
+    letter-spacing: 1px;
+    color: #fde68a;
+    background: linear-gradient(180deg, #fef3c7 0%, #facc15 55%, #d97706 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 3px 0 #78350f) drop-shadow(0 0 18px rgba(250, 204, 21, 0.45));
+    text-align: center;
+  }
+
+  .trampas-menu-title-small {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(12px, 2.5vw, 18px);
+    color: #facc15;
+    text-shadow: 0 0 12px rgba(250, 204, 21, 0.4);
+  }
+
+  .trampas-menu-subtitle {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.95rem;
+    text-align: center;
+    margin-bottom: 1rem;
+  }
+
+  .trampas-menu-btn {
+    background: linear-gradient(135deg, #facc15, #eab308);
+    color: #2a0e37;
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(11px, 2vw, 14px);
+    font-weight: 900;
+    padding: 1rem 2.5rem;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 15px rgba(250, 204, 21, 0.4);
+    min-width: 200px;
+  }
+
+  .trampas-menu-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(250, 204, 21, 0.6);
+  }
+
+  .trampas-menu-btn-secondary {
+    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+  }
+
+  .trampas-menu-btn-secondary:hover {
+    box-shadow: 0 6px 25px rgba(124, 58, 237, 0.6);
+  }
+
+  .trampas-menu-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    width: 100%;
+    max-width: 500px;
+  }
+
+  .trampas-back-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #c4b5fd;
+    border: 2px solid #7c3aed;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+
+  .trampas-back-btn:hover {
+    background: rgba(124, 58, 237, 0.3);
+    transform: scale(1.05);
+  }
+
+  /* Level select - card grande con flechas */
+  .trampas-level-nav {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin: 1rem 0;
+  }
+
+  .trampas-nav-arrow {
+    background: rgba(255, 255, 255, 0.1);
+    color: #facc15;
+    border: 2px solid #facc15;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .trampas-nav-arrow:hover {
+    background: #facc15;
+    color: #2a0e37;
+    transform: scale(1.1);
+  }
+
+  .trampas-nav-arrow:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    transform: none;
+    background: rgba(255, 255, 255, 0.05);
+    border-color: #555;
+    color: #555;
+  }
+
+  .trampas-level-card-big {
+    background: linear-gradient(145deg, #2a0e37, #1a0a28);
+    border: 3px solid #4c1d95;
+    border-radius: 16px;
+    padding: 1.5rem 2rem;
+    text-align: center;
+    min-width: 180px;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: border-color 0.3s;
+  }
+
+  .trampas-level-card-big.locked {
+    opacity: 0.4;
+    border-color: #333;
+  }
+
+  .trampas-big-stars {
+    display: flex;
+    gap: 6px;
+    font-size: 22px;
+  }
+
+  .trampas-big-stars .star {
+    opacity: 0.2;
+    color: #facc15;
+    transition: opacity 0.3s, text-shadow 0.3s;
+  }
+
+  .trampas-big-stars .star.earned {
+    opacity: 1;
+    text-shadow: 0 0 10px rgba(250, 204, 21, 0.6);
+  }
+
+  .trampas-big-level-num {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 11px;
+    color: #facc15;
+  }
+
+  .trampas-big-level-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    min-height: 1.5em;
+  }
+
+  .trampas-level-dots {
+    display: flex;
+    gap: 8px;
+    margin: 0.8rem 0;
+  }
+
+  .trampas-level-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .trampas-level-dot.active {
+    background: #facc15;
+    transform: scale(1.3);
+    box-shadow: 0 0 8px rgba(250, 204, 21, 0.5);
+  }
+
+  .trampas-play-btn {
+    background: linear-gradient(135deg, #facc15, #eab308);
+    color: #2a0e37;
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(11px, 2vw, 14px);
+    font-weight: 900;
+    padding: 0.8rem 2rem;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 15px rgba(250, 204, 21, 0.4);
+  }
+
+  .trampas-play-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 25px rgba(250, 204, 21, 0.6);
+  }
+
+  .trampas-play-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .trampas-container:fullscreen,
+  .trampas-container:-webkit-full-screen {
+    width: 100vw;
+    height: 100vh;
+    max-width: 100vw;
+    max-height: 100vh;
+    aspect-ratio: unset;
+    border-radius: 0;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #150620;
+  }
+
+  .trampas-container:fullscreen #trampasCanvas,
+  .trampas-container:-webkit-full-screen #trampasCanvas {
+    width: auto;
+    height: 100%;
+    max-width: 100vw;
+    aspect-ratio: 480 / 270;
+  }
+
+  @media (orientation: portrait) {
+
+    .trampas-container:fullscreen #trampasCanvas,
+    .trampas-container:-webkit-full-screen #trampasCanvas {
+      width: 100%;
+      height: auto;
+      max-width: 100vw;
+      max-height: 100vh;
+    }
+}
+
+
+  /* ─── Cómo jugar ─── */
+  .trampas-howto-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    width: 100%;
+    max-width: 420px;
+    text-align: left;
+  }
+
+  .trampas-howto-row {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(124, 58, 237, 0.35);
+    border-radius: 10px;
+    padding: 0.55rem 0.9rem;
+    color: #fff;
+    font-size: 0.85rem;
+  }
+
+  .trampas-howto-keys {
+    flex: 0 0 auto;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.62rem;
+    color: #facc15;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(250, 204, 21, 0.4);
+    border-radius: 6px;
+    padding: 0.35rem 0.5rem;
+    white-space: nowrap;
+  }
+
+  .trampas-howto-tip {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.8rem;
+    line-height: 1.5;
+    text-align: center;
+    margin: 0;
+  }
+
+  @media (max-width: 480px) {
+    .trampas-howto-row {
+      gap: 0.5rem;
+      padding: 0.4rem 0.55rem;
+      font-size: 0.72rem;
+      border-radius: 8px;
+    }
+
+    .trampas-howto-keys {
+      font-size: 0.55rem;
+      padding: 0.25rem 0.4rem;
+    }
+
+    .trampas-howto-tip {
+      font-size: 0.68rem;
+      line-height: 1.35;
+    }
+}
+
+
+  /* ─── Castle Escape mobile ─── */
+  @media (max-width: 600px) {
+    /* El contenedor ocupa todo el ancho disponible sin margen extra */
+    .trampas-container {
+      max-width: 100%;
+      border-radius: 10px;
+      border-width: 2px;
+    }
+
+    /* HUD: botones más pequeños para no tapar el canvas */
+    .trampas-hud-btn {
+      padding: 3px 6px;
+      font-size: 12px;
+    }
+
+    .trampas-hud-stars,
+    .trampas-hud-deaths {
+      font-size: 8px;
+      padding: 2px 6px;
+    }
+
+    /* Overlay: texto más chico */
+    .trampas-overlay-title {
+      font-size: clamp(10px, 2.5vw, 14px);
+    }
+
+    .trampas-overlay-sub {
+      font-size: 0.75rem;
+    }
+
+    .trampas-start-btn {
+      font-size: 0.85rem;
+      padding: 0.55rem 1.5rem;
+    }
+    
+    /* Menú interno: súper compacto y scrollable desde arriba para que el botón "Jugar" siempre se vea en pantallas de 230px de alto */
+    .trampas-menu {
+      padding: 0.5rem;
+      gap: 0.4rem;
+      justify-content: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .trampas-menu-header {
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+
+    .trampas-menu-title {
+      font-size: clamp(12px, 4vw, 16px);
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+
+    .trampas-menu-title-small {
+      font-size: 10px;
+      flex-shrink: 0;
+    }
+
+    .trampas-menu-subtitle {
+      font-size: 0.65rem;
+      margin-bottom: 0;
+      flex-shrink: 0;
+    }
+
+    .trampas-back-btn {
+      padding: 0.3rem 0.6rem;
+      font-size: 0.65rem;
+    }
+
+    .trampas-menu-btn {
+      font-size: 0.7rem;
+      padding: 0.5rem 0.8rem;
+      flex-shrink: 0;
+    }
+
+    .trampas-level-nav {
+      gap: 0.4rem;
+      flex-shrink: 0;
+    }
+
+    .trampas-level-card-big {
+      padding: 0.4rem;
+      min-width: 120px;
+      min-height: 80px;
+      width: auto;
+      gap: 0.2rem;
+    }
+
+    .trampas-nav-arrow {
+      width: 24px;
+      height: 24px;
+      font-size: 0.6rem;
+    }
+
+    .trampas-big-stars {
+      font-size: 0.8rem;
+    }
+
+    .trampas-big-level-num {
+      font-size: 1rem;
+    }
+
+    .trampas-big-level-name {
+      font-size: 0.6rem;
+    }
+
+    .trampas-level-dots {
+      display: none; /* Ocultar puntos en móvil para ahorrar espacio vertical */
+    }
+
+    .trampas-play-btn {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.65rem;
+      min-height: 30px;
+    }
+
+    .trampas-howto-content {
+      gap: 0.3rem;
+    }
+
+    .trampas-howto-row {
+      padding: 0.3rem 0.5rem;
+      font-size: 0.65rem;
+    }
+
+    /* Pausa */
+    .trampas-pause-box {
+      padding: 0.8rem 1rem;
+      gap: 0.5rem;
+    }
+
+    .trampas-pause-title {
+      font-size: 11px;
+    }
+
+    .trampas-pause-opt {
+      width: 130px;
+      font-size: 0.7rem;
+      padding: 0.4rem 0.6rem;
+    }
+}
+
+
+  /* ─── Cartel de controles dentro del juego (no alert) ─── */
+  .trampas-controls-sign {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 7;
+    background: rgba(21, 6, 32, 0.92);
+    border: 2px solid #facc15;
+    border-radius: 12px;
+    padding: 0.8rem 1.3rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    text-align: center;
+    max-width: 80%;
+    pointer-events: none;
+  }
+
+  .trampas-controls-sign.hidden {
+    display: none;
+  }
+
+  .trampas-controls-sign-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.75rem;
+    color: #facc15;
+    margin-bottom: 0.5rem;
+  }
+
+  .trampas-controls-sign-row {
+    color: #fff;
+    font-size: 0.8rem;
+    margin: 0.25rem 0;
+  }
+
+  .trampas-controls-sign-row b {
+    color: #facc15;
+  }
+
+  /* Mini menú pausa */
+  .trampas-hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .trampas-hud-btn {
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.5);
+    color: #facc15;
+    border: 1px solid rgba(250, 204, 21, 0.4);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 14px;
+    cursor: pointer;
+    line-height: 1;
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+
+  .trampas-hud-btn:hover {
+    background: rgba(250, 204, 21, 0.2);
+    transform: scale(1.08);
+  }
+
+  .trampas-hud-left {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .trampas-hud-info {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .trampas-hud-stars,
+  .trampas-hud-deaths {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 10px;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 3px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+
+  .trampas-hud-stars {
+    color: #facc15;
+  }
+
+  .trampas-hud-deaths {
+    color: #ef4444;
+  }
+
+  .trampas-pause-btn {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.8rem;
+    background: rgba(124, 58, 237, 0.3);
+    border-color: #7c3aed;
+    color: #c4b5fd;
+  }
+
+  .trampas-pause-menu {
+    position: absolute;
+    inset: 0;
+    background: rgba(21, 6, 32, 0.92);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(3px);
+  }
+
+  .trampas-pause-menu.hidden {
+    display: none;
+  }
+
+  .trampas-pause-box {
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 1.5rem 2rem;
+    background: linear-gradient(145deg, #2a0e37, #1a0a28);
+    border: 2px solid #7c3aed;
+    border-radius: 16px;
+  }
+
+  .trampas-pause-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 16px;
+    color: #facc15;
+    margin-bottom: 0.5rem;
+  }
+
+  .trampas-pause-opt {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 2px solid #7c3aed;
+    padding: 0.6rem 1.8rem;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    width: 200px;
+    transition: all 0.2s;
+  }
+
+  .trampas-pause-opt:hover {
+    background: #7c3aed;
+    color: #fff;
+    transform: scale(1.05);
+  }
+
+  .trampas-pause-exit {
+    border-color: #ef4444;
+    color: #ef4444;
+  }
+
+  .trampas-pause-exit:hover {
+    background: #ef4444;
+    color: #fff;
+  }

@@ -8,6 +8,11 @@ const { getDb } = require('./database/db');
 const authRoutes = require('./routes/auth');
 const juegosRoutes = require('./routes/juegos');
 const adminRoutes = require('./routes/admin');
+const perfilRoutes = require('./routes/perfil');
+const amigosRoutes = require('./routes/amigos');
+const logrosRoutes = require('./routes/logros');
+const notificacionesRoutes = require('./routes/notificaciones');
+const duelosRouter = require('./routes/duelos');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -38,7 +43,12 @@ app.use(express.static(path.join(__dirname, 'public'), {
 // API Routes
 app.use('/api', authRoutes);
 app.use('/api', juegosRoutes);
+app.use('/api', perfilRoutes);
+app.use('/api', amigosRoutes);
+app.use('/api', logrosRoutes);
+app.use('/api', notificacionesRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api', duelosRouter);
 
 // Fallback para SPA / Frontend
 app.use((req, res) => {

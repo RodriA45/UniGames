@@ -59,6 +59,29 @@ CREATE TABLE IF NOT EXISTS partidas (
 );
 """)
 
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS duelos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    retador_id INTEGER NOT NULL REFERENCES usuarios(id),
+    retado_id  INTEGER NOT NULL REFERENCES usuarios(id),
+    juego_id   INTEGER NOT NULL REFERENCES juegos(id),
+    estado TEXT NOT NULL DEFAULT 'pendiente', -- pendiente | en_curso | finalizado
+    puntos_retador INTEGER DEFAULT NULL,
+    puntos_retado  INTEGER DEFAULT NULL,
+    ganador_id INTEGER DEFAULT NULL,          -- NULL = empate (solo tiene sentido si estado = finalizado)
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_fin TIMESTAMP DEFAULT NULL
+);
+""")
+
+# Migración: agregar columnas nuevas a duelos si no existen
+# (tematica_id: temática del duelo | duracion_segundos: tiempo que duró el duelo)
+existing_cols_duelos = [row[1] for row in cursor.execute("PRAGMA table_info(duelos)").fetchall()]
+if 'tematica_id' not in existing_cols_duelos:
+    cursor.execute("ALTER TABLE duelos ADD COLUMN tematica_id INTEGER REFERENCES tematicas(id)")
+if 'duracion_segundos' not in existing_cols_duelos:
+    cursor.execute("ALTER TABLE duelos ADD COLUMN duracion_segundos INTEGER")
+
 # palabras_ahorcado: se crea ya con tematica_id (NULL = "Normal", sin temática)
 # Nota: ya NO tiene UNIQUE global en 'palabra', porque ahora una misma palabra
 # puede repetirse en distintas temáticas (se controla duplicado manualmente abajo).
@@ -163,6 +186,54 @@ CREATE TABLE IF NOT EXISTS palabras_wordle (
 """)
 
 cursor.execute("""
+CREATE TABLE IF NOT EXISTS adivina_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tematica_id INTEGER NOT NULL,
+    respuesta TEXT NOT NULL,
+    aliases TEXT,
+    imagen TEXT,
+    pista_1 TEXT,
+    pista_2 TEXT,
+    pista_3 TEXT,
+    pista_4 TEXT,
+    FOREIGN KEY (tematica_id) REFERENCES tematicas(id)
+);
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS amistades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario1_id INTEGER NOT NULL,   -- quien envía la solicitud
+    usuario2_id INTEGER NOT NULL,   -- quien la recibe
+    estado TEXT NOT NULL DEFAULT 'pendiente', -- 'pendiente' | 'aceptada'
+    fecha TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario1_id) REFERENCES usuarios(id),
+    FOREIGN KEY (usuario2_id) REFERENCES usuarios(id),
+    UNIQUE(usuario1_id, usuario2_id)
+);
+""")
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS logros_usuario (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL,
+    logro_id TEXT NOT NULL,   -- coincide con los ids definidos en ACHIEVEMENTS (app2.js)
+    fecha TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
+    UNIQUE(usuario_id, logro_id)
+);
+""")
+
+conexion.commit()
+
+# Migración: agregar columnas de perfil a usuarios si no existen todavía.
+cols_usuarios = [r[1] for r in cursor.execute("PRAGMA table_info(usuarios)").fetchall()]
+if 'descripcion' not in cols_usuarios:
+    cursor.execute("ALTER TABLE usuarios ADD COLUMN descripcion TEXT DEFAULT ''")
+if 'icono' not in cols_usuarios:
+    cursor.execute("ALTER TABLE usuarios ADD COLUMN icono TEXT DEFAULT 'assert/perfil_icons/icon_01.webp'")
+
+cursor.execute("""
 CREATE TABLE IF NOT EXISTS avisos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     texto TEXT NOT NULL,
@@ -177,6 +248,25 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS configuracion_global (
     clave TEXT PRIMARY KEY,
     valor TEXT NOT NULL
+);
+""")
+
+# Bandeja de notificaciones personales por usuario. Se usa para 3 casos:
+#   'solicitud_amistad'  -> alguien te mandó una solicitud de amistad
+#   'aviso'              -> el admin publicó un aviso nuevo (se manda a todos)
+#   'record_superado'    -> otro jugador superó tu récord en algún juego
+# 'enlace' guarda la sección a la que conviene llevar al usuario al tocar
+# la notificación (ej: 'amigos', 'puntuacion'); puede ir NULL.
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS notificaciones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER NOT NULL,
+    tipo TEXT NOT NULL,
+    mensaje TEXT NOT NULL,
+    enlace TEXT,
+    leido INTEGER DEFAULT 0,
+    fecha TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
 """)
 

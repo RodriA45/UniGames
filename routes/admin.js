@@ -183,6 +183,23 @@ router.post('/avisos', async (req, res) => {
             "INSERT INTO avisos (texto, icono, color, activo) VALUES (?, ?, ?, ?)", 
             [texto, icono || '📢', color || '#3b82f6', isActivo]
         );
+
+        // Le mandamos una notificación a cada usuario registrado para que
+        // le aparezca en su bandeja (menú lateral derecho > Notificaciones),
+        // además del banner global que ya se muestra arriba de la página.
+        try {
+            const usuarios = await db.all("SELECT id FROM usuarios");
+            const mensaje = `${icono || '📢'} ${texto}`;
+            for (const u of usuarios) {
+                await db.run(
+                    `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'aviso', ?, NULL)`,
+                    [u.id, mensaje]
+                );
+            }
+        } catch (notifError) {
+            console.error('Error al notificar aviso nuevo a los usuarios:', notifError);
+        }
+
         res.json({ id: result.lastID, success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -215,6 +232,328 @@ router.delete('/avisos/:id', async (req, res) => {
     const db = await getDb();
     try {
         await db.run("DELETE FROM avisos WHERE id = ?", [id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ==========================================
+// CONTENIDO DE JUEGOS (Ahorcado / Wordle / Preguntados / Adivina)
+// ==========================================
+
+// Listado de temáticas (para poblar selects del panel)
+router.get('/tematicas', async (req, res) => {
+    const db = await getDb();
+    try {
+        const rows = await db.all('SELECT * FROM tematicas ORDER BY id ASC');
+        res.json(rows || []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Normaliza tematica_id que llega del panel: '', null, undefined, 'normal' -> NULL
+function normalizarTematicaId(valor) {
+    if (valor === undefined || valor === null || valor === '' || valor === 'normal') return null;
+    const n = Number(valor);
+    return Number.isInteger(n) ? n : undefined; // undefined = valor inválido
+}
+
+// --- Ahorcado ---
+
+router.get('/ahorcado', async (req, res) => {
+    const { tematica_id } = req.query;
+    const db = await getDb();
+    try {
+        let sql = 'SELECT * FROM palabras_ahorcado';
+        const params = [];
+        if (tematica_id !== undefined) {
+            const t = normalizarTematicaId(tematica_id);
+            if (t === undefined) return res.status(400).json({ error: 'tematica_id inválido' });
+            sql += t === null ? ' WHERE tematica_id IS NULL' : ' WHERE tematica_id = ?';
+            if (t !== null) params.push(t);
+        }
+        sql += ' ORDER BY id DESC';
+        const rows = await db.all(sql, params);
+        res.json(rows || []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/ahorcado', async (req, res) => {
+    const { palabra, tematica_id } = req.body;
+    if (!palabra || !palabra.trim()) return res.status(400).json({ error: 'La palabra es requerida' });
+    const t = normalizarTematicaId(tematica_id);
+    if (t === undefined) return res.status(400).json({ error: 'tematica_id inválido' });
+
+    const db = await getDb();
+    try {
+        const result = await db.run(
+            'INSERT INTO palabras_ahorcado (palabra, tematica_id) VALUES (?, ?)',
+            [palabra.trim().toLowerCase(), t]
+        );
+        res.json({ id: result.lastID, success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/ahorcado/:id', async (req, res) => {
+    const { palabra, tematica_id } = req.body;
+    if (!palabra || !palabra.trim()) return res.status(400).json({ error: 'La palabra es requerida' });
+    const t = normalizarTematicaId(tematica_id);
+    if (t === undefined) return res.status(400).json({ error: 'tematica_id inválido' });
+
+    const db = await getDb();
+    try {
+        await db.run(
+            'UPDATE palabras_ahorcado SET palabra = ?, tematica_id = ? WHERE id = ?',
+            [palabra.trim().toLowerCase(), t, req.params.id]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/ahorcado/:id', async (req, res) => {
+    const db = await getDb();
+    try {
+        await db.run('DELETE FROM palabras_ahorcado WHERE id = ?', [req.params.id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- Adivina la Palabra (Wordle) ---
+
+router.get('/wordle', async (req, res) => {
+    const { tematica_id } = req.query;
+    const db = await getDb();
+    try {
+        let sql = 'SELECT * FROM palabras_wordle';
+        const params = [];
+        if (tematica_id !== undefined) {
+            if (!/^\d+$/.test(tematica_id)) return res.status(400).json({ error: 'tematica_id inválido' });
+            sql += ' WHERE tematica_id = ?';
+            params.push(Number(tematica_id));
+        }
+        sql += ' ORDER BY id DESC';
+        const rows = await db.all(sql, params);
+        res.json(rows || []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/wordle', async (req, res) => {
+    const { palabra, tematica_id } = req.body;
+    if (!palabra || !palabra.trim()) return res.status(400).json({ error: 'La palabra es requerida' });
+    if (!/^\d+$/.test(String(tematica_id))) return res.status(400).json({ error: 'tematica_id es requerido' });
+
+    const db = await getDb();
+    try {
+        const result = await db.run(
+            'INSERT INTO palabras_wordle (palabra, tematica_id) VALUES (?, ?)',
+            [palabra.trim().toLowerCase(), Number(tematica_id)]
+        );
+        res.json({ id: result.lastID, success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/wordle/:id', async (req, res) => {
+    const { palabra, tematica_id } = req.body;
+    if (!palabra || !palabra.trim()) return res.status(400).json({ error: 'La palabra es requerida' });
+    if (!/^\d+$/.test(String(tematica_id))) return res.status(400).json({ error: 'tematica_id es requerido' });
+
+    const db = await getDb();
+    try {
+        await db.run(
+            'UPDATE palabras_wordle SET palabra = ?, tematica_id = ? WHERE id = ?',
+            [palabra.trim().toLowerCase(), Number(tematica_id), req.params.id]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/wordle/:id', async (req, res) => {
+    const db = await getDb();
+    try {
+        await db.run('DELETE FROM palabras_wordle WHERE id = ?', [req.params.id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- Preguntados ---
+
+const OPCIONES_VALIDAS = ['A', 'B', 'C', 'D'];
+
+function validarPregunta(body) {
+    const { tematica_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta } = body;
+    if (!/^\d+$/.test(String(tematica_id))) return 'tematica_id es requerido';
+    if (!pregunta || !pregunta.trim()) return 'La pregunta es requerida';
+    if (!opcion_a || !opcion_b || !opcion_c || !opcion_d) return 'Las 4 opciones son requeridas';
+    if (!OPCIONES_VALIDAS.includes(String(respuesta_correcta).toUpperCase())) return 'respuesta_correcta debe ser A, B, C o D';
+    return null;
+}
+
+router.get('/preguntas', async (req, res) => {
+    const { tematica_id } = req.query;
+    const db = await getDb();
+    try {
+        let sql = 'SELECT * FROM preguntas';
+        const params = [];
+        if (tematica_id !== undefined) {
+            if (!/^\d+$/.test(tematica_id)) return res.status(400).json({ error: 'tematica_id inválido' });
+            sql += ' WHERE tematica_id = ?';
+            params.push(Number(tematica_id));
+        }
+        sql += ' ORDER BY id DESC';
+        const rows = await db.all(sql, params);
+        res.json(rows || []);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/preguntas', async (req, res) => {
+    const error = validarPregunta(req.body);
+    if (error) return res.status(400).json({ error });
+    const { tematica_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta } = req.body;
+
+    const db = await getDb();
+    try {
+        const result = await db.run(
+            `INSERT INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [Number(tematica_id), pregunta.trim(), opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta.toUpperCase()]
+        );
+        res.json({ id: result.lastID, success: true });
+    } catch (err) {
+        if (err.message.includes('UNIQUE constraint failed')) {
+            return res.status(400).json({ error: 'Ya existe esa pregunta para esta temática' });
+        }
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/preguntas/:id', async (req, res) => {
+    const error = validarPregunta(req.body);
+    if (error) return res.status(400).json({ error });
+    const { tematica_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta } = req.body;
+
+    const db = await getDb();
+    try {
+        await db.run(
+            `UPDATE preguntas SET tematica_id = ?, pregunta = ?, opcion_a = ?, opcion_b = ?, opcion_c = ?, opcion_d = ?, respuesta_correcta = ?
+             WHERE id = ?`,
+            [Number(tematica_id), pregunta.trim(), opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta.toUpperCase(), req.params.id]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        if (err.message.includes('UNIQUE constraint failed')) {
+            return res.status(400).json({ error: 'Ya existe esa pregunta para esta temática' });
+        }
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/preguntas/:id', async (req, res) => {
+    const db = await getDb();
+    try {
+        await db.run('DELETE FROM preguntas WHERE id = ?', [req.params.id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- Adivina la Cosa ---
+
+function validarAdivina(body) {
+    const { tematica_id, respuesta, pistas } = body;
+    if (!/^\d+$/.test(String(tematica_id))) return 'tematica_id es requerido';
+    if (!respuesta || !respuesta.trim()) return 'La respuesta es requerida';
+    if (pistas !== undefined && !Array.isArray(pistas)) return 'pistas debe ser un array';
+    return null;
+}
+
+router.get('/adivina', async (req, res) => {
+    const { tematica_id } = req.query;
+    const db = await getDb();
+    try {
+        let sql = 'SELECT * FROM adivina_items';
+        const params = [];
+        if (tematica_id !== undefined) {
+            if (!/^\d+$/.test(tematica_id)) return res.status(400).json({ error: 'tematica_id inválido' });
+            sql += ' WHERE tematica_id = ?';
+            params.push(Number(tematica_id));
+        }
+        sql += ' ORDER BY id DESC';
+        const rows = await db.all(sql, params);
+        // Igual que en /api/adivina/items: exponemos "pistas" como array y "aliases" parseado
+        const items = rows.map(r => ({
+            ...r,
+            aliases: r.aliases ? JSON.parse(r.aliases) : [],
+            pistas: [r.pista_1, r.pista_2, r.pista_3, r.pista_4],
+        }));
+        res.json(items);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.post('/adivina', async (req, res) => {
+    const error = validarAdivina(req.body);
+    if (error) return res.status(400).json({ error });
+    const { tematica_id, respuesta, aliases, imagen, pistas } = req.body;
+    const [p1, p2, p3, p4] = pistas || [];
+
+    const db = await getDb();
+    try {
+        const result = await db.run(
+            `INSERT INTO adivina_items (tematica_id, respuesta, aliases, imagen, pista_1, pista_2, pista_3, pista_4)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [Number(tematica_id), respuesta.trim(), JSON.stringify(aliases || []), imagen || null, p1 || null, p2 || null, p3 || null, p4 || null]
+        );
+        res.json({ id: result.lastID, success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.put('/adivina/:id', async (req, res) => {
+    const error = validarAdivina(req.body);
+    if (error) return res.status(400).json({ error });
+    const { tematica_id, respuesta, aliases, imagen, pistas } = req.body;
+    const [p1, p2, p3, p4] = pistas || [];
+
+    const db = await getDb();
+    try {
+        await db.run(
+            `UPDATE adivina_items SET tematica_id = ?, respuesta = ?, aliases = ?, imagen = ?, pista_1 = ?, pista_2 = ?, pista_3 = ?, pista_4 = ?
+             WHERE id = ?`,
+            [Number(tematica_id), respuesta.trim(), JSON.stringify(aliases || []), imagen || null, p1 || null, p2 || null, p3 || null, p4 || null, req.params.id]
+        );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+router.delete('/adivina/:id', async (req, res) => {
+    const db = await getDb();
+    try {
+        await db.run('DELETE FROM adivina_items WHERE id = ?', [req.params.id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

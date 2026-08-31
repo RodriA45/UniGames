@@ -2,40 +2,52 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_no_usar_en_prod';
 
 // --- Rate limiting simple (en memoria) ---
-const rateLimitStore = {};
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minuto
-const RATE_LIMIT_MAX = 10;               // máximo 10 requests por ventana
+// Factory genérica: cada middleware creado con esto tiene su propio
+// almacén en memoria (por IP) y su propia ventana/tope, para no mezclar
+// contadores entre limitadores distintos (ej: login/registro vs. el
+// resto de la API, que necesitan topes muy diferentes).
+function crearRateLimiter({ windowMs, max }) {
+    const store = {};
 
-function rateLimit(ip) {
-    const now = Date.now();
-    if (!rateLimitStore[ip] || now - rateLimitStore[ip].start > RATE_LIMIT_WINDOW_MS) {
-        rateLimitStore[ip] = { start: now, count: 1 };
-        return true;
-    }
-    rateLimitStore[ip].count++;
-    return rateLimitStore[ip].count <= RATE_LIMIT_MAX;
-}
-
-// Limpiar entradas viejas cada 5 minutos
-setInterval(() => {
-    const now = Date.now();
-    for (const ip in rateLimitStore) {
-        if (now - rateLimitStore[ip].start > RATE_LIMIT_WINDOW_MS * 2) {
-            delete rateLimitStore[ip];
+    // Limpiar entradas viejas cada 5 minutos para no crecer sin límite en memoria.
+    setInterval(() => {
+        const now = Date.now();
+        for (const ip in store) {
+            if (now - store[ip].start > windowMs * 2) {
+                delete store[ip];
+            }
         }
-    }
-}, 5 * 60 * 1000);
+    }, 5 * 60 * 1000);
 
-// --- Middleware rate limit para auth ---
-function authRateLimit(req, res, next) {
-    const ip = req.ip || req.connection.remoteAddress;
-    if (!rateLimit(ip)) {
-        return res.status(429).json({ error: 'Demasiadas peticiones. Esperá un momento e intentá de nuevo.' });
-    }
-    next();
+    return function rateLimitMiddleware(req, res, next) {
+        const ip = req.ip || req.connection.remoteAddress;
+        const now = Date.now();
+
+        if (!store[ip] || now - store[ip].start > windowMs) {
+            store[ip] = { start: now, count: 1 };
+            return next();
+        }
+
+        store[ip].count++;
+        if (store[ip].count > max) {
+            return res.status(429).json({ error: 'Demasiadas peticiones. Esperá un momento e intentá de nuevo.' });
+        }
+        next();
+    };
 }
 
-// Middleware para verificar JWT
+// Límite estricto para registro/login: 10 intentos por minuto por IP
+// (mismo comportamiento que antes, ahora armado con la factory de arriba).
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX = 10;
+const authRateLimit = crearRateLimiter({ windowMs: RATE_LIMIT_WINDOW_MS, max: RATE_LIMIT_MAX });
+
+// Límite más permisivo para el resto de la API (notificaciones, perfiles
+// públicos, etc.): pensado para uso normal navegando la app, pero que
+// frena scraping agresivo o bots pegándole sin parar a un endpoint.
+const apiRateLimit = crearRateLimiter({ windowMs: 60 * 1000, max: 60 });
+
+// --- Middleware para verificar JWT ---
 function verificarToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -62,6 +74,7 @@ const verificarAdmin = (req, res, next) => {
 
 module.exports = {
     authRateLimit,
+    apiRateLimit,
     verificarToken,
     verificarAdmin,
     JWT_SECRET

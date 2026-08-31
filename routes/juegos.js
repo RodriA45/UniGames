@@ -83,6 +83,36 @@ router.get('/leaderboard/global', async (req, res) => {
     }
 });
 
+// Si el nuevo puntaje supera el mejor puntaje que tenía cualquier OTRO
+// usuario en ese juego, le mandamos una notificación a ese usuario avisando
+// que le rompieron el récord. No tira error si algo falla: es un "extra",
+// no debe hacer fallar el guardado de la partida en sí.
+async function notificarSiSuperaRecordAjeno(db, usuario_id, juego_id, puntos, nombreJugador) {
+    try {
+        const anteriorRecord = await db.get(
+            `SELECT usuario_id, MAX(puntos) AS puntos
+             FROM partidas
+             WHERE juego_id = ? AND usuario_id != ?
+             GROUP BY usuario_id
+             ORDER BY puntos DESC
+             LIMIT 1`,
+            [juego_id, usuario_id]
+        );
+
+        if (!anteriorRecord || puntos <= anteriorRecord.puntos) return;
+
+        const juego = await db.get(`SELECT nombre FROM juegos WHERE id = ?`, [juego_id]);
+        const nombreJuego = juego ? juego.nombre : 'un juego';
+
+        await db.run(
+            `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'record_superado', ?, 'puntuacion')`,
+            [anteriorRecord.usuario_id, `${nombreJugador} superó tu récord en ${nombreJuego} con ${puntos} puntos`]
+        );
+    } catch (notifError) {
+        console.error('Error al notificar récord superado:', notifError);
+    }
+}
+
 // 4. Guardar partida — PROTEGIDA CON JWT
 router.post('/partidas', verificarToken, validate(partidaSchema), async (req, res) => {
     const usuario_id = req.user.id; 
@@ -102,12 +132,14 @@ router.post('/partidas', verificarToken, validate(partidaSchema), async (req, re
                 `UPDATE partidas SET puntos = ?, tematica_id = ?, fecha = CURRENT_TIMESTAMP WHERE id = ?`,
                 [puntos, tematica_id || null, existing.id]
             );
+            await notificarSiSuperaRecordAjeno(db, usuario_id, juego_id, puntos, req.user.username);
             return res.status(200).json({ message: 'Nuevo record guardado', id: existing.id, puntos });
         } else {
             const result = await db.run(
                 `INSERT INTO partidas (usuario_id, juego_id, tematica_id, puntos) VALUES (?, ?, ?, ?)`,
                 [usuario_id, juego_id, tematica_id || null, puntos]
             );
+            await notificarSiSuperaRecordAjeno(db, usuario_id, juego_id, puntos, req.user.username);
             return res.status(201).json({ message: 'Partida guardada', id: result.lastID });
         }
     } catch (error) {
@@ -189,5 +221,84 @@ router.get('/preguntas', async (req, res) => {
         res.status(500).json({ error: 'Error al obtener preguntas' });
     }
 });
+
+router.get('/sopa/palabras', async (req, res) => {
+    const tematica = req.query.tematica;
+    // Igual tope que el resto de los endpoints de este archivo: nunca
+    // se devuelven de más aunque alguien pida un número gigante.
+    const cantidad = Math.min(Math.max(Number(req.query.cantidad) || 8, 1), 20);
+    const maxLargo = Number(req.query.max_largo) || null;
+    const db = await getDb();
+
+    try {
+        let sql = `SELECT palabra FROM palabras_ahorcado`;
+        const conditions = [];
+        const params = [];
+
+        // Mismo criterio de "tematica" que /ahorcado/palabra: 'normal'
+        // son las palabras sin temática asignada, un número es el id.
+        if (tematica === 'normal') {
+            conditions.push(`tematica_id IS NULL`);
+        } else if (tematica !== undefined && /^\d+$/.test(tematica)) {
+            conditions.push(`tematica_id = ?`);
+            params.push(Number(tematica));
+        }
+
+        if (maxLargo) {
+            conditions.push(`LENGTH(palabra) <= ?`);
+            params.push(maxLargo);
+        }
+
+        if (conditions.length) sql += ` WHERE ` + conditions.join(' AND ');
+
+        sql += ` ORDER BY RANDOM() LIMIT ?`;
+        params.push(cantidad);
+
+        const rows = await db.all(sql, params);
+        res.json(rows.map(r => r.palabra));
+    } catch (error) {
+        console.error('Error en /api/sopa/palabras:', error);
+        res.status(500).json({ error: 'Error al obtener palabras' });
+    }
+});
+
+router.get('/adivina/items', async (req, res) => {
+    const tematica = req.query.tematica;
+
+    if (!tematica || !/^\d+$/.test(tematica)) {
+        return res.status(400).json({ error: 'Falta indicar una temática válida' });
+    }
+
+    const db = await getDb();
+    try {
+        // Sin LIMIT chico a propósito: el frontend juega TODOS los items de
+        // la temática en una ronda (los mezcla con shuffle()), no un
+        // subconjunto random como sí hace Preguntados. El LIMIT 50 es solo
+        // un techo de seguridad, no un recorte real de contenido.
+        const sql = `
+            SELECT respuesta, aliases, imagen, pista_1, pista_2, pista_3, pista_4
+            FROM adivina_items
+            WHERE tematica_id = ?
+            LIMIT 50
+        `;
+        const rows = await db.all(sql, [Number(tematica)]);
+
+        // El frontend espera el mismo shape que tenía ADIVINA_DATA:
+        // pistas como array de 4 y aliases como array (acá vive como JSON
+        // en la columna, se parsea antes de mandarlo).
+        const items = rows.map(r => ({
+            respuesta: r.respuesta,
+            aliases: r.aliases ? JSON.parse(r.aliases) : [],
+            imagen: r.imagen,
+            pistas: [r.pista_1, r.pista_2, r.pista_3, r.pista_4],
+        }));
+
+        res.json(items);
+    } catch (error) {
+        console.error('Error en /api/adivina/items:', error);
+        res.status(500).json({ error: 'Error al obtener items' });
+    }
+});
+
 
 module.exports = router;

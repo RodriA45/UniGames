@@ -1,0 +1,829 @@
+/* ══════════════════════════════════════
+   PIXEL RUNNER — runner.css
+   Estilos específicos de Pixel Runner, separados de styles.css
+   (donde antes vivían mezclados con el resto del sitio y con los
+   de Castle Escape). Reutiliza las variables de styles.css
+   (--blue-dark, --yellow, etc.) y los componentes genéricos de
+   ui-components.css (botones, filas de lista, slider de ajustes).
+
+   Cargar DESPUÉS de styles.css y ui-components.css.
+   ══════════════════════════════════════ */
+
+/* ─── PIXEL RUNNER ─── */
+.runner-hud {
+  position: absolute;
+  top: 0.6rem;
+  left: 0.6rem;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.runner-score-display {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--blue-dark);
+  background: var(--yellow);
+  padding: 0.4rem 0.9rem;
+  border-radius: 20px;
+  width: fit-content;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Mismo look que el contador de puntos (nítido, HTML — no texto dibujado
+   en el canvas, que se ve pixeleado/borroso al escalar). Va debajo del
+   contador de puntos y muestra solo las monedas de la partida actual;
+   el total histórico se ve recién al perder (ver runnerOverlaySub). */
+.runner-coins-display {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: #7a5200;
+  background: #fff3cf;
+  padding: 0.4rem 0.9rem;
+  border-radius: 20px;
+  width: fit-content;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  border: 2px solid var(--yellow);
+}
+
+.runner-container {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  aspect-ratio: 480 / 270;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(15, 30, 61, 0.25);
+  border: 3px solid #1a3a6b;
+  background: #0d1b2a;
+  overscroll-behavior: contain;
+}
+
+#runnerCanvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Pantalla completa (ver runnerToggleFullscreen en app.js): el navegador
+   por defecto solo centra el elemento a su tamaño natural dentro de un
+   fondo negro, así que se pisa el aspect-ratio del contenedor para que
+   use todo el viewport. En horizontal (PC, celular apaisado) el alto es
+   la referencia y el ancho sale del aspect-ratio. En vertical (celular
+   en mano) se invierte: si se dejara el alto como referencia, el ancho
+   que sale del aspect-ratio se pasa del viewport, se recorta con
+   max-width y el sprite queda estirado — por eso el media query de abajo
+   cambia la referencia a ancho ahí. */
+.runner-container:fullscreen,
+.runner-container:-webkit-full-screen {
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  aspect-ratio: unset;
+  border-radius: 0;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.runner-container:fullscreen #runnerCanvas,
+.runner-container:-webkit-full-screen #runnerCanvas {
+  width: auto;
+  height: 100%;
+  max-width: 100vw;
+  aspect-ratio: 480 / 270;
+}
+
+@media (orientation: portrait) {
+
+  .runner-container:fullscreen #runnerCanvas,
+  .runner-container:-webkit-full-screen #runnerCanvas {
+    width: 100%;
+    height: auto;
+    max-width: 100vw;
+    max-height: 100vh;
+  }
+}
+
+
+.runner-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 20, 40, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+  overflow-y: auto;
+  padding: 0.5rem;
+}
+
+.runner-overlay.hidden {
+  display: none;
+}
+
+.runner-overlay-box {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 1rem;
+  margin: auto;
+  max-width: 100%;
+}
+
+.runner-char-preview {
+  margin-bottom: 0.5rem;
+}
+
+#runnerCharPreviewCanvas {
+  width: 64px;
+  height: 80px;
+  image-rendering: pixelated;
+  display: block;
+}
+
+.runner-overlay-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(12px, 2vw, 18px);
+  color: var(--yellow);
+  text-shadow: 0 0 12px rgba(245, 197, 24, 0.5);
+}
+
+.runner-overlay-sub {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.7;
+  white-space: pre-line;
+  text-align: center;
+}
+
+.runner-best {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: #93c5fd;
+  min-height: 1rem;
+}
+
+.runner-start-btn {
+  background: var(--yellow);
+  color: var(--blue-dark);
+  font-weight: 900;
+  font-size: 1rem;
+  padding: 0.7rem 2rem;
+  border-radius: 10px;
+  margin-top: 0.5rem;
+}
+
+.runner-hint {
+  text-align: center;
+  margin-top: 0.75rem;
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.runner-controls {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 0.9rem;
+}
+
+.runner-ctrl-btn {
+  background: var(--blue-dark);
+  color: white;
+  border: 2px solid var(--blue-accent);
+  border-radius: 10px;
+  padding: 0.6rem 1.8rem;
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.runner-ctrl-btn:active {
+  background: var(--blue-accent);
+  transform: scale(0.96);
+}
+
+@media (max-width: 480px) {
+  .runner-controls {
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+  }
+
+  .runner-ctrl-btn {
+    flex: 1;
+    padding: 1rem 0;
+    font-size: 1.15rem;
+    border-radius: 12px;
+    border-width: 3px;
+  }
+
+  .runner-hint {
+    font-size: 0.7rem;
+  }
+
+  /* Canvas más alto en mobile para más espacio de juego */
+  .runner-container {
+    border-radius: 10px;
+  }
+
+  .runner-hud {
+    top: 0.4rem;
+    left: 0.4rem;
+    gap: 0.3rem;
+  }
+
+  .runner-score-display,
+  .runner-coins-display {
+    font-size: 8px;
+    padding: 0.3rem 0.6rem;
+  }
+
+  .runner-overlay-box {
+    gap: 0.3rem;
+    padding: 0.5rem;
+  }
+
+  .runner-char-preview {
+    margin-bottom: 0;
+  }
+
+  #runnerCharPreviewCanvas {
+    width: 44px;
+    height: 55px;
+  }
+
+  .runner-overlay-sub {
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .runner-start-btn {
+    padding: 0.5rem 1.4rem;
+    font-size: 0.9rem;
+    margin-top: 0.2rem;
+  }
+}
+
+
+/* ─── Carteles internos del Pixel Runner (Mejoras / Ajustes / Cómo jugar) ───
+   Reemplazan los antiguos alert() del navegador: se ven arriba del menú,
+   dentro del mismo recuadro del juego. El slider de Ajustes usa el
+   componente compartido .game-slider-row (ver ui-components.css), el
+   mismo que usan Castle Escape y RPG. */
+.runner-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  background: rgba(10, 20, 40, 0.9);
+  backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+
+.runner-panel.hidden {
+  display: none;
+}
+
+.runner-panel-box {
+  width: 100%;
+  max-width: 420px;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.runner-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.runner-panel-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(11px, 2.2vw, 15px);
+  color: var(--yellow);
+  text-shadow: 0 0 10px rgba(245, 197, 24, 0.4);
+}
+
+.runner-panel-content {
+  width: 100%;
+}
+
+.runner-mejoras-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+  text-align: center;
+}
+
+.runner-mejoras-coins {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(11px, 2.5vw, 14px);
+  color: #f5c518;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(245, 197, 24, 0.4);
+  border-radius: 10px;
+  padding: 0.8rem 1.2rem;
+}
+
+/* ─── Tarjetas de mejora (dentro del cartel de Mejoras) ─── */
+.runner-mejoras-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  width: 100%;
+  max-width: 420px;
+}
+
+.runner-mejora-card {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.runner-mejora-card.maxed {
+  border-color: rgba(74, 222, 128, 0.45);
+  background: rgba(74, 222, 128, 0.07);
+}
+
+.runner-mejora-icon {
+  flex: 0 0 auto;
+  font-size: 22px;
+  width: 2.1rem;
+  text-align: center;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.runner-mejora-info {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.runner-mejora-nombre {
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.runner-mejora-nivel {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  color: #facc15;
+}
+
+.runner-mejora-efecto {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+
+.runner-mejora-btn {
+  flex: 0 0 auto;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.65rem;
+  color: #0f1e3d;
+  background: linear-gradient(145deg, #f5c518, #e0a800);
+  border: none;
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.1s, filter 0.15s;
+}
+
+.runner-mejora-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.runner-mejora-btn:disabled {
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.runner-mejora-card.maxed .runner-mejora-btn:disabled {
+  background: rgba(74, 222, 128, 0.18);
+  color: #4ade80;
+}
+
+@media (max-width: 480px) {
+  .runner-mejora-card {
+    gap: 0.6rem;
+    padding: 0.55rem 0.65rem;
+  }
+
+  .runner-mejora-icon {
+    font-size: 18px;
+    width: 1.7rem;
+  }
+
+  .runner-mejora-nombre {
+    font-size: 0.75rem;
+  }
+
+  .runner-mejora-nivel {
+    font-size: 0.55rem;
+  }
+
+  .runner-mejora-efecto {
+    font-size: 0.68rem;
+  }
+
+  .runner-mejora-btn {
+    font-size: 0.55rem;
+    padding: 0.45rem 0.55rem;
+  }
+
+  .runner-mejoras-content {
+    gap: 0.5rem;
+  }
+
+  .runner-mejoras-coins {
+    padding: 0.5rem 0.8rem;
+  }
+
+  .runner-mejoras-grid {
+    gap: 0.5rem;
+  }
+}
+
+
+/* ─── Cómic de Historia (intro al elegir el modo / final al ganar) ─── */
+/* Va DENTRO de .runner-container (absolute, como el resto de los carteles
+   del juego) — no a pantalla completa. Ese contenedor es chico (aspect-
+   ratio 480/270) así que la imagen no puede escalar libre por altura: va
+   en un flex column donde la imagen ocupa el espacio que sobra
+   (flex:1 + min-height:0 + object-fit:contain) y el botón queda siempre
+   fijo abajo, visible y clickeable, sea cual sea el tamaño del recuadro. */
+.runner-comic-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  box-sizing: border-box;
+}
+
+.runner-comic-overlay.hidden {
+  display: none;
+}
+
+.runner-comic-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  gap: 0.5rem;
+}
+
+.runner-comic-img {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 8px;
+  border: 2px solid rgba(245, 197, 24, 0.6);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.runner-comic-btn {
+  flex-shrink: 0;
+  min-width: 160px;
+  padding: 0.55rem 1rem;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 480px) {
+  .runner-comic-overlay {
+    padding: 0.3rem;
+  }
+
+  .runner-comic-box {
+    gap: 0.3rem;
+  }
+
+  .runner-comic-img {
+    border-width: 1px;
+    border-radius: 6px;
+  }
+
+  .runner-comic-btn {
+    min-width: 110px;
+    font-size: 0.65rem;
+    padding: 0.4rem 0.7rem;
+  }
+}
+
+
+.runner-mode-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.runner-mode-card {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 1.2rem 1rem;
+  background: linear-gradient(145deg, rgba(245, 197, 24, 0.14), rgba(245, 197, 24, 0.04));
+  border: 2px solid rgba(245, 197, 24, 0.5);
+  border-radius: 14px;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, background 0.15s;
+  font-family: inherit;
+}
+
+.runner-mode-card:hover:not(.locked) {
+  transform: translateY(-2px);
+  border-color: var(--yellow);
+  background: linear-gradient(145deg, rgba(245, 197, 24, 0.24), rgba(245, 197, 24, 0.08));
+}
+
+.runner-mode-card .runner-mode-icon {
+  font-size: 28px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.runner-mode-card .runner-mode-name {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 13px;
+  color: var(--yellow);
+}
+
+.runner-mode-card .runner-mode-desc {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.75);
+  text-align: center;
+}
+
+.runner-mode-card.locked {
+  cursor: not-allowed;
+  opacity: 0.45;
+  border-color: #555;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.runner-mode-card.locked .runner-mode-name {
+  color: #999;
+}@media (max-width: 480px) {
+  .runner-panel {
+    padding: 0.4rem;
+  }
+
+  .runner-panel-box {
+    gap: 0.4rem;
+  }
+
+  .runner-panel-header {
+    gap: 0.6rem;
+  }
+
+  .runner-mode-content {
+    gap: 0.5rem;
+  }
+
+  .runner-mode-card {
+    padding: 0.6rem 0.6rem;
+    gap: 0.15rem;
+  }
+
+  .runner-mode-card .runner-mode-icon {
+    font-size: 18px;
+  }
+
+  .runner-mode-card .runner-mode-name {
+    font-size: 10px;
+  }
+
+  .runner-mode-card .runner-mode-desc {
+    font-size: 0.65rem;
+  }
+}
+
+
+  /* Badges de color de los power-ups del Pixel Runner, dentro del cartel
+   "Cómo jugar" — mismos colores que usa el juego para dibujarlos
+   (ver drawRunner en pixelrunner.js: escudo azul, x2 naranja). */
+  .runner-powerup-badge {
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    letter-spacing: 0;
+  }
+
+  .runner-powerup-shield {
+    color: #3b82f6;
+    border-color: rgba(59, 130, 246, 0.5);
+  }
+
+  .runner-powerup-x2 {
+    color: #f97316;
+    border-color: rgba(249, 115, 22, 0.5);
+  }@media (max-width: 480px) {
+
+    /* Pixel Runner controles táctiles más grandes */
+    .runner-ctrl-btn {
+      padding: 0.75rem 2rem;
+      font-size: 1.05rem;
+    }
+}
+
+
+  /* ══════════════════════════════════════
+   PIXEL RUNNER — MENÚ DEL JUEGO
+   (overlay dentro del runner-container)
+   ══════════════════════════════════════ */
+  .runner-menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 20;
+  }
+
+  .runner-menu.hidden {
+    display: none;
+  }
+
+  .runner-menu-background {
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 1rem;
+    padding: 2.4rem 2rem 2rem;
+    background-size: cover;
+    background-position: center;
+  }
+
+  .runner-menu-content {
+    text-align: center;
+    color: #fff;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+  }
+
+  .runner-menu-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: clamp(24px, 6vw, 36px);
+    margin-bottom: 0.5rem;
+    letter-spacing: 1px;
+    color: var(--yellow);
+    background: linear-gradient(180deg, #fff7d6 0%, var(--yellow) 55%, #c98a06 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 3px 0 rgba(0, 0, 0, 0.5)) drop-shadow(0 0 16px rgba(245, 197, 24, 0.45));
+  }
+
+  .runner-menu-sub {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.85);
+    opacity: 1;
+    margin-bottom: 1.5rem;
+    padding: 0.35rem 1rem;
+    display: inline-block;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  /* Ocupa el espacio restante debajo del título/subtítulo y centra los
+   botones ahí adentro, para que quede simétrico (mismo aire arriba y
+   abajo del bloque de botones) sin mover el título de su lugar. */
+  .runner-menu-buttons-wrap {
+    flex: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  /* Botones del menú de Pixel Runner en grilla 2x2 (Jugar / Mejoras / Ajuste / Cómo jugar) */
+  .runner-menu-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+    width: 100%;
+    max-width: 360px;
+    margin: 0 auto;
+    /* el wrap pasa a display:block en mobile (ver @media abajo); sin este margin quedaba pegado al borde izquierdo en vez de centrado */
+  }
+
+  .runner-menu-buttons .btn-play {
+    min-width: 0;
+    width: 100%;
+    padding: 0.75rem 0.5rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    border-radius: 10px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
+    letter-spacing: 0.3px;
+  }
+
+  .runner-btn-secondary {
+    background: rgba(255, 255, 255, 0.12);
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    color: #fff;
+    backdrop-filter: blur(2px);
+  }
+
+  .runner-btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.6);
+  }
+
+  /* El menú de inicio (runner-menu) vive dentro de .runner-container, que
+   tiene aspect-ratio 480/270 y overflow:hidden para no deformar el canvas.
+   En mobile esa caja queda muy baja de alto y el título/botones del menú
+   quedaban cortados arriba y abajo. Lo hacemos scrollable y compacto. */
+  @media (max-width: 480px) {
+    .runner-menu-background {
+      padding: 0.75rem 1rem;
+      gap: 0.4rem;
+      justify-content: flex-start;
+      overflow-y: auto;
+    }
+
+    /* En mobile mantenemos el flujo simple (sin el centrado flexible que
+     usa desktop) para no tocar esa vista, que ya estaba bien. */
+    .runner-menu-buttons-wrap {
+      flex: none;
+      display: block;
+      width: 100%;
+    }
+
+    .runner-menu-title {
+      font-size: clamp(14px, 6vw, 20px);
+      margin-bottom: 0.1rem;
+    }
+
+    .runner-menu-sub {
+      font-size: 0.72rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .runner-menu-buttons {
+      gap: 0.4rem;
+      max-width: 280px;
+      margin-top: 0.8rem;
+    }
+
+    .runner-menu-buttons .btn-play {
+      min-width: 0;
+      padding: 0.55rem 0.3rem;
+      font-size: 0.68rem;
+    }
+}
