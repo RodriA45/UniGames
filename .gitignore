@@ -1,7 +1,6 @@
 *.db
 *.bak
 node_modules/
-.env
 
 # Logs
 logs
