@@ -35,7 +35,7 @@ router.get('/leaderboard', async (req, res) => {
             LIMIT 10
         `;
 
-        const rows = await db.all(sql, params);
+        const rows = (await db.query(sql, params)).rows;
         res.json(rows);
     } catch (error) {
         console.error('Error en /api/leaderboard:', error);
@@ -67,7 +67,7 @@ router.get('/leaderboard/global', async (req, res) => {
             ORDER BY j.id ASC, b.puntos DESC
         `;
 
-        const rows = await db.all(sql, []);
+        const rows = (await db.query(sql, [])).rows;
 
         const byGame = {};
         for (const row of rows) {
@@ -101,11 +101,11 @@ async function notificarSiSuperaRecordAjeno(db, usuario_id, juego_id, puntos, no
 
         if (!anteriorRecord || puntos <= anteriorRecord.puntos) return;
 
-        const juego = await db.get(`SELECT nombre FROM juegos WHERE id = ?`, [juego_id]);
+        const juego = (await db.query(`SELECT nombre FROM juegos WHERE id = $1`, [juego_id])).rows[0];
         const nombreJuego = juego ? juego.nombre : 'un juego';
 
         await db.run(
-            `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'record_superado', ?, 'puntuacion')`,
+            `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
             [anteriorRecord.usuario_id, `${nombreJugador} superó tu récord en ${nombreJuego} con ${puntos} puntos`]
         );
     } catch (notifError) {
@@ -121,7 +121,7 @@ router.post('/partidas', verificarToken, validate(partidaSchema), async (req, re
 
     try {
         const checkSql = `SELECT id, puntos FROM partidas WHERE usuario_id = ? AND juego_id = ? ORDER BY puntos DESC LIMIT 1`;
-        const existing = await db.get(checkSql, [usuario_id, juego_id]);
+        const existing = (await db.query(checkSql, [usuario_id, juego_id])).rows[0];
 
         if (existing && existing.puntos >= puntos) {
             return res.status(200).json({ message: 'Puntaje no supera el record', record: existing.puntos, nuevo: puntos });
@@ -136,11 +136,11 @@ router.post('/partidas', verificarToken, validate(partidaSchema), async (req, re
             return res.status(200).json({ message: 'Nuevo record guardado', id: existing.id, puntos });
         } else {
             const result = await db.run(
-                `INSERT INTO partidas (usuario_id, juego_id, tematica_id, puntos) VALUES (?, ?, ?, ?)`,
+                `INSERT INTO partidas (usuario_id, juego_id, tematica_id, puntos) VALUES () RETURNING id`,
                 [usuario_id, juego_id, tematica_id || null, puntos]
             );
             await notificarSiSuperaRecordAjeno(db, usuario_id, juego_id, puntos, req.user.username);
-            return res.status(201).json({ message: 'Partida guardada', id: result.lastID });
+            return res.status(201).json({ message: 'Partida guardada', id: result.rows[0].id });
         }
     } catch (error) {
         console.error('Error en /api/partidas:', error);
@@ -165,7 +165,7 @@ router.get('/ahorcado/palabra', async (req, res) => {
 
         sql += ` ORDER BY RANDOM() LIMIT 1`;
 
-        const row = await db.get(sql, params);
+        const row = (await db.query(sql, params)).rows[0];
         if (row) {
             res.json({ palabra: row.palabra });
         } else {
@@ -188,7 +188,7 @@ router.get('/wordle/palabra', async (req, res) => {
 
     try {
         const sql = `SELECT palabra FROM palabras_wordle WHERE tematica_id = ? ORDER BY RANDOM() LIMIT 1`;
-        const row = await db.get(sql, [Number(tematica)]);
+        const row = (await db.query(sql, [Number(tematica)).rows[0]]);
         if (row) {
             res.json({ palabra: row.palabra });
         } else {
@@ -214,7 +214,7 @@ router.get('/preguntas', async (req, res) => {
         }
         sql += ` ORDER BY RANDOM() LIMIT 10`;
 
-        const rows = await db.all(sql, params);
+        const rows = (await db.query(sql, params)).rows;
         res.json(rows);
     } catch (error) {
         console.error('Error en /api/preguntas:', error);
@@ -254,7 +254,7 @@ router.get('/sopa/palabras', async (req, res) => {
         sql += ` ORDER BY RANDOM() LIMIT ?`;
         params.push(cantidad);
 
-        const rows = await db.all(sql, params);
+        const rows = (await db.query(sql, params)).rows;
         res.json(rows.map(r => r.palabra));
     } catch (error) {
         console.error('Error en /api/sopa/palabras:', error);
@@ -281,7 +281,7 @@ router.get('/adivina/items', async (req, res) => {
             WHERE tematica_id = ?
             LIMIT 50
         `;
-        const rows = await db.all(sql, [Number(tematica)]);
+        const rows = (await db.query(sql, [Number(tematica)).rows]);
 
         // El frontend espera el mismo shape que tenía ADIVINA_DATA:
         // pistas como array de 4 y aliases como array (acá vive como JSON

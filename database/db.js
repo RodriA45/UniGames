@@ -1,22 +1,24 @@
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
-const path = require('path');
+const { Pool } = require('pg');
+require('dotenv').config();
 
-let dbInstance = null;
+let poolInstance = null;
 
 async function getDb() {
-    if (dbInstance) return dbInstance;
+    if (poolInstance) return poolInstance;
     
     try {
-        dbInstance = await open({
-            filename: path.join(__dirname, '..', 'unigames.db'),
-            driver: sqlite3.Database
+        poolInstance = new Pool({
+            connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/unigames',
+            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
         });
-        await dbInstance.exec('PRAGMA foreign_keys = ON');
-        console.log('✅ Conectado a unigames.db (SQLite)');
-        return dbInstance;
+
+        // Test the connection
+        await poolInstance.query('SELECT 1');
+        console.log('✅ Conectado a PostgreSQL (UniGames)');
+        
+        return poolInstance;
     } catch (error) {
-        console.error('❌ Error crítico al conectar a la base de datos:', error);
+        console.error('❌ Error crítico al conectar a PostgreSQL:', error);
         process.exit(1);
     }
 }

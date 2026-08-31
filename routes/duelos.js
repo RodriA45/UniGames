@@ -187,20 +187,20 @@ router.post('/duelos', verificarToken, async (req, res) => {
         if (abierto) return res.status(400).json({ error: 'Ya tenés un duelo pendiente con este amigo en ese juego' });
 
         const result = await db.run(
-            `INSERT INTO duelos (retador_id, retado_id, juego_id, estado, tematica_id, duracion_segundos) VALUES (?, ?, ?, 'pendiente', ?, ?)`,
+            `INSERT INTO duelos (retador_id, retado_id, juego_id, estado, tematica_id, duracion_segundos) VALUES () RETURNING id`,
             [req.user.id, amigoId, juegoId, tematicaId, duracionSegundos]
         );
 
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo_reto', ?, 'amigos')`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
                 [amigoId, `${req.user.username} te retó a un duelo de ${JUEGOS_DUELO[juego].nombre}`]
             );
         } catch (notifError) {
             console.error('Error al crear notificación de duelo:', notifError);
         }
 
-        res.status(201).json({ message: 'Duelo enviado', id: result.lastID });
+        res.status(201).json({ message: 'Duelo enviado', id: result.rows[0].id });
     } catch (error) {
         console.error('Error en POST /api/duelos:', error);
         res.status(500).json({ error: 'Error al crear el duelo' });
@@ -212,15 +212,15 @@ router.post('/duelos/:id/aceptar', verificarToken, async (req, res) => {
     const { id } = req.params;
     const db = await getDb();
     try {
-        const duelo = await db.get(`SELECT * FROM duelos WHERE id = ? AND estado = 'pendiente'`, [id]);
+        const duelo = (await db.query(`SELECT * FROM duelos WHERE id = $1 AND estado = 'pendiente'`, [id])).rows[0];
         if (!duelo) return res.status(404).json({ error: 'Duelo no encontrado' });
         if (duelo.retado_id !== req.user.id) return res.status(403).json({ error: 'No podés aceptar este duelo' });
 
-        await db.run(`UPDATE duelos SET estado = 'en_curso' WHERE id = ?`, [id]);
+        await db.query(`UPDATE duelos SET estado = 'en_curso' WHERE id = $1`, [id]);
 
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo_aceptado', ?, 'amigos')`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
                 [duelo.retador_id, `${req.user.username} aceptó tu duelo`]
             );
         } catch (notifError) {
@@ -240,12 +240,12 @@ router.post('/duelos/:id/rechazar', verificarToken, async (req, res) => {
     const { id } = req.params;
     const db = await getDb();
     try {
-        const duelo = await db.get(`SELECT * FROM duelos WHERE id = ? AND estado = 'pendiente'`, [id]);
+        const duelo = (await db.query(`SELECT * FROM duelos WHERE id = $1 AND estado = 'pendiente'`, [id])).rows[0];
         if (!duelo) return res.status(404).json({ error: 'Duelo no encontrado' });
         if (duelo.retador_id !== req.user.id && duelo.retado_id !== req.user.id) {
             return res.status(403).json({ error: 'No podés modificar este duelo' });
         }
-        await db.run(`DELETE FROM duelos WHERE id = ?`, [id]);
+        await db.query(`DELETE FROM duelos WHERE id = $1`, [id]);
         res.json({ message: 'Duelo eliminado' });
     } catch (error) {
         console.error('Error en POST /api/duelos/:id/rechazar:', error);
@@ -267,7 +267,7 @@ router.post('/duelos/:id/resultado', verificarToken, async (req, res) => {
 
     const db = await getDb();
     try {
-        const duelo = await db.get(`SELECT * FROM duelos WHERE id = ? AND estado = 'en_curso'`, [id]);
+        const duelo = (await db.query(`SELECT * FROM duelos WHERE id = $1 AND estado = 'en_curso'`, [id])).rows[0];
         if (!duelo) return res.status(404).json({ error: 'Duelo no encontrado o no está en curso' });
 
         const soyRetador = duelo.retador_id === req.user.id;
@@ -278,9 +278,9 @@ router.post('/duelos/:id/resultado', verificarToken, async (req, res) => {
         if (yaJugue) return res.status(400).json({ error: 'Ya registraste tu puntaje en este duelo' });
 
         const campo = soyRetador ? 'puntos_retador' : 'puntos_retado';
-        await db.run(`UPDATE duelos SET ${campo} = ? WHERE id = ?`, [Math.round(puntos), id]);
+        await db.query(`UPDATE duelos SET ${campo} = $1 WHERE id = $2`, [Math.round(puntos), id]);
 
-        const actualizado = await db.get(`SELECT * FROM duelos WHERE id = ?`, [id]);
+        const actualizado = (await db.query(`SELECT * FROM duelos WHERE id = $1`, [id])).rows[0];
         const ambosJugaron = actualizado.puntos_retador !== null && actualizado.puntos_retado !== null;
 
         if (ambosJugaron) {
@@ -300,7 +300,7 @@ router.post('/duelos/:id/resultado', verificarToken, async (req, res) => {
                 else if (ganadorId === otroId) mensaje = `Ganaste el duelo contra ${req.user.username}`;
                 else mensaje = `${req.user.username} te ganó el duelo`;
                 await db.run(
-                    `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo_resultado', ?, 'amigos')`,
+                    `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
                     [otroId, mensaje]
                 );
             } catch (notifError) {
@@ -308,7 +308,7 @@ router.post('/duelos/:id/resultado', verificarToken, async (req, res) => {
             }
         }
 
-        const row = await db.get(`${SELECT_BASE} WHERE d.id = ?`, [id]);
+        const row = (await db.query(`${SELECT_BASE} WHERE d.id = $1`, [id])).rows[0];
         res.json(formatearDuelo(row, req.user.id));
     } catch (error) {
         console.error('Error en POST /api/duelos/:id/resultado:', error);
@@ -323,7 +323,7 @@ router.post('/duelos/:id/revancha', verificarToken, async (req, res) => {
     const { id } = req.params;
     const db = await getDb();
     try {
-        const duelo = await db.get(`SELECT * FROM duelos WHERE id = ? AND estado = 'finalizado'`, [id]);
+        const duelo = (await db.query(`SELECT * FROM duelos WHERE id = $1 AND estado = 'finalizado'`, [id])).rows[0];
         if (!duelo) return res.status(404).json({ error: 'Duelo no encontrado' });
         if (duelo.retador_id !== req.user.id && duelo.retado_id !== req.user.id) {
             return res.status(403).json({ error: 'No podés revanchar este duelo' });
@@ -335,20 +335,20 @@ router.post('/duelos/:id/revancha', verificarToken, async (req, res) => {
         if (abierto) return res.status(400).json({ error: 'Ya tenés un duelo pendiente con este amigo en ese juego' });
 
         const result = await db.run(
-            `INSERT INTO duelos (retador_id, retado_id, juego_id, estado, tematica_id, duracion_segundos) VALUES (?, ?, ?, 'pendiente', ?, ?)`,
+            `INSERT INTO duelos (retador_id, retado_id, juego_id, estado, tematica_id, duracion_segundos) VALUES () RETURNING id`,
             [req.user.id, oponenteId, duelo.juego_id, duelo.tematica_id, duelo.duracion_segundos]
         );
 
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo_reto', ?, 'amigos')`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
                 [oponenteId, `${req.user.username} te retó a la revancha`]
             );
         } catch (notifError) {
             console.error('Error al crear notificación de revancha:', notifError);
         }
 
-        res.status(201).json({ message: 'Revancha enviada', id: result.lastID });
+        res.status(201).json({ message: 'Revancha enviada', id: result.rows[0].id });
     } catch (error) {
         console.error('Error en POST /api/duelos/:id/revancha:', error);
         res.status(500).json({ error: 'Error al crear la revancha' });

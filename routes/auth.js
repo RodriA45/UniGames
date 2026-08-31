@@ -15,21 +15,22 @@ router.post('/register', authRateLimit, validate(registerSchema), async (req, re
 
     try {
         const hash = await bcrypt.hash(password, 10);
-        const sql = `INSERT INTO usuarios (nombre_usuario, email, password_hash) VALUES (?, ?, ?)`;
-        const result = await db.run(sql, [username, email, hash]);
+        const sql = `INSERT INTO usuarios (nombre_usuario, email, password_hash) VALUES ($1, $2, $3) RETURNING id`;
+        const result = await db.query(sql, [username, email, hash]);
+        const lastID = result.rows[0].id;
         
-        const token = jwt.sign({ id: result.lastID, username, rol: 'user' }, JWT_SECRET, { expiresIn: '7d' });
+        const token = jwt.sign({ id: lastID, username, rol: 'user' }, JWT_SECRET, { expiresIn: '7d' });
         
         res.status(201).json({ 
             message: 'Usuario registrado exitosamente', 
             token,
-            user: { id: result.lastID, username, rol: 'user' } 
+            user: { id: lastID, username, rol: 'user' } 
         });
     } catch (error) {
-        if (error.message.includes('UNIQUE constraint failed: usuarios.nombre_usuario')) {
+        if (error.message.includes('usuarios_nombre_usuario_key') || error.message.includes('UNIQUE constraint failed: usuarios.nombre_usuario')) {
             return res.status(400).json({ error: 'El nombre de usuario ya existe' });
         }
-        if (error.message.includes('UNIQUE constraint failed: usuarios.email')) {
+        if (error.message.includes('usuarios_email_key') || error.message.includes('UNIQUE constraint failed: usuarios.email')) {
             return res.status(400).json({ error: 'El email ya está registrado' });
         }
         console.error('Error en /api/register:', error);
@@ -43,8 +44,9 @@ router.post('/login', authRateLimit, validate(loginSchema), async (req, res) => 
     const db = await getDb();
 
     try {
-        const sql = `SELECT * FROM usuarios WHERE nombre_usuario = ? OR email = ?`;
-        const row = await db.get(sql, [identity, identity]);
+        const sql = `SELECT * FROM usuarios WHERE nombre_usuario = $1 OR email = $2`;
+        const result = await db.query(sql, [identity, identity]);
+        const row = result.rows[0];
         
         if (!row) {
             return res.status(400).json({ error: 'Usuario no encontrado' });

@@ -92,7 +92,7 @@ router.patch('/perfil', verificarToken, async (req, res) => {
         if (icono !== undefined) { campos.push('icono = ?'); valores.push(icono); }
         valores.push(req.user.id);
 
-        await db.run(`UPDATE usuarios SET ${campos.join(', ')} WHERE id = ?`, valores);
+        await db.query(`UPDATE usuarios SET ${campos.join(', ')} WHERE id = ?`, valores);
 
         const user = await db.get(
             `SELECT id, nombre_usuario AS username, descripcion, icono FROM usuarios WHERE id = ?`,

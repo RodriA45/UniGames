@@ -13,7 +13,7 @@ const router = express.Router();
 router.get('/config', async (req, res) => {
     const db = await getDb();
     try {
-        const rows = await db.all(`SELECT clave, valor FROM configuracion_global`);
+        const rows = (await db.query(`SELECT clave, valor FROM configuracion_global`)).rows;
         const config = {};
         rows.forEach(row => {
             config[row.clave] = row.valor;
@@ -29,7 +29,7 @@ router.get('/config', async (req, res) => {
 router.get('/avisos/activo', async (req, res) => {
     const db = await getDb();
     try {
-        const row = await db.get("SELECT * FROM avisos WHERE activo = 1 ORDER BY id DESC LIMIT 1");
+        const row = (await db.query("SELECT * FROM avisos WHERE activo = 1 ORDER BY id DESC LIMIT 1")).rows[0];
         res.json(row || null);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -82,7 +82,7 @@ router.put('/config', async (req, res) => {
 router.get('/usuarios', async (req, res) => {
     const db = await getDb();
     try {
-        const usuarios = await db.all(`SELECT id, nombre_usuario, email, rol, fecha_registro, estado FROM usuarios ORDER BY id DESC`);
+        const usuarios = (await db.query(`SELECT id, nombre_usuario, email, rol, fecha_registro, estado FROM usuarios ORDER BY id DESC`)).rows;
         res.json(usuarios);
     } catch (error) {
         res.status(500).json({ error: 'Error al obtener usuarios' });
@@ -98,7 +98,7 @@ router.put('/usuarios/:id/estado', async (req, res) => {
         return res.status(400).json({ error: 'Estado inválido' });
     }
     try {
-        await db.run('UPDATE usuarios SET estado = ? WHERE id = ?', [estado, id]);
+        await db.query(`UPDATE usuarios SET estado = $1 WHERE id = $2`, [estado, id]);
         res.json({ message: 'Estado actualizado' });
     } catch(err) {
         res.status(500).json({ error: 'Error al actualizar estado' });
@@ -112,7 +112,7 @@ router.put('/usuarios/:id/rol', async (req, res) => {
     if (rol !== 'admin' && rol !== 'user') return res.status(400).json({ error: 'Rol inválido' });
     
     try {
-        await db.run(`UPDATE usuarios SET rol = ? WHERE id = ?`, [rol, req.params.id]);
+        await db.query(`UPDATE usuarios SET rol = $1 WHERE id = $2`, [rol, req.params.id]);
         res.json({ message: `Rol actualizado a ${rol}` });
     } catch (error) {
         res.status(500).json({ error: 'Error al actualizar rol' });
@@ -124,10 +124,10 @@ router.get('/dashboard', async (req, res) => {
     const db = await getDb();
     try {
         const stats = {};
-        const totalUsuarios = await db.get('SELECT COUNT(*) as count FROM usuarios');
+        const totalUsuarios = (await db.query('SELECT COUNT(*)).rows[0] as count FROM usuarios');
         stats.totalUsuarios = totalUsuarios.count;
         
-        const activos = await db.get('SELECT COUNT(*) as count FROM usuarios WHERE estado="activo"');
+        const activos = (await db.query('SELECT COUNT(*)).rows[0] as count FROM usuarios WHERE estado="activo"');
         stats.activos = activos.count;
         
         const partidasPorJuego = await db.all(`
@@ -159,7 +159,7 @@ router.get('/dashboard', async (req, res) => {
 router.get('/avisos', async (req, res) => {
     const db = await getDb();
     try {
-        const rows = await db.all("SELECT * FROM avisos ORDER BY id DESC");
+        const rows = (await db.query("SELECT * FROM avisos ORDER BY id DESC")).rows;
         res.json(rows || []);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -176,11 +176,11 @@ router.post('/avisos', async (req, res) => {
     
     try {
         if (isActivo) {
-            await db.run("UPDATE avisos SET activo = 0");
+            await db.query("UPDATE avisos SET activo = 0");
         }
         
         const result = await db.run(
-            "INSERT INTO avisos (texto, icono, color, activo) VALUES (?, ?, ?, ?)", 
+            `INSERT INTO avisos (texto, icono, color, activo) VALUES ($1, $2, $3, $4) RETURNING id`, 
             [texto, icono || '📢', color || '#3b82f6', isActivo]
         );
 
@@ -188,11 +188,11 @@ router.post('/avisos', async (req, res) => {
         // le aparezca en su bandeja (menú lateral derecho > Notificaciones),
         // además del banner global que ya se muestra arriba de la página.
         try {
-            const usuarios = await db.all("SELECT id FROM usuarios");
+            const usuarios = (await db.query("SELECT id FROM usuarios")).rows;
             const mensaje = `${icono || '📢'} ${texto}`;
             for (const u of usuarios) {
                 await db.run(
-                    `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'aviso', ?, NULL)`,
+                    `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES ($1, 'aviso', $2, NULL)`,
                     [u.id, mensaje]
                 );
             }
@@ -200,7 +200,7 @@ router.post('/avisos', async (req, res) => {
             console.error('Error al notificar aviso nuevo a los usuarios:', notifError);
         }
 
-        res.json({ id: result.lastID, success: true });
+        res.json({ id: result.rows[0].id, success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -215,10 +215,10 @@ router.put('/avisos/:id/toggle', async (req, res) => {
     
     try {
         if (isActivo) {
-            await db.run("UPDATE avisos SET activo = 0");
-            await db.run("UPDATE avisos SET activo = 1 WHERE id = ?", [id]);
+            await db.query("UPDATE avisos SET activo = 0");
+            await db.query(`UPDATE avisos SET activo = 1 WHERE id = $1`, [id]);
         } else {
-            await db.run("UPDATE avisos SET activo = 0 WHERE id = ?", [id]);
+            await db.query(`UPDATE avisos SET activo = 0 WHERE id = $1`, [id]);
         }
         res.json({ success: true });
     } catch (err) {
@@ -231,7 +231,7 @@ router.delete('/avisos/:id', async (req, res) => {
     const id = req.params.id;
     const db = await getDb();
     try {
-        await db.run("DELETE FROM avisos WHERE id = ?", [id]);
+        await db.query(`DELETE FROM avisos WHERE id = $1`, [id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -246,7 +246,7 @@ router.delete('/avisos/:id', async (req, res) => {
 router.get('/tematicas', async (req, res) => {
     const db = await getDb();
     try {
-        const rows = await db.all('SELECT * FROM tematicas ORDER BY id ASC');
+        const rows = (await db.query('SELECT * FROM tematicas ORDER BY id ASC')).rows;
         res.json(rows || []);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -271,11 +271,11 @@ router.get('/ahorcado', async (req, res) => {
         if (tematica_id !== undefined) {
             const t = normalizarTematicaId(tematica_id);
             if (t === undefined) return res.status(400).json({ error: 'tematica_id inválido' });
-            sql += t === null ? ' WHERE tematica_id IS NULL' : ' WHERE tematica_id = ?';
+            sql += t === null ? ' WHERE tematica_id IS NULL' : ` WHERE tematica_id = $1`;
             if (t !== null) params.push(t);
         }
         sql += ' ORDER BY id DESC';
-        const rows = await db.all(sql, params);
+        const rows = (await db.query(sql, params)).rows;
         res.json(rows || []);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -291,10 +291,10 @@ router.post('/ahorcado', async (req, res) => {
     const db = await getDb();
     try {
         const result = await db.run(
-            'INSERT INTO palabras_ahorcado (palabra, tematica_id) VALUES (?, ?)',
+            `INSERT INTO palabras_ahorcado (palabra, tematica_id) VALUES ($1, $2) RETURNING id`,
             [palabra.trim().toLowerCase(), t]
         );
-        res.json({ id: result.lastID, success: true });
+        res.json({ id: result.rows[0].id, success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -309,7 +309,7 @@ router.put('/ahorcado/:id', async (req, res) => {
     const db = await getDb();
     try {
         await db.run(
-            'UPDATE palabras_ahorcado SET palabra = ?, tematica_id = ? WHERE id = ?',
+            `UPDATE palabras_ahorcado SET palabra = $1, tematica_id = $2 WHERE id = $3`,
             [palabra.trim().toLowerCase(), t, req.params.id]
         );
         res.json({ success: true });
@@ -321,7 +321,7 @@ router.put('/ahorcado/:id', async (req, res) => {
 router.delete('/ahorcado/:id', async (req, res) => {
     const db = await getDb();
     try {
-        await db.run('DELETE FROM palabras_ahorcado WHERE id = ?', [req.params.id]);
+        await db.query(`DELETE FROM palabras_ahorcado WHERE id = $1`, [req.params.id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -342,7 +342,7 @@ router.get('/wordle', async (req, res) => {
             params.push(Number(tematica_id));
         }
         sql += ' ORDER BY id DESC';
-        const rows = await db.all(sql, params);
+        const rows = (await db.query(sql, params)).rows;
         res.json(rows || []);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -357,10 +357,10 @@ router.post('/wordle', async (req, res) => {
     const db = await getDb();
     try {
         const result = await db.run(
-            'INSERT INTO palabras_wordle (palabra, tematica_id) VALUES (?, ?)',
+            `INSERT INTO palabras_wordle (palabra, tematica_id) VALUES ($1, $2) RETURNING id`,
             [palabra.trim().toLowerCase(), Number(tematica_id)]
         );
-        res.json({ id: result.lastID, success: true });
+        res.json({ id: result.rows[0].id, success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -374,7 +374,7 @@ router.put('/wordle/:id', async (req, res) => {
     const db = await getDb();
     try {
         await db.run(
-            'UPDATE palabras_wordle SET palabra = ?, tematica_id = ? WHERE id = ?',
+            `UPDATE palabras_wordle SET palabra = $1, tematica_id = $2 WHERE id = $3`,
             [palabra.trim().toLowerCase(), Number(tematica_id), req.params.id]
         );
         res.json({ success: true });
@@ -386,7 +386,7 @@ router.put('/wordle/:id', async (req, res) => {
 router.delete('/wordle/:id', async (req, res) => {
     const db = await getDb();
     try {
-        await db.run('DELETE FROM palabras_wordle WHERE id = ?', [req.params.id]);
+        await db.query(`DELETE FROM palabras_wordle WHERE id = $1`, [req.params.id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -418,7 +418,7 @@ router.get('/preguntas', async (req, res) => {
             params.push(Number(tematica_id));
         }
         sql += ' ORDER BY id DESC';
-        const rows = await db.all(sql, params);
+        const rows = (await db.query(sql, params)).rows;
         res.json(rows || []);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -433,11 +433,10 @@ router.post('/preguntas', async (req, res) => {
     const db = await getDb();
     try {
         const result = await db.run(
-            `INSERT INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
             [Number(tematica_id), pregunta.trim(), opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta.toUpperCase()]
         );
-        res.json({ id: result.lastID, success: true });
+        res.json({ id: result.rows[0].id, success: true });
     } catch (err) {
         if (err.message.includes('UNIQUE constraint failed')) {
             return res.status(400).json({ error: 'Ya existe esa pregunta para esta temática' });
@@ -470,7 +469,7 @@ router.put('/preguntas/:id', async (req, res) => {
 router.delete('/preguntas/:id', async (req, res) => {
     const db = await getDb();
     try {
-        await db.run('DELETE FROM preguntas WHERE id = ?', [req.params.id]);
+        await db.query(`DELETE FROM preguntas WHERE id = $1`, [req.params.id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -499,7 +498,7 @@ router.get('/adivina', async (req, res) => {
             params.push(Number(tematica_id));
         }
         sql += ' ORDER BY id DESC';
-        const rows = await db.all(sql, params);
+        const rows = (await db.query(sql, params)).rows;
         // Igual que en /api/adivina/items: exponemos "pistas" como array y "aliases" parseado
         const items = rows.map(r => ({
             ...r,
@@ -521,11 +520,10 @@ router.post('/adivina', async (req, res) => {
     const db = await getDb();
     try {
         const result = await db.run(
-            `INSERT INTO adivina_items (tematica_id, respuesta, aliases, imagen, pista_1, pista_2, pista_3, pista_4)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO adivina_items (tematica_id, respuesta, aliases, imagen, pista_1, pista_2, pista_3, pista_4) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
             [Number(tematica_id), respuesta.trim(), JSON.stringify(aliases || []), imagen || null, p1 || null, p2 || null, p3 || null, p4 || null]
         );
-        res.json({ id: result.lastID, success: true });
+        res.json({ id: result.rows[0].id, success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -553,7 +551,7 @@ router.put('/adivina/:id', async (req, res) => {
 router.delete('/adivina/:id', async (req, res) => {
     const db = await getDb();
     try {
-        await db.run('DELETE FROM adivina_items WHERE id = ?', [req.params.id]);
+        await db.query(`DELETE FROM adivina_items WHERE id = $1`, [req.params.id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

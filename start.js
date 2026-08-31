@@ -1,19 +1,14 @@
 const { execSync } = require('child_process');
 
 console.log('--- Iniciando UniGames ---');
-console.log('Paso 1: Configurando Base de Datos SQLite...');
+console.log('Paso 1: Configurando Base de Datos PostgreSQL...');
 
 try {
-  try {
-    // Intenta con python3 (típico en Render/Linux)
-    execSync('python3 crear_bd.py', { stdio: 'inherit' });
-  } catch (err) {
-    // Si falla, intenta con python (típico en Windows)
-    execSync('python crear_bd.py', { stdio: 'inherit' });
-  }
+  // Ejecutamos la inicialización de Postgres
+  execSync('node database/init_db.js', { stdio: 'inherit' });
   console.log('Base de datos inicializada correctamente.');
 } catch (error) {
-  console.error('⚠️ Advertencia: No se pudo ejecutar el script de base de datos de Python. Si la DB no existe, la app podría fallar.');
+  console.error('⚠️ Advertencia: No se pudo ejecutar el script de inicialización de la base de datos.');
   console.error(error.message);
 }
 

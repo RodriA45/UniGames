@@ -2,19 +2,10 @@
 //   UniGames — hacer_admin.js
 // ══════════════════════════════════════
 //
-// Reemplazo en Node del hacer_admin.py. Reutiliza getDb() de database/db.js,
-// así que la ruta a unigames.db SIEMPRE es la correcta (se arma con
-// __dirname adentro de db.js, no depende de la carpeta desde la que
-// ejecutes este script) — el bug típico de "no se encontró la base de
-// datos" por correr el .bat desde el lugar equivocado no puede pasar acá.
+// Reemplazo en Node del hacer_admin.py adaptado a PostgreSQL.
+// Reutiliza getDb() de database/db.js.
 //
-// Uso: node hacer_admin.js
-// (o agregá "admin": "node hacer_admin.js" en el package.json, reemplazando
-// la línea de python — ver comentario al final de este archivo)
-//
-// AJUSTE DE RUTA: este archivo asume que vive en la RAÍZ del proyecto,
-// al lado de database/. Si lo movés a otra carpeta (ej. scripts/),
-// cambiá el require de abajo a '../database/db'.
+// Uso: npm run admin
 // ══════════════════════════════════════
 
 const readline = require('readline');
@@ -35,7 +26,8 @@ function banner() {
 }
 
 async function listarUsuarios(db) {
-  const usuarios = await db.all('SELECT id, nombre_usuario, email, rol FROM usuarios ORDER BY id ASC');
+  const result = await db.query('SELECT id, nombre_usuario, email, rol FROM usuarios ORDER BY id ASC');
+  const usuarios = result.rows;
   console.log(`\n${C_BLUE}--- Usuarios registrados ---${C_END}\n`);
   if (!usuarios.length) {
     console.log(`${C_WARNING}No hay usuarios registrados.${C_END}`);
@@ -57,7 +49,8 @@ async function cambiarRol(db, nuevoRol) {
   const email = (await ask("Email del usuario (o '0' para volver): ")).trim();
   if (email === '0' || !email) return;
 
-  const row = await db.get('SELECT id, nombre_usuario, rol FROM usuarios WHERE email = ?', [email]);
+  const result = await db.query('SELECT id, nombre_usuario, rol FROM usuarios WHERE email = $1', [email]);
+  const row = result.rows[0];
   if (!row) {
     console.log(`\n${C_FAIL}❌ No se encontró un usuario con el correo '${email}'.${C_END}\n`);
     return;
@@ -72,12 +65,12 @@ async function cambiarRol(db, nuevoRol) {
     console.log(`\n${C_WARNING}Operación cancelada.${C_END}\n`);
     return;
   }
-  await db.run('UPDATE usuarios SET rol = ? WHERE email = ?', [nuevoRol, email]);
+  await db.query('UPDATE usuarios SET rol = $1 WHERE email = $2', [nuevoRol, email]);
   console.log(`\n${C_GREEN}✅ Rol de '${row.nombre_usuario}' actualizado a ${nuevoRol}.${C_END}\n`);
 }
 
 async function menuPrincipal() {
-  const db = await getDb(); // acá se ve enseguida si la ruta a unigames.db falla
+  const db = await getDb(); // Conecta a PostgreSQL
   while (true) {
     banner();
     console.log('Selecciona una opción:');

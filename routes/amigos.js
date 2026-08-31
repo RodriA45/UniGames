@@ -63,7 +63,7 @@ router.post('/amigos/solicitudes', verificarToken, async (req, res) => {
     }
 
     try {
-        const receptor = await db.get(`SELECT id FROM usuarios WHERE id = ?`, [receptorId]);
+        const receptor = (await db.query(`SELECT id FROM usuarios WHERE id = $1`, [receptorId])).rows[0];
         if (!receptor) return res.status(404).json({ error: 'Usuario no encontrado' });
 
         const existente = await db.get(
@@ -85,7 +85,7 @@ router.post('/amigos/solicitudes', verificarToken, async (req, res) => {
         }
 
         const result = await db.run(
-            `INSERT INTO amistades (usuario1_id, usuario2_id, estado) VALUES (?, ?, 'pendiente')`,
+            `INSERT INTO amistades (usuario1_id, usuario2_id, estado) VALUES () RETURNING id`,
             [req.user.id, receptorId]
         );
 
@@ -93,14 +93,14 @@ router.post('/amigos/solicitudes', verificarToken, async (req, res) => {
         // de notificaciones (menú lateral derecho > Notificaciones).
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'solicitud_amistad', ?, 'amigos')`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
                 [receptorId, `${req.user.username} te envió una solicitud de amistad`]
             );
         } catch (notifError) {
             console.error('Error al crear notificación de solicitud de amistad:', notifError);
         }
 
-        res.status(201).json({ message: 'Solicitud enviada', id: result.lastID });
+        res.status(201).json({ message: 'Solicitud enviada', id: result.rows[0].id });
     } catch (error) {
         console.error('Error en POST /api/amigos/solicitudes:', error);
         res.status(500).json({ error: 'Error al enviar la solicitud' });
@@ -112,7 +112,7 @@ router.post('/amigos/solicitudes/:id/aceptar', verificarToken, async (req, res) 
     const { id } = req.params;
     const db = await getDb();
     try {
-        const solicitud = await db.get(`SELECT * FROM amistades WHERE id = ? AND estado = 'pendiente'`, [id]);
+        const solicitud = (await db.query(`SELECT * FROM amistades WHERE id = $1 AND estado = 'pendiente'`, [id])).rows[0];
         if (!solicitud) return res.status(404).json({ error: 'Solicitud no encontrada' });
         if (solicitud.usuario2_id !== req.user.id) {
             return res.status(403).json({ error: 'No podés aceptar esta solicitud' });
@@ -126,7 +126,7 @@ router.post('/amigos/solicitudes/:id/aceptar', verificarToken, async (req, res) 
             return res.status(400).json({ error: 'Alcanzaste el límite de amigos' });
         }
 
-        await db.run(`UPDATE amistades SET estado = 'aceptada' WHERE id = ?`, [id]);
+        await db.query(`UPDATE amistades SET estado = 'aceptada' WHERE id = $1`, [id]);
         res.json({ message: 'Solicitud aceptada' });
     } catch (error) {
         console.error('Error en POST /api/amigos/solicitudes/:id/aceptar:', error);
@@ -139,13 +139,13 @@ router.post('/amigos/solicitudes/:id/rechazar', verificarToken, async (req, res)
     const { id } = req.params;
     const db = await getDb();
     try {
-        const solicitud = await db.get(`SELECT * FROM amistades WHERE id = ? AND estado = 'pendiente'`, [id]);
+        const solicitud = (await db.query(`SELECT * FROM amistades WHERE id = $1 AND estado = 'pendiente'`, [id])).rows[0];
         if (!solicitud) return res.status(404).json({ error: 'Solicitud no encontrada' });
         if (solicitud.usuario1_id !== req.user.id && solicitud.usuario2_id !== req.user.id) {
             return res.status(403).json({ error: 'No podés modificar esta solicitud' });
         }
 
-        await db.run(`DELETE FROM amistades WHERE id = ?`, [id]);
+        await db.query(`DELETE FROM amistades WHERE id = $1`, [id]);
         res.json({ message: 'Solicitud eliminada' });
     } catch (error) {
         console.error('Error en POST /api/amigos/solicitudes/:id/rechazar:', error);

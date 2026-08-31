@@ -65,7 +65,7 @@ router.post('/notificaciones/:id/leer', async (req, res) => {
 router.post('/notificaciones/leer-todas', async (req, res) => {
     const db = await getDb();
     try {
-        await db.run(`UPDATE notificaciones SET leido = 1 WHERE usuario_id = ? AND leido = 0`, [req.user.id]);
+        await db.query(`UPDATE notificaciones SET leido = 1 WHERE usuario_id = $1 AND leido = 0`, [req.user.id]);
         res.json({ message: 'Notificaciones marcadas como leídas' });
     } catch (error) {
         console.error('Error en POST /api/notificaciones/leer-todas:', error);
