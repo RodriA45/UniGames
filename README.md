@@ -3,7 +3,7 @@
   <p><b>Tu plataforma de mini juegos de palabras, cultura pop y entretenimiento.</b></p>
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js"/>
   <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express"/>
-  <img src="https://img.shields.io/badge/SQLite-07405E?style=for-the-badge&logo=sqlite&logoColor=white" alt="SQLite"/>
+  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"/>
   <img src="https://img.shields.io/badge/HTML5-E34F26?style=for-the-badge&logo=html5&logoColor=white" alt="HTML5"/>
   <img src="https://img.shields.io/badge/CSS3-1572B6?style=for-the-badge&logo=css3&logoColor=white" alt="CSS3"/>
   <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black" alt="JavaScript"/>
@@ -32,7 +32,7 @@ Actualmente incluye:
   - Gestionar anuncios globales (historial de avisos y activación dinámica de un banner público).
 - **Sistema de Audio:** Efectos de sonido y música de fondo dinámica que cambia según el juego, con un botón global de "Mute".
 - **Leaderboard Global:** Tabla de puntuaciones donde los jugadores compiten por el primer lugar en cada juego.
-- **Preparado para Deploy:** Configurado con variables de entorno (`.env`) listo para ser desplegado. *(Usa SQLite localmente).*
+- **Preparado para Deploy:** Configurado con variables de entorno (`.env`) y listo para ser desplegado en Render (usando `render.yaml`). Base de datos escalable en Neon.tech (PostgreSQL).
 
 ## 🚀 Instalación y Uso Local
 
@@ -40,7 +40,7 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
 
 ### Requisitos previos
 - [Node.js](https://nodejs.org/) instalado (versión 18+ recomendada).
-- Python (Solo necesario si querés regenerar o expandir la base de datos de palabras desde cero).
+- Una base de datos PostgreSQL alojada (ej: Neon.tech, Supabase) o instalada localmente.
 
 ### Pasos
 
@@ -63,13 +63,17 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
    ```
 
 4. **Generar la Base de Datos y Correr el Servidor:**
-   El proyecto usa `sqlite` con Promesas. La base de datos `.db` NO se sube a GitHub para proteger los puntajes de los usuarios.
+   El proyecto usa `PostgreSQL`. Asegúrate de haber pegado tu `DATABASE_URL` (por ejemplo, provista por Neon.tech) en tu archivo `.env`.
    
-   Para arrancar el servidor de desarrollo y generar la base de datos automáticamente (ejecuta el script de Python por detrás):
+   Para inicializar/resetear las tablas de la base de datos y cargar los datos por defecto:
+   ```bash
+   npm run db:reset
+   ```
+   
+   Para arrancar el servidor de desarrollo:
    ```bash
    npm run dev
    ```
-   *(También puedes usar el comando estándar `npm start`).*
 
 5. **Jugar:**
    Abre tu navegador en [http://localhost:3000](http://localhost:3000).
@@ -86,7 +90,7 @@ npm run admin
 O haz doble clic en `hacer_admin.bat` (solo en Windows). Escribe tu email o usuario, y al recargar la página, verás el botón de "Panel Admin".
 
 **Despliegue y Cambios:**
-Si deseas agregar nuevas preguntas o palabras a la base de datos, agrégalas en el archivo `crear_bd.py`. Luego, en vez de usar comandos de Git manualmente:
+Si deseas agregar nuevas preguntas o palabras a la base de datos, agrégalas en el archivo `database/init_db.js`. Luego, en vez de usar comandos de Git manualmente:
 1. Da doble clic en el archivo **`subir_cambios_Github.bat`** (solo Windows).
 2. Sigue las instrucciones en la consola para describir tu cambio.
 
@@ -113,7 +117,7 @@ UniGames/
 ├── database/               # Módulo de conexión centralizada a SQLite (db.js)
 ├── server.js               # Servidor Backend principal
 
-├── crear_bd.py             # Script para generar las tablas (usuarios, avisos, configuracion) y diccionarios
+├── render.yaml             # Configuración de infraestructura (Blueprint) automatizada para Render
 ├── .env                    # Variables de entorno (no subido a GitHub)
 ├── iniciar.bat             # Acceso directo para inicializar en Windows
 └── package.json            # Configuración de dependencias (express, sqlite, jsonwebtoken...)

@@ -15,7 +15,7 @@ echo %ESC%[94m--- Opciones de Arranque ---%ESC%[0m
 echo.
 echo   %ESC%[92m1.%ESC%[0m Iniciar Servidor Completo (Instala librerías, DB y arranca)
 echo   %ESC%[92m2.%ESC%[0m Inicio Rápido (Solo arranca node.js)
-echo   %ESC%[92m3.%ESC%[0m Reconstruir Base de Datos (crear_bd.py)
+echo   %ESC%[92m3.%ESC%[0m Reconstruir Base de Datos PostgreSQL (init_db.js)
 echo   %ESC%[93m0. Salir%ESC%[0m
 echo.
 set /p opcion="%ESC%[1mTu opción: %ESC%[0m"
@@ -37,11 +37,9 @@ echo %ESC%[94m[1/3] Verificando e instalando dependencias (npm install)...%ESC%[
 call npm install >nul 2>&1
 echo %ESC%[92m^> Dependencias listas.%ESC%[0m
 echo.
-echo %ESC%[94m[2/3] Actualizando base de datos (crear_bd.py)...%ESC%[0m
-where py >nul 2>&1 && (py crear_bd.py & goto :db_ok)
-where python3 >nul 2>&1 && (python3 crear_bd.py & goto :db_ok)
-where python >nul 2>&1 && (python crear_bd.py & goto :db_ok)
-echo %ESC%[91m[ERROR] No se encontró Python. Asegúrate de tenerlo instalado y en el PATH.%ESC%[0m
+echo %ESC%[94m[2/3] Actualizando base de datos (init_db.js)...%ESC%[0m
+where node >nul 2>&1 && (node database/init_db.js & goto :db_ok)
+echo %ESC%[91m[ERROR] No se encontró Node.js. Asegúrate de tenerlo instalado y en el PATH.%ESC%[0m
 pause
 goto :skip_db
 :db_ok
@@ -81,11 +79,9 @@ echo ====================================================
 echo            RECONSTRUYENDO BASE DE DATOS
 echo ====================================================
 echo %ESC%[0m
-echo %ESC%[94mEjecutando script (crear_bd.py)...%ESC%[0m
-where py >nul 2>&1 && (py crear_bd.py & goto :db_ok_solo)
-where python3 >nul 2>&1 && (python3 crear_bd.py & goto :db_ok_solo)
-where python >nul 2>&1 && (python crear_bd.py & goto :db_ok_solo)
-echo %ESC%[91m[ERROR] No se encontró Python.%ESC%[0m
+echo %ESC%[94mEjecutando script (init_db.js)...%ESC%[0m
+where node >nul 2>&1 && (node database/init_db.js & goto :db_ok_solo)
+echo %ESC%[91m[ERROR] No se encontró Node.js.%ESC%[0m
 pause
 goto MENU
 :db_ok_solo

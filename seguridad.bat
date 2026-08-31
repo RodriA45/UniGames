@@ -31,7 +31,7 @@ echo ====================================================
 echo %ESC%[0m
 echo %ESC%[94mEjecutando script...%ESC%[0m
 
-for /f "delims=" %%i in ('python toggle_seguridad.py') do set "resultado=%%i"
+for /f "delims=" %%i in ('node toggle_seguridad.js') do set "resultado=%%i"
 
 if "%resultado%"=="ACTIVADO" (
     echo.

@@ -13,7 +13,7 @@ echo %ESC%[0m
 echo %ESC%[94m--- Opciones Disponibles ---%ESC%[0m
 echo.
 echo   %ESC%[92m1.%ESC%[0m Subir cambios al repositorio (Git Add, Commit ^& Push)
-echo   %ESC%[92m2.%ESC%[0m Reconstruir DB y luego subir (crear_bd.py + Push)
+echo   %ESC%[92m2.%ESC%[0m Reconstruir DB y luego subir (init_db.js + Push)
 echo   %ESC%[92m3.%ESC%[0m Descargar últimos cambios (Git Pull)
 echo   %ESC%[92m4.%ESC%[0m Ver estado de los archivos (Git Status)
 echo   %ESC%[93m0. Salir%ESC%[0m
@@ -35,16 +35,15 @@ echo        RECONSTRUYENDO BD ANTES DE SUBIR
 echo ====================================================
 echo %ESC%[0m
 echo %ESC%[94mActualizando base de datos local...%ESC%[0m
-where py >nul 2>&1 && (py crear_bd.py & goto :db_done)
-where python >nul 2>&1 && (python crear_bd.py & goto :db_done)
-echo %ESC%[91m[ERROR] No se pudo ejecutar crear_bd.py%ESC%[0m
+where node >nul 2>&1 && (node database/init_db.js & goto :db_done)
+echo %ESC%[91m[ERROR] No se pudo ejecutar init_db.js%ESC%[0m
 pause
 goto SUBIR
 
 :db_done
 if %errorlevel% neq 0 (
     echo.
-    echo %ESC%[91m❌ ERROR: Hubo un problema al ejecutar crear_bd.py.%ESC%[0m
+    echo %ESC%[91m❌ ERROR: Hubo un problema al ejecutar init_db.js.%ESC%[0m
     pause
     goto MENU
 )
