@@ -1,0 +1,32 @@
+services:
+  # 1. Base de Datos PostgreSQL
+  - type: pgo
+    name: unigames-db
+    plan: free
+    region: ohio # O la que te asigne Render por defecto
+    databaseName: unigames
+    user: admin
+
+  # 2. Servidor Backend Web (Node.js)
+  - type: web
+    name: unigames-server
+    env: node
+    plan: free
+    region: ohio
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      # Conecta automáticamente el servidor web con la base de datos de arriba
+      - key: DATABASE_URL
+        fromDatabase:
+          name: unigames-db
+          property: connectionString
+      # Modo producción para ignorar certificados SSL si es necesario
+      - key: NODE_ENV
+        value: production
+      # Token Secreto para JWT
+      - key: JWT_SECRET
+        generateValue: true
+      # Secreto para crear administradores y usar /api/dev-login
+      - key: DEV_SECRET
+        generateValue: true
