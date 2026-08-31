@@ -1,12 +1,12 @@
-services:
+databases:
   # 1. Base de Datos PostgreSQL
-  - type: pgo
-    name: unigames-db
+  - name: unigames-db
     plan: free
-    region: ohio # O la que te asigne Render por defecto
+    region: ohio
     databaseName: unigames
     user: admin
 
+services:
   # 2. Servidor Backend Web (Node.js)
   - type: web
     name: unigames-server
