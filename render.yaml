@@ -1,13 +1,5 @@
-databases:
-  # 1. Base de Datos PostgreSQL
-  - name: unigames-db
-    plan: free
-    region: ohio
-    databaseName: unigames
-    user: admin
-
 services:
-  # 2. Servidor Backend Web (Node.js)
+  # Servidor Backend Web (Node.js)
   - type: web
     name: unigames-server
     env: node
@@ -16,11 +8,9 @@ services:
     buildCommand: npm install
     startCommand: npm start
     envVars:
-      # Conecta automáticamente el servidor web con la base de datos de arriba
+      # Pega el link de Neon desde el Dashboard de Render manualmente, o pon un placeholder temporal
       - key: DATABASE_URL
-        fromDatabase:
-          name: unigames-db
-          property: connectionString
+        sync: false
       # Modo producción para ignorar certificados SSL si es necesario
       - key: NODE_ENV
         value: production
