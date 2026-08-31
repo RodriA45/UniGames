@@ -124,10 +124,10 @@ router.get('/dashboard', async (req, res) => {
     const db = await getDb();
     try {
         const stats = {};
-        const totalUsuarios = (await db.query('SELECT COUNT(*)).rows[0] as count FROM usuarios');
+        const totalUsuarios = (await db.query('SELECT COUNT(*) as count FROM usuarios')).rows[0];
         stats.totalUsuarios = totalUsuarios.count;
         
-        const activos = (await db.query('SELECT COUNT(*)).rows[0] as count FROM usuarios WHERE estado="activo"');
+        const activos = (await db.query('SELECT COUNT(*) as count FROM usuarios WHERE estado=$1', ['activo'])).rows[0];
         stats.activos = activos.count;
         
         const partidasPorJuego = await db.all(`

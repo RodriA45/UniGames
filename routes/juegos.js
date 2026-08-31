@@ -188,7 +188,7 @@ router.get('/wordle/palabra', async (req, res) => {
 
     try {
         const sql = `SELECT palabra FROM palabras_wordle WHERE tematica_id = ? ORDER BY RANDOM() LIMIT 1`;
-        const row = (await db.query(sql, [Number(tematica)).rows[0]]);
+        const row = (await db.query(sql, [Number(tematica)])).rows[0];
         if (row) {
             res.json({ palabra: row.palabra });
         } else {
@@ -281,7 +281,7 @@ router.get('/adivina/items', async (req, res) => {
             WHERE tematica_id = ?
             LIMIT 50
         `;
-        const rows = (await db.query(sql, [Number(tematica)).rows]);
+        const rows = (await db.query(sql, [Number(tematica)])).rows;
 
         // El frontend espera el mismo shape que tenía ADIVINA_DATA:
         // pistas como array de 4 y aliases como array (acá vive como JSON
