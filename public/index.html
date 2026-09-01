@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
@@ -14,12 +14,12 @@
 </head>
 <body class="has-bg-gif">
 
-<!-- ════════════════ HEADER ════════════════ -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• HEADER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <header>
   <div class="header-inner">
 
-    <!-- Botón hamburguesa -->
-    <button class="hamburger" id="hamburger" aria-label="Abrir menú">
+    <!-- BotÃ³n hamburguesa -->
+    <button class="hamburger" id="hamburger" aria-label="Abrir menÃº">
       <span></span>
       <span></span>
       <span></span>
@@ -41,10 +41,10 @@
   </div>
 </header>
 
-<!-- Fondo oscuro compartido por los menús laterales -->
+<!-- Fondo oscuro compartido por los menÃºs laterales -->
 <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeNav(); closeAccountDrawer();"></div>
 
-<!-- ─── MENÚ LATERAL IZQUIERDO ─── -->
+<!-- â”€â”€â”€ MENÃš LATERAL IZQUIERDO â”€â”€â”€ -->
 <nav class="nav-menu" id="navMenu">
   <div class="nav-menu-top">
     <span class="nav-menu-logo">UniGames</span>
@@ -52,68 +52,68 @@
   <ul>
     <li><a href="#" class="active" onclick="goTo('inicio')">     <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span> Inicio      </a></li>
     <li><a href="#"               onclick="goTo('juegos')">      <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg></span> Juegos      </a></li>
-    <li><a href="#"               onclick="goTo('puntuacion')">  <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg></span> Puntuación  </a></li>
+    <li><a href="#"               onclick="goTo('puntuacion')">  <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg></span> PuntuaciÃ³n  </a></li>
     <li><a href="#"               onclick="closeNav(); openInfoModal();"> <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></span> Sobre nosotros </a></li>
   </ul>
 </nav>
 
-<!-- ─── MENÚ LATERAL DERECHO: CUENTA ─── -->
+<!-- â”€â”€â”€ MENÃš LATERAL DERECHO: CUENTA â”€â”€â”€ -->
 <aside class="account-drawer" id="accountDrawer">
   <div class="nav-menu-top">
     <span class="nav-menu-logo">Mi cuenta</span>
   </div>
   <div class="account-drawer-body" id="accountDrawerBody">
-    <!-- Contenido generado dinámicamente por updateAuthUI() -->
+    <!-- Contenido generado dinÃ¡micamente por updateAuthUI() -->
   </div>
 </aside>
 
-<!-- ════════════════ MAIN ════════════════ -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• MAIN â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <main>
 
-  <!-- ── SECCIÓN: INICIO ── -->
+  <!-- â”€â”€ SECCIÃ“N: INICIO â”€â”€ -->
   <section class="section active" id="sec-inicio">
 
     <div class="hero">
       <span class="hero-badge"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:4px;"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg>Mini Juegos Gratis</span>
       <h1>Bienvenido a <span>UniGames</span></h1>
       <p>Tu plataforma de mini juegos de palabras, cultura pop y entretenimiento.
-         Desafíate con trivias, sopas de letras, ahorcado y más.
-         ¡Elegí tu temática favorita y a jugar!</p>
+         DesafÃ­ate con trivias, sopas de letras, ahorcado y mÃ¡s.
+         Â¡ElegÃ­ tu temÃ¡tica favorita y a jugar!</p>
     </div>
 
     <div style="text-align:center; margin-bottom:1.5rem;">
       <span class="section-title">Juegos Destacados</span>
     </div>
 
-    <!-- Se llena dinámicamente desde app.js -->
+    <!-- Se llena dinÃ¡micamente desde app.js -->
     <div class="featured-grid" id="featuredGrid"></div>
 
     <div style="text-align:center; margin:2.5rem 0 1.5rem;">
       <span class="section-title">Juegos Sencillos</span>
     </div>
 
-    <!-- Se llena dinámicamente desde app.js -->
+    <!-- Se llena dinÃ¡micamente desde app.js -->
     <div class="featured-grid" id="simpleGrid"></div>
 
     <div style="text-align:center; margin:2.5rem 0 1.5rem;">
-      <span class="section-title">Juegos de Acción</span>
+      <span class="section-title">Juegos de AcciÃ³n</span>
     </div>
 
-    <!-- Se llena dinámicamente desde app.js -->
+    <!-- Se llena dinÃ¡micamente desde app.js -->
     <div class="featured-grid" id="actionGrid"></div>
 
   </section>
 
-  <!-- ── SECCIÓN: JUEGOS ── -->
+  <!-- â”€â”€ SECCIÃ“N: JUEGOS â”€â”€ -->
   <section class="section" id="sec-juegos">
 
     <div class="games-intro">
       <div class="games-intro-icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg></div>
       <div>
         <p><strong>Todos los juegos disponibles.</strong>
-           Elegí tu juego favorito y al entrar vas a poder elegir la temática
-           (Videojuegos, Películas, Anime, Programación, y en el Ahorcado
-           también "Normal") antes de arrancar a jugar.</p>
+           ElegÃ­ tu juego favorito y al entrar vas a poder elegir la temÃ¡tica
+           (Videojuegos, PelÃ­culas, Anime, ProgramaciÃ³n, y en el Ahorcado
+           tambiÃ©n "Normal") antes de arrancar a jugar.</p>
       </div>
     </div>
 
@@ -126,9 +126,9 @@
           <span class="card-title">Sopa de Letras</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">Encontrá palabras ocultas en la grilla. Mientras más rápido, más puntos ganás.</p>
+          <p class="card-desc">EncontrÃ¡ palabras ocultas en la grilla. Mientras mÃ¡s rÃ¡pido, mÃ¡s puntos ganÃ¡s.</p>
           <span class="card-tag">Velocidad</span>
-          <button class="btn-play" onclick="launchGame('sopa', this)" style="margin-top:auto;">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('sopa', this)" style="margin-top:auto;">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -139,9 +139,9 @@
           <span class="card-title">Preguntados</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">Trivia de múltiple opción. Respondé preguntas sobre tu temática favorita.</p>
+          <p class="card-desc">Trivia de mÃºltiple opciÃ³n. RespondÃ© preguntas sobre tu temÃ¡tica favorita.</p>
           <span class="card-tag">Trivia</span>
-          <button class="btn-play" onclick="launchGame('preguntados', this)" style="margin-top:auto;">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('preguntados', this)" style="margin-top:auto;">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -152,9 +152,9 @@
           <span class="card-title">Termina la Palabra</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">Adiviná la palabra incompleta. Tenés solo 5 intentos. ¡Pensá bien!</p>
+          <p class="card-desc">AdivinÃ¡ la palabra incompleta. TenÃ©s solo 5 intentos. Â¡PensÃ¡ bien!</p>
           <span class="card-tag">5 intentos</span>
-          <button class="btn-play" onclick="launchGame('termina', this)" style="margin-top:auto;">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('termina', this)" style="margin-top:auto;">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -165,9 +165,9 @@
           <span class="card-title">Ahorcado</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">El clásico de siempre, ahora con temáticas. Letra por letra antes de que se complete el dibujo.</p>
-          <span class="card-tag">Clásico</span>
-          <button class="btn-play" onclick="launchGame('ahorcado', this)" style="margin-top:auto;">▶ Jugar</button>
+          <p class="card-desc">El clÃ¡sico de siempre, ahora con temÃ¡ticas. Letra por letra antes de que se complete el dibujo.</p>
+          <span class="card-tag">ClÃ¡sico</span>
+          <button class="btn-play" onclick="launchGame('ahorcado', this)" style="margin-top:auto;">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -178,9 +178,9 @@
           <span class="card-title">Adivina la Palabra</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">Te decimos cuántas letras tiene la palabra.</p>
+          <p class="card-desc">Te decimos cuÃ¡ntas letras tiene la palabra.</p>
           <span class="card-tag">Hard</span>
-          <button class="btn-play" onclick="launchGame('wordle', this)" style="background:#15803d;margin-top:auto;">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('wordle', this)" style="background:#15803d;margin-top:auto;">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -191,9 +191,9 @@
           <span class="card-title">Adivina la Cosa</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">Pistas progresivas para adivinar un juego, película, actor o anime.</p>
+          <p class="card-desc">Pistas progresivas para adivinar un juego, pelÃ­cula, actor o anime.</p>
           <span class="card-tag">Pistas</span>
-          <button class="btn-play" onclick="launchGame('adivina', this)" style="margin-top:auto;">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('adivina', this)" style="margin-top:auto;">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -204,12 +204,12 @@
           <span class="card-title" style="color:#f5c518;">Pixel Runner</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">¡Corrés sin parar! Esquivá obstáculos que vienen del suelo y del cielo. Doble salto disponible. La velocidad aumenta cada 500 puntos. ¿Hasta dónde llegás?</p>
+          <p class="card-desc">Â¡CorrÃ©s sin parar! EsquivÃ¡ obstÃ¡culos que vienen del suelo y del cielo. Doble salto disponible. La velocidad aumenta cada 500 puntos. Â¿Hasta dÃ³nde llegÃ¡s?</p>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
             <span class="card-tag">Doble salto</span>
             <span class="card-tag">Velocidad creciente</span>
           </div>
-          <button class="btn-play" onclick="launchGame('runner', this)" style="background:#f5c518;color:#0f1e3d;font-weight:900;">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('runner', this)" style="background:#f5c518;color:#0f1e3d;font-weight:900;">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -220,12 +220,12 @@
           <span class="card-title" style="color:#facc15;">Castle Escape</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">Aventuras en el castillo: saltá plataformas, esquivá trampas y llegá a la salida de cada nivel. 20 niveles con 2 ambientaciones distintas y música propia.</p>
+          <p class="card-desc">Aventuras en el castillo: saltÃ¡ plataformas, esquivÃ¡ trampas y llegÃ¡ a la salida de cada nivel. 20 niveles con 2 ambientaciones distintas y mÃºsica propia.</p>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
             <span class="card-tag">20 niveles</span>
-            <span class="card-tag">Música propia</span>
+            <span class="card-tag">MÃºsica propia</span>
           </div>
-          <button class="btn-play" onclick="launchGame('castle_escape', this)" style="background:#facc15;color:#2a0e37;font-weight:900;">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('castle_escape', this)" style="background:#facc15;color:#2a0e37;font-weight:900;">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -236,19 +236,19 @@
           <span class="card-title" style="color:#4ade80;">RPG Pixel</span>
         </div>
         <div class="card-body">
-          <p class="card-desc">Combatí contra jefes pixel art en arenas fijas. Moveté, disparás en la dirección que caminaste y usá el escudo para bloquear golpes.</p>
+          <p class="card-desc">CombatÃ­ contra jefes pixel art en arenas fijas. MovetÃ©, disparÃ¡s en la direcciÃ³n que caminaste y usÃ¡ el escudo para bloquear golpes.</p>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
             <span class="card-tag">Combate</span>
             <span class="card-tag">Bloqueo</span>
           </div>
-          <button class="btn-play" onclick="launchGame('rpg_pixel', this)" style="background:#166534;color:#fff;font-weight:900;">▶ Jugar</button>
+          <button class="btn-play" onclick="launchGame('rpg_pixel', this)" style="background:#166534;color:#fff;font-weight:900;">â–¶ Jugar</button>
         </div>
       </div>
 
     </div>
   </section>
 
-  <!-- ── SECCIÓN: PUNTUACIÓN ── -->
+  <!-- â”€â”€ SECCIÃ“N: PUNTUACIÃ“N â”€â”€ -->
   <section class="section" id="sec-puntuacion">
 
     <div class="scores-header">
@@ -256,8 +256,8 @@
       <div>
         <p><strong>Tabla de puntuaciones.</strong>
            Mejor puntaje de cada jugador por juego.
-           Iniciá sesión para que tus records aparezcan acá
-           y competí por el primer lugar.</p>
+           IniciÃ¡ sesiÃ³n para que tus records aparezcan acÃ¡
+           y competÃ­ por el primer lugar.</p>
       </div>
     </div>
 
@@ -297,29 +297,29 @@
 
   </section>
 
-  <!-- ── SECCIÓN: AHORCADO ── -->
+  <!-- â”€â”€ SECCIÃ“N: AHORCADO â”€â”€ -->
   <section class="section" id="sec-ahorcado">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
+      <button class="btn-back" onclick="goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title"><span><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="16" y2="21"></line><line x1="7" y1="21" x2="7" y2="3"></line><line x1="7" y1="3" x2="17" y2="3"></line><line x1="17" y1="3" x2="17" y2="7"></line><circle cx="17" cy="10" r="3"></circle></svg></span> Ahorcado</div>
       <div class="game-screen-theme" id="ahorcado-theme-label"></div>
     </div>
 
     <div class="game-area-wrap" id="ahorcadoAreaWrap">
-      <!-- Cartel de inicio: título, elegir temática y jugar -->
+      <!-- Cartel de inicio: tÃ­tulo, elegir temÃ¡tica y jugar -->
       <div class="game-start-overlay" id="ahorcadoStartOverlay">
         <div class="game-start-box">
           <div class="game-start-emoji"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="16" y2="21"></line><line x1="7" y1="21" x2="7" y2="3"></line><line x1="7" y1="3" x2="17" y2="3"></line><line x1="17" y1="3" x2="17" y2="7"></line><circle cx="17" cy="10" r="3"></circle></svg></div>
           <h2 class="game-start-title">Ahorcado</h2>
-          <p class="game-start-sub">Elegí la temática</p>
+          <p class="game-start-sub">ElegÃ­ la temÃ¡tica</p>
           <div class="theme-selector game-start-themes">
             <button class="theme-btn selected" data-tematica="normal" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>Normal</button>
             <button class="theme-btn"          data-tematica="1"      onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg>Videojuegos</button>
-            <button class="theme-btn"          data-tematica="2"      onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>Películas</button>
+            <button class="theme-btn"          data-tematica="2"      onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>PelÃ­culas</button>
             <button class="theme-btn"          data-tematica="3"      onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Anime</button>
-            <button class="theme-btn"          data-tematica="4"      onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>Programación</button>
+            <button class="theme-btn"          data-tematica="4"      onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>ProgramaciÃ³n</button>
           </div>
-          <button class="btn-play" onclick="confirmGameStart('ahorcado')">▶ Jugar</button>
+          <button class="btn-play" onclick="confirmGameStart('ahorcado')">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -342,7 +342,7 @@
           </svg>
         </div>
 
-        <!-- Área de juego -->
+        <!-- Ãrea de juego -->
         <div class="ahorcado-main">
           <div class="ahorcado-word" id="ahorcado-word"></div>
           <div class="ahorcado-status" id="ahorcado-status"></div>
@@ -355,8 +355,8 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">💀 Ahorcado</h3>
-      <p class="game-info-desc">El clásico de siempre. Elegís letras del teclado en pantalla, una por una: si la letra está en la palabra oculta, se revela en su lugar; si no está, se dibuja una parte del cuerpo del ahorcado. Si el dibujo se completa (6 errores) antes de que adivines la palabra entera, perdés la partida.</p>
+      <h3 class="game-info-title">ðŸ’€ Ahorcado</h3>
+      <p class="game-info-desc">El clÃ¡sico de siempre. ElegÃ­s letras del teclado en pantalla, una por una: si la letra estÃ¡ en la palabra oculta, se revela en su lugar; si no estÃ¡, se dibuja una parte del cuerpo del ahorcado. Si el dibujo se completa (6 errores) antes de que adivines la palabra entera, perdÃ©s la partida.</p>
     </div>
 
     <div class="game-recommended-box">
@@ -365,28 +365,28 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: ADIVINA LA PALABRA (estilo Wordle) ── -->
+  <!-- â”€â”€ SECCIÃ“N: ADIVINA LA PALABRA (estilo Wordle) â”€â”€ -->
   <section class="section" id="sec-wordle">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="stopWordle(); goTo('juegos')">← Volver a Juegos</button>
+      <button class="btn-back" onclick="stopWordle(); goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title"><span><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="6" height="8" rx="1.5"></rect><rect x="9" y="8" width="6" height="8" rx="1.5"></rect><rect x="16" y="8" width="6" height="8" rx="1.5"></rect></svg></span> Adivina la Palabra</div>
       <div class="game-screen-theme" id="wordle-theme-label"></div>
     </div>
 
     <div class="game-area-wrap" id="wordleAreaWrap">
-      <!-- Cartel de inicio: título, elegir temática y jugar -->
+      <!-- Cartel de inicio: tÃ­tulo, elegir temÃ¡tica y jugar -->
       <div class="game-start-overlay" id="wordleStartOverlay">
         <div class="game-start-box">
           <div class="game-start-emoji"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="6" height="8" rx="1.5"></rect><rect x="9" y="8" width="6" height="8" rx="1.5"></rect><rect x="16" y="8" width="6" height="8" rx="1.5"></rect></svg></div>
           <h2 class="game-start-title">Adivina la Palabra</h2>
-          <p class="game-start-sub">Elegí la temática</p>
+          <p class="game-start-sub">ElegÃ­ la temÃ¡tica</p>
           <div class="theme-selector game-start-themes">
             <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg>Videojuegos</button>
-            <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>Películas</button>
+            <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>PelÃ­culas</button>
             <button class="theme-btn"          data-tematica="3" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Anime</button>
-            <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>Programación</button>
+            <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>ProgramaciÃ³n</button>
           </div>
-          <button class="btn-play" onclick="confirmGameStart('wordle')" style="background:#15803d;">▶ Jugar</button>
+          <button class="btn-play" onclick="confirmGameStart('wordle')" style="background:#15803d;">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -400,8 +400,8 @@
         <div class="wordle-keyboard" id="wordle-keyboard"></div>
 
         <div class="wordle-controls">
-          <button class="key-btn-wide" onclick="wordleBackspace()">⌫ Borrar</button>
-          <button class="key-btn-wide key-btn-enter" onclick="wordleSubmit()">↵ Enviar</button>
+          <button class="key-btn-wide" onclick="wordleBackspace()">âŒ« Borrar</button>
+          <button class="key-btn-wide key-btn-enter" onclick="wordleSubmit()">â†µ Enviar</button>
         </div>
 
         <div class="ahorcado-actions" style="justify-content:center;">
@@ -411,8 +411,8 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🟩 Adivina la Palabra</h3>
-      <p class="game-info-desc">Estilo Wordle en modo difícil. Te decimos cuántas letras tiene la palabra oculta y escribís tu intento completo. El color de cada letra te da la pista: verde = letra correcta en ese lugar, amarillo = la letra está en la palabra pero en otro lugar, gris = la letra no está. Tenés 5 intentos para adivinarla.</p>
+      <h3 class="game-info-title">ðŸŸ© Adivina la Palabra</h3>
+      <p class="game-info-desc">Estilo Wordle en modo difÃ­cil. Te decimos cuÃ¡ntas letras tiene la palabra oculta y escribÃ­s tu intento completo. El color de cada letra te da la pista: verde = letra correcta en ese lugar, amarillo = la letra estÃ¡ en la palabra pero en otro lugar, gris = la letra no estÃ¡. TenÃ©s 5 intentos para adivinarla.</p>
     </div>
 
     <div class="game-recommended-box">
@@ -421,28 +421,28 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: SOPA DE LETRAS ── -->
+  <!-- â”€â”€ SECCIÃ“N: SOPA DE LETRAS â”€â”€ -->
   <section class="section" id="sec-sopa">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="clearInterval(sopaState.timer); goTo('juegos')">← Volver a Juegos</button>
+      <button class="btn-back" onclick="clearInterval(sopaState.timer); goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title"><span><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></span> Sopa de Letras</div>
       <div class="game-screen-theme" id="sopa-theme-label"></div>
     </div>
 
     <div class="game-area-wrap" id="sopaAreaWrap">
-      <!-- Cartel de inicio: título, elegir temática y jugar -->
+      <!-- Cartel de inicio: tÃ­tulo, elegir temÃ¡tica y jugar -->
       <div class="game-start-overlay" id="sopaStartOverlay">
         <div class="game-start-box">
           <div class="game-start-emoji"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></div>
           <h2 class="game-start-title">Sopa de Letras</h2>
-          <p class="game-start-sub">Elegí la temática</p>
+          <p class="game-start-sub">ElegÃ­ la temÃ¡tica</p>
           <div class="theme-selector game-start-themes">
             <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg>Videojuegos</button>
-            <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>Películas</button>
+            <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>PelÃ­culas</button>
             <button class="theme-btn"          data-tematica="3" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Anime</button>
-            <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>Programación</button>
+            <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>ProgramaciÃ³n</button>
           </div>
-          <button class="btn-play" onclick="confirmGameStart('sopa')">▶ Jugar</button>
+          <button class="btn-play" onclick="confirmGameStart('sopa')">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -450,8 +450,8 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🔍 Sopa de Letras</h3>
-      <p class="game-info-desc">Encontrá las palabras ocultas en la grilla de letras. Tocá y arrastrá (o hacé click y arrastrá) sobre las letras en línea recta —horizontal, vertical o diagonal— para marcarlas. Cada palabra encontrada se resalta y suma puntos; encontralas todas antes de que se acabe el tiempo.</p>
+      <h3 class="game-info-title">ðŸ” Sopa de Letras</h3>
+      <p class="game-info-desc">EncontrÃ¡ las palabras ocultas en la grilla de letras. TocÃ¡ y arrastrÃ¡ (o hacÃ© click y arrastrÃ¡) sobre las letras en lÃ­nea recta â€”horizontal, vertical o diagonalâ€” para marcarlas. Cada palabra encontrada se resalta y suma puntos; encontralas todas antes de que se acabe el tiempo.</p>
     </div>
 
     <div class="game-recommended-box">
@@ -460,28 +460,28 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: PREGUNTADOS ── -->
+  <!-- â”€â”€ SECCIÃ“N: PREGUNTADOS â”€â”€ -->
   <section class="section" id="sec-preguntados">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="clearInterval(pregState.timer); goTo('juegos')">← Volver a Juegos</button>
+      <button class="btn-back" onclick="clearInterval(pregState.timer); goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title"><span><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></span> Preguntados</div>
       <div class="game-screen-theme" id="preguntados-theme-label"></div>
     </div>
 
     <div class="game-area-wrap" id="preguntadosAreaWrap">
-      <!-- Cartel de inicio: título, elegir temática y jugar -->
+      <!-- Cartel de inicio: tÃ­tulo, elegir temÃ¡tica y jugar -->
       <div class="game-start-overlay" id="preguntadosStartOverlay">
         <div class="game-start-box">
           <div class="game-start-emoji"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></div>
           <h2 class="game-start-title">Preguntados</h2>
-          <p class="game-start-sub">Elegí la temática</p>
+          <p class="game-start-sub">ElegÃ­ la temÃ¡tica</p>
           <div class="theme-selector game-start-themes">
             <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg>Videojuegos</button>
-            <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>Películas</button>
+            <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>PelÃ­culas</button>
             <button class="theme-btn"          data-tematica="3" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Anime</button>
-            <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>Programación</button>
+            <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>ProgramaciÃ³n</button>
           </div>
-          <button class="btn-play" onclick="confirmGameStart('preguntados')">▶ Jugar</button>
+          <button class="btn-play" onclick="confirmGameStart('preguntados')">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -489,8 +489,8 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">❓ Preguntados</h3>
-      <p class="game-info-desc">Trivia de opción múltiple sobre la temática elegida. En cada pregunta tenés unos segundos para elegir la respuesta correcta entre 4 opciones antes de que se acabe el tiempo. Cuantas más aciertes, más puntos sumás.</p>
+      <h3 class="game-info-title">â“ Preguntados</h3>
+      <p class="game-info-desc">Trivia de opciÃ³n mÃºltiple sobre la temÃ¡tica elegida. En cada pregunta tenÃ©s unos segundos para elegir la respuesta correcta entre 4 opciones antes de que se acabe el tiempo. Cuantas mÃ¡s aciertes, mÃ¡s puntos sumÃ¡s.</p>
     </div>
 
     <div class="game-recommended-box">
@@ -499,28 +499,28 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: TERMINA LA PALABRA ── -->
+  <!-- â”€â”€ SECCIÃ“N: TERMINA LA PALABRA â”€â”€ -->
   <section class="section" id="sec-termina">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
+      <button class="btn-back" onclick="goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title"><span><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></span> Termina la Palabra</div>
       <div class="game-screen-theme" id="termina-theme-label"></div>
     </div>
 
     <div class="game-area-wrap" id="terminaAreaWrap">
-      <!-- Cartel de inicio: título, elegir temática y jugar -->
+      <!-- Cartel de inicio: tÃ­tulo, elegir temÃ¡tica y jugar -->
       <div class="game-start-overlay" id="terminaStartOverlay">
         <div class="game-start-box">
           <div class="game-start-emoji"><svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></div>
           <h2 class="game-start-title">Termina la Palabra</h2>
-          <p class="game-start-sub">Elegí la temática</p>
+          <p class="game-start-sub">ElegÃ­ la temÃ¡tica</p>
           <div class="theme-selector game-start-themes">
             <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg>Videojuegos</button>
-            <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>Películas</button>
+            <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>PelÃ­culas</button>
             <button class="theme-btn"          data-tematica="3" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Anime</button>
-            <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>Programación</button>
+            <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>ProgramaciÃ³n</button>
           </div>
-          <button class="btn-play" onclick="confirmGameStart('termina')">▶ Jugar</button>
+          <button class="btn-play" onclick="confirmGameStart('termina')">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -528,8 +528,8 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🔤 Termina la Palabra</h3>
-      <p class="game-info-desc">Te mostramos una palabra con algunas letras ya reveladas y el resto oculto. Escribí la palabra completa en el recuadro: tenés 5 intentos, y cada intento incorrecto gasta uno. ¡Pensá bien antes de tipear!</p>
+      <h3 class="game-info-title">ðŸ”¤ Termina la Palabra</h3>
+      <p class="game-info-desc">Te mostramos una palabra con algunas letras ya reveladas y el resto oculto. EscribÃ­ la palabra completa en el recuadro: tenÃ©s 5 intentos, y cada intento incorrecto gasta uno. Â¡PensÃ¡ bien antes de tipear!</p>
     </div>
 
     <div class="game-recommended-box">
@@ -538,10 +538,10 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: ADIVINA LA COSA ── -->
+  <!-- â”€â”€ SECCIÃ“N: ADIVINA LA COSA â”€â”€ -->
   <section class="section" id="sec-adivina">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="stopAdivina(); goTo('juegos')">← Volver a Juegos</button>
+      <button class="btn-back" onclick="stopAdivina(); goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title"><span><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span> Adivina la Cosa</div>
       <div class="game-screen-theme" id="adivina-theme-label"></div>
     </div>
@@ -552,18 +552,18 @@
       <!-- Overlay inicio / fin -->
       <div class="adivina-overlay" id="adivinaOverlay">
         <div class="adivina-overlay-box">
-          <div id="adivinaOverlayEmoji" style="font-size:3rem;margin-bottom:.5rem;">🕵️</div>
+          <div id="adivinaOverlayEmoji" style="font-size:3rem;margin-bottom:.5rem;">ðŸ•µï¸</div>
           <p id="adivinaOverlayTitle" style="font-size:1.3rem;font-weight:800;color:#0f1e3d;margin-bottom:.4rem;">Adivina la Cosa</p>
           <p id="adivinaOverlayDesc" style="font-size:.9rem;color:#475569;margin-bottom:1.2rem;line-height:1.5;">
-            Se muestran pistas una por una.<br>¡Cuantas menos uses, más puntos ganás!
+            Se muestran pistas una por una.<br>Â¡Cuantas menos uses, mÃ¡s puntos ganÃ¡s!
           </p>
           <div class="theme-selector game-start-themes" id="adivinaOverlayThemes">
             <button class="theme-btn selected" data-tematica="1" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg>Videojuegos</button>
-            <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>Películas</button>
+            <button class="theme-btn"          data-tematica="2" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>PelÃ­culas</button>
             <button class="theme-btn"          data-tematica="3" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>Anime</button>
-            <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>Programación</button>
+            <button class="theme-btn"          data-tematica="4" onclick="selectTheme(this)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:3px;"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>ProgramaciÃ³n</button>
           </div>
-          <button class="btn-play" id="adivinaOverlayBtn" onclick="confirmGameStart('adivina')" style="max-width:220px;margin:0 auto;">▶ Jugar</button>
+          <button class="btn-play" id="adivinaOverlayBtn" onclick="confirmGameStart('adivina')" style="max-width:220px;margin:0 auto;">â–¶ Jugar</button>
         </div>
       </div>
 
@@ -579,23 +579,23 @@
         <!-- Imagen pixelada -->
         <div class="adivina-img-wrap">
           <canvas id="adivinaCanvas" width="260" height="200"></canvas>
-          <div class="adivina-blur-label">🔍 Imagen pixelada — desbloquear con pistas</div>
+          <div class="adivina-blur-label">ðŸ” Imagen pixelada â€” desbloquear con pistas</div>
         </div>
 
         <!-- Pistas -->
         <div class="adivina-pistas-wrap">
           <div id="adivinaPistasList" class="adivina-pistas-list"></div>
           <button class="adivina-btn-pista" id="adivinaBtnPista" onclick="revelarPista()">
-            🔎 Revelar pista <span id="adivinaPistaCosto">(-100 pts)</span>
+            ðŸ”Ž Revelar pista <span id="adivinaPistaCosto">(-100 pts)</span>
           </button>
         </div>
 
         <!-- Input respuesta -->
         <div class="adivina-input-wrap">
-          <input type="text" id="adivinaInput" class="adivina-input" placeholder="Escribí tu respuesta..." autocomplete="off" />
-          <button class="btn-play adivina-btn-submit" onclick="submitAdivina()">✓ Confirmar</button>
+          <input type="text" id="adivinaInput" class="adivina-input" placeholder="EscribÃ­ tu respuesta..." autocomplete="off" />
+          <button class="btn-play adivina-btn-submit" onclick="submitAdivina()">âœ“ Confirmar</button>
         </div>
-        <button class="btn-back" id="adivinaBtnRendirse" style="margin:.6rem auto 0;display:none;" onclick="rendirseAdivina()">🏳 Me rindo, mostrar respuesta</button>
+        <button class="btn-back" id="adivinaBtnRendirse" style="margin:.6rem auto 0;display:none;" onclick="rendirseAdivina()">ðŸ³ Me rindo, mostrar respuesta</button>
 
         <!-- Feedback -->
         <div id="adivinaFeedback" class="adivina-feedback" style="display:none;"></div>
@@ -603,8 +603,8 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🕵️ Adivina la Cosa</h3>
-      <p class="game-info-desc">Se van revelando pistas, una por una, sobre un juego, película, actor o anime de la temática elegida. Escribí tu respuesta apenas creas saberla: cuantas menos pistas hayas usado, más puntos ganás. Si te trabás, podés rendirte para ver la respuesta.</p>
+      <h3 class="game-info-title">ðŸ•µï¸ Adivina la Cosa</h3>
+      <p class="game-info-desc">Se van revelando pistas, una por una, sobre un juego, pelÃ­cula, actor o anime de la temÃ¡tica elegida. EscribÃ­ tu respuesta apenas creas saberla: cuantas menos pistas hayas usado, mÃ¡s puntos ganÃ¡s. Si te trabÃ¡s, podÃ©s rendirte para ver la respuesta.</p>
     </div>
 
     <div class="game-recommended-box">
@@ -613,23 +613,23 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: PIXEL RUNNER ── -->
+  <!-- â”€â”€ SECCIÃ“N: PIXEL RUNNER â”€â”€ -->
   <section class="section" id="sec-runner">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="stopRunner(); goTo('juegos')">← Volver a Juegos</button>
+      <button class="btn-back" onclick="stopRunner(); goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title" style="font-family:'Press Start 2P',monospace;color:#0f1e3d;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> Pixel Runner</div>
     </div>
 
     <div class="runner-container">
       <div class="runner-hud">
         <div class="runner-score-display">Puntos: <span id="runner-score-display">0</span></div>
-        <div class="runner-coins-display">🪙 <span id="runner-coins-run-display">0</span></div>
+        <div class="runner-coins-display">ðŸª™ <span id="runner-coins-run-display">0</span></div>
       </div>
       <button type="button" class="runner-hud-fullscreen-btn" id="runnerHudFullscreenBtn" onclick="runnerToggleFullscreen()" aria-label="Pantalla completa" title="Pantalla completa">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
       </button>
       <canvas id="runnerCanvas"></canvas>
-      <!-- Pantalla de menú del juego (Pixel Runner) -->
+      <!-- Pantalla de menÃº del juego (Pixel Runner) -->
       <div class="runner-menu" id="runnerMenu">
         <div class="runner-menu-background" style="background-image: url('src/motor2d/games/pixel-runner/menu.jpg'); background-size: cover; background-position: center;">
           <div class="runner-menu-content">
@@ -641,39 +641,39 @@
               <button class="btn-play" onclick="mostrarModoRunner()">Jugar</button>
               <button class="btn-play runner-btn-secondary" onclick="mostrarMejoras()">Mejoras</button>
               <button class="btn-play runner-btn-secondary" onclick="mostrarAjustes()">Ajuste</button>
-              <button class="btn-play runner-btn-secondary" onclick="mostrarComoJugar()">Cómo jugar</button>
+              <button class="btn-play runner-btn-secondary" onclick="mostrarComoJugar()">CÃ³mo jugar</button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Cartel: Selección de modo (Historia / Infinito) -->
+      <!-- Cartel: SelecciÃ³n de modo (Historia / Infinito) -->
       <div class="runner-panel hidden" id="runnerModePanel">
         <div class="runner-panel-box">
           <div class="runner-panel-header">
-            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
-            <div class="runner-panel-title">🎮 Elegí tu modo</div>
+            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">â† Volver</button>
+            <div class="runner-panel-title">ðŸŽ® ElegÃ­ tu modo</div>
           </div>
           <div class="runner-panel-content runner-mode-content">
             <button class="runner-mode-card" id="runnerModoHistoriaBtn" onclick="elegirModoRunner('historia')">
-              <span class="runner-mode-icon">📖</span>
+              <span class="runner-mode-icon">ðŸ“–</span>
               <span class="runner-mode-name">Historia</span>
-              <span class="runner-mode-desc">Llegá a los 2.500 puntos</span>
+              <span class="runner-mode-desc">LlegÃ¡ a los 2.500 puntos</span>
             </button>
             <button class="runner-mode-card locked" id="runnerModoInfinitoBtn" onclick="elegirModoRunner('infinito')">
-              <span class="runner-mode-icon">♾️</span>
+              <span class="runner-mode-icon">â™¾ï¸</span>
               <span class="runner-mode-name">Infinito</span>
-              <span class="runner-mode-desc" id="runnerModoInfinitoDesc">🔒 Completá Historia para desbloquear</span>
+              <span class="runner-mode-desc" id="runnerModoInfinitoDesc">ðŸ”’ CompletÃ¡ Historia para desbloquear</span>
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Cartel: Cómic (intro de Historia al elegir el modo / final al llegar a los 2500 pts) -->
+      <!-- Cartel: CÃ³mic (intro de Historia al elegir el modo / final al llegar a los 2500 pts) -->
       <div class="runner-comic-overlay hidden" id="runnerComicOverlay">
         <div class="runner-comic-box">
-          <img class="runner-comic-img" id="runnerComicImg" src="" alt="Cómic Pixel Runner">
-          <button class="btn-play runner-comic-btn" id="runnerComicBtn" onclick="runnerComicContinuar()">Continuar ▶</button>
+          <img class="runner-comic-img" id="runnerComicImg" src="" alt="CÃ³mic Pixel Runner">
+          <button class="btn-play runner-comic-btn" id="runnerComicBtn" onclick="runnerComicContinuar()">Continuar â–¶</button>
         </div>
       </div>
 
@@ -682,12 +682,12 @@
           <div class="runner-char-preview">
             <canvas id="runnerCharPreviewCanvas" width="64" height="80"></canvas>
           </div>
-          <p class="runner-overlay-title" id="runnerOverlayTitle">¡Pixel Runner!</p>
-          <p class="runner-overlay-sub" id="runnerOverlaySub">↑ Saltar &nbsp;·&nbsp; ↓ Caída rápida<br>Doble salto disponible</p>
+          <p class="runner-overlay-title" id="runnerOverlayTitle">Â¡Pixel Runner!</p>
+          <p class="runner-overlay-sub" id="runnerOverlaySub">â†‘ Saltar &nbsp;Â·&nbsp; â†“ CaÃ­da rÃ¡pida<br>Doble salto disponible</p>
           <p class="runner-best" id="runnerBest"></p>
           <div class="runner-gameover-buttons">
-            <button class="btn-play runner-restart-btn" id="runnerRestartBtn" onclick="restartRunner()">▶ Jugar de nuevo</button>
-            <button class="btn-play runner-menu-btn" id="runnerMenuBtn" onclick="toRunnerMenu()">Volver al menú</button>
+            <button class="btn-play runner-restart-btn" id="runnerRestartBtn" onclick="restartRunner()">â–¶ Jugar de nuevo</button>
+            <button class="btn-play runner-menu-btn" id="runnerMenuBtn" onclick="toRunnerMenu()">Volver al menÃº</button>
           </div>
         </div>
       </div>
@@ -696,11 +696,11 @@
       <div class="runner-panel hidden" id="runnerMejorasPanel">
         <div class="runner-panel-box">
           <div class="runner-panel-header">
-            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
-            <div class="runner-panel-title">🛠️ Mejoras</div>
+            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">â† Volver</button>
+            <div class="runner-panel-title">ðŸ› ï¸ Mejoras</div>
           </div>
           <div class="runner-panel-content runner-mejoras-content">
-            <div class="runner-mejoras-coins">🪙 <span id="runnerMejorasCoinsTotal">0</span> monedas juntadas</div>
+            <div class="runner-mejoras-coins">ðŸª™ <span id="runnerMejorasCoinsTotal">0</span> monedas juntadas</div>
             <div class="runner-mejoras-grid" id="runnerMejorasGrid"></div>
           </div>
         </div>
@@ -710,39 +710,39 @@
       <div class="runner-panel hidden" id="runnerAjustesPanel">
         <div class="runner-panel-box">
           <div class="runner-panel-header">
-            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
-            <div class="runner-panel-title">⚙️ Ajustes</div>
+            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">â† Volver</button>
+            <div class="runner-panel-title">âš™ï¸ Ajustes</div>
           </div>
           <div class="runner-panel-content trampas-settings-content">
             <div class="trampas-slider-row">
-              <label for="runnerMusicVolume">🎵 Música</label>
+              <label for="runnerMusicVolume">ðŸŽµ MÃºsica</label>
               <input type="range" id="runnerMusicVolume" min="0" max="100" value="50" oninput="runnerOnMusicVolumeChange(this.value)">
               <span class="trampas-slider-value" id="runnerMusicVolumeValue">50%</span>
             </div>
             <div class="trampas-slider-row">
-              <label for="runnerSfxVolume">🔊 Efectos</label>
+              <label for="runnerSfxVolume">ðŸ”Š Efectos</label>
               <input type="range" id="runnerSfxVolume" min="0" max="100" value="80" oninput="runnerOnSfxVolumeChange(this.value)">
               <span class="trampas-slider-value" id="runnerSfxVolumeValue">80%</span>
             </div>
             <div class="trampas-slider-row runner-fullscreen-row" id="runnerFullscreenRow">
-              <label>🖥️ Pantalla completa</label>
+              <label>ðŸ–¥ï¸ Pantalla completa</label>
               <button type="button" class="runner-fullscreen-btn" id="runnerFullscreenBtn" onclick="runnerToggleFullscreen()">Activar</button>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Cartel: Cómo jugar -->
+      <!-- Cartel: CÃ³mo jugar -->
       <div class="runner-panel hidden" id="runnerComoJugarPanel">
         <div class="runner-panel-box">
           <div class="runner-panel-header">
-            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
-            <div class="runner-panel-title">📋 Cómo jugar</div>
+            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">â† Volver</button>
+            <div class="runner-panel-title">ðŸ“‹ CÃ³mo jugar</div>
           </div>
           <div class="runner-panel-content trampas-howto-content">
-            <div class="trampas-howto-row"><span class="trampas-howto-keys">↑ / Espacio / W</span><span>Saltar (doble salto disponible)</span></div>
-            <div class="trampas-howto-row"><span class="trampas-howto-keys">↓ / S</span><span>Caída rápida</span></div>
-            <div class="trampas-howto-row"><span class="trampas-howto-keys">← →</span><span>Moverse a los costados</span></div>
+            <div class="trampas-howto-row"><span class="trampas-howto-keys">â†‘ / Espacio / W</span><span>Saltar (doble salto disponible)</span></div>
+            <div class="trampas-howto-row"><span class="trampas-howto-keys">â†“ / S</span><span>CaÃ­da rÃ¡pida</span></div>
+            <div class="trampas-howto-row"><span class="trampas-howto-keys">â† â†’</span><span>Moverse a los costados</span></div>
             <div class="trampas-howto-row runner-howto-powerup">
               <span class="trampas-howto-keys runner-powerup-badge runner-powerup-shield">Escudo</span>
               <span>Bloquea un choque</span>
@@ -751,17 +751,17 @@
               <span class="trampas-howto-keys runner-powerup-badge runner-powerup-x2">x2</span>
               <span>Duplica los puntos</span>
             </div>
-            <p class="trampas-howto-tip">En celular usá los botones dentro de la pantalla del juego: abajo a la izquierda para moverte, abajo a la derecha para Saltar / Bajar.</p>
-            <p class="trampas-howto-tip">Esquivá los obstáculos y juntá monedas y power-ups. La velocidad aumenta cada 250 puntos: ¡aguantá lo más que puedas!</p>
+            <p class="trampas-howto-tip">En celular usÃ¡ los botones dentro de la pantalla del juego: abajo a la izquierda para moverte, abajo a la derecha para Saltar / Bajar.</p>
+            <p class="trampas-howto-tip">EsquivÃ¡ los obstÃ¡culos y juntÃ¡ monedas y power-ups. La velocidad aumenta cada 250 puntos: Â¡aguantÃ¡ lo mÃ¡s que puedas!</p>
           </div>
         </div>
       </div>
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🏃 Pixel Runner</h3>
-      <p class="game-info-story">Un programador fue absorbido por su pantalla y llegó a un mundo desconocido, donde a lo lejos solo se ve un castillo.</p>
-      <p class="game-info-desc">¡Corrés sin parar! Esquivá obstáculos que vienen del suelo y del cielo. Doble salto disponible. La velocidad aumenta. ¿Llegarás al final?</p>
+      <h3 class="game-info-title">ðŸƒ Pixel Runner</h3>
+      <p class="game-info-story">Un programador fue absorbido por su pantalla y llegÃ³ a un mundo desconocido, donde a lo lejos solo se ve un castillo.</p>
+      <p class="game-info-desc">Â¡CorrÃ©s sin parar! EsquivÃ¡ obstÃ¡culos que vienen del suelo y del cielo. Doble salto disponible. La velocidad aumenta. Â¿LlegarÃ¡s al final?</p>
     </div>
 
     <div class="game-recommended-box">
@@ -771,10 +771,10 @@
 
   </section>
 
-  <!-- ── SECCIÓN: CASTLE ESCAPE ── -->
+  <!-- â”€â”€ SECCIÃ“N: CASTLE ESCAPE â”€â”€ -->
   <section class="section" id="sec-castle_escape">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="stopTrampas(); goTo('juegos')">← Volver a Juegos</button>
+      <button class="btn-back" onclick="stopTrampas(); goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title" style="font-family:'Press Start 2P',monospace;color:#2e1065;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11"></rect><rect x="4" y="6" width="3" height="4"></rect><rect x="10.5" y="4" width="3" height="6"></rect><rect x="17" y="6" width="3" height="4"></rect><path d="M10 21v-5a2 2 0 0 1 4 0v5"></path></svg> Castle Escape</div>
     </div>
 
@@ -784,55 +784,55 @@
       <!-- HUD superpuesto al juego -->
       <div class="trampas-hud">
         <div class="trampas-hud-left">
-          <button class="trampas-hud-btn" onclick="trPauseGame()">⏸</button>
-          <button class="trampas-hud-btn" onclick="toggleCastleMusic()" title="Mute música">🔊</button>
-          <button class="trampas-hud-btn" onclick="trToggleControlsSign()" title="Controles">❓</button>
+          <button class="trampas-hud-btn" onclick="trPauseGame()">â¸</button>
+          <button class="trampas-hud-btn" onclick="toggleCastleMusic()" title="Mute mÃºsica">ðŸ”Š</button>
+          <button class="trampas-hud-btn" onclick="trToggleControlsSign()" title="Controles">â“</button>
         </div>
         <div class="trampas-hud-info">
           <span class="trampas-hud-stars" id="trampas-hud-stars"></span>
-          <span class="trampas-hud-deaths" id="trampas-hud-deaths">💀 0</span>
+          <span class="trampas-hud-deaths" id="trampas-hud-deaths">ðŸ’€ 0</span>
         </div>
       </div>
 
-      <!-- Menú Principal -->
+      <!-- MenÃº Principal -->
       <div class="trampas-menu" id="trampasMainMenu">
         <div class="trampas-menu-title">Castle Escape</div>
-        <div class="trampas-menu-subtitle">¿Porqué este castillo es un laberinto?</div>
-        <button class="trampas-menu-btn" onclick="trShowLevelSelect()">▶ Jugar</button>
-        <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowSettings()">⚙ Ajustes</button>
-        <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowHowToPlay()">❓ Cómo jugar</button>
+        <div class="trampas-menu-subtitle">Â¿PorquÃ© este castillo es un laberinto?</div>
+        <button class="trampas-menu-btn" onclick="trShowLevelSelect()">â–¶ Jugar</button>
+        <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowSettings()">âš™ Ajustes</button>
+        <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowHowToPlay()">â“ CÃ³mo jugar</button>
       </div>
 
-      <!-- Selección de Niveles -->
+      <!-- SelecciÃ³n de Niveles -->
       <div class="trampas-menu hidden" id="trampasLevelSelect">
         <div class="trampas-menu-header">
-          <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
+          <button class="trampas-back-btn" onclick="trShowMainMenu()">â† Volver</button>
           <div class="trampas-menu-title-small">Seleccionar Nivel</div>
         </div>
         <div class="trampas-level-nav">
-          <button class="trampas-nav-arrow" id="trNavLeft" onclick="trNavLevel(-1)">◀</button>
+          <button class="trampas-nav-arrow" id="trNavLeft" onclick="trNavLevel(-1)">â—€</button>
           <div class="trampas-level-card-big" id="trLevelCardBig">
             <div class="trampas-big-stars" id="trBigStars">
-              <span class="star">★</span><span class="star">★</span><span class="star">★</span>
+              <span class="star">â˜…</span><span class="star">â˜…</span><span class="star">â˜…</span>
             </div>
             <div class="trampas-big-level-num" id="trBigLevelNum">1</div>
             <div class="trampas-big-level-name" id="trBigLevelName">Nombre</div>
           </div>
-          <button class="trampas-nav-arrow" id="trNavRight" onclick="trNavLevel(1)">▶</button>
+          <button class="trampas-nav-arrow" id="trNavRight" onclick="trNavLevel(1)">â–¶</button>
         </div>
         <div class="trampas-level-dots" id="trLevelDots"></div>
-        <button class="trampas-play-btn" id="trLevelPlayBtn" onclick="trPlaySelectedLevel()">▶ Jugar Nivel</button>
+        <button class="trampas-play-btn" id="trLevelPlayBtn" onclick="trPlaySelectedLevel()">â–¶ Jugar Nivel</button>
       </div>
 
       <!-- Ajustes -->
       <div class="trampas-menu hidden" id="trampasSettings">
         <div class="trampas-menu-header">
-          <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
+          <button class="trampas-back-btn" onclick="trShowMainMenu()">â† Volver</button>
           <div class="trampas-menu-title-small">Ajustes</div>
         </div>
         <div class="trampas-settings-content">
           <div class="trampas-slider-row">
-            <label for="trMusicVolume">Música</label>
+            <label for="trMusicVolume">MÃºsica</label>
             <input type="range" id="trMusicVolume" min="0" max="100" value="50" oninput="trOnMusicVolumeChange(this.value)">
             <span class="trampas-slider-value" id="trMusicVolumeValue">50%</span>
           </div>
@@ -842,56 +842,56 @@
             <span class="trampas-slider-value" id="trSfxVolumeValue">80%</span>
           </div>
           <div class="trampas-slider-row trampas-fullscreen-row" id="trFullscreenRow">
-            <label>🖥️ Pantalla completa</label>
+            <label>ðŸ–¥ï¸ Pantalla completa</label>
             <button type="button" class="runner-fullscreen-btn" id="trFullscreenBtn" onclick="trToggleFullscreen()">Activar</button>
           </div>
         </div>
       </div>
 
-      <!-- Cómo jugar -->
+      <!-- CÃ³mo jugar -->
       <div class="trampas-menu hidden" id="trampasHowToPlay">
         <div class="trampas-menu-header">
-          <button class="trampas-back-btn" onclick="trShowMainMenu()">← Volver</button>
-          <div class="trampas-menu-title-small">Cómo jugar</div>
+          <button class="trampas-back-btn" onclick="trShowMainMenu()">â† Volver</button>
+          <div class="trampas-menu-title-small">CÃ³mo jugar</div>
         </div>
         <div class="trampas-howto-content">
-          <div class="trampas-howto-row"><span class="trampas-howto-keys">← → / A D</span><span>Moverse</span></div>
-          <div class="trampas-howto-row"><span class="trampas-howto-keys">↑ / W / Espacio</span><span>Saltar</span></div>
-          <p class="trampas-howto-tip">En celular usá los botones táctiles debajo del juego.</p>
-          <p class="trampas-howto-tip">Encontrá la salida verde de cada nivel. No todo lo que ves es seguro: hay pisos falsos, flechas y plataformas que se derrumban.</p>
+          <div class="trampas-howto-row"><span class="trampas-howto-keys">â† â†’ / A D</span><span>Moverse</span></div>
+          <div class="trampas-howto-row"><span class="trampas-howto-keys">â†‘ / W / Espacio</span><span>Saltar</span></div>
+          <p class="trampas-howto-tip">En celular usÃ¡ los botones tÃ¡ctiles debajo del juego.</p>
+          <p class="trampas-howto-tip">EncontrÃ¡ la salida verde de cada nivel. No todo lo que ves es seguro: hay pisos falsos, flechas y plataformas que se derrumban.</p>
         </div>
       </div>
 
-      <!-- Cartel de controles (se muestra/oculta con el botón ❓ del HUD) -->
+      <!-- Cartel de controles (se muestra/oculta con el botÃ³n â“ del HUD) -->
       <div class="trampas-controls-sign hidden" id="trampasControlsSign">
         <div class="trampas-controls-sign-title">Controles</div>
-        <div class="trampas-controls-sign-row"><b>← →</b> Moverse</div>
-        <div class="trampas-controls-sign-row"><b>↑</b> Saltar</div>
+        <div class="trampas-controls-sign-row"><b>â† â†’</b> Moverse</div>
+        <div class="trampas-controls-sign-row"><b>â†‘</b> Saltar</div>
       </div>
 
       <!-- Overlay de inicio/nivel -->
       <div class="trampas-overlay hidden" id="trampasOverlay">
         <div class="trampas-overlay-box">
-          <p class="trampas-overlay-title" id="trampasOverlayTitle">🏰 Castle Escape</p>
+          <p class="trampas-overlay-title" id="trampasOverlayTitle">ðŸ° Castle Escape</p>
           <p class="trampas-overlay-sub" id="trampasOverlaySub">No todo lo que ves es seguro.</p>
-          <button class="btn-play trampas-start-btn" id="trampasStartBtn" onclick="startTrampas()">▶ Empezar</button>
+          <button class="btn-play trampas-start-btn" id="trampasStartBtn" onclick="startTrampas()">â–¶ Empezar</button>
         </div>
       </div>
 
-      <!-- Mini menú de pausa -->
+      <!-- Mini menÃº de pausa -->
       <div class="trampas-pause-menu hidden" id="trampasPauseMenu">
         <div class="trampas-pause-box">
-          <p class="trampas-pause-title">⏸ Pausa</p>
-          <button class="trampas-pause-opt" onclick="trResumeGame()">▶ Continuar</button>
-          <button class="trampas-pause-opt trampas-pause-exit" onclick="trExitToLevels()">✖ Salir</button>
+          <p class="trampas-pause-title">â¸ Pausa</p>
+          <button class="trampas-pause-opt" onclick="trResumeGame()">â–¶ Continuar</button>
+          <button class="trampas-pause-opt trampas-pause-exit" onclick="trExitToLevels()">âœ– Salir</button>
         </div>
       </div>
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🏰 Castle Escape</h3>
+      <h3 class="game-info-title">ðŸ° Castle Escape</h3>
       <p class="game-info-story">El programador por fin llega e ingresa al castillo. Un sujeto desconocido le dice que debe sobrevivir: es una prueba. Tiene que escapar para romper el hechizo, superarla y llegar a la cima del muro del castillo.</p>
-      <p class="game-info-desc">Aventuras en el castillo: saltá plataformas, esquivá trampas y llegá a la salida de cada nivel. Muchos niveles y pruebas, ¿lograrás superarlo?</p>
+      <p class="game-info-desc">Aventuras en el castillo: saltÃ¡ plataformas, esquivÃ¡ trampas y llegÃ¡ a la salida de cada nivel. Muchos niveles y pruebas, Â¿lograrÃ¡s superarlo?</p>
     </div>
 
     <div class="game-recommended-box">
@@ -900,45 +900,45 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: RPG PIXEL ── -->
+  <!-- â”€â”€ SECCIÃ“N: RPG PIXEL â”€â”€ -->
   <section class="section" id="sec-rpg_pixel">
     <div class="game-screen-header">
-      <button class="btn-back" onclick="rpgExitToHub();">← Volver a Juegos</button>
+      <button class="btn-back" onclick="rpgExitToHub();">â† Volver a Juegos</button>
       <div class="game-screen-title" style="font-family:'Press Start 2P',monospace;color:#14532d;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg> RPG Pixel</div>
     </div>
 
     <div class="rpg-container">
       <canvas id="rpgCanvas"></canvas>
 
-      <!-- Menú principal del RPG: primero slots de guardado, después capítulos -->
+      <!-- MenÃº principal del RPG: primero slots de guardado, despuÃ©s capÃ­tulos -->
       <div class="rpg-menu" id="rpgMenu">
         <div class="rpg-menu-background" style="background-image: url('src/motor2d/games/rpg-pixel/models/menu.jpg'); background-size: cover; background-position: center;">
 
-          <!-- Vista 0: menú principal -->
+          <!-- Vista 0: menÃº principal -->
           <div class="rpg-menu-content" id="rpgMainMenuView">
             <h2 class="rpg-menu-title">RPG Pixel</h2>
             <div class="rpg-menu-buttons">
               <button class="btn-play" onclick="rpgGoToPlay()">Jugar</button>
               <button class="btn-play" onclick="rpgGoToMejoras()">Mejoras</button>
               <button class="btn-play" onclick="rpgGoToAjustes()">Ajustes</button>
-              <button class="btn-play" onclick="rpgGoToComoJugar()">Cómo jugar</button>
+              <button class="btn-play" onclick="rpgGoToComoJugar()">CÃ³mo jugar</button>
             </div>
           </div>
 
           <!-- Vista 1: elegir slot de guardado -->
           <div class="rpg-menu-content hidden" id="rpgSlotsView">
             <h2 class="rpg-menu-title">RPG Pixel</h2>
-            <p class="rpg-menu-sub">Elegí una partida guardada o empezá una nueva</p>
+            <p class="rpg-menu-sub">ElegÃ­ una partida guardada o empezÃ¡ una nueva</p>
             <div class="rpg-menu-buttons" id="rpgSlotsButtons">
-              <!-- Se completa dinámicamente desde rpg.js (rpgRenderSlots) -->
+              <!-- Se completa dinÃ¡micamente desde rpg.js (rpgRenderSlots) -->
             </div>
-            <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgShowMainMenu()">Menú principal</button>
+            <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgShowMainMenu()">MenÃº principal</button>
           </div>
 
           <!-- Vista 1.5: elegir dificultad (solo al crear partida nueva) -->
           <div class="rpg-menu-content hidden" id="rpgDifficultyView">
             <h2 class="rpg-menu-title">RPG Pixel</h2>
-            <p class="rpg-menu-sub">Elegí la dificultad</p>
+            <p class="rpg-menu-sub">ElegÃ­ la dificultad</p>
             <div class="rpg-menu-buttons">
               <button class="btn-play" onclick="rpgSelectDifficulty('normal')">Normal</button>
               <button class="btn-play rpg-diff-elite" onclick="rpgSelectDifficulty('elite')">Elite</button>
@@ -946,12 +946,12 @@
             <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgShowSlotsView()">Volver</button>
           </div>
 
-          <!-- Vista 2: elegir capítulo dentro del slot elegido -->
+          <!-- Vista 2: elegir capÃ­tulo dentro del slot elegido -->
           <div class="rpg-menu-content hidden" id="rpgChaptersView">
             <h2 class="rpg-menu-title">RPG Pixel</h2>
-            <p class="rpg-menu-sub">Elegí un capítulo</p>
+            <p class="rpg-menu-sub">ElegÃ­ un capÃ­tulo</p>
             <div class="rpg-menu-buttons" id="rpgChapterButtons">
-              <!-- Se completa dinámicamente desde rpg.js (rpgRenderChapters) -->
+              <!-- Se completa dinÃ¡micamente desde rpg.js (rpgRenderChapters) -->
             </div>
             <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgBackToSlots()">Cambiar partida</button>
           </div>
@@ -961,7 +961,7 @@
             <h2 class="rpg-menu-title">Mejoras</h2>
             <div style="color: #ffd700; margin-bottom: 0.2rem; font-weight: 800;">Oro disponible: <span id="rpgMejorasGold">0</span></div>
             <div class="rpg-mejoras-list" id="rpgMejorasList">
-              <!-- Se llena dinámicamente -->
+              <!-- Se llena dinÃ¡micamente -->
             </div>
             <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgShowMainMenu()">Volver</button>
           </div>
@@ -971,31 +971,31 @@
             <h2 class="rpg-menu-title">Ajustes</h2>
             <div class="trampas-settings-content rpg-ajustes-content">
               <div class="trampas-slider-row">
-                <label>🎵 Música</label>
+                <label>ðŸŽµ MÃºsica</label>
                 <input type="range" class="rpg-music-volume-input" min="0" max="100" value="50" oninput="rpgOnMusicVolumeChange(this.value)">
                 <span class="trampas-slider-value rpg-music-volume-value">50%</span>
               </div>
               <div class="trampas-slider-row">
-                <label>🔊 Efectos</label>
+                <label>ðŸ”Š Efectos</label>
                 <input type="range" class="rpg-sfx-volume-input" min="0" max="100" value="80" oninput="rpgOnSfxVolumeChange(this.value)">
                 <span class="trampas-slider-value rpg-sfx-volume-value">80%</span>
               </div>
               <div class="trampas-slider-row runner-fullscreen-row rpg-fullscreen-row">
-                <label>🖥️ Pantalla completa</label>
+                <label>ðŸ–¥ï¸ Pantalla completa</label>
                 <button type="button" class="runner-fullscreen-btn rpg-fullscreen-btn" onclick="rpgToggleFullscreen()">Activar</button>
               </div>
             </div>
             <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;" onclick="rpgShowMainMenu()">Volver</button>
           </div>
 
-          <!-- Vista 5: Cómo jugar -->
+          <!-- Vista 5: CÃ³mo jugar -->
           <div class="rpg-menu-content hidden" id="rpgComoJugarView">
-            <h2 class="rpg-menu-title">Cómo jugar</h2>
+            <h2 class="rpg-menu-title">CÃ³mo jugar</h2>
             <div class="rpg-howto-list">
-              <div class="rpg-howto-row"><span class="rpg-howto-key">W A S D</span><span>Moverse (Joystick en móvil)</span></div>
-              <div class="rpg-howto-row"><span class="rpg-howto-key">Espacio</span><span>Atacar (Botón A en móvil)</span></div>
-              <div class="rpg-howto-row"><span class="rpg-howto-key">Shift</span><span>Bloquear (Botón D en móvil)</span></div>
-              <div class="rpg-howto-row"><span class="rpg-howto-key">X / Enter</span><span>Interactuar (Botón I en móvil)</span></div>
+              <div class="rpg-howto-row"><span class="rpg-howto-key">W A S D</span><span>Moverse (Joystick en mÃ³vil)</span></div>
+              <div class="rpg-howto-row"><span class="rpg-howto-key">Espacio</span><span>Atacar (BotÃ³n A en mÃ³vil)</span></div>
+              <div class="rpg-howto-row"><span class="rpg-howto-key">Shift</span><span>Bloquear (BotÃ³n D en mÃ³vil)</span></div>
+              <div class="rpg-howto-row"><span class="rpg-howto-key">X / Enter</span><span>Interactuar (BotÃ³n I en mÃ³vil)</span></div>
               <div class="rpg-howto-row"><span class="rpg-howto-key">Cofres</span><span>Rompelos para ganar oro y Mejoras</span></div>
             </div>
             <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;" onclick="rpgShowMainMenu()">Volver</button>
@@ -1023,25 +1023,25 @@
                 <div class="rpg-hud-fill-bar rpg-hud-fill-enemy" id="rpgEnemyHpFill"></div>
                 </div>
             </div>
-            <button class="rpg-hud-btn" onclick="rpgPauseGame()" title="Pausa">⏸</button>
+            <button class="rpg-hud-btn" onclick="rpgPauseGame()" title="Pausa">â¸</button>
       </div>
 
       <!-- Overlay de inicio / pausa / resultado -->
       <div class="rpg-overlay hidden" id="rpgOverlay">
         <div class="rpg-overlay-box">
           <p class="rpg-overlay-title" id="rpgOverlayTitle">Nivel 1</p>
-          <p class="rpg-overlay-sub" id="rpgOverlaySub">Caminá con las flechas / WASD, disparás con Espacio o click en la dirección que caminaste. Mantené Shift o el botón 🛡️ para bloquear.</p>
+          <p class="rpg-overlay-sub" id="rpgOverlaySub">CaminÃ¡ con las flechas / WASD, disparÃ¡s con Espacio o click en la direcciÃ³n que caminaste. MantenÃ© Shift o el botÃ³n ðŸ›¡ï¸ para bloquear.</p>
           <div class="rpg-overlay-buttons" id="rpgOverlayButtons">
-            <button class="btn-play" id="rpgOverlayMainBtn" onclick="rpgBeginCombat()">▶ Empezar</button>
+            <button class="btn-play" id="rpgOverlayMainBtn" onclick="rpgBeginCombat()">â–¶ Empezar</button>
           </div>
         </div>
       </div>
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🗡️ RPG Pixel</h3>
+      <h3 class="game-info-title">ðŸ—¡ï¸ RPG Pixel</h3>
       <p class="game-info-story">Luego de superar la prueba, el programador recibe un arma y un escudo. Descubre que para seguir el camino hay enemigos que debe vencer: solo le queda tomar valor y enfrentarlos.</p>
-      <p class="game-info-desc">Combatí contra enemigos y jefes para avanzar hasta el final y así escapar del castillo. Moveté, disparás en la dirección que caminaste y usá el escudo para bloquear golpes. Al superar un piso hay un cofre con tesoro.</p>
+      <p class="game-info-desc">CombatÃ­ contra enemigos y jefes para avanzar hasta el final y asÃ­ escapar del castillo. MovetÃ©, disparÃ¡s en la direcciÃ³n que caminaste y usÃ¡ el escudo para bloquear golpes. Al superar un piso hay un cofre con tesoro.</p>
     </div>
 
     <div class="game-recommended-box">
@@ -1050,15 +1050,15 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: AMIGOS ── -->
+  <!-- â”€â”€ SECCIÃ“N: AMIGOS â”€â”€ -->
   <section class="section" id="sec-amigos">
 
     <div class="scores-header">
       <div class="icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
       <div>
         <p><strong>Tu lista de amigos.</strong>
-           Agregá jugadores, retalos a duelo y espiá su perfil.
-           Iniciá sesión para agregar y gestionar tus amigos.</p>
+           AgregÃ¡ jugadores, retalos a duelo y espiÃ¡ su perfil.
+           IniciÃ¡ sesiÃ³n para agregar y gestionar tus amigos.</p>
       </div>
     </div>
 
@@ -1085,21 +1085,21 @@
     <!-- Vista: Tus amigos -->
     <div id="friendsViewMios">
       <div class="friends-list-box" id="friendsListBox">
-        <!-- Se llena dinámicamente desde app2.js (renderAmigos) -->
+        <!-- Se llena dinÃ¡micamente desde app2.js (renderAmigos) -->
       </div>
     </div>
 
     <!-- Vista: Solicitudes de amistad -->
     <div id="friendsViewSolicitudes" class="hidden">
       <div class="friends-list-box" id="friendsSolicitudesBox">
-        <!-- Se llena dinámicamente desde app2.js (renderSolicitudes) -->
+        <!-- Se llena dinÃ¡micamente desde app2.js (renderSolicitudes) -->
       </div>
     </div>
 
     <!-- Vista: Duelos -->
     <div id="friendsViewDuelos" class="hidden">
       <div class="friends-list-box" id="friendsDuelosBox">
-        <!-- Se llena dinámicamente desde app2.js (renderDuelos) -->
+        <!-- Se llena dinÃ¡micamente desde app2.js (renderDuelos) -->
       </div>
     </div>
 
@@ -1110,7 +1110,7 @@
         <input type="text" id="buscarAmigoInput" class="friends-search-input" placeholder="Buscar usuario por nombre..." oninput="buscarUsuarios()">
       </div>
       <div class="friends-search-results hidden" id="buscarAmigoResultados">
-        <!-- Se llena dinámicamente desde app2.js (buscarUsuarios) -->
+        <!-- Se llena dinÃ¡micamente desde app2.js (buscarUsuarios) -->
       </div>
     </div>
 
@@ -1118,15 +1118,15 @@
 
   </section>
 
-  <!-- ── SECCIÓN: LOGROS ── -->
+  <!-- â”€â”€ SECCIÃ“N: LOGROS â”€â”€ -->
   <section class="section" id="sec-logros">
 
     <div class="scores-header">
       <div class="icon"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg></div>
       <div>
         <p><strong>Tus logros.</strong>
-           Desbloqueá logros jugando a los distintos minijuegos.
-           Elegí un juego para filtrar la lista.</p>
+           DesbloqueÃ¡ logros jugando a los distintos minijuegos.
+           ElegÃ­ un juego para filtrar la lista.</p>
       </div>
     </div>
 
@@ -1155,40 +1155,40 @@
 
     <!-- Tabs para elegir el minijuego -->
     <div class="lb-tabs" id="logrosGameTabs">
-      <!-- Se llena dinámicamente desde app2.js (renderLogrosTabs) -->
+      <!-- Se llena dinÃ¡micamente desde app2.js (renderLogrosTabs) -->
     </div>
 
     <!-- Lista de logros -->
     <div class="achievements-list" id="logrosList">
-      <!-- Se llena dinámicamente desde app2.js (renderLogros) -->
+      <!-- Se llena dinÃ¡micamente desde app2.js (renderLogros) -->
     </div>
 
     </div>
 
   </section>
 
-  <!-- ── SECCIÓN: PERFIL ── -->
+  <!-- â”€â”€ SECCIÃ“N: PERFIL â”€â”€ -->
   <section class="section" id="sec-perfil">
 
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo(perfilContexto && perfilContexto.modo === 'amigo' ? 'amigos' : 'inicio')">← Volver</button>
+      <button class="btn-back" onclick="goTo(perfilContexto && perfilContexto.modo === 'amigo' ? 'amigos' : 'inicio')">â† Volver</button>
       <div class="game-screen-title"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg> Perfil</div>
     </div>
 
     <div id="perfilBox">
-      <!-- Se llena dinámicamente desde app2.js (renderPerfil) -->
+      <!-- Se llena dinÃ¡micamente desde app2.js (renderPerfil) -->
     </div>
 
   </section>
 
 </main>
 
-<!-- ════════════════ FOOTER ════════════════ -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• FOOTER â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <footer>
-  <p>© <span id="year"></span> <span>UniGames</span> · Todos los derechos reservados</p>
+  <p>Â© <span id="year"></span> <span>UniGames</span> Â· Todos los derechos reservados</p>
 </footer>
 
-<!-- ════════════════ MODAL AUTH (diseño nuevo) ════════════════ -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• MODAL AUTH (diseÃ±o nuevo) â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
   .modal-overlay {
@@ -1371,7 +1371,7 @@
   <div class="modal-orb modal-orb-2"></div>
 
   <div class="modal-card">
-    <button class="modal-close-new" onclick="closeModal()">✕</button>
+    <button class="modal-close-new" onclick="closeModal()">âœ•</button>
 
     <div class="modal-logo-badge">
       <div class="modal-logo-dot"></div>
@@ -1379,7 +1379,7 @@
     </div>
 
     <div class="modal-tabs-new">
-      <button class="tab-btn-new active" id="tabLogin"    onclick="switchTab('login')">Iniciar sesión</button>
+      <button class="tab-btn-new active" id="tabLogin"    onclick="switchTab('login')">Iniciar sesiÃ³n</button>
       <button class="tab-btn-new"        id="tabRegister" onclick="switchTab('register')">Registrarse</button>
     </div>
 
@@ -1395,19 +1395,19 @@
           </div>
         </div>
         <div class="auth-form-group">
-          <label class="auth-form-label">Contraseña</label>
+          <label class="auth-form-label">ContraseÃ±a</label>
           <div class="auth-input-wrap">
-            <input class="auth-input" type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+            <input class="auth-input" type="password" id="loginPassword" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" autocomplete="current-password">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </div>
         </div>
         <div style="text-align: right; width: 100%;">
-          <button type="button" class="auth-forgot-link" onclick="handleForgotPassword()">¿Olvidaste tu contraseña?</button>
+          <button type="button" class="auth-forgot-link" onclick="handleForgotPassword(event)">Â¿Olvidaste tu contraseÃ±a?</button>
         </div>
-        <button class="auth-btn-submit" type="submit"><span>Entrar al juego →</span></button>
+        <button class="auth-btn-submit" type="submit"><span>Entrar al juego â†’</span></button>
         
         <div class="auth-divider">
-          <span>O continuá con</span>
+          <span>O continuÃ¡ con</span>
         </div>
         
         <button class="auth-btn-google" type="button" onclick="handleGoogleLogin()">
@@ -1420,7 +1420,7 @@
           Google
         </button>
       </form>
-      <div class="auth-switch-link">¿No tenés cuenta? <button onclick="switchTab('register')">Registrate gratis</button></div>
+      <div class="auth-switch-link">Â¿No tenÃ©s cuenta? <button onclick="switchTab('register')">Registrate gratis</button></div>
     </div>
 
     <!-- REGISTER -->
@@ -1443,111 +1443,111 @@
           <span class="auth-hint">Solo se aceptan direcciones @gmail o @hotmail.</span>
         </div>
         <div class="auth-form-group">
-          <label class="auth-form-label">Contraseña</label>
+          <label class="auth-form-label">ContraseÃ±a</label>
           <div class="auth-input-wrap">
-            <input class="auth-input" type="password" id="regPassword" placeholder="••••••••" autocomplete="new-password" oninput="checkPasswordStrength(this.value)">
+            <input class="auth-input" type="password" id="regPassword" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" autocomplete="new-password" oninput="checkPasswordStrength(this.value)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           </div>
-          <span class="auth-hint">Mínimo 6 caracteres, con al menos 1 mayúscula y 1 número.</span>
+          <span class="auth-hint">MÃ­nimo 6 caracteres, con al menos 1 mayÃºscula y 1 nÃºmero.</span>
           <div class="pwd-strength-wrap" id="pwdStrengthWrap">
             <div class="pwd-strength-bar"><div class="pwd-strength-fill" id="pwdStrengthFill"></div></div>
             <span class="pwd-strength-label" id="pwdStrengthLabel"></span>
           </div>
         </div>
         <div class="auth-form-group">
-          <label class="auth-form-label">Confirmar contraseña</label>
+          <label class="auth-form-label">Confirmar contraseÃ±a</label>
           <div class="auth-input-wrap">
-            <input class="auth-input" type="password" id="regConfirm" placeholder="••••••••" autocomplete="new-password">
+            <input class="auth-input" type="password" id="regConfirm" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" autocomplete="new-password">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 12 4 10"/><path d="M4 10v10h16V6"/></svg>
           </div>
         </div>
-        <button class="auth-btn-submit" type="submit"><span>Crear cuenta →</span></button>
+        <button class="auth-btn-submit" type="submit"><span>Crear cuenta â†’</span></button>
       </form>
-      <div class="auth-switch-link">¿Ya tenés cuenta? <button onclick="switchTab('login')">Iniciá sesión</button></div>
+      <div class="auth-switch-link">Â¿Ya tenÃ©s cuenta? <button onclick="switchTab('login')">IniciÃ¡ sesiÃ³n</button></div>
     </div>
 
   </div>
 </div>
 
-<!-- MODAL DE INFO / CRÉDITOS -->
+<!-- MODAL DE INFO / CRÃ‰DITOS -->
 <div class="info-overlay" id="infoOverlay" onclick="if(event.target===this) closeInfoModal()">
   <div class="info-modal">
-    <button class="info-close" onclick="closeInfoModal()" aria-label="Cerrar modal">✕</button>
+    <button class="info-close" onclick="closeInfoModal()" aria-label="Cerrar modal">âœ•</button>
     
-    <!-- PÁGINA 1: ACERCA DEL PROYECTO -->
+    <!-- PÃGINA 1: ACERCA DEL PROYECTO -->
     <div class="info-page active" id="infoPage1">
-      <h2>🎓 Acerca del Proyecto</h2>
+      <h2>ðŸŽ“ Acerca del Proyecto</h2>
       <p class="info-subtitle">Proyecto Integrador Final - <b>UniGames</b></p>
       <div class="info-content-box">
-        <p><b>Universidad Tecnológica Nacional (UTN) - Facultad Regional Tucumán</b></p>
-        <p><b>Carrera:</b> Tecnicatura Universitaria en Programación</p>
+        <p><b>Universidad TecnolÃ³gica Nacional (UTN) - Facultad Regional TucumÃ¡n</b></p>
+        <p><b>Carrera:</b> Tecnicatura Universitaria en ProgramaciÃ³n</p>
         <p><b>Materia:</b> Desarrollo Web Full Stack & Base de Datos II</p>
-        <p style="margin-top:10px;"><b>Resumen:</b> UniGames es una Plataforma Web de Minijuegos Didácticos implementada como una Single Page Application (SPA). Diseñada con arquitectura Full-Stack cliente-servidor para fomentar la agilidad mental y mejorar el vocabulario.</p>
+        <p style="margin-top:10px;"><b>Resumen:</b> UniGames es una Plataforma Web de Minijuegos DidÃ¡cticos implementada como una Single Page Application (SPA). DiseÃ±ada con arquitectura Full-Stack cliente-servidor para fomentar la agilidad mental y mejorar el vocabulario.</p>
       </div>
     </div>
 
-    <!-- PÁGINA 2: TECNOLOGÍAS CLAVE -->
+    <!-- PÃGINA 2: TECNOLOGÃAS CLAVE -->
     <div class="info-page" id="infoPage2">
-      <h2>💻 Tecnologías Clave</h2>
+      <h2>ðŸ’» TecnologÃ­as Clave</h2>
       <p class="info-subtitle">Arquitectura y Herramientas</p>
       <div class="info-content-box info-grid">
-        <div class="info-tech-item"><span>🎨</span> <b>Frontend:</b> SPA construida con HTML5, CSS3, JavaScript ES6+ e interfaz Glassmorphism.</div>
-        <div class="info-tech-item"><span>⚙️</span> <b>Backend:</b> API REST robusta en Node.js con Express.</div>
-        <div class="info-tech-item"><span>🔒</span> <b>Seguridad:</b> Autenticación JWT y encriptación Bcrypt.</div>
-        <div class="info-tech-item"><span>🗄️</span> <b>Base de Datos:</b> SQLite (Modelo normalizado 3FN) con integridad referencial.</div>
-        <div class="info-tech-item"><span>🏗️</span> <b>Patrones:</b> Arquitectura POO (herencia/polimorfismo) y metodología ágil Scrum.</div>
+        <div class="info-tech-item"><span>ðŸŽ¨</span> <b>Frontend:</b> SPA construida con HTML5, CSS3, JavaScript ES6+ e interfaz Glassmorphism.</div>
+        <div class="info-tech-item"><span>âš™ï¸</span> <b>Backend:</b> API REST robusta en Node.js con Express.</div>
+        <div class="info-tech-item"><span>ðŸ”’</span> <b>Seguridad:</b> AutenticaciÃ³n JWT y encriptaciÃ³n Bcrypt.</div>
+        <div class="info-tech-item"><span>ðŸ—„ï¸</span> <b>Base de Datos:</b> SQLite (Modelo normalizado 3FN) con integridad referencial.</div>
+        <div class="info-tech-item"><span>ðŸ—ï¸</span> <b>Patrones:</b> Arquitectura POO (herencia/polimorfismo) y metodologÃ­a Ã¡gil Scrum.</div>
       </div>
     </div>
 
-    <!-- PÁGINA 3: EQUIPO -->
+    <!-- PÃGINA 3: EQUIPO -->
     <div class="info-page" id="infoPage3">
-      <h2>👨‍💻 Equipo de Desarrollo</h2>
+      <h2>ðŸ‘¨â€ðŸ’» Equipo de Desarrollo</h2>
       <p class="info-subtitle">Estudiantes a cargo del proyecto</p>
       <div class="info-content-box team-list">
         <div class="team-member">
-          <div class="team-avatar">👨‍💻</div>
+          <div class="team-avatar">ðŸ‘¨â€ðŸ’»</div>
           <div><b>Rodrigo Antunez</b><br><span>Backend / Scrum Master</span></div>
         </div>
         <div class="team-member">
-          <div class="team-avatar">👨‍💻</div>
+          <div class="team-avatar">ðŸ‘¨â€ðŸ’»</div>
           <div><b>Veliz Santiago</b><br><span>QA Testing / Product Owner</span></div>
         </div>
         <div class="team-member">
-          <div class="team-avatar">👨‍💻</div>
-          <div><b>Juarez Kevin</b><br><span>Frontend / UI·UX</span></div>
+          <div class="team-avatar">ðŸ‘¨â€ðŸ’»</div>
+          <div><b>Juarez Kevin</b><br><span>Frontend / UIÂ·UX</span></div>
         </div>
       </div>
     </div>
 
-    <!-- PÁGINA 4: TUTORIAL -->
+    <!-- PÃGINA 4: TUTORIAL -->
     <div class="info-page" id="infoPage4">
-      <h2>🎮 Tutorial Rápido</h2>
-      <p class="info-subtitle">¿Cómo usar UniGames?</p>
+      <h2>ðŸŽ® Tutorial RÃ¡pido</h2>
+      <p class="info-subtitle">Â¿CÃ³mo usar UniGames?</p>
       <div class="info-content-box">
         <ul class="info-tutorial-list">
-          <li><b>1. Elegí un juego:</b> Navegá por el catálogo en la pantalla principal.</li>
-          <li><b>2. Seleccioná temática:</b> Antes de jugar (ej. Preguntados, Ahorcado), podés filtrar por Videojuegos, Películas, Anime o Programación.</li>
-          <li><b>3. Compite:</b> Registrate e iniciá sesión para guardar tus récords. Los mejores puntajes aparecen en la <i>Leaderboard Global</i>.</li>
-          <li><b>4. Tip Pro:</b> Cuanto más rápido respondas y menos vidas o pistas uses, ¡más puntos sumarás!</li>
+          <li><b>1. ElegÃ­ un juego:</b> NavegÃ¡ por el catÃ¡logo en la pantalla principal.</li>
+          <li><b>2. SeleccionÃ¡ temÃ¡tica:</b> Antes de jugar (ej. Preguntados, Ahorcado), podÃ©s filtrar por Videojuegos, PelÃ­culas, Anime o ProgramaciÃ³n.</li>
+          <li><b>3. Compite:</b> Registrate e iniciÃ¡ sesiÃ³n para guardar tus rÃ©cords. Los mejores puntajes aparecen en la <i>Leaderboard Global</i>.</li>
+          <li><b>4. Tip Pro:</b> Cuanto mÃ¡s rÃ¡pido respondas y menos vidas o pistas uses, Â¡mÃ¡s puntos sumarÃ¡s!</li>
         </ul>
       </div>
     </div>
 
-    <!-- CONTROLES DE PAGINACIÓN -->
+    <!-- CONTROLES DE PAGINACIÃ“N -->
     <div class="info-nav">
-      <button class="info-btn-nav" onclick="changeInfoPage(-1)">◀ Atrás</button>
+      <button class="info-btn-nav" onclick="changeInfoPage(-1)">â—€ AtrÃ¡s</button>
       <div class="info-dots" id="infoDots">
         <span class="dot active" onclick="goToInfoPage(1)"></span>
         <span class="dot" onclick="goToInfoPage(2)"></span>
         <span class="dot" onclick="goToInfoPage(3)"></span>
         <span class="dot" onclick="goToInfoPage(4)"></span>
       </div>
-      <button class="info-btn-nav" onclick="changeInfoPage(1)">Siguiente ▶</button>
+      <button class="info-btn-nav" onclick="changeInfoPage(1)">Siguiente â–¶</button>
     </div>
   </div>
 </div>
 
-<!-- ════════════════ PANEL ADMIN ════════════════ -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• PANEL ADMIN â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <style>
   .admin-overlay {
     position: fixed; inset: 0; z-index: 1100;
@@ -1627,8 +1627,8 @@
   <div class="modal-bg-blur" onclick="closeAdminModal()"></div>
   <div class="admin-card">
     <div class="admin-card-header">
-      <div class="admin-card-title"><span class="modal-logo-dot"></span> Panel de Administración</div>
-      <button class="modal-close-new" onclick="closeAdminModal()">✕</button>
+      <div class="admin-card-title"><span class="modal-logo-dot"></span> Panel de AdministraciÃ³n</div>
+      <button class="modal-close-new" onclick="closeAdminModal()">âœ•</button>
     </div>
 
     <div class="admin-tabs">
@@ -1671,8 +1671,8 @@
           </div>
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
             <div class="auth-form-group">
-              <label class="auth-form-label">Ícono (emoji)</label>
-              <input class="auth-input" id="adminAvisoNuevoIcono" placeholder="📢" style="padding-left:12px;">
+              <label class="auth-form-label">Ãcono (emoji)</label>
+              <input class="auth-input" id="adminAvisoNuevoIcono" placeholder="ðŸ“¢" style="padding-left:12px;">
             </div>
             <div class="auth-form-group">
               <label class="auth-form-label">Color</label>
@@ -1700,7 +1700,7 @@
             </select>
           </div>
           <div class="auth-form-group" style="margin-bottom:0;">
-            <label class="auth-form-label">Filtrar por temática</label>
+            <label class="auth-form-label">Filtrar por temÃ¡tica</label>
             <select class="auth-input" id="juegosTematicaFiltro" onchange="loadJuegosContenidoList()"></select>
           </div>
         </div>
@@ -1710,7 +1710,7 @@
           <div id="juegosCamposComunes"></div>
           <div style="display:flex; gap:8px; margin-top:4px;">
             <button class="auth-btn-submit" id="juegosSubmitBtn" onclick="guardarContenidoJuego()" style="margin-top:0;"><span>Agregar</span></button>
-            <button class="auth-btn-submit" id="juegosCancelBtn" onclick="cancelarEdicionJuego()" style="margin-top:0; display:none; background:#334155;"><span>Cancelar edición</span></button>
+            <button class="auth-btn-submit" id="juegosCancelBtn" onclick="cancelarEdicionJuego()" style="margin-top:0; display:none; background:#334155;"><span>Cancelar ediciÃ³n</span></button>
           </div>
         </div>
 
@@ -1741,14 +1741,14 @@
           <label class="auth-form-label">GitHub - Kevin</label>
           <input class="auth-input" id="adminGitKevin" placeholder="usuario o URL de GitHub" style="padding-left:12px;">
         </div>
-        <button class="auth-btn-submit" onclick="saveAdminConfig()"><span>Guardar configuración</span></button>
+        <button class="auth-btn-submit" onclick="saveAdminConfig()"><span>Guardar configuraciÃ³n</span></button>
       </div>
 
     </div>
   </div>
 </div>
 
-<!-- ════════════════ NOTIFICACIONES ════════════════ -->
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• NOTIFICACIONES â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
 <style>
   .notif-overlay {
     position: fixed; inset: 0; z-index: 1150;
@@ -1816,32 +1816,32 @@
 <div class="duelo-overlay" id="dueloSelectorOverlay">
   <div class="modal-bg-blur" onclick="cerrarSelectorJuegoDuelo()"></div>
   <div class="duelo-card">
-    <button class="modal-close-new" onclick="cerrarSelectorJuegoDuelo()">✕</button>
+    <button class="modal-close-new" onclick="cerrarSelectorJuegoDuelo()">âœ•</button>
 
     <!-- Paso 1: elegir el juego -->
-    <div class="duelo-card-title" id="dueloJuegoTitle">⚔️ ¿A qué lo retás?</div>
+    <div class="duelo-card-title" id="dueloJuegoTitle">âš”ï¸ Â¿A quÃ© lo retÃ¡s?</div>
     <div class="duelo-juego-opciones" id="dueloJuegoOpciones">
-      <!-- Se llena dinámicamente desde app2.js (abrirSelectorJuegoDuelo) -->
+      <!-- Se llena dinÃ¡micamente desde app2.js (abrirSelectorJuegoDuelo) -->
     </div>
 
-    <!-- Paso 2: elegir temática (y duración, si aplica) — solo para los
+    <!-- Paso 2: elegir temÃ¡tica (y duraciÃ³n, si aplica) â€” solo para los
          juegos en DUELO_REQUIERE_TEMATICA (app2.js) -->
-    <div class="duelo-card-title" id="dueloOpcionesTitle" style="display:none;">🎯 Elegí las opciones</div>
+    <div class="duelo-card-title" id="dueloOpcionesTitle" style="display:none;">ðŸŽ¯ ElegÃ­ las opciones</div>
     <div class="duelo-opciones-step" id="dueloOpcionesStep" style="display:none;">
-      <p class="duelo-opciones-label">Temática</p>
+      <p class="duelo-opciones-label">TemÃ¡tica</p>
       <div class="theme-selector game-start-themes" id="dueloTematicaOpciones">
-        <!-- Se llena dinámicamente desde app2.js (mostrarPasoOpcionesDuelo) -->
+        <!-- Se llena dinÃ¡micamente desde app2.js (mostrarPasoOpcionesDuelo) -->
       </div>
 
       <div id="dueloDuracionWrap" style="display:none;">
-        <p class="duelo-opciones-label">Duración</p>
+        <p class="duelo-opciones-label">DuraciÃ³n</p>
         <div class="theme-selector game-start-themes" id="dueloDuracionOpciones">
-          <!-- Se llena dinámicamente desde app2.js (mostrarPasoOpcionesDuelo) -->
+          <!-- Se llena dinÃ¡micamente desde app2.js (mostrarPasoOpcionesDuelo) -->
         </div>
       </div>
 
-      <button class="btn-play" style="width:100%;margin-top:1.25rem;" onclick="confirmarDueloConOpciones()">⚔️ Enviar reto</button>
-      <button class="btn-back duelo-opciones-volver" onclick="volverAPasoJuegoDuelo()">← Elegir otro juego</button>
+      <button class="btn-play" style="width:100%;margin-top:1.25rem;" onclick="confirmarDueloConOpciones()">âš”ï¸ Enviar reto</button>
+      <button class="btn-back duelo-opciones-volver" onclick="volverAPasoJuegoDuelo()">â† Elegir otro juego</button>
     </div>
   </div>
 </div>
@@ -1850,10 +1850,10 @@
 <div class="duelo-overlay" id="duelResultOverlay">
   <div class="modal-bg-blur"></div>
   <div class="duelo-card duelo-result-card">
-    <div class="duelo-result-title" id="duelResultTitle">¡Ganaste el duelo!</div>
+    <div class="duelo-result-title" id="duelResultTitle">Â¡Ganaste el duelo!</div>
     <div class="duelo-result-vs" id="duelResultVs">
-      <!-- Se arma dinámicamente desde app2.js (mostrarResultadoDuelo):
-           yo (avatar/nombre/puntos) — VS — oponente (avatar/nombre/puntos) -->
+      <!-- Se arma dinÃ¡micamente desde app2.js (mostrarResultadoDuelo):
+           yo (avatar/nombre/puntos) â€” VS â€” oponente (avatar/nombre/puntos) -->
     </div>
     <p class="duelo-result-desc" id="duelResultDesc"></p>
     <div class="duelo-result-buttons">
@@ -1868,10 +1868,10 @@
   <div class="notif-card">
     <div class="notif-card-header">
       <div class="notif-card-title"><span class="modal-logo-dot"></span> Notificaciones</div>
-      <button class="modal-close-new" onclick="closeNotifModal()">✕</button>
+      <button class="modal-close-new" onclick="closeNotifModal()">âœ•</button>
     </div>
     <div class="notif-card-toolbar">
-      <button class="notif-mark-all" onclick="marcarTodasNotifLeidas()">Marcar todas como leídas</button>
+      <button class="notif-mark-all" onclick="marcarTodasNotifLeidas()">Marcar todas como leÃ­das</button>
     </div>
     <div class="notif-card-body" id="notifListBody">
       <div class="notif-empty">Cargando notificaciones...</div>
@@ -1882,14 +1882,14 @@
 <!-- Script -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script src="src/motor2d/engine2d.js"></script>
-<!-- Pixel Runner: módulos ES6. runner_main.js importa config/economy/
-     menu_flow/spawn/sequence/loop/render internamente y es el único que
-     hace falta listar acá. -->
+<!-- Pixel Runner: mÃ³dulos ES6. runner_main.js importa config/economy/
+     menu_flow/spawn/sequence/loop/render internamente y es el Ãºnico que
+     hace falta listar acÃ¡. -->
 <script type="module" src="src/motor2d/games/pixel-runner/runner_main.js"></script>
 <script src="src/motor2d/games/castle-escape/castle_escape_levels.js"></script>
-<!-- Castle Escape: módulos ES6. castle_main.js importa config/progress/
+<!-- Castle Escape: mÃ³dulos ES6. castle_main.js importa config/progress/
      menu_flow/loop/render/sequence internamente (con import/export entre
-     ellos) y es el único que hace falta listar acá. -->
+     ellos) y es el Ãºnico que hace falta listar acÃ¡. -->
 <script type="module" src="src/motor2d/games/castle-escape/castle_main.js"></script>
 <script src="src/motor2d/games/rpg-pixel/models/sprites.js"></script>
 <script src="src/motor2d/games/rpg-pixel/rpg_config.js"></script>
@@ -1904,4 +1904,5 @@
 <script src="src/app2.js"></script>
 </body>
 </html>
+
 
