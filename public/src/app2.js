@@ -2869,6 +2869,60 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchLeaderboard();
 });
 
+// --- Configuración de Supabase ---
+let supabaseClient = null;
+fetch('/api/config')
+  .then(res => res.json())
+  .then(async data => {
+    if (data.SUPABASE_URL && data.SUPABASE_ANON_KEY && typeof supabase !== 'undefined') {
+      supabaseClient = supabase.createClient(data.SUPABASE_URL, data.SUPABASE_ANON_KEY);
+      
+      // Check for OAuth, Password Reset, or pending un-synced sessions
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      
+      // If we are logged into Supabase, but our local app doesn't have the token (e.g. Google Login, or returning from Email verification)
+      if (sessionData.session && !localStorage.getItem('unigames_token')) {
+          const res = await fetch('/api/auth/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ supabaseToken: sessionData.session.access_token })
+          });
+          const backendData = await res.json();
+          if (res.ok) {
+            currentUser = backendData.user;
+            localStorage.setItem('unigames_token', backendData.token);
+            localStorage.setItem('unigames_user', JSON.stringify(currentUser));
+            if (window.location.href.includes('google_login=true') || window.location.href.includes('type=signup')) {
+              window.history.replaceState({}, document.title, "/"); 
+            }
+            updateAuthUI();
+            sincronizarLogrosConBackend();
+            showAuthAlert('login-alert', '¡Sesión sincronizada exitosamente!', 'success');
+          } else {
+             // If sync failed for some reason, sign out to prevent broken state
+             supabaseClient.auth.signOut();
+          }
+      }
+      
+      // If we just clicked a password reset link
+      if (window.location.href.includes('reset_password=true') && sessionData.session) {
+          const newPassword = prompt("Ingresá tu nueva contraseña:");
+          if (newPassword) {
+              const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
+              if (!error) {
+                  alert("¡Contraseña actualizada exitosamente! Ya podés iniciar sesión.");
+                  supabaseClient.auth.signOut();
+                  window.history.replaceState({}, document.title, "/"); 
+              } else {
+                  alert("Hubo un error al actualizar: " + error.message);
+              }
+          }
+      }
+    }
+  })
+  .catch(err => console.error("Error cargando config de supabase:", err));
+
+
 // ─── Lógica de API (Backend) ───────────
 async function handleLogin(e) {
   e.preventDefault();
@@ -2878,12 +2932,24 @@ async function handleLogin(e) {
   if (!identity || !password) {
     return showAuthAlert('login-alert', 'Completá todos los campos.', 'error');
   }
+  if (!supabaseClient) return showAuthAlert('login-alert', 'El sistema de seguridad está cargando...', 'error');
 
   try {
-    const res = await fetch('/api/login', {
+    // 1. Iniciar sesión con Supabase Auth (requiere Email, no usuario)
+    const { data: supaData, error: supaError } = await supabaseClient.auth.signInWithPassword({
+      email: identity,
+      password: password
+    });
+
+    if (supaError) {
+      return showAuthAlert('login-alert', 'Correo o contraseña incorrectos.', 'error');
+    }
+
+    // 2. Sincronizar con nuestro backend para obtener el Token local y el ID
+    const res = await fetch('/api/auth/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identity, password })
+      body: JSON.stringify({ supabaseToken: supaData.session.access_token })
     });
     const data = await res.json();
 
@@ -2896,7 +2962,7 @@ async function handleLogin(e) {
       sincronizarLogrosConBackend();
       setTimeout(closeModal, 900);
     } else {
-      showAuthAlert('login-alert', data.error || 'Error al iniciar sesión.', 'error');
+      showAuthAlert('login-alert', data.error || 'Error al sincronizar sesión.', 'error');
     }
   } catch (err) {
     console.error(err);
@@ -2924,11 +2990,31 @@ async function handleRegister(e) {
     return showAuthAlert('register-alert', 'Las contraseñas no coinciden.', 'error');
   }
 
+  if (!supabaseClient) return showAuthAlert('register-alert', 'El sistema de seguridad está cargando...', 'error');
+
   try {
-    const res = await fetch('/api/register', {
+    // 1. Crear usuario en Supabase Auth
+    const { data: supaData, error: supaError } = await supabaseClient.auth.signUp({
+      email: email,
+      password: password
+    });
+
+    if (supaError) {
+      return showAuthAlert('register-alert', supaError.message, 'error');
+    }
+
+    if (!supaData.session) {
+      return showAuthAlert('register-alert', 'Por favor, revisa tu correo electrónico para confirmar tu cuenta.', 'success');
+    }
+
+    // 2. Sincronizar con backend
+    const res = await fetch('/api/auth/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, email, password })
+      body: JSON.stringify({ 
+        supabaseToken: supaData.session.access_token,
+        username: username 
+      })
     });
     const data = await res.json();
 
@@ -2941,13 +3027,56 @@ async function handleRegister(e) {
       sincronizarLogrosConBackend();
       setTimeout(closeModal, 1200);
     } else {
-      showAuthAlert('register-alert', data.error || 'Error al registrarse.', 'error');
+      showAuthAlert('register-alert', data.error || 'Error al completar el registro.', 'error');
     }
   } catch (err) {
     console.error(err);
     showAuthAlert('register-alert', 'No se pudo conectar con el servidor.', 'error');
   }
 }
+
+async function handleGoogleLogin() {
+  if (!supabaseClient) return;
+  
+  const { data, error } = await supabaseClient.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin + '/?google_login=true'
+    }
+  });
+  
+  if (error) {
+    console.error('Error con Google Login:', error);
+    showAuthAlert('login-alert', 'No se pudo iniciar con Google.', 'error');
+  }
+}
+
+async function handleForgotPassword(e) {
+  e.preventDefault();
+  const identity = APP_EL.loginIdentity.value.trim();
+  
+  if (!identity) {
+    return showAuthAlert('login-alert', 'Por favor escribe tu email en el campo de arriba primero.', 'error');
+  }
+  
+  const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!EMAIL_REGEX.test(identity)) {
+    return showAuthAlert('login-alert', 'Ingresá un email válido para recuperar la contraseña.', 'error');
+  }
+
+  if (!supabaseClient) return;
+
+  const { data, error } = await supabaseClient.auth.resetPasswordForEmail(identity, {
+    redirectTo: window.location.origin + '/?reset_password=true'
+  });
+
+  if (error) {
+    return showAuthAlert('login-alert', 'Error al enviar el correo.', 'error');
+  }
+
+  showAuthAlert('login-alert', '¡Te hemos enviado un correo con las instrucciones!', 'success');
+}
+
 
   function updateAuthUI() {
     const drawerBody = APP_EL.accountDrawerBody;
@@ -2973,6 +3102,9 @@ async function handleRegister(e) {
   }
 
 function logout() {
+  if (supabaseClient) {
+    supabaseClient.auth.signOut();
+  }
   currentUser = null;
   localStorage.removeItem('unigames_token');
   localStorage.removeItem('unigames_user');

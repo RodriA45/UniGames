@@ -50,6 +50,15 @@ app.use('/api', notificacionesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', duelosRouter);
 
+// Endpoint for frontend config
+app.get('/api/config', (req, res) => {
+    res.json({
+        SUPABASE_URL: process.env.SUPABASE_URL,
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY
+    });
+});
+
+
 // Fallback para SPA / Frontend
 app.use((req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));

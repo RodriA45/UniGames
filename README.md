@@ -23,8 +23,8 @@ Actualmente incluye:
 - *(En desarrollo)* Sopa de Letras, Preguntados, Termina la Palabra, Salto Traicionero.
 
 ### 🛡️ Características Principales
-- **Autenticación Segura (JWT):** Login y registro usando Json Web Tokens guardados en `localStorage`. Las contraseñas se encriptan con `bcrypt`. 
-- **Roles y Usuarios:** Sistema de avatares (con imágenes pixel-art predeterminadas) y roles de usuario (`user`, `admin`).
+- **Autenticación con Supabase Auth (NUEVO):** Integración nativa con Supabase para inicio de sesión seguro, registro, recuperación de contraseña y **Google OAuth**.
+- **Roles y Usuarios:** Sistema de avatares (con imágenes pixel-art predeterminadas) y roles de usuario (`user`, `admin`). Sincronización automática entre Supabase y la base de datos local de PostgreSQL a través del endpoint `/api/auth/sync`.
 - **Panel de Administración (NUEVO):** Un potente panel exclusivo para administradores que permite:
   - Ver estadísticas en tiempo real (usuarios totales, partidas jugadas, actividad gráfica).
   - Gestionar usuarios (buscar, banear/desbanear, promover a admin).
@@ -58,8 +58,14 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
    **Variables de Entorno (.env):**
    Crea un archivo `.env` en la raíz del proyecto y agrega tus configuraciones seguras:
    ```env
+   # Backend
    JWT_SECRET=tu_clave_secreta_super_segura
    DEV_SECRET=clave_para_acceder_al_admin_en_produccion
+
+   # Supabase
+   DATABASE_URL=postgresql://postgres.xxx... (Usa el "Transaction Pooler" de Supabase)
+   SUPABASE_URL=https://xxxx.supabase.co
+   SUPABASE_ANON_KEY=tu_anon_key_publica
    ```
 
 4. **Generar la Base de Datos y Correr el Servidor:**
@@ -125,7 +131,7 @@ UniGames/
 
 ## 🔌 Endpoints de la API (Protegida)
 
-- `POST /api/register` & `POST /api/login`: Autenticación.
+- `POST /api/auth/sync`: Sincroniza la sesión de Supabase con el backend local (reemplaza `/login` y `/register`).
 - `GET /api/leaderboard`: Devuelve el top de jugadores globales.
 - `POST /api/partidas`: Guarda el puntaje. **(Requiere header `Authorization: Bearer <token>`)**
 - `GET /api/admin/*` & `PUT /api/admin/*`: Rutas exclusivas del Panel de Administración. Protegidas con token JWT y validación de rol `admin` en el backend.

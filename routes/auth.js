@@ -1,74 +1,79 @@
 const express = require('express');
-const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('../database/db');
 const { authRateLimit, JWT_SECRET } = require('../middlewares/auth');
-const { validate } = require('../middlewares/validate');
-const { registerSchema, loginSchema } = require('../schemas');
+const { createClient } = require('@supabase/supabase-js');
 
 const router = express.Router();
 
-// 1. Registro de usuario
-router.post('/register', authRateLimit, validate(registerSchema), async (req, res) => {
-    const { username, email, password } = req.body;
-    const db = await getDb();
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
-    try {
-        const hash = await bcrypt.hash(password, 10);
-        const sql = `INSERT INTO usuarios (nombre_usuario, email, password_hash) VALUES ($1, $2, $3) RETURNING id`;
-        const result = await db.query(sql, [username, email, hash]);
-        const lastID = result.rows[0].id;
-        
-        const token = jwt.sign({ id: lastID, username, rol: 'user' }, JWT_SECRET, { expiresIn: '7d' });
-        
-        res.status(201).json({ 
-            message: 'Usuario registrado exitosamente', 
-            token,
-            user: { id: lastID, username, rol: 'user' } 
-        });
-    } catch (error) {
-        if (error.message.includes('usuarios_nombre_usuario_key') || error.message.includes('UNIQUE constraint failed: usuarios.nombre_usuario')) {
-            return res.status(400).json({ error: 'El nombre de usuario ya existe' });
-        }
-        if (error.message.includes('usuarios_email_key') || error.message.includes('UNIQUE constraint failed: usuarios.email')) {
-            return res.status(400).json({ error: 'El email ya está registrado' });
-        }
-        console.error('Error en /api/register:', error);
-        res.status(500).json({ error: 'Error al registrar usuario' });
+// Endpoint para sincronizar el usuario de Supabase con la base de datos local
+router.post('/auth/sync', authRateLimit, async (req, res) => {
+    const { supabaseToken, username } = req.body;
+
+    if (!supabaseToken) {
+        return res.status(400).json({ error: 'Falta token de Supabase' });
     }
-});
-
-// 2. Inicio de sesión
-router.post('/login', authRateLimit, validate(loginSchema), async (req, res) => {
-    const { identity, password } = req.body; 
-    const db = await getDb();
 
     try {
-        const sql = `SELECT * FROM usuarios WHERE nombre_usuario = $1 OR email = $2`;
-        const result = await db.query(sql, [identity, identity]);
-        const row = result.rows[0];
+        // 1. Verificar el token con Supabase
+        const { data: { user }, error } = await supabase.auth.getUser(supabaseToken);
         
-        if (!row) {
-            return res.status(400).json({ error: 'Usuario no encontrado' });
+        if (error || !user) {
+            console.error("Error al validar token de Supabase:", error);
+            return res.status(401).json({ error: 'Token de Supabase inválido o expirado' });
         }
-        if (row.estado === 'suspendido') {
+
+        const email = user.email;
+        const db = await getDb();
+
+        // 2. Buscar si el usuario ya existe localmente
+        let sql = `SELECT * FROM usuarios WHERE email = $1`;
+        let result = await db.query(sql, [email]);
+        let localUser = result.rows[0];
+
+        // 3. Si no existe, lo creamos
+        if (!localUser) {
+            // Si viene de Google, puede que no tenga 'username' enviado desde el frontend.
+            // Usamos la parte antes del @ del email como fallback, o un nombre aleatorio.
+            let newUsername = username || email.split('@')[0];
+            
+            // Verificar si el username ya está tomado (por otro usuario con distinto email)
+            const checkUsername = await db.query(`SELECT id FROM usuarios WHERE nombre_usuario = $1`, [newUsername]);
+            if (checkUsername.rows.length > 0) {
+                // Si está tomado, le añadimos números aleatorios
+                newUsername = newUsername + Math.floor(Math.random() * 10000);
+            }
+
+            // Insertamos al nuevo usuario. La contraseña ya no importa porque Supabase la maneja.
+            // Le ponemos un hash vacío o un placeholder.
+            sql = `INSERT INTO usuarios (nombre_usuario, email, password_hash) VALUES ($1, $2, $3) RETURNING id, nombre_usuario, rol, estado`;
+            result = await db.query(sql, [newUsername, email, 'SUPABASE_MANAGED']);
+            localUser = result.rows[0];
+        }
+
+        if (localUser.estado === 'suspendido') {
             return res.status(403).json({ error: 'Tu cuenta ha sido suspendida' });
         }
 
-        const match = await bcrypt.compare(password, row.password_hash);
-        if (match) {
-            const token = jwt.sign({ id: row.id, username: row.nombre_usuario, rol: row.rol || 'user' }, JWT_SECRET, { expiresIn: '7d' });
-            res.json({ 
-                message: 'Inicio de sesión exitoso', 
-                token,
-                user: { id: row.id, username: row.nombre_usuario, rol: row.rol || 'user' } 
-            });
-        } else {
-            res.status(400).json({ error: 'Contraseña incorrecta' });
-        }
+        // 4. Generamos nuestro token JWT local tradicional (que usan los juegos para validar identidad rápida)
+        const localJwt = jwt.sign({ 
+            id: localUser.id, 
+            username: localUser.nombre_usuario, 
+            rol: localUser.rol || 'user' 
+        }, JWT_SECRET, { expiresIn: '7d' });
+        
+        // 5. Devolvemos la sesión
+        res.json({ 
+            message: 'Inicio de sesión sincronizado exitosamente', 
+            token: localJwt,
+            user: { id: localUser.id, username: localUser.nombre_usuario, rol: localUser.rol || 'user' } 
+        });
+
     } catch (error) {
-        console.error('Error al iniciar sesión:', error);
-        res.status(500).json({ error: 'Error interno del servidor' });
+        console.error('Error en /api/auth/sync:', error);
+        res.status(500).json({ error: 'Error interno del servidor al sincronizar usuario' });
     }
 });
 
