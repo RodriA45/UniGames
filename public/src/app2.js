@@ -3052,13 +3052,15 @@ async function handleGoogleLogin() {
 }
 
 function openRecoverModal() {
-  document.getElementById('recoverOverlay').style.display = 'flex';
+  document.getElementById('recoverOverlay').classList.add('open');
   document.getElementById('recoverEmail').value = '';
   document.getElementById('recover-alert').style.display = 'none';
+  // Cerrar el modal de login si está abierto
+  closeModal();
 }
 
 function closeRecoverModal() {
-  document.getElementById('recoverOverlay').style.display = 'none';
+  document.getElementById('recoverOverlay').classList.remove('open');
 }
 
 async function submitRecoverPassword(e) {
