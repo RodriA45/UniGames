@@ -77,4 +77,20 @@ router.post('/auth/sync', authRateLimit, async (req, res) => {
     }
 });
 
+// Endpoint para verificar si un email existe localmente (útil para recuperar contraseña de forma "inteligente")
+router.post('/auth/check-email', async (req, res) => {
+    const { email } = req.body;
+    if (!email) {
+        return res.status(400).json({ error: 'Falta email' });
+    }
+    try {
+        const db = await getDb();
+        const result = await db.query(`SELECT id FROM usuarios WHERE email = $1`, [email.toLowerCase().trim()]);
+        res.json({ exists: result.rows.length > 0 });
+    } catch (error) {
+        console.error('Error al verificar email:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
 module.exports = router;

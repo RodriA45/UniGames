@@ -1,4 +1,4 @@
-﻿window.onerror = function(msg, url, line, col, err) {
+window.onerror = function(msg, url, line, col, err) {
   alert("Error: " + msg + " at line " + line);
   return false;
 };
@@ -3080,6 +3080,27 @@ async function submitRecoverPassword(e) {
 
   btn.disabled = true;
   const originalHtml = btn.innerHTML;
+  btn.innerHTML = '<span>Verificando...</span>';
+
+  try {
+    const checkRes = await fetch('/api/auth/check-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: identity })
+    });
+    
+    if (checkRes.ok) {
+      const data = await checkRes.json();
+      if (!data.exists) {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        return showAuthAlert('recover-alert', 'Correo no registrado.', 'error');
+      }
+    }
+  } catch (err) {
+    console.error('Error verificando email:', err);
+  }
+
   btn.innerHTML = '<span>Enviando...</span>';
 
   const { data, error } = await supabaseClient.auth.resetPasswordForEmail(identity, {
@@ -3092,7 +3113,7 @@ async function submitRecoverPassword(e) {
     return showAuthAlert('recover-alert', 'Error al enviar el correo. Límite excedido o correo inválido.', 'error');
   }
 
-  showAuthAlert('recover-alert', '¡Te hemos enviado un correo con las instrucciones!', 'success');
+  showAuthAlert('recover-alert', '¡Enviado! Revisa tu bandeja de entrada o spam.', 'success');
 
   let secondsLeft = 10;
   btn.innerHTML = '<span>Reenviar en ' + secondsLeft + 's</span>';
