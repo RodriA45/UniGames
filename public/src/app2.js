@@ -2904,11 +2904,14 @@ fetch('/api/config')
                   updateAuthUI();
                   sincronizarLogrosConBackend();
                   
-                  // Limpiar la URL si venimos de un redirect de OAuth con el hash
-                  if (window.location.hash.includes('access_token')) {
+                  // Limpiar la URL si venimos de un redirect de OAuth
+                  if (window.location.hash.includes('access_token') || window.location.search.includes('google_login=true')) {
                       window.history.replaceState({}, document.title, window.location.pathname);
                   }
               } else {
+                  const errText = await res.text();
+                  showAuthAlert('login-alert', 'Error de Sync: ' + res.status + ' ' + errText, 'error');
+                  openModal('login');
                   supabaseClient.auth.signOut();
               }
           } else if (event === 'SIGNED_OUT') {
