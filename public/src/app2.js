@@ -3064,6 +3064,7 @@ function closeRecoverModal() {
 async function submitRecoverPassword(e) {
   e.preventDefault();
   const identity = document.getElementById('recoverEmail').value.trim();
+  const btn = document.getElementById('recoverSubmitBtn');
   
   if (!identity) {
     return showAuthAlert('recover-alert', 'Por favor ingresá tu correo electrónico.', 'error');
@@ -3076,16 +3077,39 @@ async function submitRecoverPassword(e) {
 
   if (!supabaseClient) return showAuthAlert('recover-alert', 'Error de conexión con seguridad. Verifica que supabase este configurado.', 'error');
 
+  // Disable button and show loading
+  btn.disabled = true;
+  const originalHtml = btn.innerHTML;
+  btn.innerHTML = '<span>Enviando...</span>';
+
   const { data, error } = await supabaseClient.auth.resetPasswordForEmail(identity, {
     redirectTo: window.location.origin + '/?reset_password=true'
   });
 
   if (error) {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
     return showAuthAlert('recover-alert', 'Error al enviar el correo. Límite excedido o correo inválido.', 'error');
   }
 
   showAuthAlert('recover-alert', '¡Te hemos enviado un correo con las instrucciones!', 'success');
+
+  // 10 second countdown
+  let secondsLeft = 10;
+  btn.innerHTML = '<span>Reenviar en ' + secondsLeft + 's</span>';
+  
+  const timerId = setInterval(() => {
+    secondsLeft--;
+    if (secondsLeft <= 0) {
+      clearInterval(timerId);
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+    } else {
+      btn.innerHTML = '<span>Reenviar en ' + secondsLeft + 's</span>';
+    }
+  }, 1000);
 }
+
 
 
 
