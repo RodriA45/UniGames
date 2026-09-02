@@ -1,10 +1,10 @@
-window.onerror = function(msg, url, line, col, err) {
+﻿window.onerror = function(msg, url, line, col, err) {
   alert("Error: " + msg + " at line " + line);
   return false;
 };
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
-//   UniGames � app.js
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//   UniGames â€” app.js
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 let currentUser = null;
 
@@ -19,15 +19,15 @@ if (urlParams.has('dev_token') && urlParams.has('dev_user')) {
 }
 // ======================
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   Caché del DOM
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 // Mismo criterio que en rpg.js/pixelrunner.js/castle_escape.js: buscar
 // una sola vez, al cargar el script, los elementos que YA existen en el
 // HTML (el script va al final del <body>). Ojo: acá quedaron afuera los
 // elementos que NO están en index.html porque se arman con innerHTML
 // recién cuando se abre esa pantalla (panel de admin, dashboard,
-// input/timer de Termina y Preguntados, banner de aviso) � esos se
+// input/timer de Termina y Preguntados, banner de aviso) â€” esos se
 // tienen que seguir buscando en el momento, cachearlos daría null para
 // siempre.
 const APP_EL = {
@@ -108,11 +108,11 @@ const APP_EL = {
   year: document.getElementById('year'),
 };
 
-// ������ Audio Manager ������������������������������������������
+// â”€â”€â”€ Audio Manager â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let globalAudioEnabled = true;
 let pageMusicMuted = false;
 
-// Volumen de música/efectos � 0 a 1, persistido en localStorage para que
+// Volumen de música/efectos â€” 0 a 1, persistido en localStorage para que
 // se recuerde entre sesiones. Cualquier juego (no solo Castle Escape)
 // puede leer/cambiar esto con getGlobalMusicVolume()/setGlobalMusicVolume().
 function loadStoredVolume(key, fallback) {
@@ -155,7 +155,7 @@ const gameMusicMap = {
   preguntados: null
 };
 
-// El audio arranca "activado" por defecto (icono �x`) e intenta reproducirse
+// El audio arranca "activado" por defecto (icono ðŸ”Š) e intenta reproducirse
 // apenas carga la página.
 function initAudio() {
   const btn = APP_EL.globalAudioBtn;
@@ -253,11 +253,11 @@ function playDeathSound() {
   }
 }
 
-// ������ Datos de juegos ��������������������������������������
+// â”€â”€â”€ Datos de juegos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const allGames = [
   { id: 'sopa', title: 'Sopa de Letras',    desc: 'Encontrá palabras ocultas en la grilla. Mientras más rápido, más puntos ganás.', tag: 'Velocidad' },
   { id: 'preguntados', title: 'Preguntados',        desc: 'Trivia de múltiple opción. Respondé preguntas sobre tu temática favorita.',       tag: 'Trivia'    },
-  { id: 'termina', title: 'Termina la Palabra', desc: 'Adiviná la palabra incompleta. Tenés solo 5 intentos. ¡Pensá bien!',             tag: '5 intentos' },
+  { id: 'termina', title: 'Termina la Palabra', desc: 'Adiviná la palabra incompleta. Tenés solo 5 intentos. Â¡Pensá bien!',             tag: '5 intentos' },
   { id: 'ahorcado', title: 'Ahorcado',           desc: 'El clásico de siempre, ahora con temáticas. Letra por letra antes de que se complete el dibujo.', tag: 'Clásico'   },
   { id: 'adivina', title: 'Adivina la Cosa',   desc: 'Pistas progresivas para adivinar un juego, película, actor o anime.',           tag: 'Pistas'    },
   { id: 'wordle', title: 'Adivina la Palabra', desc: 'Modo difícil estilo Wordle. 5 intentos, colores que te dan pistas letra por letra.', tag: 'Hard'     },
@@ -274,7 +274,7 @@ const actionGames = [
 // Los 3 juegos sencillos fijos que se muestran siempre en el inicio.
 const SIMPLE_GAME_IDS = ['sopa', 'ahorcado', 'preguntados'];
 
-// ������ Utilidades ������������������������������������������������
+// â”€â”€â”€ Utilidades â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function shuffle(arr) {
   return [...arr].sort(() => Math.random() - 0.5);
 }
@@ -308,7 +308,7 @@ function gameIconSVG(id, size = 22) {
 }
 
 // Íconos de línea chicos para textos/botones sueltos (chequear, agregar,
-// advertencia, persona, papelera, duelo, etc.) � mismo estilo que el
+// advertencia, persona, papelera, duelo, etc.) â€” mismo estilo que el
 // resto de los íconos de la app.
 function uiIconSVG(name, size = 14) {
   const paths = {
@@ -330,7 +330,7 @@ function uiIconSVG(name, size = 14) {
 }
 
 
-// ������ Inicio: juegos destacados aleatorios ������
+// â”€â”€â”€ Inicio: juegos destacados aleatorios â”€â”€â”€
 function gameCardHTML(g) {
   return `
     <div class="game-card" onclick="launchGame('${g.id}', this)">
@@ -338,7 +338,7 @@ function gameCardHTML(g) {
       <div class="card-title">${g.title}</div>
       <p class="card-desc">${g.desc}</p>
       <span class="card-tag">${g.tag}</span>
-      <button class="btn-play">�� Jugar ahora</button>
+      <button class="btn-play">â–¶ Jugar ahora</button>
     </div>
   `;
 }
@@ -361,14 +361,14 @@ function renderAction() {
   APP_EL.actionGrid.innerHTML = actionGames.map(gameCardHTML).join('');
 }
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   AMIGOS
 //   Conectado al backend: routes/amigos.js expone
 //   GET /api/amigos, GET/POST /api/amigos/solicitudes,
 //   POST /api/amigos/solicitudes/:id/(aceptar|rechazar) y
 //   DELETE /api/amigos/:id. La búsqueda de usuarios usa
 //   GET /api/usuarios/buscar?nombre=...
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // Helper chico para no repetir el armado de headers en cada fetch
 // autenticado. Devuelve el JSON parseado; si la respuesta no es ok,
@@ -396,15 +396,15 @@ const MAX_AMIGOS = 50;
 // buscador). Se resetea a 'mios' cada vez que se entra a la sección.
 let friendsTabActual = 'mios';
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   DUELOS 1v1
 // Conectado a routes/duelos.js: GET/POST /api/duelos, POST .../aceptar,
 // .../rechazar, .../resultado, .../revancha.
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // Juegos habilitados para duelo (debe reflejar JUEGOS_DUELO de routes/duelos.js).
 // El ícono de cada uno se resuelve con gameIconSVG(key), el mismo set de
-// íconos de línea que ya se usa en Inicio/Juegos � nada de emojis acá.
+// íconos de línea que ya se usa en Inicio/Juegos â€” nada de emojis acá.
 const JUEGOS_DUELO_INFO = {
   ahorcado:    { nombre: 'Ahorcado' },
   sopa:        { nombre: 'Sopa de Letras' },
@@ -448,7 +448,7 @@ const DUELO_SOPA_DURACIONES = [
 // reportar el puntaje al terminar la partida.
 var dueloActivo = null;
 
-// �altimos duelos traídos del backend (se llena con fetchDuelos()).
+// Ãšltimos duelos traídos del backend (se llena con fetchDuelos()).
 let duelosList = [];
 
 // Id del amigo elegido para retar, mientras se elige el minijuego en el
@@ -474,7 +474,7 @@ function renderDuelos() {
   if (duelosList.length === 0) {
     box.innerHTML = `
       <div class="friends-empty">
-        <p>Todavía no tenés duelos. ¡Retá a un amigo desde la pestaña "Tus amigos"!</p>
+        <p>Todavía no tenés duelos. Â¡Retá a un amigo desde la pestaña "Tus amigos"!</p>
       </div>`;
     return;
   }
@@ -482,8 +482,8 @@ function renderDuelos() {
   box.innerHTML = duelosList.map(d => {
     const juegoInfo = JUEGOS_DUELO_INFO[d.juego] || { nombre: d.juegoNombre };
     const tematicaTxt = d.tematicaId
-      ? ` · ${TEMATICA_NAMES[d.tematicaId] || ''}`
-      : (d.juego === 'ahorcado' ? ' · Normal' : '');
+      ? ` Â· ${TEMATICA_NAMES[d.tematicaId] || ''}`
+      : (d.juego === 'ahorcado' ? ' Â· Normal' : '');
     let cuerpo = '';
 
     if (d.estado === 'pendiente') {
@@ -495,9 +495,9 @@ function renderDuelos() {
     } else if (d.estado === 'en_curso') {
       cuerpo = d.yaJugue
         ? `<span class="friend-status">${uiIconSVG('clock')} Ya jugaste, esperando al rival</span>`
-        : `<button class="friend-btn friend-btn-duel" onclick="jugarDuelo(${d.id}, '${d.juego}')">�� Jugar</button>`;
+        : `<button class="friend-btn friend-btn-duel" onclick="jugarDuelo(${d.id}, '${d.juego}')">â–¶ Jugar</button>`;
     } else if (d.estado === 'finalizado') {
-      const etiqueta = d.resultado === 'gano' ? '�x�  Ganaste' : d.resultado === 'perdio' ? '�x� Perdiste' : '�x�� Empate';
+      const etiqueta = d.resultado === 'gano' ? 'ðŸ† Ganaste' : d.resultado === 'perdio' ? 'ðŸ’€ Perdiste' : 'ðŸ¤ Empate';
       cuerpo = `
         <span class="friend-status">${etiqueta} (${d.misPuntos ?? 0} vs ${d.puntosOponente ?? 0})</span>
         <button class="friend-btn friend-btn-duel" onclick="revanchaDuelo(${d.id})">Revancha</button>`;
@@ -520,7 +520,7 @@ function renderDuelos() {
 async function aceptarDuelo(id) {
   try {
     await apiFetch(`/api/duelos/${id}/aceptar`, { method: 'POST' });
-    mostrarToast('¡Duelo aceptado! Andá a la pestaña Duelos cuando quieras jugarlo.');
+    mostrarToast('Â¡Duelo aceptado! Andá a la pestaña Duelos cuando quieras jugarlo.');
     fetchDuelos();
     actualizarBadgeNotificaciones();
   } catch (error) {
@@ -540,7 +540,7 @@ async function rechazarDuelo(id) {
 async function revanchaDuelo(id) {
   try {
     await apiFetch(`/api/duelos/${id}/revancha`, { method: 'POST' });
-    mostrarToast('¡Revancha enviada!');
+    mostrarToast('Â¡Revancha enviada!');
     fetchDuelos();
   } catch (error) {
     mostrarToast(error.message || 'No se pudo enviar la revancha', 'error');
@@ -551,7 +551,7 @@ async function revanchaDuelo(id) {
 // falta pedir temática/duración (paso 2) antes de mandar el reto.
 let dueloJuegoSeleccionado = null;
 
-// Abre el selector de "¿a qué lo retás?" para el amigo elegido, siempre
+// Abre el selector de "Â¿a qué lo retás?" para el amigo elegido, siempre
 // arrancando en el paso 1 (elegir juego). Se llena dinámicamente por si en
 // el futuro se agregan más juegos a JUEGOS_DUELO_INFO, sin tocar el HTML.
 function abrirSelectorJuegoDuelo(amigoId) {
@@ -684,7 +684,7 @@ async function enviarRetoDuelo(juego, tematicaId, duracionSegundos) {
   }
 }
 
-// Punto de entrada al tocar "�� Jugar" en un duelo en curso: manda al
+// Punto de entrada al tocar "â–¶ Jugar" en un duelo en curso: manda al
 // minijuego correspondiente en modo duelo, con la temática/duración que
 // se haya elegido al mandar el reto (guardadas en el duelo en el backend).
 function jugarDuelo(dueloId, juego) {
@@ -751,7 +751,7 @@ function mostrarResultadoDuelo(d) {
   const oponente = d.oponente || {};
 
   if (d.estado !== 'finalizado') {
-    if (title) title.textContent = '¡Puntaje enviado!';
+    if (title) title.textContent = 'Â¡Puntaje enviado!';
     if (vsBox) {
       vsBox.innerHTML =
         ladoVsDuelo(yo.avatar, yo.username, d.misPuntos ?? 0, false) +
@@ -763,14 +763,14 @@ function mostrarResultadoDuelo(d) {
   } else {
     const gano = d.resultado === 'gano';
     const empato = d.resultado === 'empate';
-    if (title) title.textContent = empato ? '¡Empate!' : (gano ? '¡Ganaste el duelo!' : 'Perdiste el duelo');
+    if (title) title.textContent = empato ? 'Â¡Empate!' : (gano ? 'Â¡Ganaste el duelo!' : 'Perdiste el duelo');
     if (vsBox) {
       vsBox.innerHTML =
         ladoVsDuelo(yo.avatar, yo.username, d.misPuntos ?? 0, gano) +
         `<div class="duelo-vs-centro">VS</div>` +
         ladoVsDuelo(oponente.avatar, oponente.username, d.puntosOponente ?? 0, !gano && !empato);
     }
-    if (desc) desc.textContent = '¿Querés revancha?';
+    if (desc) desc.textContent = 'Â¿Querés revancha?';
     if (gano) actualizarProgresoParcial('general', { duelosGanados: 1 });
     if (btnRevancha) {
       btnRevancha.style.display = '';
@@ -866,7 +866,7 @@ function avatarValueHTML(valor, altText) {
   if (valor && /\.(webp|png|jpe?g|gif|svg)$/i.test(valor)) {
     return `<img src="${valor}" alt="${sanitizeHTML(altText || '')}">`;
   }
-  return valor || '�x"';
+  return valor || 'ðŸ™‚';
 }
 
 // Ids a los que ya se les mandó solicitud en esta sesión (evita doble
@@ -1002,7 +1002,7 @@ function renderAmigos() {
 async function eliminarAmigo(id) {
   const amigo = amigosList.find(a => a.id === id);
   if (!amigo) return;
-  if (!confirm(`¿Eliminar a ${amigo.username} de tu lista de amigos?`)) return;
+  if (!confirm(`Â¿Eliminar a ${amigo.username} de tu lista de amigos?`)) return;
   try {
     await apiFetch('/api/amigos/' + id, { method: 'DELETE' });
     amigosList = amigosList.filter(a => a.id !== id);
@@ -1060,7 +1060,7 @@ async function enviarSolicitudAmistad(id, nombre) {
   }
 }
 
-// ������ Solicitudes de amistad (recibidas y enviadas) ������
+// â”€â”€â”€ Solicitudes de amistad (recibidas y enviadas) â”€â”€â”€
 
 // Trae las solicitudes pendientes desde el backend y refresca la vista +
 // el contador de la pestaña.
@@ -1159,13 +1159,13 @@ async function rechazarSolicitud(id) {
   }
 }
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   LOGROS
 //   Sistema de logros: definición de los 50 logros, guardado local
 //   (localStorage, provisorio hasta que exista el backend) y la
 //   lógica que revisa y desbloquea automáticamente cada logro a
 //   medida que se juega.
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // Juegos disponibles para filtrar la lista de logros.
 const LOGROS_JUEGOS = [
@@ -1185,108 +1185,108 @@ const LOGROS_JUEGOS = [
 // jugador (ver getLogrosStats) y devuelve true/false según si ya se
 // cumplió la condición del logro.
 const ACHIEVEMENTS = [
-  // ���� Generales (5) ����
-  { id: 'general_primer_juego',  juego: 'general', icon: '�x}�', nombre: 'Primeros pasos',   desc: 'Jugá tu primer minijuego.',                    check: s => (s.partidasJugadas || 0) >= 1 },
-  { id: 'general_los_9',         juego: 'general', icon: '�x"�️', nombre: 'Explorador',        desc: 'Jugá los 9 minijuegos al menos una vez.',      check: s => (s.juegosJugados || []).length >= 9 },
-  { id: 'general_primer_amigo',  juego: 'general', icon: '�x��', nombre: 'Nuevo amigo',       desc: 'Agregá tu primer amigo.',                      check: s => (s.amigosAgregados || 0) >= 1 },
-  { id: 'general_primer_duelo',  juego: 'general', icon: '�a️', nombre: 'Primer duelo',      desc: 'Ganá tu primer duelo contra un amigo.',        check: s => (s.duelosGanados || 0) >= 1 },
-  { id: 'general_racha_semanal', juego: 'general', icon: '�x�', nombre: 'Jugador constante', desc: 'Iniciá sesión 7 días seguidos.',               check: s => (s.diasSeguidos || 0) >= 7 },
+  // â”€â”€ Generales (5) â”€â”€
+  { id: 'general_primer_juego',  juego: 'general', icon: 'ðŸŽ®', nombre: 'Primeros pasos',   desc: 'Jugá tu primer minijuego.',                    check: s => (s.partidasJugadas || 0) >= 1 },
+  { id: 'general_los_9',         juego: 'general', icon: 'ðŸ•¹ï¸', nombre: 'Explorador',        desc: 'Jugá los 9 minijuegos al menos una vez.',      check: s => (s.juegosJugados || []).length >= 9 },
+  { id: 'general_primer_amigo',  juego: 'general', icon: 'ðŸ¤', nombre: 'Nuevo amigo',       desc: 'Agregá tu primer amigo.',                      check: s => (s.amigosAgregados || 0) >= 1 },
+  { id: 'general_primer_duelo',  juego: 'general', icon: 'âš”ï¸', nombre: 'Primer duelo',      desc: 'Ganá tu primer duelo contra un amigo.',        check: s => (s.duelosGanados || 0) >= 1 },
+  { id: 'general_racha_semanal', juego: 'general', icon: 'ðŸ”¥', nombre: 'Jugador constante', desc: 'Iniciá sesión 7 días seguidos.',               check: s => (s.diasSeguidos || 0) >= 7 },
 
-  // ���� Sopa de Letras (5) ����
-  { id: 'sopa_primera',   juego: 'sopa', icon: '�x�', nombre: 'Primera sopa',       desc: 'Completá tu primera Sopa de Letras.',                                  check: s => (s.sopa_completadas || 0) >= 1 },
-  { id: 'sopa_veloz',     juego: 'sopa', icon: '⏱️', nombre: 'Rayo veloz',         desc: 'Encontrá todas las palabras con más de la mitad del tiempo restante.', check: s => (s.sopa_veloz || 0) >= 1 },
-  { id: 'sopa_5',         juego: 'sopa', icon: '�x��', nombre: 'Buscador',           desc: 'Completá 5 Sopas de Letras.',                                          check: s => (s.sopa_completadas || 0) >= 5 },
-  { id: 'sopa_20',        juego: 'sopa', icon: '�x� ', nombre: 'Maestro de la sopa', desc: 'Completá 20 Sopas de Letras.',                                         check: s => (s.sopa_completadas || 0) >= 20 },
-  { id: 'sopa_tematicas', juego: 'sopa', icon: '�x}�', nombre: 'Todo terreno',       desc: 'Completá una Sopa en cada temática.',                                  check: s => (s.sopa_tematicas || []).length >= 4 },
-  { id: 'sopa_racha3',    juego: 'sopa', icon: '�x�', nombre: 'Racha ganadora',     desc: 'Completá 3 Sopas seguidas antes de que se acabe el tiempo.',          check: s => (s.sopa_racha_max || 0) >= 3 },
-  { id: 'sopa_sinerrores',juego: 'sopa', icon: '�S�', nombre: 'Mano firme',         desc: 'Completá una Sopa sin marcar ninguna selección incorrecta.',          check: s => (s.sopa_sinerrores || 0) >= 1 },
-  { id: 'sopa_1000',      juego: 'sopa', icon: '�x}', nombre: 'Puntaje alto',       desc: 'Conseguí 1000 puntos o más en una sola partida.',                      check: s => (s.sopa_maxScore_best || 0) >= 1000 },
-  { id: 'sopa_50',        juego: 'sopa', icon: '�xRx', nombre: 'Leyenda de la sopa', desc: 'Completá 50 Sopas de Letras.',                                         check: s => (s.sopa_completadas || 0) >= 50 },
-  { id: 'sopa_relampago', juego: 'sopa', icon: '�a�', nombre: 'Relámpago',          desc: 'Encontrá todas las palabras con 90 segundos o más de sobra.',         check: s => (s.sopa_relampago || 0) >= 1 },
+  // â”€â”€ Sopa de Letras (5) â”€â”€
+  { id: 'sopa_primera',   juego: 'sopa', icon: 'ðŸ”', nombre: 'Primera sopa',       desc: 'Completá tu primera Sopa de Letras.',                                  check: s => (s.sopa_completadas || 0) >= 1 },
+  { id: 'sopa_veloz',     juego: 'sopa', icon: 'â±ï¸', nombre: 'Rayo veloz',         desc: 'Encontrá todas las palabras con más de la mitad del tiempo restante.', check: s => (s.sopa_veloz || 0) >= 1 },
+  { id: 'sopa_5',         juego: 'sopa', icon: 'ðŸ§©', nombre: 'Buscador',           desc: 'Completá 5 Sopas de Letras.',                                          check: s => (s.sopa_completadas || 0) >= 5 },
+  { id: 'sopa_20',        juego: 'sopa', icon: 'ðŸ†', nombre: 'Maestro de la sopa', desc: 'Completá 20 Sopas de Letras.',                                         check: s => (s.sopa_completadas || 0) >= 20 },
+  { id: 'sopa_tematicas', juego: 'sopa', icon: 'ðŸŽ­', nombre: 'Todo terreno',       desc: 'Completá una Sopa en cada temática.',                                  check: s => (s.sopa_tematicas || []).length >= 4 },
+  { id: 'sopa_racha3',    juego: 'sopa', icon: 'ðŸ”¥', nombre: 'Racha ganadora',     desc: 'Completá 3 Sopas seguidas antes de que se acabe el tiempo.',          check: s => (s.sopa_racha_max || 0) >= 3 },
+  { id: 'sopa_sinerrores',juego: 'sopa', icon: 'âœ¨', nombre: 'Mano firme',         desc: 'Completá una Sopa sin marcar ninguna selección incorrecta.',          check: s => (s.sopa_sinerrores || 0) >= 1 },
+  { id: 'sopa_1000',      juego: 'sopa', icon: 'ðŸ’Ž', nombre: 'Puntaje alto',       desc: 'Conseguí 1000 puntos o más en una sola partida.',                      check: s => (s.sopa_maxScore_best || 0) >= 1000 },
+  { id: 'sopa_50',        juego: 'sopa', icon: 'ðŸŒŸ', nombre: 'Leyenda de la sopa', desc: 'Completá 50 Sopas de Letras.',                                         check: s => (s.sopa_completadas || 0) >= 50 },
+  { id: 'sopa_relampago', juego: 'sopa', icon: 'âš¡', nombre: 'Relámpago',          desc: 'Encontrá todas las palabras con 90 segundos o más de sobra.',         check: s => (s.sopa_relampago || 0) >= 1 },
 
-  // ���� Preguntados (5) ����
-  { id: 'preg_primera',   juego: 'preguntados', icon: '�', nombre: 'Primera trivia', desc: 'Completá tu primera ronda de Preguntados.',            check: s => (s.preg_completadas || 0) >= 1 },
-  { id: 'preg_perfecta',  juego: 'preguntados', icon: '�x�', nombre: 'Ronda perfecta', desc: 'Contestá todas las preguntas correctas en una ronda.', check: s => (s.preg_perfectas || 0) >= 1 },
-  { id: 'preg_50',        juego: 'preguntados', icon: '�x��', nombre: 'Cerebrito',      desc: 'Acumulá 50 respuestas correctas en total.',            check: s => (s.preg_correctas || 0) >= 50 },
-  { id: 'preg_racha',     juego: 'preguntados', icon: '�x�', nombre: 'Racha ganadora', desc: 'Encadená 10 respuestas correctas seguidas.',           check: s => (s.preg_racha_max || 0) >= 10 },
-  { id: 'preg_tematicas', juego: 'preguntados', icon: '�x}�', nombre: 'Todo terreno',   desc: 'Jugá Preguntados en las 4 temáticas.',                 check: s => (s.preg_tematicas || []).length >= 4 },
-  { id: 'preg_100',       juego: 'preguntados', icon: '�x��', nombre: 'Enciclopedia',   desc: 'Acumulá 100 respuestas correctas en total.',           check: s => (s.preg_correctas || 0) >= 100 },
-  { id: 'preg_racha15',   juego: 'preguntados', icon: '�x�', nombre: 'Imparable',      desc: 'Encadená 15 respuestas correctas seguidas.',           check: s => (s.preg_racha_max || 0) >= 15 },
-  { id: 'preg_10rondas',  juego: 'preguntados', icon: '�x`', nombre: 'Veterano',       desc: 'Completá 10 rondas de Preguntados.',                   check: s => (s.preg_completadas || 0) >= 10 },
-  { id: 'preg_perfectas5',juego: 'preguntados', icon: '�x�&', nombre: 'Sin fallar',     desc: 'Conseguí 5 rondas perfectas.',                         check: s => (s.preg_perfectas || 0) >= 5 },
-  { id: 'preg_veloz',     juego: 'preguntados', icon: '�a�', nombre: 'Reflejos rápidos',desc: 'Contestá correctamente apenas empieza el tiempo.',    check: s => (s.preg_veloz || 0) >= 1 },
+  // â”€â”€ Preguntados (5) â”€â”€
+  { id: 'preg_primera',   juego: 'preguntados', icon: 'â“', nombre: 'Primera trivia', desc: 'Completá tu primera ronda de Preguntados.',            check: s => (s.preg_completadas || 0) >= 1 },
+  { id: 'preg_perfecta',  juego: 'preguntados', icon: 'ðŸ’¯', nombre: 'Ronda perfecta', desc: 'Contestá todas las preguntas correctas en una ronda.', check: s => (s.preg_perfectas || 0) >= 1 },
+  { id: 'preg_50',        juego: 'preguntados', icon: 'ðŸ§ ', nombre: 'Cerebrito',      desc: 'Acumulá 50 respuestas correctas en total.',            check: s => (s.preg_correctas || 0) >= 50 },
+  { id: 'preg_racha',     juego: 'preguntados', icon: 'ðŸ”¥', nombre: 'Racha ganadora', desc: 'Encadená 10 respuestas correctas seguidas.',           check: s => (s.preg_racha_max || 0) >= 10 },
+  { id: 'preg_tematicas', juego: 'preguntados', icon: 'ðŸŽ­', nombre: 'Todo terreno',   desc: 'Jugá Preguntados en las 4 temáticas.',                 check: s => (s.preg_tematicas || []).length >= 4 },
+  { id: 'preg_100',       juego: 'preguntados', icon: 'ðŸ§ ', nombre: 'Enciclopedia',   desc: 'Acumulá 100 respuestas correctas en total.',           check: s => (s.preg_correctas || 0) >= 100 },
+  { id: 'preg_racha15',   juego: 'preguntados', icon: 'ðŸ”¥', nombre: 'Imparable',      desc: 'Encadená 15 respuestas correctas seguidas.',           check: s => (s.preg_racha_max || 0) >= 15 },
+  { id: 'preg_10rondas',  juego: 'preguntados', icon: 'ðŸ“Š', nombre: 'Veterano',       desc: 'Completá 10 rondas de Preguntados.',                   check: s => (s.preg_completadas || 0) >= 10 },
+  { id: 'preg_perfectas5',juego: 'preguntados', icon: 'ðŸ…', nombre: 'Sin fallar',     desc: 'Conseguí 5 rondas perfectas.',                         check: s => (s.preg_perfectas || 0) >= 5 },
+  { id: 'preg_veloz',     juego: 'preguntados', icon: 'âš¡', nombre: 'Reflejos rápidos',desc: 'Contestá correctamente apenas empieza el tiempo.',    check: s => (s.preg_veloz || 0) >= 1 },
 
-  // ���� Termina la Palabra (5) ����
-  { id: 'termina_primera',   juego: 'termina', icon: '�x�', nombre: 'Primera palabra',  desc: 'Completá tu primera palabra.',                            check: s => (s.termina_completadas || 0) >= 1 },
-  { id: 'termina_1intento',  juego: 'termina', icon: '�x}�', nombre: 'Puntería',         desc: 'Adiviná una palabra en el primer intento.',               check: s => (s.termina_1intento || 0) >= 1 },
-  { id: 'termina_10',        juego: 'termina', icon: '�xa', nombre: 'Buen vocabulario', desc: 'Completá 10 palabras.',                                    check: s => (s.termina_completadas || 0) >= 10 },
-  { id: 'termina_racha',     juego: 'termina', icon: '�x�', nombre: 'Racha ganadora',   desc: 'Completá 5 palabras seguidas sin agotar los intentos.',   check: s => (s.termina_racha_max || 0) >= 5 },
-  { id: 'termina_tematicas', juego: 'termina', icon: '�x}�', nombre: 'Todo terreno',     desc: 'Jugá en las 4 temáticas.',                                 check: s => (s.termina_tematicas || []).length >= 4 },
-  { id: 'termina_25',        juego: 'termina', icon: '�xRx', nombre: 'Erudito',          desc: 'Completá 25 palabras.',                                    check: s => (s.termina_completadas || 0) >= 25 },
-  { id: 'termina_racha10',   juego: 'termina', icon: '�x�', nombre: 'Imparable',        desc: 'Completá 10 palabras seguidas sin agotar los intentos.',   check: s => (s.termina_racha_max || 0) >= 10 },
-  { id: 'termina_eficiente', juego: 'termina', icon: '�x}�', nombre: 'Eficiente',        desc: 'Adiviná 5 palabras usando como máximo 2 intentos.',        check: s => (s.termina_eficientes || 0) >= 5 },
-  { id: 'termina_larga',     juego: 'termina', icon: '�x�', nombre: 'Palabra larga',    desc: 'Adiviná una palabra de 10 letras o más.',                  check: s => (s.termina_palabraLarga || 0) >= 1 },
-  { id: 'termina_ultimomomento', juego: 'termina', icon: '�x�&', nombre: 'Al filo',      desc: 'Adiviná una palabra en tu último intento disponible.',     check: s => (s.termina_ultimoMomento || 0) >= 1 },
+  // â”€â”€ Termina la Palabra (5) â”€â”€
+  { id: 'termina_primera',   juego: 'termina', icon: 'ðŸ”¤', nombre: 'Primera palabra',  desc: 'Completá tu primera palabra.',                            check: s => (s.termina_completadas || 0) >= 1 },
+  { id: 'termina_1intento',  juego: 'termina', icon: 'ðŸŽ¯', nombre: 'Puntería',         desc: 'Adiviná una palabra en el primer intento.',               check: s => (s.termina_1intento || 0) >= 1 },
+  { id: 'termina_10',        juego: 'termina', icon: 'ðŸ“š', nombre: 'Buen vocabulario', desc: 'Completá 10 palabras.',                                    check: s => (s.termina_completadas || 0) >= 10 },
+  { id: 'termina_racha',     juego: 'termina', icon: 'ðŸ”¥', nombre: 'Racha ganadora',   desc: 'Completá 5 palabras seguidas sin agotar los intentos.',   check: s => (s.termina_racha_max || 0) >= 5 },
+  { id: 'termina_tematicas', juego: 'termina', icon: 'ðŸŽ­', nombre: 'Todo terreno',     desc: 'Jugá en las 4 temáticas.',                                 check: s => (s.termina_tematicas || []).length >= 4 },
+  { id: 'termina_25',        juego: 'termina', icon: 'ðŸŒŸ', nombre: 'Erudito',          desc: 'Completá 25 palabras.',                                    check: s => (s.termina_completadas || 0) >= 25 },
+  { id: 'termina_racha10',   juego: 'termina', icon: 'ðŸ”¥', nombre: 'Imparable',        desc: 'Completá 10 palabras seguidas sin agotar los intentos.',   check: s => (s.termina_racha_max || 0) >= 10 },
+  { id: 'termina_eficiente', juego: 'termina', icon: 'ðŸŽ¯', nombre: 'Eficiente',        desc: 'Adiviná 5 palabras usando como máximo 2 intentos.',        check: s => (s.termina_eficientes || 0) >= 5 },
+  { id: 'termina_larga',     juego: 'termina', icon: 'ðŸ“', nombre: 'Palabra larga',    desc: 'Adiviná una palabra de 10 letras o más.',                  check: s => (s.termina_palabraLarga || 0) >= 1 },
+  { id: 'termina_ultimomomento', juego: 'termina', icon: 'ðŸ˜…', nombre: 'Al filo',      desc: 'Adiviná una palabra en tu último intento disponible.',     check: s => (s.termina_ultimoMomento || 0) >= 1 },
 
-  // ���� Ahorcado (5) ����
-  { id: 'ahorcado_primera',   juego: 'ahorcado', icon: '�x�', nombre: 'Primera horca',   desc: 'Ganá tu primera partida de Ahorcado.',        check: s => (s.ahorcado_ganadas || 0) >= 1 },
-  { id: 'ahorcado_perfecto',  juego: 'ahorcado', icon: '�S�', nombre: 'Sin errores',      desc: 'Ganá una partida sin cometer ningún error.',  check: s => (s.ahorcado_perfectas || 0) >= 1 },
-  { id: 'ahorcado_10',        juego: 'ahorcado', icon: '�x� ', nombre: 'Verdugo experto',  desc: 'Ganá 10 partidas.',                            check: s => (s.ahorcado_ganadas || 0) >= 10 },
-  { id: 'ahorcado_tematicas', juego: 'ahorcado', icon: '�x}�', nombre: 'Todo terreno',     desc: 'Ganá en las 4 temáticas (o Normal).',          check: s => (s.ahorcado_tematicas || []).length >= 4 },
-  { id: 'ahorcado_racha',     juego: 'ahorcado', icon: '�x�', nombre: 'Racha ganadora',   desc: 'Ganá 5 partidas seguidas.',                    check: s => (s.ahorcado_racha_max || 0) >= 5 },
-  { id: 'ahorcado_25',        juego: 'ahorcado', icon: '�xRx', nombre: 'Verdugo legendario',desc: 'Ganá 25 partidas.',                           check: s => (s.ahorcado_ganadas || 0) >= 25 },
-  { id: 'ahorcado_racha10',   juego: 'ahorcado', icon: '�x�', nombre: 'Imparable',       desc: 'Ganá 10 partidas seguidas.',                   check: s => (s.ahorcado_racha_max || 0) >= 10 },
-  { id: 'ahorcado_perfectas5',juego: 'ahorcado', icon: '�x�', nombre: 'Precisión total', desc: 'Ganá 5 partidas sin cometer ningún error.',    check: s => (s.ahorcado_perfectas || 0) >= 5 },
-  { id: 'ahorcado_casiperfecto', juego: 'ahorcado', icon: '�x}�', nombre: 'Casi perfecto', desc: 'Ganá una partida cometiendo como máximo 1 error.', check: s => (s.ahorcado_casiPerfectas || 0) >= 1 },
-  { id: 'ahorcado_maratonista', juego: 'ahorcado', icon: '�x��', nombre: 'Maratonista',   desc: 'Jugá 15 partidas de Ahorcado.',                check: s => (s.ahorcado_partidas || 0) >= 15 },
+  // â”€â”€ Ahorcado (5) â”€â”€
+  { id: 'ahorcado_primera',   juego: 'ahorcado', icon: 'ðŸ’€', nombre: 'Primera horca',   desc: 'Ganá tu primera partida de Ahorcado.',        check: s => (s.ahorcado_ganadas || 0) >= 1 },
+  { id: 'ahorcado_perfecto',  juego: 'ahorcado', icon: 'âœ¨', nombre: 'Sin errores',      desc: 'Ganá una partida sin cometer ningún error.',  check: s => (s.ahorcado_perfectas || 0) >= 1 },
+  { id: 'ahorcado_10',        juego: 'ahorcado', icon: 'ðŸ†', nombre: 'Verdugo experto',  desc: 'Ganá 10 partidas.',                            check: s => (s.ahorcado_ganadas || 0) >= 10 },
+  { id: 'ahorcado_tematicas', juego: 'ahorcado', icon: 'ðŸŽ­', nombre: 'Todo terreno',     desc: 'Ganá en las 4 temáticas (o Normal).',          check: s => (s.ahorcado_tematicas || []).length >= 4 },
+  { id: 'ahorcado_racha',     juego: 'ahorcado', icon: 'ðŸ”¥', nombre: 'Racha ganadora',   desc: 'Ganá 5 partidas seguidas.',                    check: s => (s.ahorcado_racha_max || 0) >= 5 },
+  { id: 'ahorcado_25',        juego: 'ahorcado', icon: 'ðŸŒŸ', nombre: 'Verdugo legendario',desc: 'Ganá 25 partidas.',                           check: s => (s.ahorcado_ganadas || 0) >= 25 },
+  { id: 'ahorcado_racha10',   juego: 'ahorcado', icon: 'ðŸ”¥', nombre: 'Imparable',       desc: 'Ganá 10 partidas seguidas.',                   check: s => (s.ahorcado_racha_max || 0) >= 10 },
+  { id: 'ahorcado_perfectas5',juego: 'ahorcado', icon: 'ðŸ’¯', nombre: 'Precisión total', desc: 'Ganá 5 partidas sin cometer ningún error.',    check: s => (s.ahorcado_perfectas || 0) >= 5 },
+  { id: 'ahorcado_casiperfecto', juego: 'ahorcado', icon: 'ðŸŽ¯', nombre: 'Casi perfecto', desc: 'Ganá una partida cometiendo como máximo 1 error.', check: s => (s.ahorcado_casiPerfectas || 0) >= 1 },
+  { id: 'ahorcado_maratonista', juego: 'ahorcado', icon: 'ðŸƒ', nombre: 'Maratonista',   desc: 'Jugá 15 partidas de Ahorcado.',                check: s => (s.ahorcado_partidas || 0) >= 15 },
 
-  // ���� Adivina la Palabra / Wordle (5) ����
-  { id: 'wordle_primera',  juego: 'wordle', icon: '�xx�', nombre: 'Primera palabra',    desc: 'Adiviná tu primera palabra.',           check: s => (s.wordle_ganadas || 0) >= 1 },
-  { id: 'wordle_1intento', juego: 'wordle', icon: '�x}�', nombre: 'De un solo tiro',    desc: 'Adiviná una palabra en el primer intento.', check: s => (s.wordle_1intento || 0) >= 1 },
-  { id: 'wordle_10',       juego: 'wordle', icon: '�xa', nombre: 'Letrado',            desc: 'Adiviná 10 palabras.',                   check: s => (s.wordle_ganadas || 0) >= 10 },
-  { id: 'wordle_racha',    juego: 'wordle', icon: '�x�', nombre: 'Racha ganadora',     desc: 'Ganá 5 partidas seguidas.',              check: s => (s.wordle_racha_max || 0) >= 5 },
-  { id: 'wordle_25',       juego: 'wordle', icon: '�x� ', nombre: 'Maestro del wordle', desc: 'Adiviná 25 palabras en total.',          check: s => (s.wordle_ganadas || 0) >= 25 },
-  { id: 'wordle_50',       juego: 'wordle', icon: '�xRx', nombre: 'Leyenda del wordle', desc: 'Adiviná 50 palabras en total.',          check: s => (s.wordle_ganadas || 0) >= 50 },
-  { id: 'wordle_racha10',  juego: 'wordle', icon: '�x�', nombre: 'Imparable',         desc: 'Ganá 10 partidas seguidas.',             check: s => (s.wordle_racha_max || 0) >= 10 },
-  { id: 'wordle_eficiente',juego: 'wordle', icon: '�x}�', nombre: 'Eficiente',         desc: 'Adiviná 5 palabras en 2 intentos o menos.', check: s => (s.wordle_eficientes || 0) >= 5 },
-  { id: 'wordle_larga',    juego: 'wordle', icon: '�x�', nombre: 'Palabra larga',     desc: 'Adiviná una palabra de 8 letras o más.',  check: s => (s.wordle_palabraLarga || 0) >= 1 },
-  { id: 'wordle_tematicas',juego: 'wordle', icon: '�x}�', nombre: 'Todo terreno',      desc: 'Jugá Adivina la Palabra en las 4 temáticas.', check: s => (s.wordle_tematicas || []).length >= 4 },
+  // â”€â”€ Adivina la Palabra / Wordle (5) â”€â”€
+  { id: 'wordle_primera',  juego: 'wordle', icon: 'ðŸŸ©', nombre: 'Primera palabra',    desc: 'Adiviná tu primera palabra.',           check: s => (s.wordle_ganadas || 0) >= 1 },
+  { id: 'wordle_1intento', juego: 'wordle', icon: 'ðŸŽ¯', nombre: 'De un solo tiro',    desc: 'Adiviná una palabra en el primer intento.', check: s => (s.wordle_1intento || 0) >= 1 },
+  { id: 'wordle_10',       juego: 'wordle', icon: 'ðŸ“š', nombre: 'Letrado',            desc: 'Adiviná 10 palabras.',                   check: s => (s.wordle_ganadas || 0) >= 10 },
+  { id: 'wordle_racha',    juego: 'wordle', icon: 'ðŸ”¥', nombre: 'Racha ganadora',     desc: 'Ganá 5 partidas seguidas.',              check: s => (s.wordle_racha_max || 0) >= 5 },
+  { id: 'wordle_25',       juego: 'wordle', icon: 'ðŸ†', nombre: 'Maestro del wordle', desc: 'Adiviná 25 palabras en total.',          check: s => (s.wordle_ganadas || 0) >= 25 },
+  { id: 'wordle_50',       juego: 'wordle', icon: 'ðŸŒŸ', nombre: 'Leyenda del wordle', desc: 'Adiviná 50 palabras en total.',          check: s => (s.wordle_ganadas || 0) >= 50 },
+  { id: 'wordle_racha10',  juego: 'wordle', icon: 'ðŸ”¥', nombre: 'Imparable',         desc: 'Ganá 10 partidas seguidas.',             check: s => (s.wordle_racha_max || 0) >= 10 },
+  { id: 'wordle_eficiente',juego: 'wordle', icon: 'ðŸŽ¯', nombre: 'Eficiente',         desc: 'Adiviná 5 palabras en 2 intentos o menos.', check: s => (s.wordle_eficientes || 0) >= 5 },
+  { id: 'wordle_larga',    juego: 'wordle', icon: 'ðŸ“', nombre: 'Palabra larga',     desc: 'Adiviná una palabra de 8 letras o más.',  check: s => (s.wordle_palabraLarga || 0) >= 1 },
+  { id: 'wordle_tematicas',juego: 'wordle', icon: 'ðŸŽ­', nombre: 'Todo terreno',      desc: 'Jugá Adivina la Palabra en las 4 temáticas.', check: s => (s.wordle_tematicas || []).length >= 4 },
 
-  // ���� Adivina la Cosa (5) ����
-  { id: 'adivina_primera',   juego: 'adivina', icon: '�x"�️', nombre: 'Primer acierto', desc: 'Acertá tu primera respuesta.',        check: s => (s.adivina_aciertos || 0) >= 1 },
-  { id: 'adivina_sinpistas', juego: 'adivina', icon: '�x��', nombre: 'Ojo clínico',     desc: 'Acertá sin usar ninguna pista.',      check: s => (s.adivina_sinpistas || 0) >= 1 },
-  { id: 'adivina_10',        juego: 'adivina', icon: '�x}', nombre: 'Detective',       desc: 'Acertá 10 veces.',                    check: s => (s.adivina_aciertos || 0) >= 10 },
-  { id: 'adivina_1pista',    juego: 'adivina', icon: '�x}�', nombre: 'Pista certera',   desc: 'Acertá usando una sola pista.',       check: s => (s.adivina_1pista || 0) >= 1 },
-  { id: 'adivina_25',        juego: 'adivina', icon: '�x� ', nombre: 'Sabelotodo',      desc: 'Acertá 25 veces en total.',           check: s => (s.adivina_aciertos || 0) >= 25 },
-  { id: 'adivina_50',        juego: 'adivina', icon: '�xRx', nombre: 'Leyenda',         desc: 'Acertá 50 veces en total.',           check: s => (s.adivina_aciertos || 0) >= 50 },
-  { id: 'adivina_racha5',    juego: 'adivina', icon: '�x�', nombre: 'Racha ganadora',  desc: 'Acertá 5 veces seguidas sin rendirte.', check: s => (s.adivina_racha_max || 0) >= 5 },
-  { id: 'adivina_rondaperfecta', juego: 'adivina', icon: '�S�', nombre: 'Ronda perfecta', desc: 'Completá una ronda entera sin usar ninguna pista.', check: s => (s.adivina_rondasPerfectas || 0) >= 1 },
-  { id: 'adivina_tematicas', juego: 'adivina', icon: '�x}�', nombre: 'Todo terreno',    desc: 'Jugá Adivina la Cosa en las 4 temáticas.', check: s => (s.adivina_tematicas || []).length >= 4 },
-  { id: 'adivina_10rondas',  juego: 'adivina', icon: '�x`', nombre: 'Veterano',        desc: 'Completá 10 rondas de Adivina la Cosa.', check: s => (s.adivina_rondasCompletadas || 0) >= 10 },
+  // â”€â”€ Adivina la Cosa (5) â”€â”€
+  { id: 'adivina_primera',   juego: 'adivina', icon: 'ðŸ•µï¸', nombre: 'Primer acierto', desc: 'Acertá tu primera respuesta.',        check: s => (s.adivina_aciertos || 0) >= 1 },
+  { id: 'adivina_sinpistas', juego: 'adivina', icon: 'ðŸ§', nombre: 'Ojo clínico',     desc: 'Acertá sin usar ninguna pista.',      check: s => (s.adivina_sinpistas || 0) >= 1 },
+  { id: 'adivina_10',        juego: 'adivina', icon: 'ðŸ”Ž', nombre: 'Detective',       desc: 'Acertá 10 veces.',                    check: s => (s.adivina_aciertos || 0) >= 10 },
+  { id: 'adivina_1pista',    juego: 'adivina', icon: 'ðŸŽ¯', nombre: 'Pista certera',   desc: 'Acertá usando una sola pista.',       check: s => (s.adivina_1pista || 0) >= 1 },
+  { id: 'adivina_25',        juego: 'adivina', icon: 'ðŸ†', nombre: 'Sabelotodo',      desc: 'Acertá 25 veces en total.',           check: s => (s.adivina_aciertos || 0) >= 25 },
+  { id: 'adivina_50',        juego: 'adivina', icon: 'ðŸŒŸ', nombre: 'Leyenda',         desc: 'Acertá 50 veces en total.',           check: s => (s.adivina_aciertos || 0) >= 50 },
+  { id: 'adivina_racha5',    juego: 'adivina', icon: 'ðŸ”¥', nombre: 'Racha ganadora',  desc: 'Acertá 5 veces seguidas sin rendirte.', check: s => (s.adivina_racha_max || 0) >= 5 },
+  { id: 'adivina_rondaperfecta', juego: 'adivina', icon: 'âœ¨', nombre: 'Ronda perfecta', desc: 'Completá una ronda entera sin usar ninguna pista.', check: s => (s.adivina_rondasPerfectas || 0) >= 1 },
+  { id: 'adivina_tematicas', juego: 'adivina', icon: 'ðŸŽ­', nombre: 'Todo terreno',    desc: 'Jugá Adivina la Cosa en las 4 temáticas.', check: s => (s.adivina_tematicas || []).length >= 4 },
+  { id: 'adivina_10rondas',  juego: 'adivina', icon: 'ðŸ“Š', nombre: 'Veterano',        desc: 'Completá 10 rondas de Adivina la Cosa.', check: s => (s.adivina_rondasCompletadas || 0) >= 10 },
 
-  // ���� Pixel Runner (5) ����
-  { id: 'runner_500',      juego: 'runner', icon: '�x��', nombre: 'Primeros pasos',    desc: 'Alcanzá los 500 puntos en una carrera.',       check: s => (s.runner_maxScore_best || 0) >= 500 },
-  { id: 'runner_historia', juego: 'runner', icon: '�x', nombre: 'Fin de la historia', desc: 'Completá el modo Historia (2500 puntos).',     check: s => !!s.runner_historiaCompleta },
-  { id: 'runner_infinito', juego: 'runner', icon: '�"�️', nombre: 'Sin límites',        desc: 'Desbloqueá el modo Infinito.',                 check: s => !!s.runner_infinitoDesbloqueado },
-  { id: 'runner_10000',    juego: 'runner', icon: '�xa�', nombre: 'Imparable',          desc: 'Alcanzá los 10.000 puntos en modo Infinito.',  check: s => (s.runner_maxScoreInfinito_best || 0) >= 10000 },
-  { id: 'runner_monedas',  juego: 'runner', icon: '�x�"', nombre: 'Coleccionista',      desc: 'Juntá 100 monedas en total.',                  check: s => (s.runner_monedasTotal || 0) >= 100 },
+  // â”€â”€ Pixel Runner (5) â”€â”€
+  { id: 'runner_500',      juego: 'runner', icon: 'ðŸƒ', nombre: 'Primeros pasos',    desc: 'Alcanzá los 500 puntos en una carrera.',       check: s => (s.runner_maxScore_best || 0) >= 500 },
+  { id: 'runner_historia', juego: 'runner', icon: 'ðŸ“–', nombre: 'Fin de la historia', desc: 'Completá el modo Historia (2500 puntos).',     check: s => !!s.runner_historiaCompleta },
+  { id: 'runner_infinito', juego: 'runner', icon: 'â™¾ï¸', nombre: 'Sin límites',        desc: 'Desbloqueá el modo Infinito.',                 check: s => !!s.runner_infinitoDesbloqueado },
+  { id: 'runner_10000',    juego: 'runner', icon: 'ðŸš€', nombre: 'Imparable',          desc: 'Alcanzá los 10.000 puntos en modo Infinito.',  check: s => (s.runner_maxScoreInfinito_best || 0) >= 10000 },
+  { id: 'runner_monedas',  juego: 'runner', icon: 'ðŸª™', nombre: 'Coleccionista',      desc: 'Juntá 100 monedas en total.',                  check: s => (s.runner_monedasTotal || 0) >= 100 },
 
-  // ���� Castle Escape (5) ����
-  { id: 'castle_nivel1',     juego: 'castle_escape', icon: '�x��', nombre: 'Primer paso',        desc: 'Completá el nivel 1.',           check: s => (s.castle_nivelesCompletados || []).includes(1) },
-  { id: 'castle_3estrellas', juego: 'castle_escape', icon: '⭐', nombre: 'Perfección',         desc: 'Conseguí 3 estrellas en un nivel.', check: s => (s.castle_3estrellas || 0) >= 1 },
-  { id: 'castle_10niveles',  juego: 'castle_escape', icon: '�x�️', nombre: 'A mitad de camino', desc: 'Completá 10 niveles.',            check: s => (s.castle_nivelesCompletados || []).length >= 10 },
-  { id: 'castle_20niveles',  juego: 'castle_escape', icon: '�x� ', nombre: 'Fuera del castillo', desc: 'Completá los 20 niveles.',        check: s => (s.castle_nivelesCompletados || []).length >= 20 },
-  { id: 'castle_sinmuertes', juego: 'castle_escape', icon: '�S�', nombre: 'Intacto',            desc: 'Completá un nivel sin morir.',    check: s => (s.castle_sinMuertes || 0) >= 1 },
+  // â”€â”€ Castle Escape (5) â”€â”€
+  { id: 'castle_nivel1',     juego: 'castle_escape', icon: 'ðŸ°', nombre: 'Primer paso',        desc: 'Completá el nivel 1.',           check: s => (s.castle_nivelesCompletados || []).includes(1) },
+  { id: 'castle_3estrellas', juego: 'castle_escape', icon: 'â­', nombre: 'Perfección',         desc: 'Conseguí 3 estrellas en un nivel.', check: s => (s.castle_3estrellas || 0) >= 1 },
+  { id: 'castle_10niveles',  juego: 'castle_escape', icon: 'ðŸ—ï¸', nombre: 'A mitad de camino', desc: 'Completá 10 niveles.',            check: s => (s.castle_nivelesCompletados || []).length >= 10 },
+  { id: 'castle_20niveles',  juego: 'castle_escape', icon: 'ðŸ†', nombre: 'Fuera del castillo', desc: 'Completá los 20 niveles.',        check: s => (s.castle_nivelesCompletados || []).length >= 20 },
+  { id: 'castle_sinmuertes', juego: 'castle_escape', icon: 'âœ¨', nombre: 'Intacto',            desc: 'Completá un nivel sin morir.',    check: s => (s.castle_sinMuertes || 0) >= 1 },
 
-  // ���� RPG Pixel (5) ����
-  { id: 'rpg_primerjefe', juego: 'rpg_pixel', icon: '�x�️', nombre: 'Primer jefe caído', desc: 'Vencé a tu primer jefe.',                check: s => (s.rpg_jefesVencidos || 0) >= 1 },
-  { id: 'rpg_capitulo1',  juego: 'rpg_pixel', icon: '�xS', nombre: 'Capítulo 1',        desc: 'Completá el Capítulo 1.',                 check: s => (s.rpg_capitulosCompletados || []).includes(1) },
-  { id: 'rpg_cofreoro',   juego: 'rpg_pixel', icon: '�x�', nombre: 'Fortuna',           desc: 'Abrí tu primer cofre de oro.',            check: s => (s.rpg_cofresOro || 0) >= 1 },
-  { id: 'rpg_elite',      juego: 'rpg_pixel', icon: '�x', nombre: 'Modo Elite',        desc: 'Completá una partida en dificultad Elite.', check: s => !!s.rpg_eliteCompletado },
-  { id: 'rpg_powerups',   juego: 'rpg_pixel', icon: '�x��', nombre: 'Alquimista',        desc: 'Desbloqueá los 8 power-ups distintos.',    check: s => (s.rpg_powerupsUnicos || []).length >= 8 },
+  // â”€â”€ RPG Pixel (5) â”€â”€
+  { id: 'rpg_primerjefe', juego: 'rpg_pixel', icon: 'ðŸ—¡ï¸', nombre: 'Primer jefe caído', desc: 'Vencé a tu primer jefe.',                check: s => (s.rpg_jefesVencidos || 0) >= 1 },
+  { id: 'rpg_capitulo1',  juego: 'rpg_pixel', icon: 'ðŸ“œ', nombre: 'Capítulo 1',        desc: 'Completá el Capítulo 1.',                 check: s => (s.rpg_capitulosCompletados || []).includes(1) },
+  { id: 'rpg_cofreoro',   juego: 'rpg_pixel', icon: 'ðŸ’°', nombre: 'Fortuna',           desc: 'Abrí tu primer cofre de oro.',            check: s => (s.rpg_cofresOro || 0) >= 1 },
+  { id: 'rpg_elite',      juego: 'rpg_pixel', icon: 'ðŸ‘‘', nombre: 'Modo Elite',        desc: 'Completá una partida en dificultad Elite.', check: s => !!s.rpg_eliteCompletado },
+  { id: 'rpg_powerups',   juego: 'rpg_pixel', icon: 'ðŸ§ª', nombre: 'Alquimista',        desc: 'Desbloqueá los 8 power-ups distintos.',    check: s => (s.rpg_powerupsUnicos || []).length >= 8 },
 ];
 
-// ������ Guardado de logros obtenidos ������
+// â”€â”€â”€ Guardado de logros obtenidos â”€â”€â”€
 // La lista de ids desbloqueados se guarda en localStorage (funciona
 // también sin sesión iniciada) y se sincroniza con el backend
 // (GET/POST /api/logros) cuando hay un usuario logueado.
@@ -1437,7 +1437,7 @@ function mostrarToastLogro(def) {
   const toast = document.createElement('div');
   toast.className = 'logro-toast';
   toast.innerHTML = `<span class="logro-toast-icon">${def.icon}</span>
-    <div><div class="logro-toast-title">¡Logro desbloqueado!</div><div class="logro-toast-name">${sanitizeHTML(def.nombre)}</div></div>`;
+    <div><div class="logro-toast-title">Â¡Logro desbloqueado!</div><div class="logro-toast-name">${sanitizeHTML(def.nombre)}</div></div>`;
   document.body.appendChild(toast);
   requestAnimationFrame(() => toast.classList.add('show'));
   setTimeout(() => {
@@ -1446,7 +1446,7 @@ function mostrarToastLogro(def) {
   }, 3200);
 }
 
-// ������ Render de la pantalla de Logros ������
+// â”€â”€â”€ Render de la pantalla de Logros â”€â”€â”€
 function renderLogrosProgreso() {
   const obtenidos = getLogrosObtenidos();
   const total = ACHIEVEMENTS.length;
@@ -1509,7 +1509,7 @@ function initLogrosScreen() {
   renderLogros('todos');
 }
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   PERFIL
 //   Conectado al backend (routes/perfil.js):
 //     - perfil propio       -> GET /api/perfil
@@ -1518,7 +1518,7 @@ function initLogrosScreen() {
 //     - cambiar ícono       -> PATCH /api/perfil { icono }
 //   Los puntajes máximos por minijuego siguen siendo de ejemplo hasta
 //   que exista ese endpoint (no forma parte del sistema de amigos/logros).
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // { modo: 'propio' | 'otro', id: number, data: {...} | null }
 let perfilContexto = { modo: 'propio', id: null, data: null };
@@ -1579,7 +1579,7 @@ async function guardarPerfilDescripcion() {
     if (perfilContexto.data) perfilContexto.data.descripcion = descripcion;
     if (btn) {
       const original = btn.textContent;
-      btn.textContent = '�S& Guardado';
+      btn.textContent = 'âœ… Guardado';
       setTimeout(() => { btn.textContent = original; }, 1500);
     }
   } catch (error) {
@@ -1615,7 +1615,7 @@ function botonAmistadHTML(data) {
     case 'solicitud_enviada':
       return `<span class="profile-friend-request-btn" style="cursor:default;opacity:.8;">${uiIconSVG('check', 14)} Solicitud enviada</span>`;
     case 'solicitud_recibida':
-      return `<span class="profile-friend-request-btn" style="cursor:default;opacity:.8;">Te envió una solicitud � revisala en Amigos</span>`;
+      return `<span class="profile-friend-request-btn" style="cursor:default;opacity:.8;">Te envió una solicitud â€” revisala en Amigos</span>`;
     default:
       return `<button class="profile-friend-request-btn" onclick="enviarSolicitudAmistad(${data.id}, '${sanitizeHTML(data.username)}')">${uiIconSVG('plus', 14)} Solicitud de amistad</button>`;
   }
@@ -1636,7 +1636,7 @@ function renderPerfil() {
   const iconoAMostrar = u.icono || PERFIL_ICONO_DEFAULT;
   const avatarHTML = avatarValueHTML(iconoAMostrar, u.username);
 
-  // �� Puntajes máximos por juego (mock, sin endpoint propio todavía) ��
+  // â”€ Puntajes máximos por juego (mock, sin endpoint propio todavía) â”€
   const scores = getPuntajesMaximosMock(u.id || 1);
   const juegos = LOGROS_JUEGOS.filter(j => j.id !== 'general');
 
@@ -1726,7 +1726,7 @@ async function initPerfilScreen() {
   renderPerfil();
 }
 
-// ������ Juegos recomendados (dentro de cada pantalla de minijuego) ������
+// â”€â”€â”€ Juegos recomendados (dentro de cada pantalla de minijuego) â”€â”€â”€
 // Se muestran 3 juegos al azar de los 9 totales, sin repetir el que
 // se está jugando en ese momento.
 const GAME_SCREEN_IDS = ['sopa', 'preguntados', 'termina', 'ahorcado', 'wordle', 'adivina', 'runner', 'castle_escape', 'rpg_pixel'];
@@ -1760,7 +1760,7 @@ function scrollToGame(gameId) {
   }, 50);
 }
 
-// ������ Guardar HTML original de secciones que reemplazan su contenido ������
+// â”€â”€â”€ Guardar HTML original de secciones que reemplazan su contenido â”€â”€â”€
 const originalSectionHTML = {};
 
 function saveOriginalSections() {
@@ -1777,7 +1777,7 @@ function restoreOriginalSection(id) {
   }
 }
 
-// ������ Navegación entre secciones ����������������
+// â”€â”€â”€ Navegación entre secciones â”€â”€â”€â”€â”€â”€â”€â”€
 function goTo(section) {
   // Ocultar todas las secciones
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -1829,7 +1829,7 @@ if (section === 'runner' || section === 'castle_escape' || section === 'rpg_pixe
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ������ Menú hamburguesa ������������������������������������
+// â”€â”€â”€ Menú hamburguesa â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const hamburger = APP_EL.hamburger;
 const navMenu   = APP_EL.navMenu;
 
@@ -1881,7 +1881,7 @@ function iniciarJuego(gameKey) {
   launchGame(gameKey, null);
 }
 
-// ������ Carteles internos del Pixel Runner (Mejoras / Ajustes / Cómo jugar) ������
+// â”€â”€â”€ Carteles internos del Pixel Runner (Mejoras / Ajustes / Cómo jugar) â”€â”€â”€
 // Reemplazan los alert() del navegador: son paneles que se muestran arriba
 // del menú del juego, dentro del mismo recuadro. Todos comparten
 // cerrarPanelesRunner() para volver al menú.
@@ -1892,7 +1892,7 @@ function cerrarPanelesRunner() {
   });
 }
 
-// ������ Selección de modo (Historia / Infinito) ������
+// â”€â”€â”€ Selección de modo (Historia / Infinito) â”€â”€â”€
 // Se muestra al tocar "Jugar" en el menú de Pixel Runner. Infinito arranca
 // bloqueado hasta completar Historia (llegar a los 2500 pts), estado que
 // persiste en localStorage (ver loadHistoriaCompleta/saveHistoriaCompleta
@@ -1904,14 +1904,14 @@ function mostrarModoRunner() {
   if (btnInfinito) btnInfinito.classList.toggle('locked', !desbloqueado);
   if (descInfinito) {
     descInfinito.textContent = desbloqueado
-      ? 'Sin límite de puntos, ¡aguantá lo más que puedas!'
-      : '�x Completá Historia para desbloquear';
+      ? 'Sin límite de puntos, Â¡aguantá lo más que puedas!'
+      : 'ðŸ”’ Completá Historia para desbloquear';
   }
   const panel = APP_EL.runnerModePanel;
   if (panel) panel.classList.remove('hidden');
 }
 
-// ������ Modo Duelo de Pixel Runner ������
+// â”€â”€â”€ Modo Duelo de Pixel Runner â”€â”€â”€
 // Usa el modo Infinito ya existente (el que más puntos haga gana), pero
 // arranca directo sin pasar por el menú ni por el candado de "Completá
 // Historia primero" (los duelos siempre habilitan Infinito).
@@ -1925,7 +1925,7 @@ function iniciarRunnerDuelo(dueloId) {
   cerrarPanelesRunner();
   const menu = document.getElementById('runnerMenu');
   if (menu) menu.style.display = 'none';
-  mostrarToast('¡Arrancó el duelo! Modo Infinito.');
+  mostrarToast('Â¡Arrancó el duelo! Modo Infinito.');
   runnerSyncFullscreenBtn();
   if (typeof startPixelRunnerGame === 'function') {
     startPixelRunnerGame('infinito');
@@ -1947,29 +1947,29 @@ function elegirModoRunner(mode) {
   }
 }
 
-// ������ Panel de Mejoras (tienda de mejoras permanentes con monedas) ������
+// â”€â”€â”€ Panel de Mejoras (tienda de mejoras permanentes con monedas) â”€â”€â”€
 // El estado real (niveles, compradas, monedas) vive en pixelrunner.js
 // (RUNNER.upgrades / RUNNER.totalCoins + localStorage). Acá solo se arma
 // el HTML del panel a partir de ese estado, cada vez que se abre o se
-// compra algo � así siempre se ve al día.
+// compra algo â€” así siempre se ve al día.
 const RUNNER_UPGRADE_DEFS = [
   {
     tipo: 'shieldDuration',
-    icon: '�x:�️',
+    icon: 'ðŸ›¡ï¸',
     nombre: 'Duración del Escudo',
     tipoNivel: true,
     formatEfecto: (nivel) => `Dura ${15 + nivel} seg`,
   },
   {
     tipo: 'x2Duration',
-    icon: '�a�',
+    icon: 'âš¡',
     nombre: 'Duración del x2',
     tipoNivel: true,
     formatEfecto: (nivel) => `Dura ${15 + nivel} seg`,
   },
   {
     tipo: 'shieldHits',
-    icon: '�x:�️�S�',
+    icon: 'ðŸ›¡ï¸âœ¨',
     nombre: 'Escudo Reforzado',
     tipoNivel: false,
     costo: 1000,
@@ -1977,7 +1977,7 @@ const RUNNER_UPGRADE_DEFS = [
   },
   {
     tipo: 'x2Triple',
-    icon: '�x�',
+    icon: 'ðŸ”¥',
     nombre: 'Triple Puntos',
     tipoNivel: false,
     costo: 1500,
@@ -1999,10 +1999,10 @@ function mejoraCardHtml(def, upgrades, coins) {
         <div class="runner-mejora-info">
           <div class="runner-mejora-nombre">${def.nombre}</div>
           <div class="runner-mejora-nivel">Nivel ${nivel}/10</div>
-          <div class="runner-mejora-efecto">${maxed ? efectoActual : (efectoActual + ' �  ' + efectoSiguiente)}</div>
+          <div class="runner-mejora-efecto">${maxed ? efectoActual : (efectoActual + ' â†’ ' + efectoSiguiente)}</div>
         </div>
         <button class="runner-mejora-btn" ${maxed || !puedeComprar ? 'disabled' : ''} onclick="comprarMejora('${def.tipo}')">
-          ${maxed ? 'MÁX' : ('�x�" ' + costo)}
+          ${maxed ? 'MÁX' : ('ðŸª™ ' + costo)}
         </button>
       </div>`;
   } else {
@@ -2016,7 +2016,7 @@ function mejoraCardHtml(def, upgrades, coins) {
           <div class="runner-mejora-efecto">${def.descripcion}</div>
         </div>
         <button class="runner-mejora-btn" ${comprado || !puedeComprar ? 'disabled' : ''} onclick="comprarMejora('${def.tipo}')">
-          ${comprado ? '�S Comprado' : ('�x�" ' + def.costo)}
+          ${comprado ? 'âœ” Comprado' : ('ðŸª™ ' + def.costo)}
         </button>
       </div>`;
   }
@@ -2078,7 +2078,7 @@ function runnerOnSfxVolumeChange(value) {
   if (label) label.textContent = pct + '%';
 }
 
-// ������ Pantalla completa (panel de Ajustes) ������
+// â”€â”€â”€ Pantalla completa (panel de Ajustes) â”€â”€â”€
 // Pone en fullscreen el .runner-container (canvas + HUD + overlays), no
 // toda la página, para no perder los carteles/menús que viven dentro de
 // ese mismo contenedor. runnerSyncFullscreenBtn() mantiene el texto del
@@ -2133,7 +2133,7 @@ function mostrarComoJugar() {
   if (panel) panel.classList.remove('hidden');
 }
 
-// ������ Modal login / registro ������������������������
+// â”€â”€â”€ Modal login / registro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function openModal(tab) {
   APP_EL.modalOverlay.classList.add('open');
   switchTab(tab || 'login');
@@ -2168,7 +2168,7 @@ function showAuthAlert(id, msg, type) {
 // Medidor de fuerza de contraseña del formulario de registro. Se llama
 // desde el oninput del input #regPassword (index.html); antes no estaba
 // definida en ningún lado y tiraba ReferenceError apenas se tipeaba algo.
-// No es una validación real (esa la hace registerSchema en el backend) �
+// No es una validación real (esa la hace registerSchema en el backend) â€”
 // es solo el feedback visual de la barrita + etiqueta.
 function checkPasswordStrength(value) {
   const wrap = document.getElementById('pwdStrengthWrap');
@@ -2204,16 +2204,16 @@ function checkPasswordStrength(value) {
   label.style.color = nivel.color;
 }
 
-// ������ Selector de temática ����������������������������
+// â”€â”€â”€ Selector de temática â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function selectTheme(btn) {
   const parent = btn.closest('.theme-selector');
   parent.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('selected'));
   btn.classList.add('selected');
 }
 
-// ������ Juegos: próximamente ����������������������������
+// â”€â”€â”€ Juegos: próximamente â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function proximamente() {
-  alert('�xa� ¡Próximamente!\n\nEste juego está en desarrollo. Iniciá sesión para ser notificado cuando esté listo.');
+  alert('ðŸš§ Â¡Próximamente!\n\nEste juego está en desarrollo. Iniciá sesión para ser notificado cuando esté listo.');
 }
 
 // Los 6 minijuegos "clásicos" (los que usan el cartel de elegir temática +
@@ -2221,10 +2221,10 @@ function proximamente() {
 // manejan su propio menú y no pasan por este flujo.
 const CLASSIC_GAME_IDS = ['ahorcado', 'wordle', 'sopa', 'preguntados', 'termina', 'adivina'];
 
-// ������ Lanzar juego desde la card (inicio o juegos) ����
+// â”€â”€â”€ Lanzar juego desde la card (inicio o juegos) â”€â”€
 // Ya no se elige la temática acá: solo navega a la pantalla del juego.
 // Ahí aparece el cartel (título + elegir temática + botón Jugar) y recién
-// cuando se confirma arranca el juego de verdad � esto le da tiempo al
+// cuando se confirma arranca el juego de verdad â€” esto le da tiempo al
 // jugador antes de que la partida empiece.
 function launchGame(gameKey, btn) {
   goTo(gameKey);
@@ -2257,10 +2257,10 @@ function resetGameStartMenu(gameKey) {
     const title = document.getElementById('adivinaOverlayTitle');
     const desc  = document.getElementById('adivinaOverlayDesc');
     const btn   = document.getElementById('adivinaOverlayBtn');
-    if (emoji) emoji.textContent = '�x"�️';
+    if (emoji) emoji.textContent = 'ðŸ•µï¸';
     if (title) title.textContent = 'Adivina la Cosa';
-    if (desc)  desc.innerHTML = 'Se muestran pistas una por una.<br>¡Cuantas menos uses, más puntos ganás!';
-    if (btn) { btn.textContent = '�� Jugar'; btn.onclick = () => confirmGameStart('adivina'); }
+    if (desc)  desc.innerHTML = 'Se muestran pistas una por una.<br>Â¡Cuantas menos uses, más puntos ganás!';
+    if (btn) { btn.textContent = 'â–¶ Jugar'; btn.onclick = () => confirmGameStart('adivina'); }
     if (themesWrap) themesWrap.style.display = '';
     if (ov) ov.style.display = 'flex';
     const game = document.getElementById('adivinaGame');
@@ -2306,7 +2306,7 @@ function resetGameStartMenu(gameKey) {
   }
 }
 
-// Se ejecuta al tocar "�� Jugar" en el cartel de inicio de cada minijuego:
+// Se ejecuta al tocar "â–¶ Jugar" en el cartel de inicio de cada minijuego:
 // lee la temática elegida, oculta el cartel y arranca el juego.
 function confirmGameStart(gameKey) {
   if (gameKey === 'adivina') {
@@ -2352,9 +2352,9 @@ function confirmGameStart(gameKey) {
   }
 }
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   AHORCADO
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // (Palabras borradas, ahora vienen del backend)
 
@@ -2369,7 +2369,7 @@ let ahorcadoState = {
   tematicaId: 'normal'
 };
 
-// ������ Modo Duelo de Ahorcado ������
+// â”€â”€â”€ Modo Duelo de Ahorcado â”€â”€â”€
 // null si no hay un duelo en curso. Mientras esté activo, guessLetter()
 // no guarda puntaje normal ni suma logros: acumula puntos de cada una de
 // las 5 palabras y al final manda el total a /api/duelos/:id/resultado.
@@ -2419,14 +2419,14 @@ async function initAhorcado(tematicaId) {
     if (sec) {
       sec.innerHTML = `
         <div class="game-screen-header">
-          <button class="btn-back" onclick="goTo('juegos')">� � Volver a Juegos</button>
+          <button class="btn-back" onclick="goTo('juegos')">â† Volver a Juegos</button>
           <div class="game-screen-title"><span>${gameIconSVG('ahorcado', 22)}</span> Ahorcado</div>
           <div class="game-screen-theme">${TEMATICA_NAMES[tematicaId]||'Normal'}</div>
         </div>
         <div class="coming-soon-box" style="margin-top:2rem;">
           <h2>Sin palabras</h2>
           <p>Aún no hay palabras cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
-          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">� � Volver a Juegos</button>
+          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">â† Volver a Juegos</button>
         </div>`;
     }
     return;
@@ -2448,7 +2448,7 @@ async function initAhorcado(tematicaId) {
   const labelEl = document.getElementById('ahorcado-theme-label');
   if (labelEl) {
     labelEl.textContent = (ahorcadoDuelo && ahorcadoDuelo.activo)
-      ? `�a️ Duelo · Palabra ${ahorcadoDuelo.ronda}/${ahorcadoDuelo.totalRondas} · ${ahorcadoDuelo.puntosTotal} pts`
+      ? `âš”ï¸ Duelo Â· Palabra ${ahorcadoDuelo.ronda}/${ahorcadoDuelo.totalRondas} Â· ${ahorcadoDuelo.puntosTotal} pts`
       : (TEMATICA_NAMES[tematicaId] || 'Normal');
   }
 }
@@ -2498,7 +2498,7 @@ function guessLetter(letter) {
     const enDuelo = ahorcadoDuelo && ahorcadoDuelo.activo;
 
     if (won) {
-      statusEl.textContent = '�x}0 ¡Ganaste! La palabra era: ' + word.toUpperCase();
+      statusEl.textContent = 'ðŸŽ‰ Â¡Ganaste! La palabra era: ' + word.toUpperCase();
       statusEl.className = 'ahorcado-status win';
       // Cada error resta puntos: la primera palabra sin errores vale 200,
       // y cada fallo descuenta 30 (piso de 20 puntos por palabra ganada).
@@ -2521,7 +2521,7 @@ function guessLetter(letter) {
     } else {
       // Revelar todas las letras al perder
       ahorcadoState.revealed = word.split('');
-      statusEl.textContent = '�x� ¡Perdiste! La palabra era: ' + word.toUpperCase();
+      statusEl.textContent = 'ðŸ’€ Â¡Perdiste! La palabra era: ' + word.toUpperCase();
       statusEl.className = 'ahorcado-status lose';
       if (typeof playDeathSound === 'function') playDeathSound();
       if (!enDuelo) {
@@ -2533,7 +2533,7 @@ function guessLetter(letter) {
 
     if (enDuelo) {
       const labelEl = document.getElementById('ahorcado-theme-label');
-      if (labelEl) labelEl.textContent = `�a️ Duelo · Palabra ${ahorcadoDuelo.ronda}/${ahorcadoDuelo.totalRondas} · ${ahorcadoDuelo.puntosTotal} pts`;
+      if (labelEl) labelEl.textContent = `âš”ï¸ Duelo Â· Palabra ${ahorcadoDuelo.ronda}/${ahorcadoDuelo.totalRondas} Â· ${ahorcadoDuelo.puntosTotal} pts`;
       // Pausa breve para que se alcance a leer la palabra, y pasa sola a
       // la siguiente (o cierra el duelo si era la última de las 5).
       setTimeout(siguienteRondaAhorcadoDuelo, 1600);
@@ -2544,14 +2544,14 @@ function guessLetter(letter) {
   renderAhorcadoKeyboard();
 }
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   ADIVINA LA PALABRA (estilo Wordle, hard, con temática)
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const WORDLE_MAX_ATTEMPTS = 5;
 const WORDLE_TEMATICAS = { 1: 'Videojuegos', 2: 'Películas', 3: 'Anime', 4: 'Programación' };
 
-// ������ Modo Duelo de Adivina la Palabra ������
+// â”€â”€â”€ Modo Duelo de Adivina la Palabra â”€â”€â”€
 // null si no hay un duelo en curso. Una sola palabra con la temática
 // elegida al mandar el reto; al resolverla (ganada o perdida) se manda el
 // puntaje directo a /api/duelos/:id/resultado en vez de guardar puntaje
@@ -2587,7 +2587,7 @@ function wordleKeydownHandler(e) {
   const key = e.key;
   if (key === 'Enter') { wordleSubmit(); return; }
   if (key === 'Backspace') { wordleBackspace(); return; }
-  if (/^[a-zA-Zñ�]$/.test(key)) { wordleAddLetter(key.toLowerCase()); }
+  if (/^[a-zA-ZñÃ‘]$/.test(key)) { wordleAddLetter(key.toLowerCase()); }
 }
 
 async function initWordle(tematicaId) {
@@ -2607,14 +2607,14 @@ async function initWordle(tematicaId) {
     if (sec) {
       sec.innerHTML = `
         <div class="game-screen-header">
-          <button class="btn-back" onclick="goTo('juegos')">� � Volver a Juegos</button>
+          <button class="btn-back" onclick="goTo('juegos')">â† Volver a Juegos</button>
           <div class="game-screen-title"><span>${gameIconSVG('wordle', 22)}</span> Adivina la Palabra</div>
           <div class="game-screen-theme">${TEMATICA_NAMES[tematicaId]||''}</div>
         </div>
         <div class="coming-soon-box" style="margin-top:2rem;">
           <h2>Sin palabras</h2>
           <p>Aún no hay palabras cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
-          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">� � Volver a Juegos</button>
+          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">â† Volver a Juegos</button>
         </div>`;
     }
     return;
@@ -2634,7 +2634,7 @@ async function initWordle(tematicaId) {
   const labelEl = APP_EL.wordleThemeLabel;
   if (labelEl) {
     labelEl.textContent = (wordleDuelo && wordleDuelo.activo)
-      ? `�a️ Duelo · ${WORDLE_TEMATICAS[tematicaId] || ''}`
+      ? `âš”ï¸ Duelo Â· ${WORDLE_TEMATICAS[tematicaId] || ''}`
       : (WORDLE_TEMATICAS[tematicaId] || '');
   }
 
@@ -2719,7 +2719,7 @@ function wordleSubmit() {
     return;
   }
 
-  // ���� Algoritmo de colores estilo Wordle (maneja letras repetidas) ����
+  // â”€â”€ Algoritmo de colores estilo Wordle (maneja letras repetidas) â”€â”€
   const guessLetters = currentGuess.split('');
   const wordLetters = word.split('');
   const colors = new Array(length).fill('absent');
@@ -2727,14 +2727,14 @@ function wordleSubmit() {
 
   wordLetters.forEach(l => { remaining[l] = (remaining[l] || 0) + 1; });
 
-  // 1° pasada: verdes (posición exacta)
+  // 1Â° pasada: verdes (posición exacta)
   for (let i = 0; i < length; i++) {
     if (guessLetters[i] === wordLetters[i]) {
       colors[i] = 'correct';
       remaining[guessLetters[i]]--;
     }
   }
-  // 2° pasada: amarillos (la letra está, en otro lugar)
+  // 2Â° pasada: amarillos (la letra está, en otro lugar)
   for (let i = 0; i < length; i++) {
     if (colors[i] === 'correct') continue;
     const l = guessLetters[i];
@@ -2763,7 +2763,7 @@ function wordleSubmit() {
 
   if (won) {
     wordleState.finished = true;
-    statusEl.textContent = '�x}0 ¡La adivinaste! Era: ' + word.toUpperCase();
+    statusEl.textContent = 'ðŸŽ‰ Â¡La adivinaste! Era: ' + word.toUpperCase();
     statusEl.className = 'wordle-status win';
     const intentosUsados = wordleState.currentRow;
     const puntos = Math.max(1500 - (intentosUsados - 1) * 250, 250);
@@ -2784,7 +2784,7 @@ function wordleSubmit() {
     }
   } else if (lost) {
     wordleState.finished = true;
-    statusEl.textContent = '�x� ¡Se acabaron los intentos! Era: ' + word.toUpperCase();
+    statusEl.textContent = 'ðŸ’€ Â¡Se acabaron los intentos! Era: ' + word.toUpperCase();
     statusEl.className = 'wordle-status lose';
     if (enDuelo) {
       const dueloId = wordleDuelo.dueloId;
@@ -2803,7 +2803,7 @@ function wordleSubmit() {
   renderWordleKeyboard();
 }
 
-// ������ Inicialización ����������������������������������������
+// â”€â”€â”€ Inicialización â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.addEventListener('DOMContentLoaded', () => {
   // Año dinámico en el footer
   APP_EL.year.textContent = new Date().getFullYear();
@@ -2897,7 +2897,7 @@ fetch('/api/config')
             }
             updateAuthUI();
             sincronizarLogrosConBackend();
-            showAuthAlert('login-alert', '¡Sesión sincronizada exitosamente!', 'success');
+            showAuthAlert('login-alert', 'Â¡Sesión sincronizada exitosamente!', 'success');
           } else {
              // If sync failed for some reason, sign out to prevent broken state
              supabaseClient.auth.signOut();
@@ -2910,7 +2910,7 @@ fetch('/api/config')
           if (newPassword) {
               const { error } = await supabaseClient.auth.updateUser({ password: newPassword });
               if (!error) {
-                  alert("¡Contraseña actualizada exitosamente! Ya podés iniciar sesión.");
+                  alert("Â¡Contraseña actualizada exitosamente! Ya podés iniciar sesión.");
                   supabaseClient.auth.signOut();
                   window.history.replaceState({}, document.title, "/"); 
               } else {
@@ -2923,7 +2923,7 @@ fetch('/api/config')
   .catch(err => console.error("Error cargando config de supabase:", err));
 
 
-//     Lógica de API (Backend)            
+// â”€â”€â”€ Lógica de API (Backend) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function handleLogin(e) {
   e.preventDefault();
   const identity = APP_EL.loginIdentity.value.trim();
@@ -2957,7 +2957,7 @@ async function handleLogin(e) {
       currentUser = data.user;
       localStorage.setItem('unigames_token', data.token);
       localStorage.setItem('unigames_user', JSON.stringify(currentUser));
-      showAuthAlert('login-alert', '¡Bienvenido, ' + sanitizeHTML(data.user.username) + '!', 'success');
+      showAuthAlert('login-alert', 'Â¡Bienvenido, ' + sanitizeHTML(data.user.username) + '!', 'success');
       updateAuthUI();
       sincronizarLogrosConBackend();
       setTimeout(closeModal, 900);
@@ -3022,7 +3022,7 @@ async function handleRegister(e) {
       currentUser = data.user;
       localStorage.setItem('unigames_token', data.token);
       localStorage.setItem('unigames_user', JSON.stringify(currentUser));
-      showAuthAlert('register-alert', '¡Cuenta creada exitosamente! Sesión iniciada.', 'success');
+      showAuthAlert('register-alert', 'Â¡Cuenta creada exitosamente! Sesión iniciada.', 'success');
       updateAuthUI();
       sincronizarLogrosConBackend();
       setTimeout(closeModal, 1200);
@@ -3036,7 +3036,7 @@ async function handleRegister(e) {
 }
 
 async function handleGoogleLogin() {
-  if (!supabaseClient) return showAuthAlert('login-alert', 'Error de conexi�n con seguridad. Verifica que supabase este configurado.', 'error');
+  if (!supabaseClient) return showAuthAlert('login-alert', 'Error de conexión con seguridad. Verifica que supabase este configurado.', 'error');
   
   const { data, error } = await supabaseClient.auth.signInWithOAuth({
     provider: 'google',
@@ -3055,7 +3055,6 @@ function openRecoverModal() {
   document.getElementById('recoverOverlay').classList.add('open');
   document.getElementById('recoverEmail').value = '';
   document.getElementById('recover-alert').style.display = 'none';
-  // Cerrar el modal de login si está abierto
   closeModal();
 }
 
@@ -3079,7 +3078,6 @@ async function submitRecoverPassword(e) {
 
   if (!supabaseClient) return showAuthAlert('recover-alert', 'Error de conexión con seguridad. Verifica que supabase este configurado.', 'error');
 
-  // Disable button and show loading
   btn.disabled = true;
   const originalHtml = btn.innerHTML;
   btn.innerHTML = '<span>Enviando...</span>';
@@ -3096,7 +3094,6 @@ async function submitRecoverPassword(e) {
 
   showAuthAlert('recover-alert', '¡Te hemos enviado un correo con las instrucciones!', 'success');
 
-  // 10 second countdown
   let secondsLeft = 10;
   btn.innerHTML = '<span>Reenviar en ' + secondsLeft + 's</span>';
   
@@ -3111,8 +3108,6 @@ async function submitRecoverPassword(e) {
     }
   }, 1000);
 }
-
-
 
 
   function updateAuthUI() {
@@ -3148,7 +3143,7 @@ function logout() {
   updateAuthUI();
 }
 
-// ������ Leaderboard con tabs por juego ��������
+// â”€â”€â”€ Leaderboard con tabs por juego â”€â”€â”€â”€
 
 let lbCurrentTab = 'all';
 
@@ -3191,7 +3186,7 @@ async function fetchLeaderboardGlobal() {
     const keys = Object.keys(data);
 
     if (keys.length === 0) {
-      container.innerHTML = '<p style="text-align:center;color:#64748b;padding:2rem;">Todavía no hay puntuaciones. ¡Jugá y aparecé acá!</p>';
+      container.innerHTML = '<p style="text-align:center;color:#64748b;padding:2rem;">Todavía no hay puntuaciones. Â¡Jugá y aparecé acá!</p>';
       return;
     }
 
@@ -3219,7 +3214,7 @@ async function fetchLeaderboardGlobal() {
     }).join('');
   } catch (err) {
     console.error('Error leaderboard global', err);
-    if (container) container.innerHTML = '<p style="text-align:center;color:#64748b;padding:2rem;">No se pudo cargar. ¿El servidor está corriendo?</p>';
+    if (container) container.innerHTML = '<p style="text-align:center;color:#64748b;padding:2rem;">No se pudo cargar. Â¿El servidor está corriendo?</p>';
   }
 }
 
@@ -3236,7 +3231,7 @@ async function fetchLeaderboardByGame(juegoId) {
     const scores = await res.json();
 
     if (scores.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:1.5rem;">Nadie jugó esto todavía. ¡Sé el primero!</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:1.5rem;">Nadie jugó esto todavía. Â¡Sé el primero!</td></tr>';
       return;
     }
 
@@ -3278,9 +3273,9 @@ async function guardarPuntaje(juego_id, puntos, tematica_id) {
   }
 }
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   PREGUNTADOS
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const PREGUNTADOS_TOTAL = 10;
 const PREGUNTADOS_TIME  = 15; // segundos por pregunta
@@ -3294,7 +3289,7 @@ let pregState = {
   tematicaId: 1, finished: false
 };
 
-// ������ Modo Duelo de Preguntados ������
+// â”€â”€â”€ Modo Duelo de Preguntados â”€â”€â”€
 // null si no hay un duelo en curso. Una sola ronda completa (mismas
 // preguntas que en modo libre) con la temática elegida al mandar el
 // reto; al terminar se manda el puntaje directo a
@@ -3335,11 +3330,11 @@ async function initPreguntados(tematicaId) {
 }
 
 // Arma el texto del "theme label" de cada minijuego clásico, agregando
-// el prefijo "�a️ Duelo ·" cuando la partida es un duelo 1v1 (mismo
+// el prefijo "âš”ï¸ Duelo Â·" cuando la partida es un duelo 1v1 (mismo
 // criterio visual que ya usaban Ahorcado y Adivina la Palabra).
 function temaLabelConDuelo(esDuelo, tematicaId) {
   const base = TEMATICA_NAMES[tematicaId] || '';
-  return esDuelo ? `�a️ Duelo · ${base}` : base;
+  return esDuelo ? `âš”ï¸ Duelo Â· ${base}` : base;
 }
 
 function renderPreguntados() {
@@ -3349,14 +3344,14 @@ function renderPreguntados() {
   if (preguntas.length === 0) {
     sec.innerHTML = `
       <div class="game-screen-header">
-        <button class="btn-back" onclick="goTo('juegos')">� � Volver a Juegos</button>
+        <button class="btn-back" onclick="goTo('juegos')">â† Volver a Juegos</button>
         <div class="game-screen-title"><span>${gameIconSVG('preguntados', 22)}</span> Preguntados</div>
         <div class="game-screen-theme">${temaLabelConDuelo(pregDuelo && pregDuelo.activo, pregState.tematicaId)}</div>
       </div>
       <div class="coming-soon-box" style="margin-top:2rem;">
         <h2>Sin preguntas</h2>
         <p>Aún no hay preguntas cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
-        <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">� � Volver a Juegos</button>
+        <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">â† Volver a Juegos</button>
       </div>`;
     // Si es un duelo y la temática no tiene preguntas cargadas, no lo
     // dejamos colgado: reportamos 0 puntos para que el duelo se pueda
@@ -3390,17 +3385,17 @@ function renderPreguntados() {
     });
     sec.innerHTML = `
       <div class="game-screen-header">
-        <button class="btn-back" onclick="goTo('juegos')">� � Volver a Juegos</button>
+        <button class="btn-back" onclick="goTo('juegos')">â† Volver a Juegos</button>
         <div class="game-screen-title"><span>${gameIconSVG('preguntados', 22)}</span> Preguntados</div>
         <div class="game-screen-theme" id="preguntados-theme-label">${TEMATICA_NAMES[pregState.tematicaId]||''}</div>
       </div>
       <div class="preg-result">
-        <div class="preg-result-emoji">${score >= preguntas.length * 0.7 ? '�x� ' : score >= preguntas.length * 0.4 ? '�x�`' : '�x�&'}</div>
-        <p class="preg-result-title">${score >= preguntas.length * 0.7 ? '¡Excelente!' : score >= preguntas.length * 0.4 ? '¡Bien hecho!' : '¡Seguí practicando!'}</p>
+        <div class="preg-result-emoji">${score >= preguntas.length * 0.7 ? 'ðŸ†' : score >= preguntas.length * 0.4 ? 'ðŸ˜Š' : 'ðŸ˜…'}</div>
+        <p class="preg-result-title">${score >= preguntas.length * 0.7 ? 'Â¡Excelente!' : score >= preguntas.length * 0.4 ? 'Â¡Bien hecho!' : 'Â¡Seguí practicando!'}</p>
         <p class="preg-result-score">${score} / ${preguntas.length} correctas</p>
         <p class="preg-result-pts">+${puntos} puntos</p>
         <button class="btn-play" style="max-width:240px;margin:0 auto;" onclick="initPreguntados(${pregState.tematicaId})"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Jugar de nuevo</button>
-        <button class="btn-back" style="margin:0 auto;" onclick="goTo('juegos')">� � Volver a Juegos</button>
+        <button class="btn-back" style="margin:0 auto;" onclick="goTo('juegos')">â† Volver a Juegos</button>
       </div>`;
     return;
   }
@@ -3412,7 +3407,7 @@ function renderPreguntados() {
 
   sec.innerHTML = `
     <div class="game-screen-header">
-      <button class="btn-back" onclick="clearInterval(pregState.timer); goTo('juegos')">� � Volver a Juegos</button>
+      <button class="btn-back" onclick="clearInterval(pregState.timer); goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title"><span>${gameIconSVG('preguntados', 22)}</span> Preguntados</div>
       <div class="game-screen-theme" id="preguntados-theme-label">${temaLabelConDuelo(pregDuelo && pregDuelo.activo, pregState.tematicaId)}</div>
     </div>
@@ -3481,9 +3476,9 @@ function flashPregAnswer(chosen, correct) {
   });
 }
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   SOPA DE LETRAS
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const SOPA_GRID = 12; // 12x12
 const SOPA_TIME = 120; // 2 minutos
@@ -3497,7 +3492,7 @@ let sopaState = {
 };
 let sopaFinishTimeout = null;
 
-// ������ Modo Duelo de Sopa de Letras ������
+// â”€â”€â”€ Modo Duelo de Sopa de Letras â”€â”€â”€
 // null si no hay un duelo en curso. Un solo intento con la temática y
 // duración elegidas al mandar el reto; al terminar (por completarla o por
 // tiempo) se manda el puntaje directo a /api/duelos/:id/resultado, sin
@@ -3513,7 +3508,7 @@ function iniciarSopaDuelo(dueloId, tematicaId, duracionSegundos) {
   initSopa(tematicaId || 1, duracionSegundos || SOPA_TIME);
 }
 
-// Palabras hardcodeadas por temática � quedan como FALLBACK si falla el
+// Palabras hardcodeadas por temática â€” quedan como FALLBACK si falla el
 // fetch a /api/sopa/palabras (o devuelve muy pocas), para que el juego no
 // se rompa por un problema de red/server. La fuente real ahora es la BD
 // (tabla palabras_ahorcado, la misma que ya usa Ahorcado).
@@ -3566,7 +3561,7 @@ async function initSopa(tematicaId, duracionSegundosDuelo) {
   };
 
   APP_EL.sopaThemeLabel.textContent = (sopaDuelo && sopaDuelo.activo)
-    ? `�a️ Duelo · ${TEMATICA_NAMES[tematicaId] || ''}`
+    ? `âš”ï¸ Duelo Â· ${TEMATICA_NAMES[tematicaId] || ''}`
     : (TEMATICA_NAMES[tematicaId] || '');
   renderSopa();
   startSopaTimer();
@@ -3638,13 +3633,13 @@ function renderSopa() {
 
   sec.innerHTML = `
     <div class="game-screen-header">
-      <button class="btn-back" onclick="clearInterval(sopaState.timer); goTo('juegos')">� � Volver a Juegos</button>
+      <button class="btn-back" onclick="clearInterval(sopaState.timer); goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title"><span>${gameIconSVG('sopa', 22)}</span> Sopa de Letras</div>
       <div class="game-screen-theme" id="sopa-theme-label">${TEMATICA_NAMES[sopaState.tematicaId]||''}</div>
     </div>
     <div class="sopa-wrap">
       <div class="sopa-info">
-        <span class="sopa-timer${timeLeft<=15?' sopa-timer-urgent':''}">⏱ ${timeLeft}s</span>
+        <span class="sopa-timer${timeLeft<=15?' sopa-timer-urgent':''}">â± ${timeLeft}s</span>
         <span class="sopa-score-disp"><svg style="width:1rem;height:1rem;fill:gold;vertical-align:middle;margin-right:2px;" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> ${sopaState.score}</span>
       </div>
       <div class="sopa-main">
@@ -3665,7 +3660,7 @@ function startSopaTimer() {
     // Actualizar solo el timer sin re-renderizar todo
     const el = document.querySelector('.sopa-timer');
     if (el) {
-      el.textContent = '⏱ ' + sopaState.timeLeft + 's';
+      el.textContent = 'â± ' + sopaState.timeLeft + 's';
       if (sopaState.timeLeft <= 15) el.classList.add('sopa-timer-urgent');
     }
     if (sopaState.timeLeft <= 0) {
@@ -3717,7 +3712,7 @@ function getCellsInLine(r1, c1, r2, c2) {
   const stepC = dc === 0 ? 0 : dc / Math.abs(dc);
   // Validar que sea diagonal exacta o línea recta
   if (dr !== 0 && dc !== 0 && Math.abs(dr) !== Math.abs(dc)) {
-    // No es diagonal exacta �  solo extender en la dirección dominante
+    // No es diagonal exacta â†’ solo extender en la dirección dominante
     if (Math.abs(dr) > Math.abs(dc)) return Array.from({length:Math.abs(dr)+1},(_,i)=>[[r1+stepR*i,c1]]).flat();
     return Array.from({length:Math.abs(dc)+1},(_,i)=>[[r1,c1+stepC*i]]).flat();
   }
@@ -3754,7 +3749,7 @@ function checkSopaSelection() {
         if (el.textContent === p.word) el.classList.add('sopa-word-found');
       });
       if (sopaState.found.length === sopaState.placed.length) {
-        // Todas las palabras encontradas � limpiar timer ANTES de programar el finish
+        // Todas las palabras encontradas â€” limpiar timer ANTES de programar el finish
         clearInterval(sopaState.timer);
         if (sopaFinishTimeout) clearTimeout(sopaFinishTimeout);
         sopaFinishTimeout = setTimeout(() => sopaFinish(true), 400);
@@ -3770,7 +3765,7 @@ function checkSopaSelection() {
 
 function sopaFinish(won) {
   // Guard: evita que se ejecute dos veces (puede pasar si el jugador
-  // encuentra la última palabra justo cuando el tiempo llega a 0 �
+  // encuentra la última palabra justo cuando el tiempo llega a 0 â€”
   // el timeout y el setTimeout de victoria competían y la segunda
   // llamada pisaba el HTML recién renderizado con el botón "Jugar de
   // nuevo", dejándolo sin su listener funcional).
@@ -3806,22 +3801,22 @@ function sopaFinish(won) {
   const sec = APP_EL.secSopa;
   sec.innerHTML = `
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo('juegos')">� � Volver a Juegos</button>
+      <button class="btn-back" onclick="goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title"><span>${gameIconSVG('sopa', 22)}</span> Sopa de Letras</div>
     </div>
     <div class="preg-result">
-      <div class="preg-result-emoji">${won ? '�x� ' : found > total/2 ? '�x�`' : '�x�&'}</div>
-      <p class="preg-result-title">${won ? '¡Encontraste todas!' : '¡Tiempo agotado!'}</p>
+      <div class="preg-result-emoji">${won ? 'ðŸ†' : found > total/2 ? 'ðŸ˜Š' : 'ðŸ˜…'}</div>
+      <p class="preg-result-title">${won ? 'Â¡Encontraste todas!' : 'Â¡Tiempo agotado!'}</p>
       <p class="preg-result-score">${found} / ${total} palabras encontradas</p>
       <p class="preg-result-pts">+${pts} puntos</p>
       <button class="btn-play" style="max-width:240px;margin:0 auto;" onclick="initSopa(${sopaState.tematicaId})"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Jugar de nuevo</button>
-      <button class="btn-back" style="margin:0 auto;" onclick="goTo('juegos')">� � Volver a Juegos</button>
+      <button class="btn-back" style="margin:0 auto;" onclick="goTo('juegos')">â† Volver a Juegos</button>
     </div>`;
 }
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   TERMINA LA PALABRA
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 const TERMINA_MAX = 5;
 
@@ -3831,7 +3826,7 @@ let terminaState = {
   tematicaId: 1
 };
 
-// ������ Modo Duelo de Termina la Palabra ������
+// â”€â”€â”€ Modo Duelo de Termina la Palabra â”€â”€â”€
 // null si no hay un duelo en curso. Una sola palabra con la temática
 // elegida al mandar el reto; al resolverla (acertada o agotados los
 // intentos) se manda el puntaje directo a /api/duelos/:id/resultado, sin
@@ -3863,14 +3858,14 @@ async function initTermina(tematicaId) {
     if (sec) {
       sec.innerHTML = `
         <div class="game-screen-header">
-          <button class="btn-back" onclick="goTo('juegos')">� � Volver a Juegos</button>
+          <button class="btn-back" onclick="goTo('juegos')">â† Volver a Juegos</button>
           <div class="game-screen-title"><span>${gameIconSVG('termina', 22)}</span> Termina la Palabra</div>
           <div class="game-screen-theme">${temaLabelConDuelo(terminaDuelo && terminaDuelo.activo, tematicaId)}</div>
         </div>
         <div class="coming-soon-box" style="margin-top:2rem;">
           <h2>Sin palabras</h2>
           <p>Aún no hay palabras cargadas para esta temática. (Recordá correr python crear_bd.py)</p>
-          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">� � Volver a Juegos</button>
+          <button class="btn-play" style="margin-top:20px" onclick="goTo('juegos')">â† Volver a Juegos</button>
         </div>`;
     }
     // Si es un duelo y la temática no tiene palabras cargadas, reportamos
@@ -3901,10 +3896,10 @@ function renderTermina() {
     if (i < guesses.length) {
       const g = guesses[i];
       return `<div class="termina-intento ${g.correct?'correct':'wrong'}">
-        ${g.text} ${g.correct ? '�S&' : '�R'}
+        ${g.text} ${g.correct ? 'âœ…' : 'âŒ'}
       </div>`;
     }
-    return `<div class="termina-intento empty">${i < intentos ? '' : '�'}</div>`;
+    return `<div class="termina-intento empty">${i < intentos ? '' : 'â€”'}</div>`;
   }).join('');
 
   const displayWord = finished
@@ -3918,12 +3913,12 @@ function renderTermina() {
   const botonesFinTermina = (terminaDuelo && terminaDuelo.activo) ? '' : `
         <div style="display:flex;gap:1rem;justify-content:center;margin-top:1rem;">
           <button class="btn-play" style="max-width:220px;" onclick="initTermina(${terminaState.tematicaId})"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Nueva palabra</button>
-          <button class="btn-back" onclick="goTo('juegos')">� � Volver a Juegos</button>
+          <button class="btn-back" onclick="goTo('juegos')">â† Volver a Juegos</button>
         </div>`;
 
   sec.innerHTML = `
     <div class="game-screen-header">
-      <button class="btn-back" onclick="goTo('juegos')">� � Volver a Juegos</button>
+      <button class="btn-back" onclick="goTo('juegos')">â† Volver a Juegos</button>
       <div class="game-screen-title"><span>${gameIconSVG('termina', 22)}</span> Termina la Palabra</div>
       <div class="game-screen-theme" id="termina-theme-label">${temaLabelConDuelo(terminaDuelo && terminaDuelo.activo, terminaState.tematicaId)}</div>
     </div>
@@ -3942,7 +3937,7 @@ function renderTermina() {
       <div class="termina-intentos">${intentosHTML}</div>
       ${finished ? `
         <div class="termina-result ${guesses[guesses.length-1]?.correct?'win':'lose'}">
-          ${guesses[guesses.length-1]?.correct ? '�x}0 ¡Correcto!' : '�x� Era: ' + word.toUpperCase()}
+          ${guesses[guesses.length-1]?.correct ? 'ðŸŽ‰ Â¡Correcto!' : 'ðŸ’€ Era: ' + word.toUpperCase()}
         </div>
         ${botonesFinTermina}` : ''}
     </div>`;
@@ -3993,7 +3988,7 @@ function submitTermina() {
       } : {})
     });
   } else {
-    // UI-004: dar feedback progresivo � revelar una letra oculta más
+    // UI-004: dar feedback progresivo â€” revelar una letra oculta más
     // por cada intento fallido, para evitar la frustración del jugador.
     const ocultas = [];
     terminaState.revealed.split('').forEach((l, i) => { if (l === '_') ocultas.push(i); });
@@ -4009,11 +4004,11 @@ function submitTermina() {
 }
 
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 //   ADIVINA LA COSA
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-// Datos del juego organizados por temática � quedan como FALLBACK si falla
+// Datos del juego organizados por temática â€” quedan como FALLBACK si falla
 // el fetch a /api/adivina/items (o esa temática todavía no tiene items
 // cargados en la BD). La fuente real ahora es la tabla adivina_items.
 // Cada item tiene: respuesta, pistas (de vaga a específica), imagen
@@ -4116,7 +4111,7 @@ const ADIVINA_DATA = {
       aliases: ['naruto shippuden', 'naruto uzumaki'],
       imagen: 'logos/anime/naruto.jpg',
       pistas: [
-        'Es un anime shōnen que sigue la vida de un joven ninja.',
+        'Es un anime shÅnen que sigue la vida de un joven ninja.',
         'El protagonista sueña con convertirse en Hokage de su aldea.',
         'Tiene sellado en su cuerpo un zorro de nueve colas llamado Kurama.',
         'El nombre del protagonista es el mismo que el del anime.',
@@ -4206,10 +4201,10 @@ const ADIVINA_DATA = {
 
 let adivinaState = null;
 
-// ������ Modo Duelo de Adivina la Cosa ������
+// â”€â”€â”€ Modo Duelo de Adivina la Cosa â”€â”€â”€
 // null si no hay un duelo en curso. Una sola ronda completa (mismos
 // items que en modo libre) con la temática elegida al mandar el reto;
-// arranca directo sin pasar por el cartel de "�� Empezar", y al terminar
+// arranca directo sin pasar por el cartel de "â–¶ Empezar", y al terminar
 // se manda el puntaje directo a /api/duelos/:id/resultado en vez de
 // guardar puntaje normal o sumar logros (igual criterio que sopaDuelo).
 let adivinaDuelo = null;
@@ -4237,7 +4232,7 @@ async function initAdivina(tematicaId) {
   } catch (e) { console.error(e); }
 
   // Fallback: la API falló o todavía no hay items cargados en la BD para
-  // esta temática � mismo criterio que Sopa, mejor jugar con el set viejo
+  // esta temática â€” mismo criterio que Sopa, mejor jugar con el set viejo
   // que dejar el juego sin arrancar.
   if (!Array.isArray(items) || items.length === 0) {
     items = ADIVINA_DATA[tId] || ADIVINA_DATA[1];
@@ -4259,11 +4254,11 @@ async function initAdivina(tematicaId) {
 
   // Mostrar overlay de inicio (en duelo, startAdivina() lo cierra enseguida)
   const ov = APP_EL.adivinaOverlay;
-  APP_EL.adivinaOverlayEmoji.textContent = enDuelo ? '�a️' : '�x"�️';
-  APP_EL.adivinaOverlayTitle.textContent = enDuelo ? '¡Arrancó el duelo!' : 'Adivina la Cosa';
+  APP_EL.adivinaOverlayEmoji.textContent = enDuelo ? 'âš”ï¸' : 'ðŸ•µï¸';
+  APP_EL.adivinaOverlayTitle.textContent = enDuelo ? 'Â¡Arrancó el duelo!' : 'Adivina la Cosa';
   APP_EL.adivinaOverlayDesc.textContent =
-    `Se muestran ${items.length} items de la temática seleccionada.\nCuantas menos pistas uses, ¡más puntos ganás!`;
-  APP_EL.adivinaOverlayBtn.textContent = '�� Empezar';
+    `Se muestran ${items.length} items de la temática seleccionada.\nCuantas menos pistas uses, Â¡más puntos ganás!`;
+  APP_EL.adivinaOverlayBtn.textContent = 'â–¶ Empezar';
   APP_EL.adivinaOverlayBtn.onclick = startAdivina;
   ov.style.display = 'flex';
   APP_EL.adivinaGame.style.display = 'none';
@@ -4298,7 +4293,7 @@ function renderAdivinaItem() {
   for (const pista of s.pistasRevealedThisItem) {
     const el = document.createElement('div');
     el.className = 'adivina-pista-item';
-    el.textContent = `�x� ${pista}`;
+    el.textContent = `ðŸ”¹ ${pista}`;
     APP_EL.adivinaPistasList.appendChild(el);
   }
 
@@ -4372,7 +4367,7 @@ function renderAdivinaCanvas(imgSrc, pistasCnt, totalPistas) {
     ctx.font = '64px serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('�x"�️', canvas.width / 2, canvas.height / 2);
+    ctx.fillText('ðŸ•µï¸', canvas.width / 2, canvas.height / 2);
   };
 }
 
@@ -4402,7 +4397,7 @@ function rendirseAdivina() {
   const fb = APP_EL.adivinaFeedback;
   fb.style.display = 'block';
   fb.className = 'adivina-feedback incorrecto';
-  fb.textContent = `�R La respuesta era: ${item.respuesta.charAt(0).toUpperCase() + item.respuesta.slice(1)}`;
+  fb.textContent = `âŒ La respuesta era: ${item.respuesta.charAt(0).toUpperCase() + item.respuesta.slice(1)}`;
   input.disabled = true;
   APP_EL.adivinaBtnPista.disabled = true;
   const btnRendirse = APP_EL.adivinaBtnRendirse;
@@ -4419,14 +4414,14 @@ function submitAdivina() {
   if (!s || s.respondido) return;
   const item = s.items[s.itemIdx];
   const input = APP_EL.adivinaInput;
-  const raw = input.value.trim().toLowerCase().replace(/[áàä]/g,'a').replace(/[éèë]/g,'e')
-    .replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
+  const raw = input.value.trim().toLowerCase().replace(/[áÃ Ã¤]/g,'a').replace(/[éÃ¨Ã«]/g,'e')
+    .replace(/[íÃ¬Ã¯]/g,'i').replace(/[óÃ²Ã¶]/g,'o').replace(/[úÃ¹Ã¼]/g,'u');
 
   if (!raw) return;
 
   const normalize = (str) => str.toLowerCase()
-    .replace(/[áàä]/g,'a').replace(/[éèë]/g,'e')
-    .replace(/[íìï]/g,'i').replace(/[óòö]/g,'o').replace(/[úùü]/g,'u');
+    .replace(/[áÃ Ã¤]/g,'a').replace(/[éÃ¨Ã«]/g,'e')
+    .replace(/[íÃ¬Ã¯]/g,'i').replace(/[óÃ²Ã¶]/g,'o').replace(/[úÃ¹Ã¼]/g,'u');
 
   const correctas = [item.respuesta, ...item.aliases].map(normalize);
   const correcto = correctas.includes(raw);
@@ -4441,7 +4436,7 @@ function submitAdivina() {
     const pts = puntosItem(pistasUsadas);
     s.score += pts;
     fb.className = 'adivina-feedback correcto';
-    fb.textContent = `�S& ¡Correcto! +${pts} puntos`;
+    fb.textContent = `âœ… Â¡Correcto! +${pts} puntos`;
     input.disabled = true;
     APP_EL.adivinaBtnPista.disabled = true;
 
@@ -4458,7 +4453,7 @@ function submitAdivina() {
     setTimeout(() => nextAdivinaItem(), 1800);
   } else {
     fb.className = 'adivina-feedback incorrecto';
-    fb.textContent = '�R No es eso, seguí intentando o pedí más pistas.';
+    fb.textContent = 'âŒ No es eso, seguí intentando o pedí más pistas.';
     input.value = '';
     setTimeout(() => { fb.style.display = 'none'; input.focus(); }, 1500);
   }
@@ -4498,10 +4493,10 @@ function nextAdivinaItem() {
     });
 
     const ov = APP_EL.adivinaOverlay;
-    APP_EL.adivinaOverlayEmoji.textContent = '�x� ';
-    APP_EL.adivinaOverlayTitle.textContent = '¡Juego terminado!';
+    APP_EL.adivinaOverlayEmoji.textContent = 'ðŸ†';
+    APP_EL.adivinaOverlayTitle.textContent = 'Â¡Juego terminado!';
     APP_EL.adivinaOverlayDesc.textContent = `Tu puntaje final: ${s.score} puntos`;
-    APP_EL.adivinaOverlayBtn.textContent = '�x� Jugar de nuevo';
+    APP_EL.adivinaOverlayBtn.textContent = 'ðŸ” Jugar de nuevo';
     APP_EL.adivinaOverlayBtn.onclick = startAdivina;
     ov.style.display = 'flex';
     return;
@@ -4509,7 +4504,7 @@ function nextAdivinaItem() {
 
   renderAdivinaItem();
 }
-// ������ MODAL INFO / CR�0DITOS ������
+// â”€â”€â”€ MODAL INFO / CRÃ‰DITOS â”€â”€â”€
 let currentInfoPage = 1;
 const totalInfoPages = 4;
 
@@ -4552,7 +4547,7 @@ function updateInfoModal() {
   });
 }
 
-// �"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"��"�
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
 // ==========================================
 // NOTIFICACIONES
@@ -4566,12 +4561,12 @@ function updateInfoModal() {
 
 // Emoji + destino (goTo) según el tipo de notificación que manda el backend.
 const NOTIF_ICONOS = {
-  solicitud_amistad: '�x��',
-  aviso: '�x�',
-  record_superado: '�x� ',
-  duelo_reto: '�a️',
-  duelo_aceptado: '�S&',
-  duelo_resultado: '�x��',
+  solicitud_amistad: 'ðŸ¤',
+  aviso: 'ðŸ“¢',
+  record_superado: 'ðŸ†',
+  duelo_reto: 'âš”ï¸',
+  duelo_aceptado: 'âœ…',
+  duelo_resultado: 'ðŸ',
 };
 
 function formatearFechaNotif(fechaStr) {
@@ -4624,12 +4619,12 @@ function renderNotificaciones(notifs) {
 
   body.innerHTML = notifs.map(n => `
     <div class="notif-item ${n.leido ? '' : 'unread'}" id="notifItem-${n.id}" onclick="onClickNotif(${n.id}, ${n.leido ? 'true' : 'false'}, ${n.enlace ? `'${n.enlace}'` : 'null'}, '${n.tipo}')">
-      <span class="notif-item-icon">${NOTIF_ICONOS[n.tipo] || '�x'}</span>
+      <span class="notif-item-icon">${NOTIF_ICONOS[n.tipo] || 'ðŸ””'}</span>
       <div class="notif-item-text">
         ${sanitizeHTML(n.mensaje)}
         <span class="notif-item-date">${formatearFechaNotif(n.fecha)}</span>
       </div>
-      <button class="notif-item-del" title="Eliminar" onclick="event.stopPropagation(); eliminarNotificacion(${n.id});">�S"</button>
+      <button class="notif-item-del" title="Eliminar" onclick="event.stopPropagation(); eliminarNotificacion(${n.id});">âœ•</button>
     </div>
   `).join('');
 }
@@ -5037,7 +5032,7 @@ window.loadAdminAvisos = async function() {
             <div style="background:rgba(0,0,0,0.3); border-radius:6px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; border-left: 4px solid ${aviso.color || '#3b82f6'};">
                 <div style="flex:1;">
                     <div style="font-size:13px; color:#F1F5F9; font-weight:600; margin-bottom:4px;">
-                        ${aviso.icono || '�x�'} ${aviso.texto}
+                        ${aviso.icono || 'ðŸ“¢'} ${aviso.texto}
                     </div>
                     <div style="font-size:10px; color:#94A3B8;">
                         Estado: <span style="color: ${aviso.activo ? '#4ade80' : '#94A3B8'}">${aviso.activo ? 'Activo (Mostrándose)' : 'Inactivo'}</span>
@@ -5060,7 +5055,7 @@ window.loadAdminAvisos = async function() {
 
 window.crearAvisoAdmin = async function() {
     const texto = document.getElementById('adminAvisoNuevoTexto').value.trim();
-    const icono = document.getElementById('adminAvisoNuevoIcono').value.trim() || '�x�';
+    const icono = document.getElementById('adminAvisoNuevoIcono').value.trim() || 'ðŸ“¢';
     const color = document.getElementById('adminAvisoNuevoColor').value;
     
     if (!texto) {
@@ -5113,7 +5108,7 @@ window.toggleAvisoAdmin = async function(id, activar) {
 };
 
 window.eliminarAvisoAdmin = async function(id) {
-    if (!confirm("¿Seguro que deseas eliminar este aviso de forma permanente?")) return;
+    if (!confirm("Â¿Seguro que deseas eliminar este aviso de forma permanente?")) return;
     
     const token = localStorage.getItem('unigames_token');
     try {
@@ -5144,7 +5139,7 @@ window.loadAvisoPublico = async function() {
         if (aviso) {
             const avisoHTML = `
                 <div id="global-aviso-banner" style="background: ${aviso.color || '#3b82f6'}; color: white; text-align: center; padding: 12px 20px; font-weight: 600; font-size: 14px; position: relative; z-index: 50; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); animation: slideDownAviso 0.5s ease-out forwards;">
-                    <span style="margin-right:8px; font-size:16px;">${aviso.icono || '�x�'}</span>
+                    <span style="margin-right:8px; font-size:16px;">${aviso.icono || 'ðŸ“¢'}</span>
                     ${aviso.texto}
                 </div>
             `;
@@ -5198,10 +5193,10 @@ function jgActualizarNotaCompartida(tipo) {
     const nota = document.getElementById('jgNotaCompartida');
     if (!nota) return;
     if (tipo === 'sopa') {
-        nota.textContent = '��️ Sopa de Letras usa el mismo banco de palabras que Ahorcado.';
+        nota.textContent = 'â„¹ï¸ Sopa de Letras usa el mismo banco de palabras que Ahorcado.';
         nota.style.display = 'block';
     } else if (tipo === 'termina') {
-        nota.textContent = '��️ Termina la Palabra usa el mismo banco de palabras que Adivina la Palabra.';
+        nota.textContent = 'â„¹ï¸ Termina la Palabra usa el mismo banco de palabras que Adivina la Palabra.';
         nota.style.display = 'block';
     } else {
         nota.style.display = 'none';
@@ -5276,7 +5271,7 @@ function renderJuegoForm(tipo) {
             </div>
             <div class="auth-form-group">
                 <label class="auth-form-label">Pregunta</label>
-                <input class="auth-input" id="jgPregunta" placeholder="¿Cuál es...?">
+                <input class="auth-input" id="jgPregunta" placeholder="Â¿Cuál es...?">
             </div>
             <div class="auth-form-group" style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                 <input class="auth-input" id="jgOpcionA" placeholder="Opción A">
@@ -5444,7 +5439,7 @@ window.editarContenidoJuegoPorId = function(tipo, id) {
 };
 
 window.eliminarContenidoJuego = async function(tipo, id) {
-    if (!confirm('¿Eliminar este elemento de forma permanente?')) return;
+    if (!confirm('Â¿Eliminar este elemento de forma permanente?')) return;
     const token = localStorage.getItem('unigames_token');
     try {
         const res = await fetch('/api/admin/' + jgEndpoint(tipo) + '/' + id, {
