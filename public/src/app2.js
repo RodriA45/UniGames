@@ -2877,32 +2877,40 @@ fetch('/api/config')
     if (data.SUPABASE_URL && data.SUPABASE_ANON_KEY && typeof supabase !== 'undefined') {
       supabaseClient = supabase.createClient(data.SUPABASE_URL, data.SUPABASE_ANON_KEY);
       
-      // Check for OAuth, Password Reset, or pending un-synced sessions
-      const { data: sessionData } = await supabaseClient.auth.getSession();
-      
-      // If we are logged into Supabase, but our local app doesn't have the token (e.g. Google Login, or returning from Email verification)
-      if (sessionData.session && !localStorage.getItem('unigames_token')) {
-          const res = await fetch('/api/auth/sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ supabaseToken: sessionData.session.access_token })
-          });
-          const backendData = await res.json();
-          if (res.ok) {
-            currentUser = backendData.user;
-            localStorage.setItem('unigames_token', backendData.token);
-            localStorage.setItem('unigames_user', JSON.stringify(currentUser));
-            if (window.location.href.includes('google_login=true') || window.location.href.includes('type=signup')) {
-              window.history.replaceState({}, document.title, "/"); 
-            }
-            updateAuthUI();
-            sincronizarLogrosConBackend();
-            showAuthAlert('login-alert', '¡Sesión sincronizada exitosamente!', 'success');
-          } else {
-             // If sync failed for some reason, sign out to prevent broken state
-             supabaseClient.auth.signOut();
+      // Suscribirse a cambios de autenticación (ej. cuando volvemos de Google OAuth)
+      supabaseClient.auth.onAuthStateChange(async (event, session) => {
+          if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
+              // Sincronizar SIEMPRE que haya sesión de Supabase y no tengamos un token local válido
+              // o si venimos de un redirect (OAuth)
+              const res = await fetch('/api/auth/sync', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ supabaseToken: session.access_token })
+              });
+              const backendData = await res.json();
+              if (res.ok) {
+                  currentUser = backendData.user;
+                  localStorage.setItem('unigames_token', backendData.token);
+                  localStorage.setItem('unigames_user', JSON.stringify(currentUser));
+                  updateAuthUI();
+                  sincronizarLogrosConBackend();
+                  
+                  // Limpiar la URL si venimos de un redirect de OAuth con el hash
+                  if (window.location.hash.includes('access_token')) {
+                      window.history.replaceState({}, document.title, window.location.pathname);
+                  }
+              } else {
+                  supabaseClient.auth.signOut();
+              }
+          } else if (event === 'SIGNED_OUT') {
+              localStorage.removeItem('unigames_token');
+              localStorage.removeItem('unigames_user');
+              currentUser = null;
+              updateAuthUI();
           }
-      }
+      });
+      
+      const { data: sessionData } = await supabaseClient.auth.getSession();
       
       // If we just clicked a password reset link
       if (window.location.href.includes('reset_password=true') && sessionData.session) {
