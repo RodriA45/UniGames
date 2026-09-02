@@ -40,7 +40,14 @@ app.use(express.static(path.join(__dirname, 'public'), {
     }
 }));
 
-// API Routes
+// Endpoint for frontend config
+app.get('/api/config', (req, res) => {
+    res.json({
+        SUPABASE_URL: process.env.SUPABASE_URL,
+        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY
+    });
+});
+
 app.use('/api', authRoutes);
 app.use('/api', juegosRoutes);
 app.use('/api', perfilRoutes);
@@ -49,14 +56,6 @@ app.use('/api', logrosRoutes);
 app.use('/api', notificacionesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', duelosRouter);
-
-// Endpoint for frontend config
-app.get('/api/config', (req, res) => {
-    res.json({
-        SUPABASE_URL: process.env.SUPABASE_URL,
-        SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY
-    });
-});
 
 
 // Fallback para SPA / Frontend
