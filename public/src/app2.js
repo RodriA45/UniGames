@@ -3104,9 +3104,16 @@ async function submitRecoverPassword(e) {
         btn.innerHTML = originalHtml;
         return showAuthAlert('recover-alert', 'Correo o cuenta no registrada.', 'error');
       }
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = originalHtml;
+      return showAuthAlert('recover-alert', 'El servidor aún se está actualizando. Intenta de nuevo en unos segundos.', 'error');
     }
   } catch (err) {
     console.error('Error verificando email:', err);
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+    return showAuthAlert('recover-alert', 'Error de conexión. Intenta de nuevo.', 'error');
   }
 
   btn.innerHTML = '<span>Enviando...</span>';
