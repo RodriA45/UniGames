@@ -2827,6 +2827,15 @@ document.addEventListener('DOMContentLoaded', () => {
   updateAuthUI();
 
   const params = new URLSearchParams(window.location.search);
+  const urlError = params.get('error_description');
+  if (urlError) {
+      setTimeout(() => {
+          showAuthAlert('login-alert', 'Error de Supabase: ' + decodeURIComponent(urlError.replace(/\+/g, ' ')), 'error');
+          openModal('login');
+      }, 500);
+      window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
   const dToken = params.get('dev_token');
   const dUserStr = params.get('dev_user');
   const openAdmin = params.get('open_admin');
