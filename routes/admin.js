@@ -85,6 +85,7 @@ router.get('/usuarios', async (req, res) => {
         const usuarios = (await db.query(`SELECT id, nombre_usuario, email, rol, fecha_registro, estado FROM usuarios ORDER BY id DESC`)).rows;
         res.json(usuarios);
     } catch (error) {
+        console.error('Error al obtener usuarios:', error);
         res.status(500).json({ error: 'Error al obtener usuarios' });
     }
 });

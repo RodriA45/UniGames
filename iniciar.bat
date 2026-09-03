@@ -38,7 +38,7 @@ call npm install >nul 2>&1
 echo %ESC%[92m^> Dependencias listas.%ESC%[0m
 echo.
 echo %ESC%[94m[2/3] Actualizando base de datos (init_db.js)...%ESC%[0m
-where node >nul 2>&1 && (node database/init_db.js & goto :db_ok)
+where node >nul 2>&1 && (node database/init_db.js && node database/seed_games.js & goto :db_ok)
 echo %ESC%[91m[ERROR] No se encontró Node.js. Asegúrate de tenerlo instalado y en el PATH.%ESC%[0m
 pause
 goto :skip_db
@@ -79,8 +79,8 @@ echo ====================================================
 echo            RECONSTRUYENDO BASE DE DATOS
 echo ====================================================
 echo %ESC%[0m
-echo %ESC%[94mEjecutando script (init_db.js)...%ESC%[0m
-where node >nul 2>&1 && (node database/init_db.js & goto :db_ok_solo)
+echo %ESC%[94mEjecutando scripts (init_db.js y seed_games.js)...%ESC%[0m
+where node >nul 2>&1 && (node database/init_db.js && node database/seed_games.js & goto :db_ok_solo)
 echo %ESC%[91m[ERROR] No se encontró Node.js.%ESC%[0m
 pause
 goto MENU

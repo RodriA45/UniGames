@@ -35,7 +35,7 @@ echo        RECONSTRUYENDO BD ANTES DE SUBIR
 echo ====================================================
 echo %ESC%[0m
 echo %ESC%[94mActualizando base de datos local...%ESC%[0m
-where node >nul 2>&1 && (node database/init_db.js & goto :db_done)
+where node >nul 2>&1 && (node database/init_db.js && node database/seed_games.js & goto :db_done)
 echo %ESC%[91m[ERROR] No se pudo ejecutar init_db.js%ESC%[0m
 pause
 goto SUBIR

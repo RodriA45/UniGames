@@ -71,7 +71,7 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
 4. **Generar la Base de Datos y Correr el Servidor:**
    El proyecto usa `PostgreSQL`. Asegúrate de haber pegado tu `DATABASE_URL` (por ejemplo, provista por Neon.tech) en tu archivo `.env`.
    
-   Para inicializar/resetear las tablas de la base de datos y cargar los datos por defecto:
+   Para inicializar/resetear las tablas de la base de datos y poblar las preguntas y palabras de los juegos automáticamente:
    ```bash
    npm run db:reset
    ```
@@ -95,8 +95,9 @@ npm run admin
 ```
 O haz doble clic en `hacer_admin.bat` (solo en Windows). Escribe tu email o usuario, y al recargar la página, verás el botón de "Panel Admin".
 
-**Despliegue y Cambios:**
-Si deseas agregar nuevas preguntas o palabras a la base de datos, agrégalas en el archivo `database/init_db.js`. Luego, en vez de usar comandos de Git manualmente:
+**Base de Datos y Despliegue:**
+Si deseas agregar nuevas preguntas o palabras a la base de datos, puedes editar y ejecutar el script `database/seed_games.js`.
+Para subir tus cambios, en vez de usar comandos de Git manualmente:
 1. Da doble clic en el archivo **`subir_cambios_Github.bat`** (solo Windows).
 2. Sigue las instrucciones en la consola para describir tu cambio.
 
@@ -120,13 +121,13 @@ UniGames/
 ├── routes/                 # Lógica de Endpoints modulares (auth.js, admin.js, juegos.js)
 ├── middlewares/            # Validaciones Zod, Rate Limiting y Control de JWT
 ├── schemas/                # Esquemas estrictos de validación con Zod
-├── database/               # Módulo de conexión centralizada a SQLite (db.js)
+├── database/               # Módulo de conexión centralizada a PostgreSQL (db.js) y scripts
 ├── server.js               # Servidor Backend principal
 
 ├── render.yaml             # Configuración de infraestructura (Blueprint) automatizada para Render
 ├── .env                    # Variables de entorno (no subido a GitHub)
 ├── iniciar.bat             # Acceso directo para inicializar en Windows
-└── package.json            # Configuración de dependencias (express, sqlite, jsonwebtoken...)
+└── package.json            # Configuración de dependencias (express, pg, jsonwebtoken...)
 ```
 
 ## 🔌 Endpoints de la API (Protegida)

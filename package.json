@@ -6,9 +6,9 @@
   "scripts": {
     "start": "node start.js",
     "dev": "node start.js",
-    "db:reset": "node database/init_db.js",
+    "db:reset": "node database/init_db.js && node database/seed_games.js",
     "admin": "node hacer_admin.js",
-    "security": "python toggle_seguridad.py",
+    "security": "node toggle_seguridad.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
