@@ -1779,6 +1779,12 @@ function restoreOriginalSection(id) {
 
 // ─── Navegación entre secciones ────────
 function goTo(section) {
+  // Stop all 2D engine loops to prevent background lag when switching games
+  if (typeof stopRunner === 'function') stopRunner();
+  if (typeof stopTrampas === 'function') stopTrampas();
+  if (typeof stopRpg === 'function') stopRpg();
+  if (typeof rpgStopLoop === 'function') rpgStopLoop();
+  
   // Ocultar todas las secciones
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   // Mostrar la sección solicitada

@@ -1,6 +1,6 @@
 <div align="center">
   <h1>🎮 UniGames</h1>
-  <p><b>Tu plataforma de mini juegos de palabras, cultura pop y entretenimiento.</b></p>
+  <p><b>Tu plataforma de mini juegos de palabras, cultura pop y aventuras pixel-art.</b></p>
   <img src="https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js"/>
   <img src="https://img.shields.io/badge/Express.js-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express"/>
   <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL"/>
@@ -13,36 +13,38 @@
 
 ## 📖 Sobre el Proyecto
 
-**UniGames** es una aplicación web interactiva desarrollada en equipo como proyecto final, pensada para ofrecer una experiencia rápida y entretenida con mini juegos clásicos. Cuenta con distintos modos y temáticas (Videojuegos, Películas, Anime, Programación).
+**UniGames** es una aplicación web interactiva (Single Page Application) desarrollada para ofrecer una experiencia rápida y entretenida con minijuegos tanto clásicos como de aventura. Cuenta con distintos modos y temáticas (Videojuegos, Películas, Anime, Programación).
 
-Actualmente incluye:
-- 💀 **Ahorcado:** El clásico, con sistema de vidas y palabras por temática.
-- 🟩 **Adivina la Palabra (Wordle):** Modo difícil para adivinar palabras con pistas de colores.
+### 🕹️ Juegos Disponibles
+**Clásicos / Trivia:**
+- 💀 **Ahorcado:** El clásico, con sistema de vidas y más de 40 palabras por temática.
+- 🟩 **Adivina la Palabra (Wordle):** Descubre la palabra oculta de 5 letras (más de 40 palabras).
 - 🕵️ **Adivina la Cosa:** Adivina el título/personaje usando pistas progresivas. Incluye imágenes que se des-pixelan dinámicamente con Canvas.
-- 🏃 **Pixel Runner:** Juego de carrera infinita con físicas y obstáculos, aumentando de velocidad.
-- *(En desarrollo)* Sopa de Letras, Preguntados, Termina la Palabra, Salto Traicionero.
+- ❓ **Preguntados:** Responde trivia con 4 opciones de más de 40 preguntas integradas.
+
+**Aventuras 2D (Con Motor 2D Propio):**
+- 🏃 **Pixel Runner:** Juego de carrera infinita con físicas, ciclo día/noche, power-ups y tienda de mejoras.
+- 🏰 **Castle Escape (Trampas):** Juego de plataformas con saltos de precisión y trampas ocultas.
+- ⚔️ **RPG Pixel:** Aventura de combate estilo RPG por turnos y exploración.
 
 ### 🛡️ Características Principales
-- **Autenticación con Supabase Auth (NUEVO):** Integración nativa con Supabase para inicio de sesión seguro, registro, recuperación de contraseña y **Google OAuth**.
-- **Roles y Usuarios:** Sistema de avatares (con imágenes pixel-art predeterminadas) y roles de usuario (`user`, `admin`). Sincronización automática entre Supabase y la base de datos local de PostgreSQL a través del endpoint `/api/auth/sync`.
-- **Panel de Administración (NUEVO):** Un potente panel exclusivo para administradores que permite:
-  - Ver estadísticas en tiempo real (usuarios totales, partidas jugadas, actividad gráfica).
-  - Gestionar usuarios (buscar, banear/desbanear, promover a admin).
-  - Personalizar la apariencia del sitio (cambiar color del tema a Oscuro, Claro o Rojo).
-  - Gestionar anuncios globales (historial de avisos y activación dinámica de un banner público).
-- **Sistema de Audio:** Efectos de sonido y música de fondo dinámica que cambia según el juego, con un botón global de "Mute".
-- **Leaderboard Global:** Tabla de puntuaciones donde los jugadores compiten por el primer lugar en cada juego.
-- **Preparado para Deploy:** Configurado con variables de entorno (`.env`) y listo para ser desplegado en Render (usando `render.yaml`). Base de datos escalable en Neon.tech (PostgreSQL).
+- **Autenticación con Supabase Auth:** Integración nativa con Supabase para inicio de sesión seguro, registro, recuperación de contraseña y **Google OAuth**.
+- **Roles y Usuarios:** Sistema de avatares pixel-art y roles de usuario (`user`, `admin`). Sincronización automática entre Supabase y la base de datos local de PostgreSQL (`/api/auth/sync`).
+- **Motor 2D Nativo (`engine2d.js`):** Desarrollado desde cero en Vanilla JS utilizando HTML5 Canvas con manejo avanzado de *requestAnimationFrame*, colisiones, sistema de partículas y cámara.
+- **Panel de Administración:** Panel exclusivo que permite:
+  - Ver estadísticas en tiempo real.
+  - Gestionar usuarios (buscar, banear, promover a admin).
+  - Personalizar el tema visual global de la aplicación (Oscuro, Claro, Rojo).
+  - Gestionar anuncios globales.
+- **Leaderboard Global:** Tabla de puntuaciones competitiva.
 
 ## 🚀 Instalación y Uso Local
-
-Sigue estos pasos para correr el proyecto en tu entorno local:
 
 ### Requisitos previos
 - [Node.js](https://nodejs.org/) instalado (versión 18+ recomendada).
 - Una base de datos PostgreSQL alojada (ej: Neon.tech, Supabase) o instalada localmente.
 
-### Pasos
+### Pasos de Instalación
 
 1. **Clonar el repositorio:**
    ```bash
@@ -55,7 +57,7 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
    npm install
    ```
 
-   **Variables de Entorno (.env):**
+3. **Variables de Entorno (.env):**
    Crea un archivo `.env` en la raíz del proyecto y agrega tus configuraciones seguras:
    ```env
    # Backend
@@ -63,25 +65,24 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
    DEV_SECRET=clave_para_acceder_al_admin_en_produccion
 
    # Supabase
-   DATABASE_URL=postgresql://postgres.xxx... (Usa el "Transaction Pooler" de Supabase)
+   DATABASE_URL=postgresql://postgres.xxx... (URL de conexión a tu DB Postgres)
    SUPABASE_URL=https://xxxx.supabase.co
    SUPABASE_ANON_KEY=tu_anon_key_publica
    ```
 
-4. **Generar la Base de Datos y Correr el Servidor:**
-   El proyecto usa `PostgreSQL`. Asegúrate de haber pegado tu `DATABASE_URL` (por ejemplo, provista por Neon.tech) en tu archivo `.env`.
-   
-   Para inicializar/resetear las tablas de la base de datos y poblar las preguntas y palabras de los juegos automáticamente:
+4. **Inicializar Base de Datos (Muy Importante):**
+   El proyecto utiliza `PostgreSQL`. Para crear las tablas necesarias e insertar la masiva cantidad de preguntas, palabras y configuraciones de juegos, ejecuta:
    ```bash
    npm run db:reset
    ```
-   
-   Para arrancar el servidor de desarrollo:
+   *(Este comando ejecuta el script optimizado `database/seed_games.js`).*
+
+5. **Arrancar el servidor de desarrollo:**
    ```bash
    npm run dev
    ```
 
-5. **Jugar:**
+6. **Jugar:**
    Abre tu navegador en [http://localhost:3000](http://localhost:3000).
 
 ---
@@ -89,23 +90,19 @@ Sigue estos pasos para correr el proyecto en tu entorno local:
 ### 📦 Cómo subir cambios y Modo Administrador (Para Desarrolladores)
 
 **Modo Administrador Automático:** 
-Si necesitas convertir tu usuario a Administrador rápidamente, simplemente corre este script universal (requiere configurar la variable `DEV_SECRET` en `.env`):
+Si necesitas convertir tu usuario a Administrador rápidamente, corre el script (requiere configurar la variable `DEV_SECRET` en `.env`):
 ```bash
 npm run admin
 ```
-O haz doble clic en `hacer_admin.bat` (solo en Windows). Escribe tu email o usuario, y al recargar la página, verás el botón de "Panel Admin".
+En Windows, también puedes hacer doble clic en `hacer_admin.bat`. Escribe tu email o usuario, recarga la página, y verás el botón de "Panel Admin".
 
-**Base de Datos y Despliegue:**
-Si deseas agregar nuevas preguntas o palabras a la base de datos, puedes editar y ejecutar el script `database/seed_games.js`.
-Para subir tus cambios, en vez de usar comandos de Git manualmente:
-1. Da doble clic en el archivo **`subir_cambios_Github.bat`** (solo Windows).
-2. Sigue las instrucciones en la consola para describir tu cambio.
+**Subir cambios a GitHub:**
+Para automatizar los commits y push, ejecuta el archivo **`subir_cambios_Github.bat`** (solo Windows) y sigue las instrucciones en la consola.
 
-### 🛠️ Últimas Mejoras Técnicas y UI/UX
-- **Validación Ultra Robusta (Zod):** Todas las entradas del usuario (registro, login, puntuaciones) pasan por una validación estricta de esquemas antes de tocar la base de datos, evitando colapsos del servidor y ataques comunes.
-- **Backend Modularizado:** `server.js` fue optimizado, delegando toda la lógica a `/routes/auth.js`, `/routes/juegos.js` y `/routes/admin.js`, permitiendo un crecimiento profesional sin código espagueti.
-- **Gestión Visual Avanzada:** Ahora puedes elegir el tema de la aplicación desde el panel de administrador y los colores se sincronizan en toda la plataforma instantáneamente.
-- **Pantalla de Carga Global:** Los juegos que requieren múltiples texturas y sprites muestran una elegante animación de carga retro que garantiza que el mapa no sea invisible.
+### 🛠️ Arquitectura y Optimizaciones
+- **Base de datos unificada:** Uso de un *wrapper* SQL personalizado (`db.js`) adaptado para integrar consultas universales (compatibilidad Postgres) sin utilizar ORMs pesados.
+- **Física y Rendering 2D Optimizado:** Se corrigieron problemas de *memory leaks* cerrando ciclos de *GameLoop* al cambiar de vistas en la SPA. Uso de *image-rendering: pixelated* y *Math.trunc* en el motor 2D para eliminar efecto *stuttering* al desplazar cámara en Canvas.
+- **Validación Robusta (Zod):** Entradas del usuario fuertemente tipadas y validadas antes de tocar la base de datos.
 
 ## 📂 Estructura del Proyecto
 
@@ -113,30 +110,37 @@ Para subir tus cambios, en vez de usar comandos de Git manualmente:
 UniGames/
 │
 ├── public/                 # Archivos Estáticos (Frontend)
-│   ├── src/                # Scripts y Estilos del cliente (app.js, styles.css)
-│   ├── logos/              # Imágenes para "Adivina la Cosa"
+│   ├── src/                
+│   │   ├── app2.js         # Orquestador SPA y lógica principal de Frontend
+│   │   ├── styles.css      # Estilos globales y UI
+│   │   ├── security.js     # Validaciones frontend
+│   │   └── motor2d/        # Motor 2D Nativo y lógica de juegos avanzados
+│   │       ├── engine2d.js # Core del motor (Loop, Física, Audio, Render)
+│   │       ├── ui-components.css
+│   │       └── games/      # Implementaciones (pixel-runner, castle-escape, rpg-pixel)
+│   ├── logos/              # Imágenes generales y avatares
 │   ├── sounds/             # Efectos de sonido y música (.mp3)
-│   └── index.html          # Vista principal, Modales, Panel Admin y SPA
+│   └── index.html          # Vista principal (SPA), Modales y Canvas
 │
-├── routes/                 # Lógica de Endpoints modulares (auth.js, admin.js, juegos.js)
-├── middlewares/            # Validaciones Zod, Rate Limiting y Control de JWT
-├── schemas/                # Esquemas estrictos de validación con Zod
-├── database/               # Módulo de conexión centralizada a PostgreSQL (db.js) y scripts
-├── server.js               # Servidor Backend principal
-
-├── render.yaml             # Configuración de infraestructura (Blueprint) automatizada para Render
-├── .env                    # Variables de entorno (no subido a GitHub)
-├── iniciar.bat             # Acceso directo para inicializar en Windows
-└── package.json            # Configuración de dependencias (express, pg, jsonwebtoken...)
+├── routes/                 # Endpoints modulares del Backend (auth.js, admin.js, juegos.js)
+├── middlewares/            # Validaciones Zod, Rate Limiting y autenticación JWT
+├── schemas/                # Esquemas estrictos de validación (Zod)
+├── database/               # Módulo de conexión a PostgreSQL (db.js) y seed_games.js
+├── server.js               # Punto de entrada de Express (Backend)
+│
+├── render.yaml             # Configuración de despliegue automatizado para Render
+├── .env                    # Variables de entorno seguras (no versionado)
+├── iniciar.bat             # Acceso directo para levantar el servidor localmente
+└── package.json            # Dependencias (express, pg, jsonwebtoken...)
 ```
 
-## 🔌 Endpoints de la API (Protegida)
+## 🔌 Endpoints de la API Principal (Protegida)
 
-- `POST /api/auth/sync`: Sincroniza la sesión de Supabase con el backend local (reemplaza `/login` y `/register`).
-- `GET /api/leaderboard`: Devuelve el top de jugadores globales.
-- `POST /api/partidas`: Guarda el puntaje. **(Requiere header `Authorization: Bearer <token>`)**
-- `GET /api/admin/*` & `PUT /api/admin/*`: Rutas exclusivas del Panel de Administración. Protegidas con token JWT y validación de rol `admin` en el backend.
+- `POST /api/auth/sync`: Sincroniza la sesión de Supabase con el backend local.
+- `GET /api/leaderboard`: Devuelve el ranking global.
+- `POST /api/partidas`: Registra el puntaje tras finalizar un juego. **(Requiere header `Authorization: Bearer <token>`)**
+- `GET /api/admin/*` & `PUT /api/admin/*`: Rutas exclusivas del Panel de Administración.
 
 ---
 
-<p align="center">Desarrollado en equipo para aprender y jugar.</p>
+<p align="center">Desarrollado en equipo para aprender, jugar y explorar los límites de Vanilla JS.</p>

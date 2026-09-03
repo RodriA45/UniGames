@@ -748,9 +748,9 @@ const Engine2D = (function () {
     const dh = targetH;
     const dw = dh * (sw / sh);
     ctx.save();
-    ctx.translate(x, y);
+    ctx.translate(Math.trunc(x), Math.trunc(y));
     if (flip) ctx.scale(-1, 1);
-    ctx.drawImage(img, sx, sy, sw, sh, -dw / 2, -dh, dw, dh);
+    ctx.drawImage(img, sx, sy, sw, sh, Math.trunc(-dw / 2), Math.trunc(-dh), Math.trunc(dw), Math.trunc(dh));
     ctx.restore();
   }
 
@@ -763,12 +763,12 @@ const Engine2D = (function () {
     const dh = targetH;
     const dw = dh * (f.w / f.h);
     ctx.save();
-    ctx.translate(x, y);
+    ctx.translate(Math.trunc(x), Math.trunc(y));
     if (flip) ctx.scale(-1, 1);
     if (centered) {
-      ctx.drawImage(img, f.x, f.y, f.w, f.h, -dw / 2, -dh / 2, dw, dh);
+      ctx.drawImage(img, f.x, f.y, f.w, f.h, Math.trunc(-dw / 2), Math.trunc(-dh / 2), Math.trunc(dw), Math.trunc(dh));
     } else {
-      ctx.drawImage(img, f.x, f.y, f.w, f.h, -dw / 2, -dh, dw, dh);
+      ctx.drawImage(img, f.x, f.y, f.w, f.h, Math.trunc(-dw / 2), Math.trunc(-dh), Math.trunc(dw), Math.trunc(dh));
     }
     ctx.restore();
   }
