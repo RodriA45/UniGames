@@ -157,7 +157,7 @@ router.get('/ahorcado/palabra', async (req, res) => {
         let params = [];
 
         if (tematica === 'normal') {
-            sql += ` WHERE tematica_id IS NULL`;
+            // 'normal' pick any word from any theme
         } else if (tematica !== undefined && /^\d+$/.test(tematica)) {
             sql += ` WHERE tematica_id = ?`;
             params.push(Number(tematica));
