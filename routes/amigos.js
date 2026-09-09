@@ -84,8 +84,8 @@ router.post('/amigos/solicitudes', verificarToken, async (req, res) => {
             return res.status(400).json({ error: 'Alcanzaste el límite de amigos' });
         }
 
-        const result = await db.run(
-            `INSERT INTO amistades (usuario1_id, usuario2_id, estado) VALUES () RETURNING id`,
+        const result = await db.query(
+            `INSERT INTO amistades (usuario1_id, usuario2_id, estado) VALUES (?, ?, 'pendiente') RETURNING id`,
             [req.user.id, receptorId]
         );
 
@@ -93,7 +93,7 @@ router.post('/amigos/solicitudes', verificarToken, async (req, res) => {
         // de notificaciones (menú lateral derecho > Notificaciones).
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'amistad', ?, NULL) RETURNING id`,
                 [receptorId, `${req.user.username} te envió una solicitud de amistad`]
             );
         } catch (notifError) {

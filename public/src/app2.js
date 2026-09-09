@@ -1555,6 +1555,50 @@ function togglePerfilIconPicker() {
   if (picker) picker.classList.toggle('hidden');
 }
 
+function iniciarEdicionUsuario(currentName) {
+  document.getElementById('profileNameContainer').style.display = 'none';
+  const editContainer = document.getElementById('profileNameEditContainer');
+  editContainer.classList.remove('hidden');
+  const input = document.getElementById('profileNameInput');
+  input.value = currentName;
+  input.focus();
+}
+
+function cancelarEdicionUsuario() {
+  document.getElementById('profileNameContainer').style.display = 'flex';
+  document.getElementById('profileNameEditContainer').classList.add('hidden');
+}
+
+window.guardarNuevoUsuario = async function guardarNuevoUsuario() {
+  const input = document.getElementById('profileNameInput');
+  const newName = input.value.trim();
+  if (!newName) return cancelarEdicionUsuario();
+  
+  if (newName === currentUser?.username) return cancelarEdicionUsuario();
+  
+  try {
+    const res = await apiFetch('/api/perfil/username', {
+      method: 'PATCH',
+      body: JSON.stringify({ username: newName })
+    });
+    if (res.error) throw new Error(res.error);
+    
+    if (res.token) {
+      localStorage.setItem('unigames_token', res.token);
+      if (currentUser) {
+        currentUser.username = res.username;
+        localStorage.setItem('unigames_user', JSON.stringify(currentUser));
+        const headerName = document.querySelector('.header-username');
+        if (headerName) headerName.textContent = res.username;
+      }
+    }
+    abrirPerfilPropio(); // reload profile
+  } catch (err) {
+    alert(err.message);
+    input.focus();
+  }
+}
+
 // PATCH /api/perfil { icono }
 async function elegirPerfilIcono(icono) {
   try {
@@ -1648,7 +1692,17 @@ function renderPerfil() {
       </div>
       <div class="profile-header-main">
         <div class="profile-header-info">
-          <div class="profile-name">${sanitizeHTML(u.username)}</div>
+          <div class="profile-name-container" id="profileNameContainer" style="display:flex;align-items:center;gap:8px;">
+            <div class="profile-name" id="profileNameText">${sanitizeHTML(u.username)}</div>
+            ${esPropio ? `<button class="profile-name-edit-btn" onclick="iniciarEdicionUsuario('${sanitizeHTML(u.username)}')" title="Cambiar nombre" style="background:none;border:none;color:#94A3B8;cursor:pointer;padding:4px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"></path></svg></button>` : ''}
+          </div>
+          ${esPropio ? `
+          <div class="profile-name-edit-container hidden" id="profileNameEditContainer" style="display:flex;align-items:center;gap:4px;">
+            <input type="text" id="profileNameInput" class="auth-input" style="width:150px;padding:4px 8px;margin:0;font-family:'Press Start 2P', monospace;font-size:clamp(11px, 2vw, 15px);" maxlength="20">
+            <button class="btn-play" style="padding:4px 8px;font-size:12px;margin:0;" onclick="guardarNuevoUsuario()">✔️</button>
+            <button class="btn-back" style="padding:4px 8px;font-size:12px;margin:0;" onclick="cancelarEdicionUsuario()">❌</button>
+          </div>
+          ` : ''}
           <div class="profile-name-tag">${esPropio ? 'Tu perfil' : 'Perfil de otro usuario'}</div>
         </div>
         <div class="profile-header-stat">
@@ -3509,6 +3563,7 @@ function startPregTimer() {
 }
 
 function answerPreguntados(chosen, correct) {
+  correct = correct ? correct.toUpperCase() : correct;
   clearInterval(pregState.timer);
   const isCorrect = chosen === correct;
   if (isCorrect) pregState.score++;
@@ -3522,6 +3577,7 @@ function answerPreguntados(chosen, correct) {
 }
 
 function flashPregAnswer(chosen, correct) {
+  correct = correct ? correct.toUpperCase() : correct;
   document.querySelectorAll('.preg-opt').forEach(btn => {
     const o = btn.dataset.opt;
     btn.disabled = true;
@@ -3599,7 +3655,7 @@ async function initSopa(tematicaId, duracionSegundosDuelo) {
     palabras = SOPA_WORDS[tematicaId] || SOPA_WORDS[1];
   }
 
-  const candidatos = palabras.map(w => w.toUpperCase()).filter(w => w.length <= maxLargo);
+  const candidatos = [...new Set(palabras.map(w => w.toUpperCase()).filter(w => w.length <= maxLargo))];
   // Mezclar y tomar hasta 8 palabras
   const shuffled = [...candidatos].sort(() => Math.random() - 0.5).slice(0, 8);
 

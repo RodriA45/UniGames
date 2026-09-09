@@ -30,7 +30,7 @@ router.get('/leaderboard', async (req, res) => {
         }
 
         sql += `
-            GROUP BY p.usuario_id, p.juego_id
+            GROUP BY p.usuario_id, u.nombre_usuario, p.juego_id, j.id, j.nombre
             ORDER BY puntos DESC
             LIMIT 10
         `;
@@ -105,7 +105,7 @@ async function notificarSiSuperaRecordAjeno(db, usuario_id, juego_id, puntos, no
         const nombreJuego = juego ? juego.nombre : 'un juego';
 
         await db.run(
-            `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
+            `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'record', ?, NULL) RETURNING id`,
             [anteriorRecord.usuario_id, `${nombreJugador} superó tu récord en ${nombreJuego} con ${puntos} puntos`]
         );
     } catch (notifError) {
@@ -135,8 +135,8 @@ router.post('/partidas', verificarToken, validate(partidaSchema), async (req, re
             await notificarSiSuperaRecordAjeno(db, usuario_id, juego_id, puntos, req.user.username);
             return res.status(200).json({ message: 'Nuevo record guardado', id: existing.id, puntos });
         } else {
-            const result = await db.run(
-                `INSERT INTO partidas (usuario_id, juego_id, tematica_id, puntos) VALUES () RETURNING id`,
+            const result = await db.query(
+                `INSERT INTO partidas (usuario_id, juego_id, tematica_id, puntos) VALUES (?, ?, ?, ?) RETURNING id`,
                 [usuario_id, juego_id, tematica_id || null, puntos]
             );
             await notificarSiSuperaRecordAjeno(db, usuario_id, juego_id, puntos, req.user.username);

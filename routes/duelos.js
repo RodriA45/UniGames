@@ -186,14 +186,14 @@ router.post('/duelos', verificarToken, async (req, res) => {
         const abierto = await existeDueloAbierto(db, juegoId, req.user.id, amigoId);
         if (abierto) return res.status(400).json({ error: 'Ya tenés un duelo pendiente con este amigo en ese juego' });
 
-        const result = await db.run(
-            `INSERT INTO duelos (retador_id, retado_id, juego_id, estado, tematica_id, duracion_segundos) VALUES () RETURNING id`,
+        const result = await db.query(
+            `INSERT INTO duelos (retador_id, retado_id, juego_id, estado, tematica_id, duracion_segundos) VALUES (?, ?, ?, 'pendiente', ?, ?) RETURNING id`,
             [req.user.id, amigoId, juegoId, tematicaId, duracionSegundos]
         );
 
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, NULL) RETURNING id`,
                 [amigoId, `${req.user.username} te retó a un duelo de ${JUEGOS_DUELO[juego].nombre}`]
             );
         } catch (notifError) {
@@ -220,7 +220,7 @@ router.post('/duelos/:id/aceptar', verificarToken, async (req, res) => {
 
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, NULL) RETURNING id`,
                 [duelo.retador_id, `${req.user.username} aceptó tu duelo`]
             );
         } catch (notifError) {
@@ -300,7 +300,7 @@ router.post('/duelos/:id/resultado', verificarToken, async (req, res) => {
                 else if (ganadorId === otroId) mensaje = `Ganaste el duelo contra ${req.user.username}`;
                 else mensaje = `${req.user.username} te ganó el duelo`;
                 await db.run(
-                    `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
+                    `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, NULL) RETURNING id`,
                     [otroId, mensaje]
                 );
             } catch (notifError) {
@@ -334,14 +334,14 @@ router.post('/duelos/:id/revancha', verificarToken, async (req, res) => {
         const abierto = await existeDueloAbierto(db, duelo.juego_id, req.user.id, oponenteId);
         if (abierto) return res.status(400).json({ error: 'Ya tenés un duelo pendiente con este amigo en ese juego' });
 
-        const result = await db.run(
-            `INSERT INTO duelos (retador_id, retado_id, juego_id, estado, tematica_id, duracion_segundos) VALUES () RETURNING id`,
+        const result = await db.query(
+            `INSERT INTO duelos (retador_id, retado_id, juego_id, estado, tematica_id, duracion_segundos) VALUES (?, ?, ?, 'pendiente', ?, ?) RETURNING id`,
             [req.user.id, oponenteId, duelo.juego_id, duelo.tematica_id, duelo.duracion_segundos]
         );
 
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES () RETURNING id`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, NULL) RETURNING id`,
                 [oponenteId, `${req.user.username} te retó a la revancha`]
             );
         } catch (notifError) {

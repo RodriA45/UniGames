@@ -105,6 +105,45 @@ router.patch('/perfil', verificarToken, async (req, res) => {
     }
 });
 
+// 2.b Editar nombre de usuario
+router.patch('/perfil/username', verificarToken, async (req, res) => {
+    const { username } = req.body;
+    if (!username || typeof username !== 'string') {
+        return res.status(400).json({ error: 'Falta el nombre de usuario' });
+    }
+    const newUsername = username.trim();
+    if (newUsername.length < 3 || newUsername.length > 20) {
+        return res.status(400).json({ error: 'El nombre debe tener entre 3 y 20 caracteres' });
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
+        return res.status(400).json({ error: 'Solo se permiten letras, números y guiones bajos' });
+    }
+
+    const db = await getDb();
+    try {
+        // Verificar si el nombre ya está en uso por OTRO usuario
+        const existing = await db.get(`SELECT id FROM usuarios WHERE LOWER(nombre_usuario) = LOWER(?) AND id != ?`, [newUsername, req.user.id]);
+        if (existing) {
+            return res.status(400).json({ error: 'Ese nombre de usuario ya está en uso' });
+        }
+
+        // Actualizar
+        await db.query(`UPDATE usuarios SET nombre_usuario = ? WHERE id = ?`, [newUsername, req.user.id]);
+
+        // Generar nuevo JWT
+        const localJwt = jwt.sign({
+            id: req.user.id,
+            username: newUsername,
+            rol: req.user.rol
+        }, JWT_SECRET, { expiresIn: '7d' });
+
+        res.json({ message: 'Nombre de usuario actualizado', token: localJwt, username: newUsername });
+    } catch (error) {
+        console.error('Error en PATCH /api/perfil/username:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
 // 3. Perfil de otro usuario (lectura pública: no hace falta estar logueado
 // para ver puntuaciones/perfiles de otras cuentas, solo para agregarlas
 // como amigo). Si hay sesión, además devuelve el estado de amistad.

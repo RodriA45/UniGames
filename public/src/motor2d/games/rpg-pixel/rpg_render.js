@@ -230,7 +230,63 @@ function rpgDraw() {
     }
   });
 
+  // --- INDICADORES DE HABITACIÓN LIMPIA ---
+  if (RPG.roomCleared && !RPG.transitioning) {
+    const bounce = Math.sin(performance.now() / 150) * 5;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.fillStyle = '#fde68a';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+
+    if (chest && !chest.opened) {
+      // Indicador sobre el cofre
+      const textY = chest.y - RPG_CHEST_DRAW_H - 25 + bounce;
+      ctx.strokeText('¡ABRE EL COFRE!', chest.x, textY);
+      ctx.fillText('¡ABRE EL COFRE!', chest.x, textY);
+      
+      // Pequeña flecha apuntando hacia abajo
+      ctx.beginPath();
+      ctx.moveTo(chest.x - 5, textY + 5);
+      ctx.lineTo(chest.x + 5, textY + 5);
+      ctx.lineTo(chest.x, textY + 12);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
   ctx.restore(); // cierra el scale(roomZoom) + translate(-camera.x, -camera.y) de arriba
+
+  // --- INDICADOR 'AVANZAR' EN ESPACIO DE PANTALLA ---
+  if (RPG.roomCleared && (!chest || chest.opened) && !RPG.transitioning) {
+    const bounce = Math.sin(performance.now() / 150) * 5;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillStyle = '#fde68a';
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+
+    // Indicador en la puerta derecha (borde derecho de la pantalla)
+    const cx = ctx.canvas.width - 50 + bounce;
+    const cy = ctx.canvas.height / 2;
+    ctx.strokeText('AVANZAR', cx, cy);
+    ctx.fillText('AVANZAR', cx, cy);
+    
+    // Flecha apuntando a la derecha
+    ctx.beginPath();
+    ctx.moveTo(cx + 35, cy - 10);
+    ctx.lineTo(cx + 45, cy - 4);
+    ctx.lineTo(cx + 35, cy + 2);
+    ctx.closePath();
+    ctx.stroke();
+    ctx.fill();
+    
+    ctx.restore();
+  }
 
   // (La recompensa de cofre ahora se muestra en el cartel HTML — ver
   // rpgShowChestRewardPanel — así que ya no hay nada que dibujar acá.)

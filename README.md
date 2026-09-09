@@ -30,6 +30,8 @@
 ### 🛡️ Características Principales
 - **Autenticación con Supabase Auth:** Integración nativa con Supabase para inicio de sesión seguro, registro, recuperación de contraseña y **Google OAuth**.
 - **Roles y Usuarios:** Sistema de avatares pixel-art y roles de usuario (`user`, `admin`). Sincronización automática entre Supabase y la base de datos local de PostgreSQL (`/api/auth/sync`).
+- **Sistema de Amigos y Duelos:** Busca y agrega a otros jugadores mediante su nombre de usuario, inspecciona sus logros en su perfil público y rétalos a **duelos 1v1** en minijuegos seleccionados (con soporte para temáticas y límite de tiempo).
+- **Perfiles Personalizables:** Edición de perfil dinámica desde la interfaz. Cambia tu nombre de usuario y tu avatar pixel-art en tiempo real sin recargar la página.
 - **Motor 2D Nativo (`engine2d.js`):** Desarrollado desde cero en Vanilla JS utilizando HTML5 Canvas con manejo avanzado de *requestAnimationFrame*, colisiones, sistema de partículas y cámara.
 - **Panel de Administración:** Panel exclusivo que permite:
   - Ver estadísticas en tiempo real.
