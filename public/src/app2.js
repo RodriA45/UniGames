@@ -130,7 +130,6 @@ function setGlobalMusicVolume(v) {
 }
 function setGlobalSfxVolume(v) {
   sfxVolume = Math.min(1, Math.max(0, v));
-  deathSound.volume = sfxVolume;
   localStorage.setItem('sfxVolume', sfxVolume);
 }
 function getGlobalMusicVolume() { return musicVolume; }
@@ -139,9 +138,7 @@ function getGlobalSfxVolume() { return sfxVolume; }
 const bgMusic = new Audio('assert/menu.mp3');
 bgMusic.loop = true;
 bgMusic.volume = musicVolume;
-
-const deathSound = new Audio('sounds/muerte.mp3');
-deathSound.volume = sfxVolume;
+bgMusic.preload = 'none'; // no bajar el audio hasta el primer play() real (gesto del usuario)
 
 const gameMusicMap = {
   runner: 'pixel-runner.mp3',
@@ -244,13 +241,6 @@ function mutePageMusic() {
 function unmutepageMusic() {
   pageMusicMuted = false;
   attemptPlayMusic();
-}
-
-function playDeathSound() {
-  if (globalAudioEnabled) {
-    deathSound.currentTime = 0;
-    deathSound.play().catch(e => console.log("Audio play prevented:", e));
-  }
 }
 
 // ─── Datos de juegos ───────────────────
@@ -1550,11 +1540,6 @@ function getPuntajesMaximosMock(seedBase) {
   return map;
 }
 
-function togglePerfilIconPicker() {
-  const picker = document.getElementById('perfilIconPicker');
-  if (picker) picker.classList.toggle('hidden');
-}
-
 function iniciarEdicionUsuario(currentName) {
   document.getElementById('profileNameContainer').style.display = 'none';
   const editContainer = document.getElementById('profileNameEditContainer');
@@ -1597,6 +1582,11 @@ window.guardarNuevoUsuario = async function guardarNuevoUsuario() {
     alert(err.message);
     input.focus();
   }
+}
+
+function togglePerfilIconPicker() {
+  const picker = document.getElementById('perfilIconPicker');
+  if (picker) picker.classList.toggle('hidden');
 }
 
 // PATCH /api/perfil { icono }
@@ -1832,6 +1822,62 @@ function restoreOriginalSection(id) {
 }
 
 // ─── Navegación entre secciones ────────
+// ─── Carga diferida de Pixel Runner / Castle Escape ───
+// Antes runner_main.js y castle_main.js se cargaban siempre desde
+// index.html, jueguen o no. Ahora se importan recién la primera vez que
+// el usuario entra a esa sección — el resto de las visitas no paga ese
+// código. Cada ensure*Loaded() cachea la promesa para no reimportar en
+// entradas siguientes a la misma sección.
+let runnerModuleLoading = null;
+function ensureRunnerLoaded() {
+  if (!runnerModuleLoading) {
+    runnerModuleLoading = import('./motor2d/games/pixel-runner/runner_main.js');
+  }
+  return runnerModuleLoading;
+}
+
+let castleModuleLoading = null;
+function ensureCastleLoaded() {
+  if (!castleModuleLoading) {
+    // castle_config.js lee CASTLE_ESCAPE_CUSTOM_LEVELS ni bien se evalúa el
+    // módulo, así que ese script clásico tiene que estar cargado ANTES de
+    // importar castle_main.js (por eso va encadenado, no en paralelo).
+    castleModuleLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'src/motor2d/games/castle-escape/castle_escape_levels.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.body.appendChild(s);
+    }).then(() => import('./motor2d/games/castle-escape/castle_main.js'));
+  }
+  return castleModuleLoading;
+}
+
+let rpgModuleLoading = null;
+function ensureRpgLoaded() {
+  if (!rpgModuleLoading) {
+    rpgModuleLoading = import('./motor2d/games/rpg-pixel/rpg_main.js');
+  }
+  return rpgModuleLoading;
+}
+
+// Chart.js (200KB) solo lo usa el dashboard del panel de admin — nadie
+// más lo necesita, así que se baja recién al abrir esa pestaña en vez de
+// venir siempre desde index.html.
+let chartJsLoading = null;
+function ensureChartJsLoaded() {
+  if (!chartJsLoading) {
+    chartJsLoading = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.body.appendChild(s);
+    });
+  }
+  return chartJsLoading;
+}
+
 function goTo(section) {
   // Stop all 2D engine loops to prevent background lag when switching games
   if (typeof stopRunner === 'function') stopRunner();
@@ -1872,8 +1918,16 @@ if (section === 'runner' || section === 'castle_escape' || section === 'rpg_pixe
     // después (showRunnerMenu / initTrampas / rpgInit) queda bloqueado hasta
     // que el usuario mutea y desmutea manualmente.
     unmutepageMusic();
-    if (section === 'castle_escape' && typeof initTrampas === 'function') initTrampas();
-    if (section === 'rpg_pixel' && typeof rpgInit === 'function') rpgInit();
+    if (section === 'castle_escape') {
+      ensureCastleLoaded().then(() => {
+        if (typeof initTrampas === 'function') initTrampas();
+      });
+    }
+    if (section === 'rpg_pixel') {
+      ensureRpgLoaded().then(() => {
+        if (typeof rpgInit === 'function') rpgInit();
+      });
+    }
   } else {
     // Cualquier otra sección usa la música ambiente del sitio: la reactivamos
     unmutepageMusic();
@@ -1987,9 +2041,11 @@ function iniciarRunnerDuelo(dueloId) {
   if (menu) menu.style.display = 'none';
   mostrarToast('¡Arrancó el duelo! Modo Infinito.');
   runnerSyncFullscreenBtn();
-  if (typeof startPixelRunnerGame === 'function') {
-    startPixelRunnerGame('infinito');
-  }
+  ensureRunnerLoaded().then(() => {
+    if (typeof startPixelRunnerGame === 'function') {
+      startPixelRunnerGame('infinito');
+    }
+  });
 }
 
 function elegirModoRunner(mode) {
@@ -2294,7 +2350,7 @@ function launchGame(gameKey, btn) {
     // visita anterior sin terminar, lo soltamos para no reportar mal un
     // puntaje de una partida libre como si fuera de duelo.
     if (dueloActivo && dueloActivo.juego === 'runner') dueloActivo = null;
-    showRunnerMenu();
+    ensureRunnerLoaded().then(() => showRunnerMenu());
     return;
   }
 
@@ -2583,7 +2639,6 @@ function guessLetter(letter) {
       ahorcadoState.revealed = word.split('');
       statusEl.textContent = '💀 ¡Perdiste! La palabra era: ' + word.toUpperCase();
       statusEl.className = 'ahorcado-status lose';
-      if (typeof playDeathSound === 'function') playDeathSound();
       if (!enDuelo) {
         guardarPuntaje(4, 50, tId); // 50 puntos consuelo
         registrarProgresoJuego('ahorcado', { ahorcado_racha: false, ahorcado_partidas: 1 });
@@ -5072,6 +5127,7 @@ window.loadAdminDashboard = async function() {
         top5.innerHTML = stats.top5.map((u, i) => `<li>${i+1}. <b>${u.jugador}</b> - ${u.puntosTotales} pts</li>`).join('');
         
         // Chart.js
+        await ensureChartJsLoaded();
         const ctx = document.getElementById('gamesChart').getContext('2d');
         if (window.adminChart) window.adminChart.destroy();
         

@@ -1,4 +1,12 @@
-function rpgStartDialogue(lines, onDone) {
+import { RPG_CHEST_EXTRA_CHANCE, RPG_CHEST_FRAME_MS, RPG_CHEST_INTERACT_DIST, RPG_CHEST_REWARD_COUNT, RPG_DMG_UPGRADE_STEP, RPG_DOOR_ZONE_W, RPG_EL, RPG_JOYSTICK_DEADZONE, RPG_LOGICAL_H, RPG_LOGICAL_W, RPG_PLAYER_MAX_AMMO, RPG_PLAYER_MUZZLE_Y_OFF, RPG_PLAYER_RELOAD_MS, RPG_POWERUP_ICONS, RPG_POWERUP_SHEET } from './rpg_config.js';
+import { rpgBuildUpgradesSummaryHtml, rpgCompleteChapter, rpgEnemyHit, rpgGameOver, rpgOverlap, rpgUpdateBoss, rpgUpdateEnemyProjectiles, rpgUpdateGhost, rpgUpdateHudAmmo, rpgUpdateHudBars, rpgUpdateHudTimer, rpgUpdateRangedChase, rpgUpdateSimpleChase } from './rpg_enemies_ai.js';
+import { RPG, RPG_ENEMY_TYPES, RPG_POWERUP_DEFS, rpgFloorBounds, rpgRollPowerup, rpgRoomCfg } from './rpg_enemies_data.js';
+import { rpgStartRoom, rpgStopLoop } from './rpg_menu_flow.js';
+import { RPG_META } from './rpg_meta.js';
+import { rpgDraw } from './rpg_render.js';
+import { rpgAbandonRunIfActive, rpgOnMusicVolumeChange, rpgOnSfxVolumeChange, rpgPollTouchActions, rpgRenderAjustes, rpgShowMenu, rpgToggleFullscreen } from './rpg_save_ui.js';
+
+export function rpgStartDialogue(lines, onDone) {
   rpgStopLoop();
   if (typeof Engine2D === 'undefined' || !Engine2D.DialogueBox) {
     // Motor de diálogo no disponible por algún motivo — no bloqueamos el juego.
@@ -23,8 +31,8 @@ function rpgStartDialogue(lines, onDone) {
   RPG.raf = requestAnimationFrame(rpgDialogueLoop);
 }
 
-let rpgDialogueLastTs = 0;
-function rpgDialogueLoop(ts) {
+export let rpgDialogueLastTs = 0;
+export function rpgDialogueLoop(ts) {
   if (!RPG.inDialogue) return;
   const dt = rpgDialogueLastTs ? Math.min(ts - rpgDialogueLastTs, 50) : 16;
   rpgDialogueLastTs = ts;
@@ -62,12 +70,12 @@ function rpgDialogueLoop(ts) {
 // Avanza el diálogo (completa la línea si se está tipeando, o pasa a la
 // siguiente). Se llama desde rpgInteract(), cableado a X / Enter y al
 // botón táctil 💬.
-function rpgAdvanceDialogue() {
+export function rpgAdvanceDialogue() {
   if (RPG.dialogue) RPG.dialogue.advance();
 }
 
 // ─── Overlay genérico (empezar / pausa / resultado) ─────
-function rpgSetOverlay(title, sub, buttonsHtml) {
+export function rpgSetOverlay(title, sub, buttonsHtml) {
   RPG_EL.overlayTitle.textContent = title;
   RPG_EL.overlaySub.textContent = sub;
   RPG_EL.overlayButtons.innerHTML = buttonsHtml;
@@ -79,14 +87,14 @@ function rpgSetOverlay(title, sub, buttonsHtml) {
 // actual (ver rpgBuildUpgradesSummaryHtml). Reutiliza el overlay genérico
 // pero arma el contenido a mano porque rpgSetOverlay solo maneja texto
 // plano en la sub, no un layout de dos columnas.
-function rpgPauseGame() {
+export function rpgPauseGame() {
   if (!RPG.running) return;
   rpgStopLoop();
   rpgRenderPauseOverlay();
   RPG_EL.overlay.classList.remove('hidden');
 }
 
-function rpgRenderPauseOverlay() {
+export function rpgRenderPauseOverlay() {
   RPG_EL.overlayTitle.textContent = '⏸ Pausa';
   RPG_EL.overlaySub.innerHTML =
     '<div class="rpg-pause-layout">' +
@@ -107,7 +115,7 @@ function rpgRenderPauseOverlay() {
 // era un placeholder ("Próximamente") que nunca se actualizó cuando se
 // armaron los ajustes de verdad — quedaba vacío. Volver reconstruye el
 // cartel normal de pausa.
-function rpgShowPauseSettings() {
+export function rpgShowPauseSettings() {
   RPG_EL.overlayTitle.textContent = '⚙ Ajustes';
   RPG_EL.overlaySub.innerHTML =
     '<div class="trampas-settings-content rpg-ajustes-content">' +
@@ -137,19 +145,19 @@ function rpgShowPauseSettings() {
 
 // Salir al menú "a mano" estando dentro de una habitación (desde la
 // pausa): cuenta como abandonar el intento, igual que perder.
-function rpgQuitToMenuFromRoom() {
+export function rpgQuitToMenuFromRoom() {
   rpgAbandonRunIfActive();
   rpgShowMenu();
 }
 
-function rpgResumeGame() {
+export function rpgResumeGame() {
   RPG_EL.overlay.classList.add('hidden');
   RPG.running = true;
   RPG.raf = requestAnimationFrame(rpgLoop);
 }
 
 // ─── Entradas: teclado ─────
-function setupRpgEvents() {
+export function setupRpgEvents() {
   if (RPG.keyHandlerDown) document.removeEventListener('keydown', RPG.keyHandlerDown);
   if (RPG.keyHandlerUp)   document.removeEventListener('keyup', RPG.keyHandlerUp);
 
@@ -165,6 +173,22 @@ function setupRpgEvents() {
     if (e.code === 'Space') rpgFire();
     if (e.code === 'KeyX' || e.code === 'Enter' || e.code === 'NumpadEnter') rpgInteract();
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') RPG.keys.block = true;
+
+    // ── DEV/TESTING TEMPORAL: tecla P = matar a todos los enemigos vivos
+    // de la sala actual, para llegar rápido a salas/capítulos más
+    // adelantados sin jugar todo el combate cada vez. Pasa por
+    // rpgEnemyHit (no toca e.alive a mano), así respeta todo el flujo real
+    // — animación de muerte, disparo de la oleada siguiente si la sala
+    // tiene `waves`, cofre de recompensa, cinemática de jefe si
+    // corresponde, etc. Si la sala tiene 2 oleadas, con 1 sola tecla P
+    // solo se limpia la que está en pantalla en ese momento (la oleada 2
+    // recién aparece después) — apretar P de nuevo la limpia a ella
+    // también.
+    // TODO: sacar este bloque (y el 'if' de arriba) cuando ya no haga
+    // falta para testear.
+    if (e.code === 'KeyP' && RPG.running) {
+      RPG.enemies.filter(en => en.alive).forEach(en => rpgEnemyHit(en, en.hp || 9999));
+    }
   };
   RPG.keyHandlerUp = function(e) {
     if (e.code === 'ArrowUp' || e.code === 'KeyW')    RPG.keys.up = false;
@@ -185,7 +209,7 @@ function setupRpgEvents() {
 // a arriba/abajo cuando se combinan (ej: mantener Arriba y tocar Izquierda
 // muestra el sprite de izquierda, no el de arriba). Si no queda ninguna
 // tecla de movimiento apretada, se mantiene la última dirección mostrada.
-function rpgUpdateFacing() {
+export function rpgUpdateFacing() {
   if (RPG.keys.left) { RPG.facing = 'left'; return; }
   if (RPG.keys.right) { RPG.facing = 'right'; return; }
   if (RPG.keys.up) { RPG.facing = 'up'; return; }
@@ -193,12 +217,12 @@ function rpgUpdateFacing() {
 }
 
 // ─── Entradas: controles táctiles (llamados desde index.html) ─────
-function rpgMove(dir, on) {
+export function rpgMove(dir, on) {
   RPG.keys[dir] = on;
   rpgUpdateFacing();
 }
 
-function rpgBlock(on) {
+export function rpgBlock(on) {
   if (RPG.inDialogue) return; // no bloquear mientras hay una cinemática activa
   const p = RPG.player;
   // Mientras el bloqueo está en cooldown (después de absorber un golpe)
@@ -207,7 +231,7 @@ function rpgBlock(on) {
   p.blocking = on;
 }
 
-function rpgFire() {
+export function rpgFire() {
   // Espacio también avanza el diálogo (por si el jugador viene de la
   // costumbre de "disparar para pasar" de antes de separar los botones) —
   // el input canónico para avanzar sigue siendo Interactuar (X/Enter/💬).
@@ -253,7 +277,7 @@ function rpgFire() {
 // solo avanza el diálogo (completa la línea si se está tipeando, o pasa a
 // la siguiente) — es el lugar donde en el futuro se puede colgar hablar
 // con NPCs, abrir cofres, etc. sin pisar el disparo.
-function rpgInteract() {
+export function rpgInteract() {
   if (RPG.inDialogue) { rpgAdvanceDialogue(); return; }
   if (!RPG.running) return;
   const c = RPG.chest;
@@ -271,7 +295,7 @@ function rpgInteract() {
 // pesos de rpgBuildChestWeights). Se aplican todos los efectos al instante
 // (ver RPG_POWERUP_DEFS) y recién después se muestra el cartel con lo
 // que salió — ver rpgShowChestRewardPanel.
-function rpgApplyPowerup(chestType) {
+export function rpgApplyPowerup(chestType) {
   const items = [];
   for (let i = 0; i < RPG_CHEST_REWARD_COUNT; i++) {
     const key = rpgRollPowerup(chestType);
@@ -299,7 +323,7 @@ function rpgApplyPowerup(chestType) {
 // devuelve un data URL — permite meter el ícono real del power-up dentro
 // de un <img> del cartel HTML sin tener que armar background-position a
 // mano por cada ítem (mismo recorte que usa rpgDrawIconRect para canvas).
-function rpgIconToDataUrl(img, rect, targetH) {
+export function rpgIconToDataUrl(img, rect, targetH) {
   const dw = Math.max(1, Math.round(targetH * (rect.w / rect.h)));
   const c = document.createElement('canvas');
   c.width = dw;
@@ -315,7 +339,7 @@ function rpgIconToDataUrl(img, rect, targetH) {
 // overlay genérico (#rpgOverlay) para mostrar los RPG_CHEST_REWARD_COUNT
 // ítems que salieron, cada uno con su ícono real y una línea de qué hace.
 // Se retoma recién al tocar "Recoger".
-function rpgShowChestRewardPanel(chestType, items) {
+export function rpgShowChestRewardPanel(chestType, items) {
   rpgStopLoop();
   const img = RPG.images[RPG_POWERUP_SHEET];
   const rowsHtml = items.map(function (it) {
@@ -336,7 +360,7 @@ function rpgShowChestRewardPanel(chestType, items) {
   RPG_EL.overlay.classList.remove('hidden');
 }
 
-function rpgCollectChestReward() {
+export function rpgCollectChestReward() {
   RPG_EL.overlay.classList.add('hidden');
   if (RPG.chestIsBossReward) {
     RPG.chestIsBossReward = false;
@@ -347,7 +371,7 @@ function rpgCollectChestReward() {
   RPG.raf = requestAnimationFrame(rpgLoop);
 }
 
-const RPG_DIR_VECTOR = {
+export const RPG_DIR_VECTOR = {
   up:    { x: 0, y: -1 },
   down:  { x: 0, y: 1 },
   left:  { x: -1, y: 0 },
@@ -355,8 +379,8 @@ const RPG_DIR_VECTOR = {
 };
 
 // ─── Update ─────
-let rpgLastTs = 0;
-function rpgLoop(ts) {
+export let rpgLastTs = 0;
+export function rpgLoop(ts) {
   if (!RPG.running) return;
   const dt = rpgLastTs ? Math.min(ts - rpgLastTs, 50) : 16;
   rpgLastTs = ts;
@@ -365,11 +389,17 @@ function rpgLoop(ts) {
   RPG.raf = requestAnimationFrame(rpgLoop);
 }
 
-function rpgUpdate(dt) {
+export function rpgUpdate(dt) {
   const C = RPG.canvas;
   const cfg = rpgRoomCfg();
   const p = RPG.player;
   const step = dt / 16.6; // normaliza a "frames" de 60fps para no depender del refresh rate
+
+  // ── Cartel de horda en pantalla (ver rpgSpawnNextWave / rpgDraw) ──
+  if (RPG.banner) {
+    RPG.banner.timer -= dt;
+    if (RPG.banner.timer <= 0) RPG.banner = null;
+  }
 
   // ── Reloj del combate (si la habitación tiene límite de tiempo) ──
   const anyEnemyAlive = RPG.enemies.some(e => e.alive);
@@ -521,7 +551,7 @@ function rpgUpdate(dt) {
     let hitSomeone = false;
     for (let j = 0; j < RPG.enemies.length; j++) {
       const e2 = RPG.enemies[j];
-      if (e2.alive && rpgOverlap(b.x, b.y, b.w, b.h, e2.x, e2.y - 40, 60, 80)) {
+      if (e2.alive && !e2.hidden && rpgOverlap(b.x, b.y, b.w, b.h, e2.x, e2.y - 40, 60, 80)) {
         rpgEnemyHit(e2, (cfg.playerBulletDamage || 5) + RPG.upgrades.dmgBonus + (RPG_META.dmgLevel * RPG_DMG_UPGRADE_STEP));
         // Munición celeste (esfera azul): además del impacto, deja quemando
         // 1 hp/seg durante 5s — se resetea el DOT si ya estaba ardiendo.
@@ -557,7 +587,7 @@ function rpgUpdate(dt) {
     }
     // Quemadura (esfera azul): 1 hp de daño por segundo mientras dure,
     // independiente de la IA normal del enemigo — no interrumpe su ataque.
-    if (e.burnTicksLeft > 0) {
+    if (e.burnTicksLeft > 0 && !e.hidden) {
       e.burnTimer -= dt;
       if (e.burnTimer <= 0) {
         e.burnTimer += 1000;
@@ -577,6 +607,8 @@ function rpgUpdate(dt) {
       rpgUpdateBoss(e, p, cfg, C, dt, step);
     } else if (species && species.behavior === 'ranged') {
       rpgUpdateRangedChase(e, p, species, dt, step);
+    } else if (species && species.behavior === 'ghost') {
+      rpgUpdateGhost(e, p, cfg, C, dt, step);
     } else {
       rpgUpdateSimpleChase(e, p, cfg, C, dt, step);
     }

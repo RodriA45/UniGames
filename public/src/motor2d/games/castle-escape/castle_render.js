@@ -10,17 +10,17 @@ import {
 } from './castle_config.js';
 
 export function trGetMapaAssets() {
-  const img = Engine2D.getImage(TR_ASSET_BASE + 'models/mapa.png');
+  const img = Engine2D.getImage(TR_ASSET_BASE + 'models/mapa.webp');
   const atlas = Engine2D.getAtlas(TR_ASSET_BASE + 'models/mapa_atlas.json');
   return (img && img.complete && atlas) ? { img, atlas } : null;
 }
 export function trGetDecoAssets() {
-  const img = Engine2D.getImage(TR_ASSET_BASE + 'models/deco.png');
+  const img = Engine2D.getImage(TR_ASSET_BASE + 'models/deco.webp');
   const atlas = Engine2D.getAtlas(TR_ASSET_BASE + 'models/deco_atlas.json');
   return (img && img.complete && atlas) ? { img, atlas } : null;
 }
 export function trGetJuniorAssets() {
-  const img = Engine2D.getImage(TR_ASSET_BASE + 'models/junior.png');
+  const img = Engine2D.getImage(TR_ASSET_BASE + 'models/junior.webp');
   const atlas = Engine2D.getAtlas(TR_ASSET_BASE + 'models/junior.atlas.json');
   return (img && img.complete && atlas) ? { img, atlas } : null;
 }

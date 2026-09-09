@@ -41,7 +41,7 @@
   overflow: hidden;
   box-shadow: 0 8px 32px rgba(76, 29, 149, 0.35);
   border: 3px solid #4c1d95;
-  background: #150620 url('models/back.png') center/cover no-repeat;
+  background: #150620 url('models/back.webp') center/cover no-repeat;
   overscroll-behavior: contain;
 }
 
@@ -123,7 +123,7 @@
     overflow-y: auto;
     border-radius: 16px;
     background-color: #150620;
-    background-image: linear-gradient(180deg, rgba(42, 14, 55, 0.85) 0%, rgba(21, 6, 32, 0.92) 100%), url('models/menu.jpg');
+    background-image: linear-gradient(180deg, rgba(42, 14, 55, 0.85) 0%, rgba(21, 6, 32, 0.92) 100%), url('models/menu.webp');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
@@ -136,7 +136,7 @@
   /* Menú principal: sin overlay morado, se ve la imagen limpia */
   #trampasMainMenu {
     background-color: #150620;
-    background-image: url('models/menu.jpg');
+    background-image: url('models/menu.webp');
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;

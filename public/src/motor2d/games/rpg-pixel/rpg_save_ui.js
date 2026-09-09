@@ -1,12 +1,18 @@
-function rpgSlotKey(n) {
+import { rpgAdvanceDialogue, rpgFire, rpgInteract } from './rpg_combat_input.js';
+import { RPG_ASSET_BASE, RPG_EL, RPG_LOGICAL_H, RPG_LOGICAL_W, RPG_SAVE_KEY_PREFIX } from './rpg_config.js';
+import { RPG } from './rpg_enemies_data.js';
+import { rpgShowSlotsView, rpgStopLoop } from './rpg_menu_flow.js';
+import { rpgRenderMejoras } from './rpg_meta.js';
+
+export function rpgSlotKey(n) {
   return RPG_SAVE_KEY_PREFIX + n;
 }
 
-function rpgNewSaveData() {
+export function rpgNewSaveData() {
   return { chapterUnlocked: 1, chaptersCompleted: [], difficulty: 'normal', updatedAt: null };
 }
 
-function rpgLoadSlotData(n) {
+export function rpgLoadSlotData(n) {
   try {
     const raw = localStorage.getItem(rpgSlotKey(n));
     if (!raw) return null;
@@ -23,11 +29,11 @@ function rpgLoadSlotData(n) {
   }
 }
 
-function rpgSaveSlotData(n, data) {
+export function rpgSaveSlotData(n, data) {
   try { localStorage.setItem(rpgSlotKey(n), JSON.stringify(data)); } catch {}
 }
 
-function rpgDeleteSlotData(n) {
+export function rpgDeleteSlotData(n) {
   try { localStorage.removeItem(rpgSlotKey(n)); } catch {}
 }
 
@@ -39,7 +45,7 @@ function rpgDeleteSlotData(n) {
 // guardado en ese slot (capítulos desbloqueados/completados), no solo el
 // intento actual. rpgCompleteChapter ya guardó lo que corresponde antes
 // de volver al menú, así que esa pantalla NUNCA pasa por acá.
-function rpgEraseActiveSlot() {
+export function rpgEraseActiveSlot() {
   if (!RPG.activeSlot) return;
   rpgDeleteSlotData(RPG.activeSlot);
   RPG.save = null;
@@ -51,14 +57,14 @@ function rpgEraseActiveSlot() {
 // oculto). Si está parado en el menú del RPG (eligiendo slot/capítulo,
 // mejoras, ajustes, etc.) no hay ningún intento en curso y no se borra
 // nada.
-function rpgAbandonRunIfActive() {
+export function rpgAbandonRunIfActive() {
   const menuEl = RPG_EL.menu;
   const inRoom = menuEl && menuEl.classList.contains('hidden');
   if (inRoom) rpgEraseActiveSlot();
 }
 
 // ─── Entrada a la sección (llamado desde goTo en app.js) ─────
-function rpgInit() {
+export function rpgInit() {
   RPG.canvas = RPG_EL.canvas;
   RPG.ctx = RPG.canvas.getContext('2d');
   // Look retro nítido: sin esto, drawImage suaviza (bilinear) los sprites
@@ -80,7 +86,7 @@ function rpgInit() {
 // derecha, todo dibujado encima de la escena (ver el final de rpgDraw).
 // En desktop con mouse/trackpad (mismo criterio que el media query de
 // `.rpg-controls` en rpg.css) queda oculto: se juega con teclado.
-function rpgSetupTouchControls() {
+export function rpgSetupTouchControls() {
   if (typeof Engine2D === 'undefined' || !Engine2D.TouchControls) return;
   // rpgInit() se llama cada vez que se re-entra a la sección del juego
   // (ver app.js: goTo('rpg_pixel') → rpgInit()), así que sin esta guarda
@@ -130,7 +136,7 @@ function rpgSetupTouchControls() {
 // Mismo criterio que "@media (min-width: 900px) and (hover: hover) and
 // (pointer: fine)" en rpg.css (ahí se ocultaba la fila de botones HTML;
 // acá se oculta/deja de dibujar el joystick+botones del canvas).
-function rpgSyncTouchVisibility() {
+export function rpgSyncTouchVisibility() {
   if (!RPG.touch) return;
   const isDesktopPointer = window.matchMedia
     && window.matchMedia('(min-width: 900px) and (hover: hover) and (pointer: fine)').matches;
@@ -140,7 +146,7 @@ function rpgSyncTouchVisibility() {
 // Se llama una vez por frame desde rpgUpdate: traduce el estado de los
 // botones táctiles a las mismas funciones que ya usan teclado/HTML
 // (rpgFire/rpgBlock/rpgInteract), sin duplicar lógica de juego.
-function rpgPollTouchActions() {
+export function rpgPollTouchActions() {
   const st = RPG.touch.state;
   // Disparar: mantener apretado dispara en ráfaga (gatillado por el
   // propio cooldown de rpgFire, igual que mantener Espacio en teclado).
@@ -155,7 +161,7 @@ function rpgPollTouchActions() {
   RPG._touchInteractPrev = !!st.interact;
 }
 
-function rpgShowMenu() {
+export function rpgShowMenu() {
   rpgStopLoop();
   RPG.inDialogue = false;
   RPG_EL.menu.classList.remove('hidden');
@@ -165,7 +171,7 @@ function rpgShowMenu() {
   if (typeof setMusic === 'function') setMusic(RPG_ASSET_BASE + 'sound/menu_song.mp3');
 }
 
-function rpgExitToHub() {
+export function rpgExitToHub() {
   rpgAbandonRunIfActive();
   rpgStopLoop();
   goTo('juegos');
@@ -174,36 +180,36 @@ function rpgExitToHub() {
 // ═══════════════════════════════════════════════
 //   Menú principal — Jugar / Mejoras / Ajustes / Cómo jugar
 // ═══════════════════════════════════════════════
-const RPG_MENU_VIEWS = [RPG_EL.mainMenuView, RPG_EL.slotsView, RPG_EL.chaptersView, RPG_EL.difficultyView, RPG_EL.mejorasView, RPG_EL.ajustesView, RPG_EL.comoJugarView];
+export const RPG_MENU_VIEWS = [RPG_EL.mainMenuView, RPG_EL.slotsView, RPG_EL.chaptersView, RPG_EL.difficultyView, RPG_EL.mejorasView, RPG_EL.ajustesView, RPG_EL.comoJugarView];
 
-function rpgHideAllMenuViews() {
+export function rpgHideAllMenuViews() {
   RPG_MENU_VIEWS.forEach(el => {
     if (el) el.classList.add('hidden');
   });
 }
 
-function rpgShowMainMenu() {
+export function rpgShowMainMenu() {
   rpgHideAllMenuViews();
   RPG_EL.mainMenuView.classList.remove('hidden');
 }
 
-function rpgGoToPlay() {
+export function rpgGoToPlay() {
   rpgShowSlotsView();
 }
 
-function rpgGoToMejoras() {
+export function rpgGoToMejoras() {
   rpgHideAllMenuViews();
   RPG_EL.mejorasView.classList.remove('hidden');
   rpgRenderMejoras();
 }
 
-function rpgGoToAjustes() {
+export function rpgGoToAjustes() {
   rpgHideAllMenuViews();
   RPG_EL.ajustesView.classList.remove('hidden');
   rpgRenderAjustes();
 }
 
-function rpgGoToComoJugar() {
+export function rpgGoToComoJugar() {
   rpgHideAllMenuViews();
   RPG_EL.comoJugarView.classList.remove('hidden');
 }
@@ -214,7 +220,7 @@ function rpgGoToComoJugar() {
 //   app.js — la música del RPG usa el mismo bgMusic) y pantalla completa
 //   del contenedor del RPG.
 // ═══════════════════════════════════════════════
-function rpgRenderAjustes() {
+export function rpgRenderAjustes() {
   const musicPct = Math.round((typeof getGlobalMusicVolume === 'function' ? getGlobalMusicVolume() : 0.5) * 100);
   const sfxPct   = Math.round((typeof getGlobalSfxVolume === 'function' ? getGlobalSfxVolume() : 0.8) * 100);
   document.querySelectorAll('.rpg-music-volume-input').forEach(el => { el.value = musicPct; });
@@ -224,7 +230,7 @@ function rpgRenderAjustes() {
   rpgSyncFullscreenBtn();
 }
 
-function rpgOnMusicVolumeChange(value) {
+export function rpgOnMusicVolumeChange(value) {
   const pct = parseInt(value, 10) || 0;
   if (typeof setGlobalMusicVolume === 'function') setGlobalMusicVolume(pct / 100);
   document.querySelectorAll('.rpg-music-volume-value').forEach(el => { el.textContent = pct + '%'; });
@@ -233,7 +239,7 @@ function rpgOnMusicVolumeChange(value) {
   document.querySelectorAll('.rpg-music-volume-input').forEach(el => { el.value = pct; });
 }
 
-function rpgOnSfxVolumeChange(value) {
+export function rpgOnSfxVolumeChange(value) {
   const pct = parseInt(value, 10) || 0;
   if (typeof setGlobalSfxVolume === 'function') setGlobalSfxVolume(pct / 100);
   document.querySelectorAll('.rpg-sfx-volume-value').forEach(el => { el.textContent = pct + '%'; });
@@ -243,16 +249,16 @@ function rpgOnSfxVolumeChange(value) {
 // Pantalla completa del .rpg-container (canvas + HUD + menú + overlays),
 // mismo criterio que runnerToggleFullscreen (app.js) pero apuntado al
 // contenedor del RPG en vez del runner.
-function rpgGetFullscreenElement() {
+export function rpgGetFullscreenElement() {
   return document.fullscreenElement || document.webkitFullscreenElement || null;
 }
 
-function rpgFullscreenSupported() {
+export function rpgFullscreenSupported() {
   const el = document.querySelector('#sec-rpg_pixel .rpg-container');
   return !!(el && (el.requestFullscreen || el.webkitRequestFullscreen));
 }
 
-function rpgToggleFullscreen() {
+export function rpgToggleFullscreen() {
   const el = document.querySelector('#sec-rpg_pixel .rpg-container');
   if (!el) return;
   if (!rpgGetFullscreenElement()) {
@@ -264,7 +270,7 @@ function rpgToggleFullscreen() {
   }
 }
 
-function rpgSyncFullscreenBtn() {
+export function rpgSyncFullscreenBtn() {
   const supported = rpgFullscreenSupported();
   document.querySelectorAll('.rpg-fullscreen-row').forEach(el => { el.classList.toggle('unsupported', !supported); });
   const label = rpgGetFullscreenElement() ? 'Salir' : 'Activar';

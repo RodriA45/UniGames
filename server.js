@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { getDb } = require('./database/db');
+const compression = require('compression');
 
 // Import Routes
 const authRoutes = require('./routes/auth');
@@ -19,6 +20,7 @@ const PORT = process.env.PORT || 3000;
 
 // Configuración
 app.use(cors());
+app.use(compression());
 app.use(express.json());
 
 // Bloquear archivos sensibles
@@ -29,13 +31,22 @@ app.use((req, res, next) => {
     next();
 });
 
-// Sirviendo archivos estáticos con configuración de caché para desarrollo
+// Sirviendo archivos estáticos con configuración de caché optimizada
 app.use(express.static(path.join(__dirname, 'public'), {
     setHeaders: function (res, filePath) {
+        // 1. Archivos HTML: SIEMPRE frescos (actualizaciones inmediatas)
         if (filePath.endsWith('.html')) {
             res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
+        } 
+        // 2. Multimedia pesada (imágenes, audios, fuentes, JSON de atlas): 7 días en disco
+        else if (/\.(webp|png|jpg|jpeg|gif|svg|mp3|ogg|wav|json|woff2?)$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+        } 
+        // 3. Scripts y estilos (JS y CSS): 1 día de caché
+        else if (/\.(js|css)$/i.test(filePath)) {
+            res.setHeader('Cache-Control', 'public, max-age=86400');
         }
     }
 }));
@@ -60,6 +71,9 @@ app.use('/api', duelosRouter);
 
 // Fallback para SPA / Frontend
 app.use((req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

@@ -108,7 +108,7 @@ export function trLoadLevel(index) {
   if (starsEl) starsEl.textContent = (index + 1) + '/' + TR_LEVELS.length + ' - ' + lvl.nombre;
 
   const cont = document.querySelector('.trampas-container');
-  if (cont) cont.style.background = `#150620 url('${TR_ASSET_BASE}models/back.png') center/cover no-repeat`;
+  if (cont) cont.style.background = `#150620 url('${TR_ASSET_BASE}models/back.webp') center/cover no-repeat`;
 }
 
 export function setupTrampasTouch() {

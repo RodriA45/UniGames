@@ -1,4 +1,6 @@
-function rpgMetaDefaults() {
+import { RPG_CHEST_EXTRA_CHANCE, RPG_CHEST_EXTRA_COST, RPG_CHEST_GUARANTEED_COST, RPG_DMG_UPGRADE_MAX, RPG_DMG_UPGRADE_STEP, RPG_EL, RPG_LIFE_UPGRADE_HP, RPG_LIFE_UPGRADE_MAX, RPG_META_KEY, RPG_UPGRADE_COST_STEP } from './rpg_config.js';
+
+export function rpgMetaDefaults() {
   return {
     gold: 0,
     lifeLevel: 0,
@@ -8,7 +10,7 @@ function rpgMetaDefaults() {
   };
 }
 
-function rpgLoadMeta() {
+export function rpgLoadMeta() {
   try {
     const raw = localStorage.getItem(RPG_META_KEY);
     if (!raw) return rpgMetaDefaults();
@@ -19,23 +21,23 @@ function rpgLoadMeta() {
   }
 }
 
-function rpgSaveMeta() {
+export function rpgSaveMeta() {
   try { localStorage.setItem(RPG_META_KEY, JSON.stringify(RPG_META)); } catch {}
 }
 
-let RPG_META = rpgLoadMeta();
+export let RPG_META = rpgLoadMeta();
 
 // Costo del nivel `level` (1-indexado): nivel 1 = 50, nivel 2 = 100, etc.
-function rpgUpgradeCost(level) {
+export function rpgUpgradeCost(level) {
   return level * RPG_UPGRADE_COST_STEP;
 }
 
-function rpgAddMetaGold(amount) {
+export function rpgAddMetaGold(amount) {
   RPG_META.gold += amount;
   rpgSaveMeta();
 }
 
-function rpgBuyLifeUpgrade() {
+export function rpgBuyLifeUpgrade() {
   if (RPG_META.lifeLevel >= RPG_LIFE_UPGRADE_MAX) return;
   const cost = rpgUpgradeCost(RPG_META.lifeLevel + 1);
   if (RPG_META.gold < cost) return;
@@ -45,7 +47,7 @@ function rpgBuyLifeUpgrade() {
   rpgRenderMejoras();
 }
 
-function rpgBuyDmgUpgrade() {
+export function rpgBuyDmgUpgrade() {
   if (RPG_META.dmgLevel >= RPG_DMG_UPGRADE_MAX) return;
   const cost = rpgUpgradeCost(RPG_META.dmgLevel + 1);
   if (RPG_META.gold < cost) return;
@@ -55,7 +57,7 @@ function rpgBuyDmgUpgrade() {
   rpgRenderMejoras();
 }
 
-function rpgBuyGuaranteedChest() {
+export function rpgBuyGuaranteedChest() {
   if (RPG_META.guaranteedFirstChest) return;
   if (RPG_META.gold < RPG_CHEST_GUARANTEED_COST) return;
   RPG_META.gold -= RPG_CHEST_GUARANTEED_COST;
@@ -64,7 +66,7 @@ function rpgBuyGuaranteedChest() {
   rpgRenderMejoras();
 }
 
-function rpgBuyExtraChestChance() {
+export function rpgBuyExtraChestChance() {
   if (RPG_META.extraChestChance) return;
   if (RPG_META.gold < RPG_CHEST_EXTRA_COST) return;
   RPG_META.gold -= RPG_CHEST_EXTRA_COST;
@@ -74,7 +76,7 @@ function rpgBuyExtraChestChance() {
 }
 
 // ─── Vista "Mejoras" del menú ─────
-function rpgMejoraRowHtml(opts) {
+export function rpgMejoraRowHtml(opts) {
   return '<div class="rpg-mejora-row">'
     + '<div class="rpg-mejora-info">'
     + '<p class="rpg-mejora-title">' + opts.title + '</p>'
@@ -87,7 +89,7 @@ function rpgMejoraRowHtml(opts) {
     + '</div>';
 }
 
-function rpgRenderMejoras() {
+export function rpgRenderMejoras() {
   const goldEl = RPG_EL.mejorasGold;
   if (goldEl) goldEl.textContent = RPG_META.gold;
 

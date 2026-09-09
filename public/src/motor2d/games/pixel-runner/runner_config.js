@@ -86,24 +86,24 @@ export const RUNNER = {
 };
 
 export const RUNNER_ASSETS = {
-  junior:    RUNNER_ASSET_BASE + 'models/junior.png',
+  junior:    RUNNER_ASSET_BASE + 'models/junior.webp',
   juniorAt:  RUNNER_ASSET_BASE + 'models/junior.atlas.json',
-  bird:      RUNNER_ASSET_BASE + 'models/bird.png',
+  bird:      RUNNER_ASSET_BASE + 'models/bird.webp',
   birdAt:    RUNNER_ASSET_BASE + 'models/bird.atlas.json',
-  obst:      RUNNER_ASSET_BASE + 'models/obstaculo.png',
+  obst:      RUNNER_ASSET_BASE + 'models/obstaculo.webp',
   obstAt:    RUNNER_ASSET_BASE + 'models/obstaculo.atlas.json',
-  mapa:      RUNNER_ASSET_BASE + 'models/mapa.png',
+  mapa:      RUNNER_ASSET_BASE + 'models/mapa.webp',
   mapaAt:    RUNNER_ASSET_BASE + 'models/mapa.atlas.json',
-  item:      RUNNER_ASSET_BASE + 'models/item.png',
+  item:      RUNNER_ASSET_BASE + 'models/item.webp',
   itemAt:    RUNNER_ASSET_BASE + 'models/item.atlas.json',
-  castillo:  RUNNER_ASSET_BASE + 'models/castillo.png',
+  castillo:  RUNNER_ASSET_BASE + 'models/castillo.webp',
 };
 
 // Cómics del Modo Historia: uno al elegir el modo (antes de arrancar la
 // partida) y otro al llegar a HISTORIA_GOAL (antes del cartel de victoria).
 export const RUNNER_COMICS = {
-  intro: RUNNER_ASSET_BASE + 'comics/historia_intro.jpg',
-  final: RUNNER_ASSET_BASE + 'comics/historia_final.jpg',
+  intro: RUNNER_ASSET_BASE + 'comics/historia_intro.webp',
+  final: RUNNER_ASSET_BASE + 'comics/historia_final.webp',
 };
 
 // ═══════════════════════════════════════════════

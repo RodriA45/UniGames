@@ -1,12 +1,19 @@
+import { rpgLoop, rpgSetOverlay, rpgStartDialogue, setupRpgEvents } from './rpg_combat_input.js';
+import { RPG_ASSET_BASE, RPG_CHEST_SHEET, RPG_EL, RPG_ELITE_SPEED_MULT, RPG_ELITE_STAT_MULT, RPG_ITEM_SHEET, RPG_LIFE_UPGRADE_HP, RPG_LOGICAL_H, RPG_LOGICAL_W, RPG_PLAYER_MAX_AMMO, RPG_PLAYER_SPEED, RPG_POWERUP_SHEET, RPG_ROOM_WORLD_MULT, RPG_SAVE_SLOTS, rpgRecalcFloorTopRatio } from './rpg_config.js';
+import { rpgCreateEnemies, rpgUpdateHudAmmo, rpgUpdateHudBars } from './rpg_enemies_ai.js';
+import { RPG, RPG_CHAPTERS, RPG_ENEMY_TYPES, rpgChapterCfg, rpgComputeRoomZoom, rpgEliteActive, rpgFloorBounds, rpgLoadAtlas, rpgLoadImage, rpgLoadWithProgress, rpgRoomCfg } from './rpg_enemies_data.js';
+import { RPG_META } from './rpg_meta.js';
+import { rpgDeleteSlotData, rpgHideAllMenuViews, rpgLoadSlotData, rpgNewSaveData, rpgSaveSlotData, rpgShowMenu } from './rpg_save_ui.js';
+
 //   Menú — selección de slot → (dificultad si es nueva) → selección de capítulo
 // ═══════════════════════════════════════════════
-function rpgShowSlotsView() {
+export function rpgShowSlotsView() {
   rpgHideAllMenuViews();
   RPG_EL.slotsView.classList.remove('hidden');
   rpgRenderSlots();
 }
 
-function rpgRenderSlots() {
+export function rpgRenderSlots() {
   const wrap = RPG_EL.slotsButtons;
   if (!wrap) return;
   let html = '';
@@ -33,13 +40,13 @@ function rpgRenderSlots() {
   wrap.innerHTML = html;
 }
 
-function rpgDeleteSlotConfirm(n) {
+export function rpgDeleteSlotConfirm(n) {
   if (!confirm('¿Borrar la Partida ' + n + '? Esta acción no se puede deshacer.')) return;
   rpgDeleteSlotData(n);
   rpgRenderSlots();
 }
 
-function rpgSelectSlot(n) {
+export function rpgSelectSlot(n) {
   RPG.activeSlot = n;
   const existing = rpgLoadSlotData(n);
   if (existing) {
@@ -52,7 +59,7 @@ function rpgSelectSlot(n) {
   }
 }
 
-function rpgSelectDifficulty(diff) {
+export function rpgSelectDifficulty(diff) {
   RPG.save = rpgNewSaveData();
   RPG.save.difficulty = diff; // 'normal' | 'elite'
   rpgSaveSlotData(RPG.activeSlot, RPG.save);
@@ -60,17 +67,17 @@ function rpgSelectDifficulty(diff) {
   rpgStartChapter(1);
 }
 
-function rpgShowChapterSelect() {
+export function rpgShowChapterSelect() {
   RPG_EL.slotsView.classList.add('hidden');
   RPG_EL.chaptersView.classList.remove('hidden');
   rpgRenderChapters();
 }
 
-function rpgBackToSlots() {
+export function rpgBackToSlots() {
   rpgShowSlotsView();
 }
 
-function rpgRenderChapters() {
+export function rpgRenderChapters() {
   const wrap = RPG_EL.chapterButtons;
   if (!wrap) return;
   const save = RPG.save || rpgNewSaveData();
@@ -92,7 +99,7 @@ function rpgRenderChapters() {
 // Texto del HUD con el nombre del enemigo: en habitaciones normales
 // muestra cuántos quedan vivos (puede haber varias especies a la vez); en
 // la habitación del jefe muestra su nombre y fase actual.
-function rpgUpdateEnemyLabel() {
+export function rpgUpdateEnemyLabel() {
   const cfg = rpgRoomCfg();
   const el = RPG_EL.enemyName;
   if (!el || !cfg) return;
@@ -108,13 +115,13 @@ function rpgUpdateEnemyLabel() {
 // ─── Posiciones de costado (usadas solo por rpgSummonWarriors: los 2
 // guerreros invocados siguen apareciendo pegados a cada costado del
 // arena) ─────
-function rpgSideX(side, cfg, C) {
+export function rpgSideX(side, cfg, C) {
   const m = RPG.worldWidth * cfg.sideMarginRatio;
   return side === 'left' ? m : RPG.worldWidth - m;
 }
 
 // ─── Arrancar un capítulo (siempre desde la habitación 1) ─────
-function rpgStartChapter(chapterIndex) {
+export function rpgStartChapter(chapterIndex) {
   const cfg = RPG_CHAPTERS[chapterIndex];
   if (!cfg) return;
   RPG.chapter = chapterIndex;
@@ -133,7 +140,7 @@ function rpgStartChapter(chapterIndex) {
 }
 
 // ─── Arrancar una habitación puntual dentro del capítulo actual ─────
-function rpgStartRoom(roomIndex) {
+export function rpgStartRoom(roomIndex) {
   const chapterCfg = rpgChapterCfg();
   const cfg = chapterCfg ? chapterCfg.rooms[roomIndex] : null;
   if (!cfg) return;
@@ -191,6 +198,7 @@ function rpgStartRoom(roomIndex) {
     RPG.enemyProjectiles = [];
     RPG.chest = null;
     RPG.chestIsBossReward = false;
+    RPG.banner = null;
     RPG.combatElapsed = 0;
     RPG.timeLimitMs = null;
     RPG.facing = 'down';
@@ -246,8 +254,8 @@ function rpgStartRoom(roomIndex) {
 
     const loaders = [
       rpgLoadImage(cfg.zoneImage),
-      rpgLoadImage(RPG_ASSET_BASE + 'models/junior/junior.png'),
-      rpgLoadImage(RPG_ASSET_BASE + 'models/junior/bloquear.png'),
+      rpgLoadImage(RPG_ASSET_BASE + 'models/junior/junior.webp'),
+      rpgLoadImage(RPG_ASSET_BASE + 'models/junior/bloquear.webp'),
       rpgLoadImage(RPG_ITEM_SHEET)
     ];
     speciesInRoom.forEach(key => {
@@ -295,7 +303,11 @@ function rpgStartRoom(roomIndex) {
       // puede necesitar un zoom distinto). RPG.camera.y también queda fijo
       // acá, calculado para que el fondo quede siempre anclado abajo (el
       // piso nunca se pierde) igual que en rpgDrawRoomBackground.
-      RPG.roomZoom = rpgComputeRoomZoom(C);
+      // cfg.forceRoomZoom: escape hatch para saltear el cálculo automático
+      // en salas puntuales cuyo fondo tiene una proporción rara y termina
+      // zoomeando de más (arena con pinta más chica/apretada que el resto,
+      // aunque worldWidth sea el mismo) — ver capítulo 2.
+      RPG.roomZoom = cfg.forceRoomZoom || rpgComputeRoomZoom(C);
       RPG.camera.y = RPG_LOGICAL_H * (1 - 1 / RPG.roomZoom);
       // forceRestart=true: si es la misma habitación que se acaba de perder,
       // la música tiene que arrancar desde 0, no seguir donde iba.
@@ -304,8 +316,12 @@ function rpgStartRoom(roomIndex) {
       // habitación tiene uno) o al combate.
       RPG_EL.overlay.classList.add('hidden');
       rpgBeginCombat();
-    }).catch(() => {
+    }).catch(err => {
       rpgLoadingBar.destroy();
+      // Ver rpgLoadImage/rpgLoadAtlas: ahora el error trae el nombre del
+      // archivo que 404eó — antes acá no había forma de saber cuál de
+      // TODOS los sprites/atlas de la sala era el que faltaba.
+      console.error('[RPG] Falló la carga de la habitación:', err);
       // OJO: antes esto arrancaba el texto del overlay pero nunca le
       // sacaba la clase 'hidden' (quedó oculto desde más arriba en esta
       // misma función) — el jugador solo veía el canvas en negro (relleno
@@ -316,7 +332,7 @@ function rpgStartRoom(roomIndex) {
   });
 }
 
-function rpgBeginCombat() {
+export function rpgBeginCombat() {
   RPG_EL.overlay.classList.add('hidden');
   // OJO: rpgStopLoop() pone RPG.running en false y cancela el raf pendiente.
   // Hay que llamarlo ANTES de activar running = true (si se llama después,
@@ -332,7 +348,7 @@ function rpgBeginCombat() {
   rpgActuallyStartCombat();
 }
 
-function rpgActuallyStartCombat() {
+export function rpgActuallyStartCombat() {
   const cfg = rpgRoomCfg();
   RPG.combatElapsed = 0;
   RPG.timeLimitMs = cfg.timeLimitMs === 'music'
@@ -346,14 +362,14 @@ function rpgActuallyStartCombat() {
 // Duración del tema actual (bgMusic vive en app.js, cargado después de
 // este archivo — por eso se referencia en tiempo de ejecución, no acá
 // arriba). Si todavía no cargó metadata, se usa el fallback.
-function rpgGetTrackDurationMs(fallbackMs) {
+export function rpgGetTrackDurationMs(fallbackMs) {
   if (typeof bgMusic !== 'undefined' && bgMusic && isFinite(bgMusic.duration) && bgMusic.duration > 0) {
     return bgMusic.duration * 1000;
   }
   return fallbackMs;
 }
 
-function rpgStopLoop() {
+export function rpgStopLoop() {
   RPG.running = false;
   if (RPG.raf) { cancelAnimationFrame(RPG.raf); RPG.raf = null; }
 }

@@ -1,4 +1,8 @@
-function rpgDraw() {
+import { RPG_ASSET_BASE, RPG_CHEST_DRAW_H, RPG_CHEST_FRAMES, RPG_CHEST_INTERACT_DIST, RPG_CHEST_SHEET, RPG_FACING_ROW, RPG_ITEM_ICONS, RPG_ITEM_SHEET, RPG_LOGICAL_H, RPG_LOGICAL_W, RPG_PLAYER_DRAW_H } from './rpg_config.js';
+import { RPG_BOSS_ATTACK_POSES, RPG_BOSS_WINDUP_POSES } from './rpg_enemies_ai.js';
+import { RPG, RPG_ENEMY_TYPES, rpgRoomCfg } from './rpg_enemies_data.js';
+
+export function rpgDraw() {
   const ctx = RPG.ctx;
   const C = RPG.canvas;
   if (!ctx) return;
@@ -53,6 +57,7 @@ function rpgDraw() {
     const species = RPG_ENEMY_TYPES[e.species];
     if (!species) return;
     if (!e.alive && e.animKind !== 'death') return;
+    if (e.hidden) return; // fantasma invisible/intangible mientras se teletransporta (ver rpgUpdateGhost)
 
     ctx.save();
 
@@ -133,14 +138,14 @@ function rpgDraw() {
   if (p.hitFlash > 0) ctx.globalAlpha = 0.55;
   if (p.blocking) {
     const sheet = SPRITES.bloquear;
-    const img = RPG.images[RPG_ASSET_BASE + 'models/junior/bloquear.png'];
-    // Las 4 columnas de bloquear.png son 4 poses direccionales fijas
-    // (frente/atrás/izq/der, mismo orden que junior.png) — no cuadros de
+    const img = RPG.images[RPG_ASSET_BASE + 'models/junior/bloquear.webp'];
+    // Las 4 columnas de bloquear.webp son 4 poses direccionales fijas
+    // (frente/atrás/izq/der, mismo orden que junior.webp) — no cuadros de
     // una animación. Se elige por RPG.facing, no por un contador de tiempo.
     if (sheet && img) rpgDrawFrame(ctx, img, sheet.rows[0], RPG_FACING_ROW[RPG.facing], p.x, p.y, RPG_PLAYER_DRAW_H, false);
   } else {
     const sheet = SPRITES.junior;
-    const img = RPG.images[RPG_ASSET_BASE + 'models/junior/junior.png'];
+    const img = RPG.images[RPG_ASSET_BASE + 'models/junior/junior.webp'];
     if (sheet && img) {
       const rowIdx = RPG_FACING_ROW[RPG.facing];
       rpgDrawFrame(ctx, img, sheet.rows[rowIdx], p.animFrame, p.x, p.y, RPG_PLAYER_DRAW_H, false);
@@ -245,7 +250,7 @@ function rpgDraw() {
       const textY = chest.y - RPG_CHEST_DRAW_H - 25 + bounce;
       ctx.strokeText('¡ABRE EL COFRE!', chest.x, textY);
       ctx.fillText('¡ABRE EL COFRE!', chest.x, textY);
-      
+
       // Pequeña flecha apuntando hacia abajo
       ctx.beginPath();
       ctx.moveTo(chest.x - 5, textY + 5);
@@ -275,7 +280,7 @@ function rpgDraw() {
     const cy = ctx.canvas.height / 2;
     ctx.strokeText('AVANZAR', cx, cy);
     ctx.fillText('AVANZAR', cx, cy);
-    
+
     // Flecha apuntando a la derecha
     ctx.beginPath();
     ctx.moveTo(cx + 35, cy - 10);
@@ -284,12 +289,35 @@ function rpgDraw() {
     ctx.closePath();
     ctx.stroke();
     ctx.fill();
-    
+
     ctx.restore();
   }
 
   // (La recompensa de cofre ahora se muestra en el cartel HTML — ver
   // rpgShowChestRewardPanel — así que ya no hay nada que dibujar acá.)
+
+  // Cartel de horda (ver rpgSpawnNextWave/rpgUpdate) — texto grande al
+  // centro, en coordenadas de pantalla (fuera del save/restore de cámara
+  // de arriba, como el joystick). Fade rápido de entrada, se sostiene, y
+  // fade de salida hacia el final de RPG.banner.durationMs.
+  if (RPG.banner) {
+    const t = RPG.banner.timer / RPG.banner.durationMs; // 1 → 0
+    const fadeIn = Math.min(1, (1 - t) / 0.15);
+    const fadeOut = Math.min(1, t / 0.25);
+    const alpha = Math.min(fadeIn, fadeOut);
+    const cy = RPG_LOGICAL_H * 0.38;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = 'rgba(10,0,20,0.9)';
+    ctx.strokeText(RPG.banner.text, RPG_LOGICAL_W / 2, cy);
+    ctx.fillStyle = '#a78bfa'; // violeta espectral, a tono con ghost/dk_ghost
+    ctx.fillText(RPG.banner.text, RPG_LOGICAL_W / 2, cy);
+    ctx.restore();
+  }
 
   // Joystick + botones táctiles: SIEMPRE al final y fuera del save/restore
   // de la cámara — van fijos en coordenadas de canvas, como overlay encima
@@ -301,7 +329,7 @@ function rpgDraw() {
 // escalado a una altura fija `targetH` manteniendo el aspect ratio de la
 // celda (los anchos de celda varían entre filas, así que si se estirara
 // todo al mismo cuadro el personaje se vería deformado).
-function rpgDrawFrame(ctx, img, rowData, frameIndex, x, y, targetH, flip) {
+export function rpgDrawFrame(ctx, img, rowData, frameIndex, x, y, targetH, flip) {
   const sx = frameIndex * rowData.cellWidth;
   const sy = rowData.y;
   const sw = rowData.cellWidth;
@@ -324,7 +352,7 @@ function rpgDrawFrame(ctx, img, rowData, frameIndex, x, y, targetH, flip) {
 // altura objetivo (como hacía rpgDrawAtlasFrame), esas poses "achatadas"
 // terminan dibujándose gigantes de ancho. Con una escala fija, cada pose
 // queda en su tamaño real relativo al personaje, sin inflarse.
-function rpgSpeciesScale(speciesKey, species, atlas) {
+export function rpgSpeciesScale(speciesKey, species, atlas) {
   if (RPG.speciesScale[speciesKey] != null) return RPG.speciesScale[speciesKey];
   const refName = species.scaleRefFrame
     || (species.poses && species.poses.idle)
@@ -339,7 +367,7 @@ function rpgSpeciesScale(speciesKey, species, atlas) {
 // altura objetivo por frame (ver rpgSpeciesScale). Se usa para personajes;
 // rpgDrawAtlasFrame se deja intacta para el proyectil dark_slash, cuyas
 // variantes sí comparten la misma proporción entre sí.
-function rpgDrawAtlasFrameScaled(ctx, img, atlas, frameName, x, y, scale, flip) {
+export function rpgDrawAtlasFrameScaled(ctx, img, atlas, frameName, x, y, scale, flip) {
   const f = atlas.frames[frameName];
   if (!f) return;
   const dw = f.w * scale;
@@ -354,7 +382,7 @@ function rpgDrawAtlasFrameScaled(ctx, img, atlas, frameName, x, y, scale, flip) 
 // Dibuja un frame por NOMBRE desde un atlas JSON ({frameSize, frames:{nombre:{x,y,w,h}}}).
 // Se usa para dark_knight, que tiene poses/efectos discretos en vez de un
 // ciclo de caminata uniforme (ver rpgDrawFrame para ese caso).
-function rpgDrawAtlasFrame(ctx, img, atlas, frameName, x, y, targetH, flip, centered) {
+export function rpgDrawAtlasFrame(ctx, img, atlas, frameName, x, y, targetH, flip, centered) {
   const f = atlas.frames[frameName];
   if (!f) return;
   const dh = targetH;
@@ -371,7 +399,7 @@ function rpgDrawAtlasFrame(ctx, img, atlas, frameName, x, y, targetH, flip, cent
 }
 
 // Dibuja un ícono recortado directamente por coordenadas (RPG_ITEM_ICONS),
-// usado para balas / pociones / proyectiles que viven todos en objeto.png.
+// usado para balas / pociones / proyectiles que viven todos en objeto.webp.
 // opts: { rotation, flip, centered, smooth }
 // smooth=true fuerza suavizado (bilinear) SOLO para este dibujo puntual —
 // útil para íconos chicos (cofre, power-up del cartel) cuyo sprite fuente
@@ -379,7 +407,7 @@ function rpgDrawAtlasFrame(ctx, img, atlas, frameName, x, y, targetH, flip, cent
 // más marcados que Junior/enemigos (que sí tienen más detalle nativo y
 // mantienen a propósito el estilo pixel-art sin smoothing). ctx.restore()
 // ya deja el smoothing global (false) como estaba, no hace falta resetearlo.
-function rpgDrawIconRect(ctx, img, rect, x, y, targetH, opts) {
+export function rpgDrawIconRect(ctx, img, rect, x, y, targetH, opts) {
   opts = opts || {};
   const dh = targetH;
   const dw = dh * (rect.w / rect.h);
@@ -401,7 +429,7 @@ function rpgDrawIconRect(ctx, img, rect, x, y, targetH, opts) {
 // menos panorámica que el rect destino), ancla el recorte al borde inferior
 // de la imagen en vez de centrarlo — usado para los fondos de habitación
 // (ver rpgDraw) para no perder filas de piso por abajo.
-function rpgDrawCover(ctx, img, dx, dy, dw, dh, anchorBottom) {
+export function rpgDrawCover(ctx, img, dx, dy, dw, dh, anchorBottom) {
   const ir = img.width / img.height;
   const dr = dw / dh;
   let sx, sy, sw, sh;
@@ -427,7 +455,7 @@ function rpgDrawCover(ctx, img, dx, dy, dw, dh, anchorBottom) {
 // justo lo que rpgDraw necesita: aplica ctx.scale(roomZoom) + el
 // camera.y fijo de la habitación, y ese sobrante entra en cuadro según
 // cuánto zoom-out le tocó a esa habitación (0 = queda igual que hoy).
-function rpgDrawRoomBackground(ctx, img, worldWidth, canvasHeight) {
+export function rpgDrawRoomBackground(ctx, img, worldWidth, canvasHeight) {
   const ir = img.width / img.height;
   const dr = worldWidth / canvasHeight;
   if (ir > dr) {

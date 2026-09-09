@@ -235,11 +235,11 @@ TRAMPAS.keys = { left: false, right: false, jump: false };
 export const TR_MENU_VIEWS = [TR_EL.mainMenu, TR_EL.levelSelect, TR_EL.settings, TR_EL.howToPlay];
 
 export const TR_ASSETS = [
-  { type: 'image', src: TR_ASSET_BASE + 'models/mapa.png' },
+  { type: 'image', src: TR_ASSET_BASE + 'models/mapa.webp' },
   { type: 'atlas', src: TR_ASSET_BASE + 'models/mapa_atlas.json' },
-  { type: 'image', src: TR_ASSET_BASE + 'models/deco.png' },
+  { type: 'image', src: TR_ASSET_BASE + 'models/deco.webp' },
   { type: 'atlas', src: TR_ASSET_BASE + 'models/deco_atlas.json' },
-  { type: 'image', src: TR_ASSET_BASE + 'models/junior.png' },
+  { type: 'image', src: TR_ASSET_BASE + 'models/junior.webp' },
   { type: 'atlas', src: TR_ASSET_BASE + 'models/junior.atlas.json' },
 ];
 

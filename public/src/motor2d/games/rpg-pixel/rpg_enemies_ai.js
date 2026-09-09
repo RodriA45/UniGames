@@ -1,4 +1,12 @@
-function rpgUpdateSimpleChase(e, p, cfg, C, dt, step) {
+import { rpgIconToDataUrl, rpgLoop, rpgSetOverlay, rpgStartDialogue } from './rpg_combat_input.js';
+import { RPG_EL, RPG_ELITE_SPEED_MULT, RPG_ELITE_STAT_MULT, RPG_LOGICAL_H, RPG_LOGICAL_W, RPG_PLAYER_HITBOX, RPG_PLAYER_MAX_AMMO, RPG_POWERUP_ICONS, RPG_POWERUP_SHEET } from './rpg_config.js';
+import { RPG, RPG_CHAPTERS, RPG_ENEMY_TYPES, RPG_SPAWN_SAFE_DIST, rpgChapterCfg, rpgEliteActive, rpgFloorBounds, rpgRandRange, rpgRoomCfg } from './rpg_enemies_data.js';
+import { rpgSideX, rpgStartChapter, rpgStopLoop, rpgUpdateEnemyLabel } from './rpg_menu_flow.js';
+import { RPG_META } from './rpg_meta.js';
+import { rpgDraw } from './rpg_render.js';
+import { rpgEraseActiveSlot, rpgNewSaveData, rpgSaveSlotData, rpgShowMenu } from './rpg_save_ui.js';
+
+export function rpgUpdateSimpleChase(e, p, cfg, C, dt, step) {
   const species = RPG_ENEMY_TYPES[e.species];
 
   if (e.hurtLock > 0) {
@@ -123,7 +131,7 @@ function rpgUpdateSimpleChase(e, p, cfg, C, dt, step) {
 // Hace avanzar el frame de animación de un enemigo dentro del ciclo
 // `e.animKind` actual (idle/walk/attack/hurt/death), usando la cantidad de
 // frames que tenga esa especie para no salirse del rango.
-function rpgTickAnim(e, species, step) {
+export function rpgTickAnim(e, species, step) {
   if (!species || !species.anims) return;
   const frames = species.anims[e.animKind] || species.anims.idle;
   e.animTick += step;
@@ -140,7 +148,7 @@ function rpgTickAnim(e, species, step) {
 // mantiene una banda de distancia preferida — si Junior está muy cerca
 // retrocede, si está muy lejos se acerca, y si está en rango se queda
 // quieto disparando flechas con cooldown propio.
-function rpgUpdateRangedChase(e, p, species, dt, step) {
+export function rpgUpdateRangedChase(e, p, species, dt, step) {
   if (e.hurtLock > 0) {
     e.hurtLock -= dt;
     e.animKind = 'hurt';
@@ -193,7 +201,7 @@ function rpgUpdateRangedChase(e, p, species, dt, step) {
 // Flecha del archer: a diferencia del dark_slash del jefe (siempre
 // horizontal), apunta hacia la posición actual de Junior en el momento del
 // disparo.
-function rpgFireArrow(e, p, species) {
+export function rpgFireArrow(e, p, species) {
   const dx = p.x - e.x;
   const dy = (p.y - 30) - (e.y - 45);
   const dist = Math.hypot(dx, dy) || 1;
@@ -206,6 +214,153 @@ function rpgFireArrow(e, p, species) {
     vy: (dy / dist) * speed,
     dmg: e.arrowDamage || 6,
     w: proj.w || 16, h: proj.h || 7,
+    frameFly: proj.frameFly, frameHit: proj.frameHit,
+    sheet: species.sheet, atlas: species.atlas
+  });
+}
+
+// ─── Patrón "ghost" (fantasma teletransportador, capítulo 2) ─────
+// Alterna entre una fase ACTIVA —igual que rpgUpdateRangedChase: mantiene
+// una banda de distancia y dispara— y una fase de teletransporte: se
+// desvanece (disappear, una sola vuelta del ciclo, sin loop), queda
+// invisible e INTANGIBLE un instante (e.hidden — ver el skip en rpgDraw y
+// el filtro de e2.hidden en el choque de balas de Junior, ambos en
+// rpg_render.js/rpg_combat_input.js), reaparece (appear) en otro punto de
+// la arena cerca de Junior y retoma la fase activa. e.ghostState guarda en
+// qué parte de ese ciclo está: 'active' | 'disappearing' | 'hidden' | 'appearing'.
+export function rpgUpdateGhost(e, p, cfg, C, dt, step) {
+  const species = RPG_ENEMY_TYPES[e.species];
+
+  if (e.hurtLock > 0) {
+    e.hurtLock -= dt;
+    e.animKind = 'hurt';
+    rpgTickAnim(e, species, step);
+    if (e.hitFlash > 0) e.hitFlash -= dt;
+    return;
+  }
+
+  if (e.ghostState === 'disappearing') {
+    const frames = species.anims.disappear;
+    const prevFrame = e.animFrame;
+    rpgTickAnim(e, species, step);
+    if (e.animFrame === 0 && prevFrame === frames.length - 1) { // ciclo completo → ya no se ve
+      e.hidden = true;
+      e.ghostState = 'hidden';
+      e.ghostTimer = rpgRandRange(species.teleportHiddenMs || [400, 700]);
+      rpgPickGhostTeleportSpot(e, p, species, C);
+    }
+    return;
+  }
+
+  if (e.ghostState === 'hidden') {
+    e.ghostTimer -= dt;
+    if (e.ghostTimer <= 0) {
+      e.hidden = false;
+      e.ghostState = 'appearing';
+      e.animKind = 'appear';
+      e.animFrame = 0; e.animTick = 0;
+    }
+    return;
+  }
+
+  if (e.ghostState === 'appearing') {
+    const frames = species.anims.appear;
+    const prevFrame = e.animFrame;
+    rpgTickAnim(e, species, step);
+    if (e.animFrame === 0 && prevFrame === frames.length - 1) { // ciclo completo → retoma la IA normal
+      e.ghostState = 'active';
+      e.teleportTimer = rpgRandRange(species.teleportCooldownMs || [3500, 5500]);
+      e.animKind = 'idle';
+      e.animFrame = 0; e.animTick = 0;
+    }
+    return;
+  }
+
+  // ── Fase activa: cuenta regresiva hacia el próximo teletransporte ──
+  e.teleportTimer -= dt;
+  if (e.teleportTimer <= 0) {
+    e.ghostState = 'disappearing';
+    e.animKind = 'disappear';
+    e.animFrame = 0; e.animTick = 0;
+    return;
+  }
+
+  // Resto igual que rpgUpdateRangedChase (mantener distancia + strafe + disparo).
+  const distX = p.x - e.x;
+  const distY = p.y - e.y;
+  const dist = Math.hypot(distX, distY) || 1;
+  const [minD, maxD] = species.preferredDist || [90, 160];
+
+  if (dist < minD) {
+    e.x -= (distX / dist) * e.speed * step;
+    e.y -= (distY / dist) * e.speed * step;
+    e.animKind = 'walk';
+    rpgTickAnim(e, species, step);
+  } else if (dist > maxD) {
+    e.x += (distX / dist) * e.speed * step;
+    e.y += (distY / dist) * e.speed * step;
+    e.animKind = 'walk';
+    rpgTickAnim(e, species, step);
+  } else {
+    e.strafeTimer = (e.strafeTimer || 0) - dt;
+    if (e.strafeTimer <= 0) {
+      e.strafeDir = Math.random() < 0.5 ? -1 : 1;
+      e.strafeTimer = 550 + Math.random() * 650;
+    }
+    const perpX = -distY / dist;
+    const perpY = distX / dist;
+    e.x += perpX * e.strafeDir * e.speed * 0.5 * step;
+    e.y += perpY * e.strafeDir * e.speed * 0.5 * step;
+    e.animKind = e.fireTimer < 260 ? 'attack' : 'walk';
+    rpgTickAnim(e, species, step);
+  }
+
+  e.fireTimer -= dt;
+  if (e.fireTimer <= 0 && dist <= maxD * 1.3) {
+    rpgFireGhostBolt(e, p, species);
+    e.fireTimer = rpgRandRange(e.fireCooldownMs);
+  }
+
+  if (e.hitFlash > 0) e.hitFlash -= dt;
+}
+
+// Elige dónde reaparece el fantasma: un punto a distancia
+// teleportRangeDist de Junior (ángulo random alrededor suyo, achatado en Y
+// para no salirse tanto del piso jugable como en X), descartado si termina
+// a menos de teleportMinDist — 8 intentos y si ninguno sirve, se queda
+// donde estaba (mejor que teletransportarse encima del jugador).
+export function rpgPickGhostTeleportSpot(e, p, species, C) {
+  const floor = rpgFloorBounds(C);
+  const xMin = 24, xMax = RPG.worldWidth - 24;
+  const [minD, maxD] = species.teleportRangeDist || species.preferredDist || [90, 200];
+  for (let tries = 0; tries < 8; tries++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = minD + Math.random() * (maxD - minD);
+    const x = Math.max(xMin, Math.min(xMax, p.x + Math.cos(angle) * dist));
+    const y = Math.max(floor.top + 12, Math.min(floor.bottom - 8, p.y + Math.sin(angle) * dist * 0.4));
+    if (Math.hypot(x - p.x, y - p.y) >= (species.teleportMinDist || 70)) {
+      e.x = x; e.y = y;
+      return;
+    }
+  }
+}
+
+// Bola de energía del fantasma: mismo mecanismo que rpgFireArrow (kind
+// 'arrow' reutilizado a propósito — el dibujo ya rota cualquier frame
+// según la velocidad real, sirve igual para una flecha que para un orbe).
+export function rpgFireGhostBolt(e, p, species) {
+  const dx = p.x - e.x;
+  const dy = (p.y - 30) - (e.y - 45);
+  const dist = Math.hypot(dx, dy) || 1;
+  const proj = species.projectile;
+  const speed = proj.speed || 3.2;
+  RPG.enemyProjectiles.push({
+    kind: 'arrow',
+    x: e.x, y: e.y - 45,
+    vx: (dx / dist) * speed,
+    vy: (dy / dist) * speed,
+    dmg: e.arrowDamage || 6,
+    w: proj.w || 12, h: proj.h || 12,
     frameFly: proj.frameFly, frameHit: proj.frameHit,
     sheet: species.sheet, atlas: species.atlas
   });
@@ -230,30 +385,30 @@ function rpgFireArrow(e, p, species) {
 //   fase 1 (>50% HP): sin dash, solo proyectil chico
 //   fase 2 (<=50% HP): dash habilitado, proyectiles chico y grande
 //   fase 3 (<=25% HP): dash habilitado, solo proyectil grande
-function rpgGetBossPhase(e) {
+export function rpgGetBossPhase(e) {
   const ratio = e.hp / e.maxHp;
   if (ratio <= 0.25) return 3;
   if (ratio <= 0.5) return 2;
   return 1;
 }
 
-function rpgFireRangeForPhase(cfg, phase) {
+export function rpgFireRangeForPhase(cfg, phase) {
   if (phase === 1) return cfg.fireCooldownPhase1;
   if (phase === 2) return cfg.fireCooldownPhase2;
   return cfg.fireCooldownPhase3;
 }
 
-function rpgOnBossPhaseChange(e, cfg, phase) {
+export function rpgOnBossPhaseChange(e, cfg, phase) {
   rpgUpdateEnemyLabel();
   e.hitFlash = 250;
 }
 
 // Poses del golpe cuerpo a cuerpo, en orden — ver RPG_ENEMY_TYPES.dark_knight.poses.
-const RPG_BOSS_WINDUP_POSES = ['windup1', 'windup2', 'windup3', 'windup4'];
-const RPG_BOSS_ATTACK_POSES = ['attack1', 'attack2', 'attack3'];
-const RPG_BOSS_MELEE_HIT_FRAME = 1; // attack2 — el frame en el que "conecta" el golpe
+export const RPG_BOSS_WINDUP_POSES = ['windup1', 'windup2', 'windup3', 'windup4'];
+export const RPG_BOSS_ATTACK_POSES = ['attack1', 'attack2', 'attack3'];
+export const RPG_BOSS_MELEE_HIT_FRAME = 1; // attack2 — el frame en el que "conecta" el golpe
 
-function rpgUpdateBoss(e, p, cfg, C, dt, step) {
+export function rpgUpdateBoss(e, p, cfg, C, dt, step) {
   const atk = e.attack;
   const phase = rpgGetBossPhase(e);
   if (phase !== e.phase) {
@@ -445,7 +600,7 @@ function rpgUpdateBoss(e, p, cfg, C, dt, step) {
 // dir/posición del corte ahora se recalculan en cada disparo según de qué
 // lado esté Junior en ESE instante (antes dependía de e.side, un costado
 // fijo) — el corte sigue viajando solo horizontal, nunca en diagonal.
-function rpgFireBossProjectile(e, p, cfg, phase) {
+export function rpgFireBossProjectile(e, p, cfg, phase) {
   let size;
   if (phase === 1) size = 'small';
   else if (phase === 3) size = 'big';
@@ -479,7 +634,7 @@ function rpgFireBossProjectile(e, p, cfg, phase) {
 // no usa `waves`) como por rpgSpawnNextWave (oleadas siguientes). Antes
 // vivía inline dentro de rpgStartRoom — se sacó para no duplicar toda esta
 // lógica al agregar el sistema de oleadas.
-function rpgCreateEnemies(spawns, cfg, floorNow, eliteStatMult, eliteSpeedMult) {
+export function rpgCreateEnemies(spawns, cfg, floorNow, eliteStatMult, eliteSpeedMult) {
   const n = spawns.length;
   // Reparto automático (solo se usa para spawns SIN `pos` manual, ver abajo).
   const marginX = Math.max(60, RPG.worldWidth * 0.1);
@@ -571,6 +726,16 @@ function rpgCreateEnemies(spawns, cfg, floorNow, eliteStatMult, eliteSpeedMult) 
       e.dashState = null;
       e.dashCd = rpgRandRange(species.dashAbility.cooldownMs);
     }
+    // Fantasma teletransportador (ver rpgUpdateGhost): arranca en fase
+    // activa, con su propio cooldown random hasta el primer teletransporte
+    // (así 2 ghost en la misma sala no se desvanecen sincronizados).
+    // e.hidden es lo que rpgDraw y el choque de balas de Junior chequean
+    // para tratarlo como invisible/intangible mientras dura el teletransporte.
+    if (species.behavior === 'ghost') {
+      e.hidden = false;
+      e.ghostState = 'active';
+      e.teleportTimer = rpgRandRange(species.teleportCooldownMs || [3500, 5500]);
+    }
     return e;
   });
 }
@@ -582,7 +747,7 @@ function rpgCreateEnemies(spawns, cfg, floorNow, eliteStatMult, eliteSpeedMult) 
 // RPG.enemies (los que quedan vivos de la oleada anterior siguen en juego,
 // no se pisan) — así el jugador termina de limpiar la horda anterior
 // mientras ya está lidiando con la nueva.
-function rpgSpawnNextWave(cfg) {
+export function rpgSpawnNextWave(cfg) {
   RPG.waveIndex++;
   const floorNow = rpgFloorBounds(RPG.canvas);
   const eliteStatMult = rpgEliteActive() ? RPG_ELITE_STAT_MULT : 1;
@@ -591,6 +756,13 @@ function rpgSpawnNextWave(cfg) {
   RPG.enemies.push(...newEnemies);
   rpgUpdateHudBars();
   rpgUpdateEnemyLabel();
+  // Cartel en pantalla (ver RPG.banner / rpgDraw) — solo si esta sala en
+  // particular lo pidió con cfg.waveBannerText (ver comentario en la sala 1
+  // del capítulo 2, rpg_enemies_data.js).
+  if (cfg.waveBannerText) {
+    const durationMs = 2200;
+    RPG.banner = { text: cfg.waveBannerText, timer: durationMs, durationMs };
+  }
 }
 
 // ─── Habilidad del jefe: invocar guerreros ─────
@@ -600,7 +772,7 @@ function rpgSpawnNextWave(cfg) {
 // aparecen, rpgUpdate ya los rutea por especie a rpgUpdateSimpleChase, así
 // que persiguen y golpean a Junior con su IA de siempre, sin tocar en
 // nada el patrón "sides" del jefe.
-function rpgSummonWarriors(e, cfg, C) {
+export function rpgSummonWarriors(e, cfg, C) {
   const floor = rpgFloorBounds(C);
   const midY = (floor.top + floor.bottom) / 2;
   ['left', 'right'].forEach(side => {
@@ -632,7 +804,7 @@ function rpgSummonWarriors(e, cfg, C) {
   rpgUpdateEnemyLabel();
 }
 
-function rpgUpdateEnemyProjectiles(dt, step) {
+export function rpgUpdateEnemyProjectiles(dt, step) {
   const C = RPG.canvas;
   const p = RPG.player;
   for (let i = RPG.enemyProjectiles.length - 1; i >= 0; i--) {
@@ -661,11 +833,11 @@ function rpgUpdateEnemyProjectiles(dt, step) {
 // ─── Pociones ─────
 // (Sistema de pociones en el suelo eliminado — ya no se usa.)
 
-function rpgOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+export function rpgOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
   return Math.abs(ax - bx) < (aw + bw) / 2 && Math.abs(ay - by) < (ah + bh) / 2;
 }
 
-function rpgPlayerHit(dmg, opts) {
+export function rpgPlayerHit(dmg, opts) {
   const p = RPG.player;
   const fullyBlockable = opts && opts.fullyBlockable;
   let finalDmg = dmg;
@@ -688,7 +860,7 @@ function rpgPlayerHit(dmg, opts) {
 
 // dmg ahora se aplica a un enemigo puntual `e` (puede haber varios vivos
 // a la vez). La habitación se gana recién cuando TODOS están muertos.
-function rpgEnemyHit(e, dmg) {
+export function rpgEnemyHit(e, dmg) {
   if (!e.alive) return;
   e.hp = Math.max(0, e.hp - dmg);
   e.hitFlash = 150;
@@ -747,7 +919,7 @@ function rpgEnemyHit(e, dmg) {
 // el jugador termina de leer la última línea, se reproduce una SEGUNDA
 // caída distinta (muerte 3 → muerte 4) y ahí sí, congelado en muerte 4,
 // aparece el cofre de oro — ver rpgPlayBossDeathFall.
-function rpgStartBossDeathSequence(e, cfg) {
+export function rpgStartBossDeathSequence(e, cfg) {
   rpgStopLoop(); // corta el loop de juego — de acá en más es todo cinemática
   rpgPlayBossDeathFall(e, [1, 2], () => {
     const lines = (cfg && cfg.deathDialogue) || [];
@@ -756,7 +928,7 @@ function rpgStartBossDeathSequence(e, cfg) {
   });
 }
 
-function rpgFinishBossDeath() {
+export function rpgFinishBossDeath() {
   rpgVictory();
   RPG.running = true;
   RPG.raf = requestAnimationFrame(rpgLoop);
@@ -769,9 +941,9 @@ function rpgFinishBossDeath() {
 // [1,2] para la primera caída, [3,4] para la segunda tras el diálogo.
 // onDone se llama al terminar de sostener el frame final — el llamador
 // decide qué sigue (diálogo, otra caída, o terminar la secuencia).
-const RPG_BOSS_DEATH_FRAME_MS = 260;
-const RPG_BOSS_DEATH_HOLD_MS = 300; // pausa en el frame final antes de onDone
-function rpgPlayBossDeathFall(e, frames, onDone) {
+export const RPG_BOSS_DEATH_FRAME_MS = 260;
+export const RPG_BOSS_DEATH_HOLD_MS = 300; // pausa en el frame final antes de onDone
+export function rpgPlayBossDeathFall(e, frames, onDone) {
   const [frameStart, frameEnd] = frames;
   e.deathFrame = frameStart;
   let elapsed = 0;
@@ -794,7 +966,7 @@ function rpgPlayBossDeathFall(e, frames, onDone) {
 // Barra de HP del enemigo: en habitaciones con varios enemigos muestra el
 // HP TOTAL sumado (todos cuentan igual), en la del jefe es simplemente su
 // única barra (RPG.enemies tiene 1 solo elemento ahí).
-function rpgUpdateHudBars() {
+export function rpgUpdateHudBars() {
   const p = RPG.player;
   const pFill = RPG_EL.playerHpFill;
   const eFill = RPG_EL.enemyHpFill;
@@ -803,7 +975,7 @@ function rpgUpdateHudBars() {
   if (pFill) pFill.style.width = (pct * 100) + '%';
   if (pText) pText.textContent = Math.max(0, Math.round(p.hp)) + '/' + p.maxHp;
 
-  // Expresión de Junior según % de vida (usa expresiones.png vía CSS) y
+  // Expresión de Junior según % de vida (usa expresiones.webp vía CSS) y
   // temblor leve del HUD cuando queda al 25% o menos.
   const avatar = RPG_EL.playerAvatar;
   if (avatar) {
@@ -838,7 +1010,7 @@ function rpgUpdateHudBars() {
 // muestran con ícono + cuánto llevás; los ítems especiales (pechera,
 // pistola, balas de fuego, velocidad — de una sola vez, ver
 // rpgBuildChestWeights) se muestran SOLO con su sprite, sin nombre.
-function rpgBuildUpgradesSummaryHtml() {
+export function rpgBuildUpgradesSummaryHtml() {
   const u = RPG.upgrades;
   const img = RPG.images[RPG_POWERUP_SHEET];
   const rows = [];
@@ -856,19 +1028,19 @@ function rpgBuildUpgradesSummaryHtml() {
   return '<div class="rpg-reward-list">' + rows.join('') + '</div>';
 }
 
-function rpgUpgradeRowHtml(img, key, label) {
+export function rpgUpgradeRowHtml(img, key, label) {
   const rect = RPG_POWERUP_ICONS[key];
   const iconHtml = (img && rect) ? '<img class="rpg-reward-icon" src="' + rpgIconToDataUrl(img, rect, 32) + '" alt="">' : '';
   return '<div class="rpg-reward-row">' + iconHtml + '<span class="rpg-reward-label">' + label + '</span></div>';
 }
 
-function rpgUpgradeIconOnlyHtml(img, key) {
+export function rpgUpgradeIconOnlyHtml(img, key) {
   const rect = RPG_POWERUP_ICONS[key];
   if (!img || !rect) return '';
   return '<div class="rpg-reward-row rpg-reward-row-icon-only"><img class="rpg-reward-icon" src="' + rpgIconToDataUrl(img, rect, 32) + '" alt=""></div>';
 }
 
-function rpgUpdateHudAmmo() {
+export function rpgUpdateHudAmmo() {
   const p = RPG.player;
   const el = RPG_EL.ammoText;
   if (!el) return;
@@ -881,7 +1053,7 @@ function rpgUpdateHudAmmo() {
   }
 }
 
-function rpgUpdateHudTimer() {
+export function rpgUpdateHudTimer() {
   const el = RPG_EL.timeLeft;
   if (!el) return;
   if (RPG.timeLimitMs == null) { el.textContent = ''; return; }
@@ -899,7 +1071,7 @@ function rpgUpdateHudTimer() {
 // solo el intento actual (ver rpgEraseActiveSlot). Sin opción de
 // reintentar in-place: para volver a jugar hay que pasar por el menú y
 // arrancar una partida (esa misma u otro slot) desde cero.
-function rpgGameOver(title, sub) {
+export function rpgGameOver(title, sub) {
   rpgStopLoop();
   rpgEraseActiveSlot();
   const roomCfg = rpgRoomCfg();
@@ -917,7 +1089,7 @@ function rpgGameOver(title, sub) {
 // a la siguiente. Si es la habitación 5 (jefe), aparece un cofre de ORO
 // garantizado — el único lugar del juego donde puede salir — y recién al
 // recogerlo (ver rpgCollectChestReward) se completa el capítulo.
-function rpgVictory() {
+export function rpgVictory() {
   const room = RPG.room;
   const chapterCfg = rpgChapterCfg();
   const roomCfg = chapterCfg.rooms[room];
@@ -943,7 +1115,7 @@ function rpgVictory() {
 // es un chance aleatorio en habitaciones normales. Se ubica siempre en el
 // centro horizontal de la habitación (worldWidth / 2), sin importar dónde
 // esté parado Junior ni dónde quede la puerta de salida.
-function rpgSpawnChest(type) {
+export function rpgSpawnChest(type) {
   const C = RPG.canvas;
   const floor = rpgFloorBounds(C);
   RPG.chest = {
@@ -958,7 +1130,7 @@ function rpgSpawnChest(type) {
 }
 
 // ─── Completar capítulo (guardado) ─────
-function rpgCompleteChapter() {
+export function rpgCompleteChapter() {
   rpgStopLoop(); // el cofre de oro del jefe deja el loop corriendo hasta recogerlo
   const chapterIdx = RPG.chapter;
   const chapterCfg = RPG_CHAPTERS[chapterIdx];
