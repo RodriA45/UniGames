@@ -5294,7 +5294,7 @@ window.eliminarAvisoAdmin = async function(id) {
 
 window.loadAvisoPublico = async function() {
     try {
-        const res = await fetch('/api/avisos/activo');
+        const res = await fetch('/api/admin/avisos/activo');
         if (!res.ok) return;
         const aviso = await res.json();
         
