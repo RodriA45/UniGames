@@ -138,6 +138,7 @@ export const RPG_ROOM_WORLD_MULT = 1.8;
 // la habitación no está limpia, es una pared invisible; una vez limpia,
 // cruzarla dispara el pase a la siguiente habitación (sin cartel).
 export const RPG_DOOR_ZONE_W = 26;
+export const RPG_DEBUG_SHOW_ZONE = false; // true para ver el polígono de movimiento superpuesto al fondo, mientras se ajustan las coordenadas de una sala nueva
 
 // Zoom-out FIJO por habitación (reemplaza el viejo pan vertical dinámico
 // atado a la posición de Junior). El problema de fondo del pan dinámico:

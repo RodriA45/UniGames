@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Zone Map — editor de zona de movimiento (RPG Pixel)</title>
+<style>
+  :root {
+    --bg: #14151a;
+    --panel: #1c1e26;
+    --border: #2c2f3a;
+    --text: #e5e7eb;
+    --muted: #8b8fa3;
+    --accent: #22d3ee;
+    --accent2: #fde68a;
+    --danger: #f87171;
+    --ok: #4ade80;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+  #stage {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: auto;
+    background: repeating-linear-gradient(45deg, #1a1b21 0 12px, #17181d 12px 24px);
+    position: relative;
+  }
+  #stage.no-image::before {
+    content: "Cargá una imagen para empezar";
+    color: var(--muted);
+    font-size: 15px;
+  }
+  canvas {
+    cursor: crosshair;
+    box-shadow: 0 0 0 1px var(--border), 0 20px 60px rgba(0,0,0,.5);
+    image-rendering: pixelated;
+  }
+  canvas.walk-cursor { cursor: default; }
+  #panel {
+    width: 350px;
+    flex-shrink: 0;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+  .section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .section h2 { margin: 0 0 10px; font-size: 11px; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
+  input[type="number"] {
+    width: 100%; background: #12131a; border: 1px solid var(--border);
+    color: var(--text); padding: 6px 8px; border-radius: 6px; font-size: 13px;
+  }
+  input[type="file"] { font-size: 12px; color: var(--muted); width: 100%; }
+  .row { display: flex; gap: 8px; }
+  .row3 { display: flex; gap: 8px; }
+  .row3 > * { flex: 1; min-width: 0; }
+  .row > * { flex: 1; }
+  button {
+    background: #2a2d38; border: 1px solid var(--border); color: var(--text);
+    padding: 8px 10px; border-radius: 6px; font-size: 12.5px; cursor: pointer; width: 100%;
+  }
+  button:hover { background: #343846; }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); color: #06222b; border-color: var(--accent); font-weight: 600; }
+  button.primary:hover { background: #4dd8ee; }
+  button.danger { color: var(--danger); }
+  button.toggle.active { background: var(--accent); color: #06222b; border-color: var(--accent); }
+  button.toggle.active2 { background: var(--accent2); color: #3a2e05; border-color: var(--accent2); }
+  .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+  #pointList {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; max-height: 140px;
+    overflow-y: auto; background: #12131a; border: 1px solid var(--border); border-radius: 6px;
+    padding: 6px 8px; line-height: 1.6;
+  }
+  .pt-row { display: flex; justify-content: space-between; color: var(--muted); }
+  .pt-row span:first-child { color: var(--text); }
+  textarea#exportOut {
+    width: 100%; height: 170px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px;
+    background: #12131a; border: 1px solid var(--border); color: var(--accent2);
+    border-radius: 6px; padding: 8px; resize: vertical; margin-top: 8px;
+  }
+  #status { font-size: 11.5px; color: var(--muted); padding: 10px 16px; border-top: 1px solid var(--border); margin-top: auto; }
+  #status b { color: var(--text); }
+  .hint { font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 6px; }
+  #coordReadout {
+    position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,.65); border: 1px solid var(--border);
+    padding: 6px 10px; border-radius: 6px; font-family: ui-monospace, monospace; font-size: 11.5px;
+    color: var(--accent2); pointer-events: none; display: none;
+  }
+  #testBadge {
+    position: absolute; top: 10px; right: 10px; padding: 5px 10px; border-radius: 6px;
+    font-size: 11.5px; font-weight: 600; display: none;
+  }
+  #testBadge.inside { background: rgba(74,222,128,.15); color: var(--ok); border: 1px solid var(--ok); }
+  #testBadge.outside { background: rgba(248,113,113,.15); color: var(--danger); border: 1px solid var(--danger); }
+  #walkHelp {
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.65); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px;
+    font-size: 11.5px; color: var(--text); display: none; white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+  <div id="stage" class="no-image">
+    <canvas id="cv" width="0" height="0"></canvas>
+    <div id="coordReadout"></div>
+    <div id="testBadge"></div>
+    <div id="walkHelp">WASD / flechas para mover</div>
+  </div>
+
+  <div id="panel">
+
+    <div class="section">
+      <h2>1 · IMAGEN DE FONDO</h2>
+      <input type="file" id="fileInput" accept="image/*">
+      <div class="hint">Poné este archivo en la misma carpeta que los rpg_*.js — así "models/junior/junior.webp" carga solo, con ruta relativa.</div>
+    </div>
+
+    <div class="section">
+      <h2>2 · ESCALA DEL MUNDO</h2>
+      <div class="row3">
+        <div><label>World W</label><input type="number" id="worldWidth" value="864" step="1"></div>
+        <div><label>Logical W</label><input type="number" id="logicalWidth" value="480" step="1"></div>
+        <div><label>Logical H</label><input type="number" id="logicalHeight" value="270" step="1"></div>
+      </div>
+      <div class="hint">Por defecto 864 = 480 × 1.8 (RPG_ROOM_WORLD_MULT). Logical W/H son RPG_LOGICAL_W/H — no deberías tocarlos salvo que el juego los cambie.</div>
+    </div>
+
+    <div class="section">
+      <h2>3 · ZOOM DE CÁMARA (roomZoom)</h2>
+      <div class="row">
+        <div><label>roomZoom</label><input type="number" id="roomZoom" value="1" step="0.01" min="0.3" max="1.5"></div>
+        <div style="display:flex;align-items:flex-end;"><button id="btnAutoZoom">⚙ Auto (rpgComputeRoomZoom)</button></div>
+      </div>
+      <div class="hint">Auto = mismo cálculo que usa el juego cuando la sala NO define <code>forceRoomZoom</code>. Si el resultado no convence (como pasó en capítulo 2), dejá un número fijo a mano — eso es lo que después va en <code>forceRoomZoom</code>.</div>
+    </div>
+
+    <div class="section">
+      <h2>4 · DIBUJAR ZONA</h2>
+      <div class="hint">Clic para agregar un vértice, en orden. Clic cerca de uno existente lo arrastra. Clic derecho sobre uno lo borra.</div>
+      <div class="btn-grid">
+        <button id="btnUndo">↩ Deshacer último</button>
+        <button id="btnClear" class="danger">🗑 Limpiar todo</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>5 · PUNTO DE APARICIÓN</h2>
+      <button id="btnSpawnMode" class="toggle">📍 Elegir punto de spawn</button>
+      <div class="hint" id="spawnHint">Sin definir — el juego usa x=55 por defecto. Útil solo en la sala 1 de cada capítulo (donde entra Junior).</div>
+    </div>
+
+    <div class="section">
+      <h2>6 · PROBAR ZONA</h2>
+      <div class="btn-grid">
+        <button id="btnTestMode" class="toggle">🧪 Test rápido (punto)</button>
+        <button id="btnWalkMode" class="toggle">🏃 Simular movimiento</button>
+      </div>
+      <div class="hint">Test rápido: clic = adentro/afuera. Simular movimiento: metés a Junior de verdad y caminás con el mismo point-in-polygon + roomZoom + cámara que el juego real.</div>
+      <div style="margin-top:8px;">
+        <button id="btnReloadSprite">↻ Recargar sprite</button>
+      </div>
+      <div class="hint">El recorte del sheet de Junior está tomado directo de <code>sprites.js</code> (filas no uniformes) — no hace falta configurarlo a mano.</div>
+    </div>
+
+    <div class="section">
+      <h2>VÉRTICES</h2>
+      <div id="pointList"><span class="hint">(sin puntos todavía)</span></div>
+    </div>
+
+    <div class="section" style="border-bottom:none;">
+      <h2>7 · EXPORTAR</h2>
+      <button id="btnExport" class="primary">📋 Generar y copiar coordenadas</button>
+      <textarea id="exportOut" readonly placeholder="Acá aparece el snippet listo para pegar en zonePolygon..."></textarea>
+    </div>
+
+    <div id="status">Puntos: <b id="stPoints">0</b> · Modo: <b id="stMode">dibujar</b></div>
+  </div>
+
+<script>
+(function () {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const stage = document.getElementById('stage');
+  const fileInput = document.getElementById('fileInput');
+  const worldWidthInput = document.getElementById('worldWidth');
+  const logicalWidthInput = document.getElementById('logicalWidth');
+  const logicalHeightInput = document.getElementById('logicalHeight');
+  const roomZoomInput = document.getElementById('roomZoom');
+  const pointListEl = document.getElementById('pointList');
+  const exportOut = document.getElementById('exportOut');
+  const coordReadout = document.getElementById('coordReadout');
+  const testBadge = document.getElementById('testBadge');
+  const walkHelp = document.getElementById('walkHelp');
+  const stPoints = document.getElementById('stPoints');
+  const stMode = document.getElementById('stMode');
+  const btnTestMode = document.getElementById('btnTestMode');
+  const btnWalkMode = document.getElementById('btnWalkMode');
+  const btnSpawnMode = document.getElementById('btnSpawnMode');
+  const spawnHint = document.getElementById('spawnHint');
+  // Layout real del sheet de Junior — tomado de sprites.js (SPRITES.junior.rows).
+  // No es una grilla uniforme: cada fila tiene su propio ancho de celda.
+  const JUNIOR_ROWS = [
+    { y: 0,   cellWidth: 142, cellHeight: 166, columns: 3 }, // 0 - de frente, idle/aim (no es ciclo de caminata)
+    { y: 166, cellWidth: 129, cellHeight: 166, columns: 3 }, // 1 - espalda            -> "up"
+    { y: 332, cellWidth: 112, cellHeight: 166, columns: 3 }, // 2 - de frente caminando -> "down"
+    { y: 498, cellWidth: 128, cellHeight: 166, columns: 3 }, // 3 - perfil caminando    -> "right" (y "left" espejado)
+  ];
+  const JUNIOR_ROW_BY_FACING = { down: 2, up: 1, left: 3, right: 3 };
+  const JUNIOR_FLIP_BY_FACING = { down: false, up: false, left: true, right: false };
+
+  const RPG_PLAYER_DRAW_H = 42;
+  const RPG_PLAYER_SPEED = 2.3;
+  const RPG_ROOM_ZOOM_STRENGTH = 0.35;
+
+  let img = null;
+  let displayScale = 1;       // solo válido en modo 'draw'/'test'/'spawn'
+  let points = [];            // vértices en píxel de imagen real
+  let spawn = null;           // { ix, iy } en píxel de imagen real
+  let dragIndex = -1;
+  let mode = 'draw';          // 'draw' | 'test' | 'spawn' | 'walk'
+  let testMarkers = [];
+
+  let juniorImg = null;
+  let juniorOk = false;
+
+  const VERTEX_R = 6;
+
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    const im = new Image();
+    im.onload = () => {
+      img = im;
+      points = [];
+      spawn = null;
+      testMarkers = [];
+      stage.classList.remove('no-image');
+      setMode('draw');
+      fitCanvas();
+      draw();
+    };
+    im.src = url;
+  });
+
+  // Ruta relativa — este .html debe vivir junto a los rpg_*.js, dentro de
+  // la carpeta del juego, para que "models/junior/junior.webp" resuelva.
+  function loadJunior() {
+    juniorOk = false;
+    const im = new Image();
+    im.onload = () => { juniorImg = im; juniorOk = true; };
+    im.onerror = () => { juniorOk = false; };
+    im.src = 'models/junior/junior.webp';
+  }
+  loadJunior();
+  document.getElementById('btnReloadSprite').addEventListener('click', loadJunior);
+
+  function fitCanvas() {
+    if (!img || mode === 'walk') return;
+    const maxW = stage.clientWidth - 40;
+    const maxH = stage.clientHeight - 40;
+    const scale = Math.min(maxW / img.naturalWidth, maxH / img.naturalHeight, 1);
+    displayScale = scale;
+    cv.width = Math.round(img.naturalWidth * scale);
+    cv.height = Math.round(img.naturalHeight * scale);
+  }
+  window.addEventListener('resize', () => { if (mode !== 'walk') { fitCanvas(); draw(); } });
+
+  function getParams() {
+    return {
+      worldWidth: Number(worldWidthInput.value) || 864,
+      logicalW: Number(logicalWidthInput.value) || 480,
+      logicalH: Number(logicalHeightInput.value) || 270,
+      roomZoom: Number(roomZoomInput.value) || 1
+    };
+  }
+
+  // Idéntica a rpgDrawRoomBackground: la imagen se ancla abajo y se
+  // escala a todo el ancho del mundo, sea cual sea su aspect ratio.
+  function imgToWorld(ix, iy) {
+    const { worldWidth, logicalH } = getParams();
+    const scale = worldWidth / img.naturalWidth;
+    const dy = logicalH - img.naturalHeight * scale;
+    return { x: ix * scale, y: dy + iy * scale };
+  }
+
+  function clientToImg(clientX, clientY) {
+    const rect = cv.getBoundingClientRect();
+    return { ix: (clientX - rect.left) / displayScale, iy: (clientY - rect.top) / displayScale };
+  }
+
+  // Idéntica a rpgPointInPolygon (rpg_enemies_data.js).
+  function pointInPolygon(poly, x, y) {
+    let inside = false;
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const xi = poly[i].x, yi = poly[i].y;
+      const xj = poly[j].x, yj = poly[j].y;
+      const intersect = ((yi > y) !== (yj > y)) &&
+        (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  // Idéntica a rpgComputeRoomZoom (rpg_enemies_data.js).
+  function computeAutoZoom() {
+    if (!img) return 1;
+    const { worldWidth, logicalH } = getParams();
+    const dr = worldWidth / logicalH;
+    const ir = img.naturalWidth / img.naturalHeight;
+    if (ir > dr) return 1;
+    const dhFull = worldWidth / ir;
+    if (dhFull <= logicalH) return 1;
+    const fitZoom = logicalH / dhFull;
+    return 1 + (fitZoom - 1) * RPG_ROOM_ZOOM_STRENGTH;
+  }
+  document.getElementById('btnAutoZoom').addEventListener('click', () => {
+    if (!img) return;
+    roomZoomInput.value = computeAutoZoom().toFixed(3);
+    if (mode === 'walk') resetWalkCamera();
+  });
+
+  // ─── Modos ─────
+  function setMode(m) {
+    mode = m;
+    stMode.textContent = { draw: 'dibujar', test: 'test', spawn: 'spawn', walk: 'simulación' }[m];
+    btnTestMode.classList.toggle('active', m === 'test');
+    btnWalkMode.classList.toggle('active', m === 'walk');
+    btnSpawnMode.classList.toggle('active2', m === 'spawn');
+    testBadge.style.display = 'none';
+    cv.classList.toggle('walk-cursor', m === 'walk');
+    walkHelp.style.display = m === 'walk' ? 'block' : 'none';
+
+    if (m === 'walk') {
+      stopWalkLoop();
+      enterWalk();
+    } else {
+      stopWalkLoop();
+      if (img) { fitCanvas(); draw(); }
+    }
+  }
+
+  btnTestMode.addEventListener('click', () => { testMarkers = []; setMode(mode === 'test' ? 'draw' : 'test'); draw(); });
+  btnSpawnMode.addEventListener('click', () => { setMode(mode === 'spawn' ? 'draw' : 'spawn'); draw(); });
+  btnWalkMode.addEventListener('click', () => { if (img) setMode(mode === 'walk' ? 'draw' : 'walk'); });
+
+  // ─── Dibujo: modos draw / test / spawn (imagen completa) ─────
+  function draw() {
+    if (!img || mode === 'walk') return;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(img, 0, 0, cv.width, cv.height);
+
+    if (points.length) {
+      ctx.beginPath();
+      points.forEach((p, i) => {
+        const dx = p.ix * displayScale, dy = p.iy * displayScale;
+        if (i === 0) ctx.moveTo(dx, dy); else ctx.lineTo(dx, dy);
+      });
+      if (points.length > 2) ctx.closePath();
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.15)';
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 2;
+      if (points.length > 2) ctx.fill();
+      ctx.stroke();
+
+      points.forEach((p, i) => {
+        const dx = p.ix * displayScale, dy = p.iy * displayScale;
+        ctx.beginPath();
+        ctx.arc(dx, dy, 5, 0, Math.PI * 2);
+        ctx.fillStyle = i === dragIndex ? '#fde68a' : '#22d3ee';
+        ctx.fill();
+        ctx.strokeStyle = '#06222b';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 11px monospace';
+        ctx.fillText(String(i + 1), dx + 7, dy - 7);
+      });
+    }
+
+    if (spawn) {
+      const dx = spawn.ix * displayScale, dy = spawn.iy * displayScale;
+      ctx.save();
+      ctx.translate(dx, dy);
+      ctx.fillStyle = '#fde68a';
+      ctx.strokeStyle = '#3a2e05';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = (Math.PI * 2 * i) / 5 - Math.PI / 2;
+        const a2 = a + Math.PI / 5;
+        ctx.lineTo(Math.cos(a) * 8, Math.sin(a) * 8);
+        ctx.lineTo(Math.cos(a2) * 3.2, Math.sin(a2) * 3.2);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    testMarkers.forEach(m => {
+      const dx = m.ix * displayScale, dy = m.iy * displayScale;
+      ctx.beginPath();
+      ctx.arc(dx, dy, 5, 0, Math.PI * 2);
+      ctx.fillStyle = m.inside ? '#4ade80' : '#f87171';
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
+    updatePointList();
+  }
+
+  function updatePointList() {
+    stPoints.textContent = points.length;
+    if (!points.length) {
+      pointListEl.innerHTML = '<span class="hint">(sin puntos todavía)</span>';
+    } else {
+      pointListEl.innerHTML = points.map((p, i) => {
+        const w = imgToWorld(p.ix, p.iy);
+        return `<div class="pt-row"><span>#${i + 1}</span><span>x:${w.x.toFixed(1)}  y:${w.y.toFixed(1)}</span></div>`;
+      }).join('');
+    }
+    if (spawn) {
+      const w = imgToWorld(spawn.ix, spawn.iy);
+      spawnHint.innerHTML = `Spawn en <b>x:${w.x.toFixed(1)} y:${w.y.toFixed(1)}</b> (mundo). Se exporta como <code>playerSpawnX/Y</code>.`;
+    } else {
+      spawnHint.textContent = 'Sin definir — el juego usa x=55 por defecto. Útil solo en la sala 1 de cada capítulo (donde entra Junior).';
+    }
+  }
+
+  function nearestPointIndex(ix, iy) {
+    let best = -1, bestD = VERTEX_R * 1.8;
+    points.forEach((p, i) => {
+      const d = Math.hypot(p.ix - ix, p.iy - iy);
+      if (d < bestD) { bestD = d; best = i; }
+    });
+    return best;
+  }
+
+  cv.addEventListener('mousedown', (e) => {
+    if (!img || mode === 'walk') return;
+    const { ix, iy } = clientToImg(e.clientX, e.clientY);
+
+    if (mode === 'spawn') { spawn = { ix, iy }; setMode('draw'); draw(); return; }
+
+    if (mode === 'test') {
+      const worldPts = points.map(p => imgToWorld(p.ix, p.iy));
+      const w = imgToWorld(ix, iy);
+      const inside = points.length > 2 && pointInPolygon(worldPts, w.x, w.y);
+      testMarkers.push({ ix, iy, inside });
+      testBadge.style.display = 'block';
+      testBadge.className = inside ? 'inside' : 'outside';
+      testBadge.textContent = inside ? '● ADENTRO de la zona' : '● AFUERA de la zona';
+      draw();
+      return;
+    }
+
+    if (e.button === 2) return;
+    const near = nearestPointIndex(ix, iy);
+    if (near !== -1) { dragIndex = near; }
+    else { points.push({ ix, iy }); draw(); }
+  });
+
+  cv.addEventListener('mousemove', (e) => {
+    if (!img || mode === 'walk') return;
+    const { ix, iy } = clientToImg(e.clientX, e.clientY);
+    const w = imgToWorld(ix, iy);
+    coordReadout.style.display = 'block';
+    coordReadout.textContent = `img: ${ix.toFixed(0)}, ${iy.toFixed(0)}   →   world: ${w.x.toFixed(1)}, ${w.y.toFixed(1)}`;
+    if (dragIndex !== -1) {
+      points[dragIndex].ix = Math.max(0, Math.min(img.naturalWidth, ix));
+      points[dragIndex].iy = Math.max(0, Math.min(img.naturalHeight, iy));
+      draw();
+    }
+  });
+  window.addEventListener('mouseup', () => { dragIndex = -1; });
+  cv.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    if (!img || mode === 'walk') return;
+    const { ix, iy } = clientToImg(e.clientX, e.clientY);
+    const near = nearestPointIndex(ix, iy);
+    if (near !== -1) { points.splice(near, 1); draw(); }
+  });
+  cv.addEventListener('mouseleave', () => { coordReadout.style.display = 'none'; });
+
+  document.getElementById('btnUndo').addEventListener('click', () => { points.pop(); draw(); });
+  document.getElementById('btnClear').addEventListener('click', () => {
+    if (points.length && !confirm('¿Borrar todos los vértices?')) return;
+    points = []; testMarkers = []; testBadge.style.display = 'none'; draw();
+  });
+
+  // ─── Modo 'walk': simulación real (roomZoom + cámara + sprite + colisión) ─────
+  const WALK_DISPLAY_MULT = 2; // agranda el viewport lógico (480x270) para verlo cómodo
+
+  let walkRAF = null;
+  let walkLast = 0;
+  let simPlayer = null;
+  let simCamera = { x: 0, y: 0 };
+  let simKeys = { up: false, down: false, left: false, right: false };
+
+  function resetWalkCamera() {
+    const { logicalH, roomZoom } = getParams();
+    simCamera.y = logicalH * (1 - 1 / roomZoom);
+    simCamera.x = 0;
+  }
+
+  function enterWalk() {
+    const { logicalW, logicalH } = getParams();
+    cv.width = logicalW * WALK_DISPLAY_MULT;
+    cv.height = logicalH * WALK_DISPLAY_MULT;
+
+    const startWorld = spawn ? imgToWorld(spawn.ix, spawn.iy) : { x: 55, y: logicalH * 0.68 };
+    simPlayer = { x: startWorld.x, y: startWorld.y, facing: 'down', animFrame: 0, animTick: 0, moving: false };
+    resetWalkCamera();
+
+    window.addEventListener('keydown', onWalkKeyDown);
+    window.addEventListener('keyup', onWalkKeyUp);
+    walkLast = performance.now();
+    walkRAF = requestAnimationFrame(walkLoop);
+  }
+
+  function stopWalkLoop() {
+    if (walkRAF) cancelAnimationFrame(walkRAF);
+    walkRAF = null;
+    window.removeEventListener('keydown', onWalkKeyDown);
+    window.removeEventListener('keyup', onWalkKeyUp);
+    simKeys = { up: false, down: false, left: false, right: false };
+  }
+
+  function onWalkKeyDown(e) {
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') simKeys.up = true;
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') simKeys.down = true;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') simKeys.left = true;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') simKeys.right = true;
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code)) e.preventDefault();
+  }
+  function onWalkKeyUp(e) {
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') simKeys.up = false;
+    if (e.code === 'ArrowDown' || e.code === 'KeyS') simKeys.down = false;
+    if (e.code === 'ArrowLeft' || e.code === 'KeyA') simKeys.left = false;
+    if (e.code === 'ArrowRight' || e.code === 'KeyD') simKeys.right = false;
+  }
+
+  function walkLoop(ts) {
+    const dt = ts - walkLast;
+    walkLast = ts;
+    updateWalk(dt / 16.6);
+    drawWalk();
+    walkRAF = requestAnimationFrame(walkLoop);
+  }
+
+  function updateWalk(step) {
+    const { worldWidth, logicalW, roomZoom } = getParams();
+    const p = simPlayer;
+
+    let dx = 0, dy = 0;
+    if (simKeys.up) dy -= 1;
+    if (simKeys.down) dy += 1;
+    if (simKeys.left) dx -= 1;
+    if (simKeys.right) dx += 1;
+
+    if (dx !== 0 || dy !== 0) {
+      if (dx < 0) p.facing = 'left';
+      else if (dx > 0) p.facing = 'right';
+      else if (dy < 0) p.facing = 'up';
+      else if (dy > 0) p.facing = 'down';
+    }
+    p.moving = dx !== 0 || dy !== 0;
+
+    if (p.moving) {
+      const len = Math.hypot(dx, dy) || 1;
+      const spd = RPG_PLAYER_SPEED * step;
+      const stepX = (dx / len) * spd;
+      const stepY = (dy / len) * spd;
+      const zone = points.length > 2 ? points.map(pt => imgToWorld(pt.ix, pt.iy)) : null;
+      const tryX = p.x + stepX;
+      const tryY = p.y + stepY;
+
+      if (!zone) {
+        // Sin polígono todavía: movimiento libre, para pasear el fondo
+        // completo y decidir dónde conviene poner los vértices.
+        p.x = tryX; p.y = tryY;
+      } else if (pointInPolygon(zone, tryX, tryY)) {
+        p.x = tryX; p.y = tryY;
+      } else if (pointInPolygon(zone, tryX, p.y)) {
+        p.x = tryX;
+      } else if (pointInPolygon(zone, p.x, tryY)) {
+        p.y = tryY;
+      }
+
+      p.animTick += step;
+      const rowIdx = JUNIOR_ROW_BY_FACING[p.facing] ?? 2;
+      const cols = JUNIOR_ROWS[rowIdx].columns;
+      if (p.animTick >= 7) { p.animTick = 0; p.animFrame = (p.animFrame + 1) % cols; }
+    } else {
+      p.animFrame = 0;
+      p.animTick = 0;
+    }
+
+    if (worldWidth > logicalW) {
+      const visibleW = logicalW / roomZoom;
+      const targetCamX = Math.max(0, Math.min(worldWidth - visibleW, p.x - visibleW / 2));
+      simCamera.x += (targetCamX - simCamera.x) * Math.min(1, 0.12 * step);
+    } else {
+      simCamera.x = 0;
+    }
+  }
+
+  function drawWalk() {
+    const { worldWidth, logicalH, roomZoom } = getParams();
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.save();
+    ctx.scale(WALK_DISPLAY_MULT, WALK_DISPLAY_MULT);
+    ctx.scale(roomZoom, roomZoom);
+    ctx.translate(-simCamera.x, -simCamera.y);
+
+    // Fondo — misma fórmula que rpgDrawRoomBackground.
+    const scale = worldWidth / img.naturalWidth;
+    const dh = img.naturalHeight * scale;
+    const dyImg = logicalH - dh;
+    ctx.drawImage(img, 0, dyImg, worldWidth, dh);
+
+    // Zona (siempre visible en este modo — es el objeto de la prueba).
+    if (points.length > 2) {
+      const zone = points.map(pt => imgToWorld(pt.ix, pt.iy));
+      ctx.beginPath();
+      zone.forEach((pt, i) => { if (i === 0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y); });
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.12)';
+      ctx.strokeStyle = '#22d3ee';
+      ctx.lineWidth = 1 / roomZoom;
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    // Junior — mismo anclaje que rpgDrawFrame (centrado en X, pies en Y).
+    const p = simPlayer;
+    if (juniorOk && juniorImg) {
+      const rowIdx = JUNIOR_ROW_BY_FACING[p.facing] ?? 2;
+      const sheet = JUNIOR_ROWS[rowIdx];
+      const flip = JUNIOR_FLIP_BY_FACING[p.facing];
+      const frame = p.animFrame % sheet.columns;
+      const fw = sheet.cellWidth, fh = sheet.cellHeight;
+      const dhP = RPG_PLAYER_DRAW_H;
+      const dwP = dhP * (fw / fh);
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      if (flip) ctx.scale(-1, 1);
+      ctx.drawImage(juniorImg, frame * fw, sheet.y, fw, fh, -dwP / 2, -dhP, dwP, dhP);
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.arc(0, -RPG_PLAYER_DRAW_H / 2, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 6px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(p.facing[0].toUpperCase(), 0, -RPG_PLAYER_DRAW_H / 2 + 2);
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  // ─── Exportar ─────
+  document.getElementById('btnExport').addEventListener('click', () => {
+    if (points.length < 3) {
+      exportOut.value = '// Necesitás al menos 3 vértices para exportar una zona.';
+      return;
+    }
+    const worldPts = points.map(p => imgToWorld(p.ix, p.iy));
+    const lines = worldPts.map(p => `  { x: ${p.x.toFixed(1)}, y: ${p.y.toFixed(1)} }`).join(',\n');
+    const zoom = Number(roomZoomInput.value) || 1;
+
+    let spawnLines = '';
+    if (spawn) {
+      const w = imgToWorld(spawn.ix, spawn.iy);
+      spawnLines = `\n// Spawn de Junior (solo tiene sentido en la sala 1 del capítulo):\nplayerSpawnX: ${w.x.toFixed(1)},\nplayerSpawnY: ${w.y.toFixed(1)}, // ⚠ hoy rpg_menu_flow.js solo lee playerSpawnX — agregar el mismo override para Y si hace falta\n`;
+    }
+
+    const zoomLine = Math.abs(zoom - 1) > 0.001
+      ? `\n// Zoom calibrado acá — pegar junto al resto de la config de la sala:\nforceRoomZoom: ${zoom.toFixed(3)},\n`
+      : '';
+
+    exportOut.value =
+`// Pegar dentro de la config de la sala, en rpg_enemies_data.js:
+zonePolygon: (marginX, rightLimit, floorTop, floorBottom) => [
+${lines}
+],${zoomLine}${spawnLines}`;
+    exportOut.select();
+    navigator.clipboard && navigator.clipboard.writeText(exportOut.value).catch(() => {});
+  });
+
+  draw();
+})();
+</script>
+</body>
+</html>

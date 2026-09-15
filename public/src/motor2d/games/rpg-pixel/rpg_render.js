@@ -1,4 +1,4 @@
-import { RPG_ASSET_BASE, RPG_CHEST_DRAW_H, RPG_CHEST_FRAMES, RPG_CHEST_INTERACT_DIST, RPG_CHEST_SHEET, RPG_FACING_ROW, RPG_ITEM_ICONS, RPG_ITEM_SHEET, RPG_LOGICAL_H, RPG_LOGICAL_W, RPG_PLAYER_DRAW_H } from './rpg_config.js';
+import { RPG_ASSET_BASE, RPG_CHEST_DRAW_H, RPG_CHEST_FRAMES, RPG_CHEST_INTERACT_DIST, RPG_CHEST_SHEET, RPG_DEBUG_SHOW_ZONE, RPG_FACING_ROW, RPG_ITEM_ICONS, RPG_ITEM_SHEET, RPG_LOGICAL_H, RPG_LOGICAL_W, RPG_PLAYER_DRAW_H } from './rpg_config.js';
 import { RPG_BOSS_ATTACK_POSES, RPG_BOSS_WINDUP_POSES } from './rpg_enemies_ai.js';
 import { RPG, RPG_ENEMY_TYPES, rpgRoomCfg } from './rpg_enemies_data.js';
 
@@ -260,6 +260,35 @@ export function rpgDraw() {
       ctx.stroke();
       ctx.fill();
     }
+    ctx.restore();
+  }
+
+  // --- DEBUG: zona de movimiento poligonal (ver RPG_DEBUG_SHOW_ZONE en
+  // rpg_config.js y rpgActiveZonePolygon en rpg_enemies_data.js) — dibuja
+  // los bordes reales por los que Junior queda encerrado, superpuestos al
+  // fondo, para calibrar a ojo las coordenadas de una sala nueva. Se
+  // recalcula cada frame en rpgUpdate (RPG.debugZone) y acá solo se
+  // dibuja; no tiene ningún efecto sobre la colisión en sí.
+  if (RPG_DEBUG_SHOW_ZONE && RPG.debugZone && RPG.debugZone.length) {
+    ctx.save();
+    ctx.strokeStyle = '#22d3ee';
+    ctx.lineWidth = 1.5;
+    ctx.fillStyle = 'rgba(34, 211, 238, 0.12)';
+    ctx.beginPath();
+    ctx.moveTo(RPG.debugZone[0].x, RPG.debugZone[0].y);
+    for (let i = 1; i < RPG.debugZone.length; i++) {
+      ctx.lineTo(RPG.debugZone[i].x, RPG.debugZone[i].y);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Vértices marcados con un punto, para ver dónde está cada esquina.
+    ctx.fillStyle = '#22d3ee';
+    RPG.debugZone.forEach(pt => {
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    });
     ctx.restore();
   }
 

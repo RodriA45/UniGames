@@ -360,7 +360,51 @@ export const RPG_CHAPTERS = {
         type: 'combat',
         name: 'Habitación 1',
         zoneImage: RPG_ASSET_BASE + 'models/capitulo2/piso2a.webp',
-        forceRoomZoom: 1, // el fondo .webp zoomeaba de más de lo normal (ver forceRoomZoom en rpgStartRoom) — se fuerza sin zoom, igual que el resto de las salas
+        // Zona caminable: contorno calcado a mano sobre piso2a.webp (con
+        // la página propia de marcado de puntos, a forceRoomZoom=0.85 —
+        // ver ese valor más abajo) — sigue el borde real del piso
+        // (perspectiva de la puerta a la izquierda) y ya excluye las cajas
+        // y los barriles como muescas del propio polígono, así que no
+        // hace falta un cfg.obstacles aparte para esta sala.
+        zonePolygon: (marginX, rightLimit, floorTop, floorBottom) => [
+          { x: 0.0, y: 269.5 },
+          { x: 863.1, y: 268.6 },
+          { x: 863.1, y: 59.7 },
+          { x: 850.7, y: 59.7 },
+          { x: 851.6, y: 70.3 },
+          { x: 823.3, y: 70.3 },
+          { x: 823.3, y: 75.6 },
+          { x: 795.0, y: 75.6 },
+          { x: 794.1, y: 57.9 },
+          { x: 561.2, y: 59.7 },
+          { x: 555.9, y: 47.3 },
+          { x: 295.7, y: 47.3 },
+          { x: 290.4, y: 53.5 },
+          { x: 362.1, y: 55.3 },
+          { x: 358.5, y: 78.3 },
+          { x: 350.6, y: 85.4 },
+          { x: 321.3, y: 84.5 },
+          { x: 313.4, y: 91.6 },
+          { x: 280.6, y: 91.6 },
+          { x: 284.2, y: 83.6 },
+          { x: 260.3, y: 82.7 },
+          { x: 207.1, y: 128.7 },
+          { x: 170.0, y: 125.2 },
+          { x: 145.2, y: 144.7 },
+          { x: 147.8, y: 163.3 },
+          { x: 118.6, y: 187.2 },
+          { x: 121.3, y: 197.8 },
+          { x: 85.9, y: 222.6 },
+          { x: 62.0, y: 223.5 }
+        ],
+        // Spawn de Junior — a diferencia del resto de las salas (que solo
+        // pisan playerSpawnX y caen en el 68% de alto de siempre), acá
+        // también hace falta fijar la altura porque la zona no es un
+        // rectángulo parejo. Requiere el soporte de cfg.playerSpawnY
+        // agregado en rpgStartRoom (rpg_menu_flow.js).
+        playerSpawnX: 176.2,
+        playerSpawnY: 143.8,
+        forceRoomZoom: 0.850, // calibrado junto con el polígono de arriba — si se vuelve a tocar el zoom, hay que re-marcar el polígono con la página de marcado
         music: RPG_ASSET_BASE + 'sound/terror_boss.mp3', // TODO: música propia del cap. 2 si hay
         // ── Mecánica de horda/ronda (primera sala del capítulo 2) ──
         // En vez de tirar todos los enemigos juntos, salen en 2 oleadas.
@@ -609,6 +653,92 @@ export function rpgFloorBounds(C) {
     top: RPG_LOGICAL_H * RPG_FLOOR_TOP_RATIO,
     bottom: RPG_LOGICAL_H * (1 - RPG_FLOOR_BOTTOM_MARGIN)
   };
+}
+
+// ═══════════════════════════════════════════════
+//   Zona de movimiento poligonal (colisión con paredes/muros diagonales)
+// ═══════════════════════════════════════════════
+// Reemplaza el clamp rectangular de siempre (marginX/rightLimit en X,
+// floor.top/floor.bottom en Y) por un polígono arbitrario, para salas
+// donde el piso caminable NO es un rectángulo (ej. piso2a: pared con
+// puerta decorativa a la izquierda que corta más adentro que el margen
+// estándar). El rectángulo de siempre sigue siendo el default — cualquier
+// sala que NO define cfg.zonePolygon se comporta exactamente igual que
+// antes, bit a bit.
+//
+// Point-in-polygon por ray casting (algoritmo estándar, sin dependencias).
+// Válido para polígonos simples (sin auto-intersección), con cualquier
+// cantidad de vértices — funciona igual para un rectángulo que para una
+// forma con bordes diagonales/oblicuos.
+export function rpgPointInPolygon(poly, x, y) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i].x, yi = poly[i].y;
+    const xj = poly[j].x, yj = poly[j].y;
+    const intersect = ((yi > y) !== (yj > y))
+      && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+// Rectángulo de siempre, expresado como polígono de 4 puntos — mismos
+// bordes que el clamp viejo (marginX/rightLimit/floor.top/floor.bottom).
+export function rpgDefaultZonePolygon(marginX, rightLimit, floorTop, floorBottom) {
+  return [
+    { x: marginX, y: floorTop },
+    { x: rightLimit, y: floorTop },
+    { x: rightLimit, y: floorBottom },
+    { x: marginX, y: floorBottom }
+  ];
+}
+
+// Zona real de la sala actual: si cfg.zonePolygon está definido, se arma
+// llamándolo con los mismos 4 valores dinámicos que siempre importaron
+// (marginX, rightLimit —que ya trae adentro el bloqueo de puerta según
+// RPG.roomCleared—, floorTop, floorBottom), así una sala con forma
+// irregular sigue respetando la puerta que se destraba al limpiarla. Si
+// la sala no define nada, cae al rectángulo de siempre.
+export function rpgActiveZonePolygon(marginX, rightLimit, floorTop, floorBottom) {
+  const cfg = rpgRoomCfg();
+  if (cfg && typeof cfg.zonePolygon === 'function') {
+    return cfg.zonePolygon(marginX, rightLimit, floorTop, floorBottom);
+  }
+  return rpgDefaultZonePolygon(marginX, rightLimit, floorTop, floorBottom);
+}
+
+// ─── Obstáculos sólidos dentro de la zona caminable ─────
+// A diferencia de zonePolygon (que define el CONTORNO exterior por el que
+// Junior puede moverse), esto son "agujeros" puntuales adentro de esa
+// zona: objetos de la escena (cajas, barriles, muebles) que no se pueden
+// pisar aunque el punto caiga dentro del polígono principal. Mismo
+// formato que zonePolygon (array de {x,y}, reutiliza rpgPointInPolygon)
+// para no sumar una segunda forma de representar geometría — un
+// obstáculo rectangular es simplemente un polígono de 4 puntos (ver
+// rpgRect). cfg.obstacles: array de polígonos, ej.
+// [ rpgRect(236, 50, 356, 87) ]. Sala sin cfg.obstacles se comporta igual
+// que siempre (nada bloqueado, lista vacía).
+export function rpgRect(x1, y1, x2, y2) {
+  return [
+    { x: x1, y: y1 },
+    { x: x2, y: y1 },
+    { x: x2, y: y2 },
+    { x: x1, y: y2 }
+  ];
+}
+
+export function rpgActiveObstacles() {
+  const cfg = rpgRoomCfg();
+  return (cfg && Array.isArray(cfg.obstacles)) ? cfg.obstacles : [];
+}
+
+// true si (x,y) cae adentro de CUALQUIER obstáculo de la sala actual.
+export function rpgPointInObstacles(x, y) {
+  const obstacles = rpgActiveObstacles();
+  for (let i = 0; i < obstacles.length; i++) {
+    if (rpgPointInPolygon(obstacles[i], x, y)) return true;
+  }
+  return false;
 }
 
 // Config de la habitación / capítulo actuales (reemplaza al viejo

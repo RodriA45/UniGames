@@ -1150,7 +1150,7 @@ export function rpgCompleteChapter() {
     '🏆 ¡Capítulo superado!',
     'Derrotaste a ' + chapterCfg.rooms[5].enemyName + ' y completaste ' + chapterCfg.name + '. Partida guardada.',
     (hasNext
-      ? '<button class="btn-play" onclick="rpgStartChapter(' + nextChapterIdx + ')">▶ Siguiente capítulo</button>'
+      ? '<button class="btn-play" onclick="rpgStartChapter(' + nextChapterIdx + ', true)">▶ Siguiente capítulo</button>'
       : '') +
     '<button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;" onclick="rpgShowMenu()">← Volver al menú</button>'
   );

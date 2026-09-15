@@ -237,9 +237,22 @@ export function startRunner() {
 
 export function stopRunner() {
   RUNNER.running = false;
+  RUNNER._paused = false;
   if (RUNNER.loop) RUNNER.loop.stop();
   if (RUNNER.input) RUNNER.input.detach();
   if (RUNNER.touch) RUNNER.touch.detach();
+}
+
+export function pauseRunner() {
+  if (!RUNNER.running || RUNNER._paused || RUNNER.player?.dead) return;
+  RUNNER._paused = true;
+  if (RUNNER.loop) RUNNER.loop.stop();
+}
+
+export function resumeRunner() {
+  if (!RUNNER.running || !RUNNER._paused || RUNNER.player?.dead) return;
+  RUNNER._paused = false;
+  if (RUNNER.loop) RUNNER.loop.start();
 }
 
 export function updateRunner(step) {

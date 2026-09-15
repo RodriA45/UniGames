@@ -13,7 +13,7 @@
 //     app2.js sí están guardadas con "typeof X === 'function'", pero las
 //     dejamos expuestas igual para que esos guards se cumplan y el modo
 //     Historia/Infinito y la tienda funcionen de verdad (no solo no rompan).
-import { stopRunner } from './runner_loop.js';
+import { stopRunner, pauseRunner, resumeRunner } from './runner_loop.js';
 import { restartRunner, toRunnerMenu, showRunnerMenu, startPixelRunnerGame } from './runner_menu_flow.js';
 import { runnerComicContinuar, showRunnerComic, RUNNER_COMICS } from './runner_config.js';
 import { loadHistoriaCompleta, refreshRunnerUpgrades, loadTotalCoins, buyRunnerUpgrade, getUpgradeCost } from './runner_economy.js';
@@ -21,6 +21,8 @@ import { loadHistoriaCompleta, refreshRunnerUpgrades, loadTotalCoins, buyRunnerU
 Object.assign(window, {
   // index.html (onclick/oninput)
   stopRunner,
+  pauseRunner,
+  resumeRunner,
   restartRunner,
   toRunnerMenu,
   runnerComicContinuar,

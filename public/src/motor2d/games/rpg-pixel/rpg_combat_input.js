@@ -1,6 +1,6 @@
 import { RPG_CHEST_EXTRA_CHANCE, RPG_CHEST_FRAME_MS, RPG_CHEST_INTERACT_DIST, RPG_CHEST_REWARD_COUNT, RPG_DMG_UPGRADE_STEP, RPG_DOOR_ZONE_W, RPG_EL, RPG_JOYSTICK_DEADZONE, RPG_LOGICAL_H, RPG_LOGICAL_W, RPG_PLAYER_MAX_AMMO, RPG_PLAYER_MUZZLE_Y_OFF, RPG_PLAYER_RELOAD_MS, RPG_POWERUP_ICONS, RPG_POWERUP_SHEET } from './rpg_config.js';
 import { rpgBuildUpgradesSummaryHtml, rpgCompleteChapter, rpgEnemyHit, rpgGameOver, rpgOverlap, rpgUpdateBoss, rpgUpdateEnemyProjectiles, rpgUpdateGhost, rpgUpdateHudAmmo, rpgUpdateHudBars, rpgUpdateHudTimer, rpgUpdateRangedChase, rpgUpdateSimpleChase } from './rpg_enemies_ai.js';
-import { RPG, RPG_ENEMY_TYPES, RPG_POWERUP_DEFS, rpgFloorBounds, rpgRollPowerup, rpgRoomCfg } from './rpg_enemies_data.js';
+import { RPG, RPG_ENEMY_TYPES, RPG_POWERUP_DEFS, rpgActiveZonePolygon, rpgFloorBounds, rpgPointInPolygon, rpgRollPowerup, rpgRoomCfg } from './rpg_enemies_data.js';
 import { rpgStartRoom, rpgStopLoop } from './rpg_menu_flow.js';
 import { RPG_META } from './rpg_meta.js';
 import { rpgDraw } from './rpg_render.js';
@@ -465,12 +465,34 @@ export function rpgUpdate(dt) {
   if (p.moving) {
     const len = Math.hypot(dx, dy) || 1;
     const spd = p.blocking ? 0 : p.speed * speedMult * step;
-    p.x += (dx / len) * spd;
-    p.y += (dy / len) * spd;
+    const stepX = (dx / len) * spd;
+    const stepY = (dy / len) * spd;
 
+    // Zona de movimiento poligonal (ver rpg_enemies_data.js): reemplaza el
+    // clamp rectangular de siempre por un point-in-polygon, para salas
+    // como piso2a donde el borde izquierdo no es una simple línea vertical
+    // en marginX sino que corta más adentro (pared con puerta decorativa).
+    // Salas sin cfg.zonePolygon definido se comportan idéntico a antes
+    // (rpgActiveZonePolygon cae al rectángulo default).
     const floor = rpgFloorBounds(C);
-    p.x = Math.max(marginX, Math.min(rightLimit, p.x));
-    p.y = Math.max(floor.top, Math.min(floor.bottom, p.y));
+    const zone = rpgActiveZonePolygon(marginX, rightLimit, floor.top, floor.bottom);
+    RPG.debugZone = zone; // leído por rpgDraw cuando RPG_DEBUG_SHOW_ZONE está prendido
+
+    const tryX = p.x + stepX;
+    const tryY = p.y + stepY;
+
+    if (rpgPointInPolygon(zone, tryX, tryY)) {
+      // Movimiento diagonal completo: el punto destino cae dentro de la zona.
+      p.x = tryX;
+      p.y = tryY;
+    } else if (rpgPointInPolygon(zone, tryX, p.y)) {
+      // Bloqueado en Y (ej. tocando un borde horizontal) — desliza en X.
+      p.x = tryX;
+    } else if (rpgPointInPolygon(zone, p.x, tryY)) {
+      // Bloqueado en X (ej. tocando la pared/puerta) — desliza en Y.
+      p.y = tryY;
+    }
+    // Si ninguna combinación cae adentro (esquina cerrada), no se mueve.
 
     p.animTick += step;
     if (p.animTick >= 7) { p.animTick = 0; p.animFrame = (p.animFrame + 1) % 3; }

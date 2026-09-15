@@ -46,6 +46,7 @@ export function trCalculateStars() {
 
 // ─── Pausa ───
 export function trPauseGame() {
+  if (!TRAMPAS.running) return;
   TRAMPAS.running = false;
   trLoop.stop();
   TR_EL.pauseMenu.classList.remove('hidden');

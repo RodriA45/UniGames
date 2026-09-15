@@ -121,21 +121,27 @@ export function rpgSideX(side, cfg, C) {
 }
 
 // ─── Arrancar un capítulo (siempre desde la habitación 1) ─────
-export function rpgStartChapter(chapterIndex) {
+// keepUpgrades: true SOLO cuando viene de "▶ Siguiente capítulo" en el
+// cartel de victoria (ver rpgCompleteChapter, rpg_enemies_ai.js) — ahí es
+// la misma partida en curso, así que las mejoras de cofres juntadas en el
+// capítulo anterior tienen que seguir. En cualquier otro caso (elegir un
+// capítulo a mano desde el menú, reintentar tras morir) es un intento
+// nuevo y se resetea, como siempre.
+export function rpgStartChapter(chapterIndex, keepUpgrades) {
   const cfg = RPG_CHAPTERS[chapterIndex];
   if (!cfg) return;
   RPG.chapter = chapterIndex;
-  // Intento nuevo del capítulo: se pierden las mejoras de cofres juntadas
-  // en el intento anterior (morir o reintentar arranca de cero otra vez).
-  RPG.upgrades = {
-    maxHpBonus: 0,
-    dmgReduction: 0,
-    speedPermanent: false,
-    doubleShot: false,
-    dmgBonus: 0,
-    burning: false,
-    coins: 0
-  };
+  if (!keepUpgrades) {
+    RPG.upgrades = {
+      maxHpBonus: 0,
+      dmgReduction: 0,
+      speedPermanent: false,
+      doubleShot: false,
+      dmgBonus: 0,
+      burning: false,
+      coins: 0
+    };
+  }
   rpgStartRoom(1);
 }
 
@@ -206,8 +212,13 @@ export function rpgStartRoom(roomIndex) {
     // Junior entra siempre pegado al costado izquierdo del mundo (la
     // "puerta" de entrada) — incluida ahora la sala del jefe, que dejó de
     // ser un caso especial al unificarse su worldWidth con el resto.
-    RPG.player.x = 55;
-    RPG.player.y = RPG_LOGICAL_H * 0.68;
+    // cfg.playerSpawnX/playerSpawnY: override para salas cuya zona
+    // caminable (ver zonePolygon en rpg_enemies_data.js) no arranca en el
+    // margen/altura estándar — ej. piso2a, donde la pared con la puerta
+    // decorativa corta más adentro y spawnear en (55, 68%) dejaría a
+    // Junior afuera del polígono, trabado sin poder moverse.
+    RPG.player.x = (typeof cfg.playerSpawnX === 'number') ? cfg.playerSpawnX : 55;
+    RPG.player.y = (typeof cfg.playerSpawnY === 'number') ? cfg.playerSpawnY : RPG_LOGICAL_H * 0.68;
     // Vida máxima y velocidad base incluyen las mejoras permanentes
     // juntadas en cofres durante este intento (ver RPG.upgrades) — entrar
     // a la habitación siempre cura del todo, pero el máximo/velocidad

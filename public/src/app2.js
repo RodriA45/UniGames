@@ -243,6 +243,48 @@ function unmutepageMusic() {
   attemptPlayMusic();
 }
 
+// ─── Ahorro de CPU y batería al cambiar de pestaña (Page Visibility API) ───
+let tabMutedByVisibility = false;
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    // Pausar música ambiental si estaba sonando
+    if (!bgMusic.paused) {
+      bgMusic.pause();
+      tabMutedByVisibility = true;
+    }
+    // Pausar canales de audio del motor 2D
+    if (typeof Engine2D !== 'undefined' && Engine2D.Audio) {
+      Engine2D.Audio.pause();
+    }
+    // Pausar bucles/partidas activas para frenar el uso de CPU/GPU
+    if (typeof pauseRunner === 'function') {
+      pauseRunner();
+    }
+    if (typeof trPauseGame === 'function') {
+      trPauseGame();
+    }
+    if (typeof rpgPauseGame === 'function') {
+      rpgPauseGame();
+    }
+  } else {
+    // Reanudar música de fondo si se pausó por cambio de pestaña
+    if (tabMutedByVisibility) {
+      tabMutedByVisibility = false;
+      if (globalAudioEnabled && !pageMusicMuted) {
+        attemptPlayMusic();
+      }
+    }
+    // Reanudar audio del motor 2D
+    if (typeof Engine2D !== 'undefined' && Engine2D.Audio) {
+      Engine2D.Audio.resume();
+    }
+    // Reanudar Pixel Runner si se pausó al ocultar la pestaña
+    if (typeof resumeRunner === 'function') {
+      resumeRunner();
+    }
+  }
+});
+
 // ─── Datos de juegos ───────────────────
 const allGames = [
   { id: 'sopa', title: 'Sopa de Letras',    desc: 'Encontrá palabras ocultas en la grilla. Mientras más rápido, más puntos ganás.', tag: 'Velocidad' },
@@ -5294,7 +5336,7 @@ window.eliminarAvisoAdmin = async function(id) {
 
 window.loadAvisoPublico = async function() {
     try {
-        const res = await fetch('/api/avisos/activo');
+        const res = await fetch('/api/admin/avisos/activo');
         if (!res.ok) return;
         const aviso = await res.json();
         

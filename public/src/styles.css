@@ -47,10 +47,21 @@ body {
   overflow-x: hidden;
 }
 
-/* Fondo GIF */
+/* Fondo fijo optimizado con capa de aceleración GPU (evita repintados continuos al hacer scroll) */
 body.has-bg-gif {
-  background: url('../fondo.gif') center center / cover fixed;
-  background-color: var(--blue-dark);
+  background: transparent;
+  position: relative;
+}
+
+body.has-bg-gif::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--blue-dark) url('../fondo.webp') center center / cover no-repeat;
+  will-change: transform;
+  transform: translateZ(0);
+  pointer-events: none;
 }
 
 body.has-bg-gif main {
