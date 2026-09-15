@@ -59,13 +59,13 @@ app.get('/api/config', (req, res) => {
     });
 });
 
+app.use('/api/admin', adminRoutes);
 app.use('/api', authRoutes);
 app.use('/api', juegosRoutes);
 app.use('/api', perfilRoutes);
 app.use('/api', amigosRoutes);
 app.use('/api', logrosRoutes);
 app.use('/api', notificacionesRoutes);
-app.use('/api/admin', adminRoutes);
 app.use('/api', duelosRouter);
 
 
