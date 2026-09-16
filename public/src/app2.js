@@ -301,6 +301,7 @@ const actionGames = [
   { id: 'runner', title: 'Pixel Runner',     desc: 'Corré sin parar, esquivá obstáculos del suelo y del cielo. Doble salto y velocidad creciente.', tag: 'Acción'   },
   { id: 'castle_escape', title: 'Castle Escape',    desc: 'Saltá plataformas, esquivá trampas y llegá a la salida de los 20 niveles del castillo.',   tag: 'Aventura' },
   { id: 'rpg_pixel', title: 'RPG Pixel',         desc: 'Combatí contra jefes pixel art: dispará y bloqueá con el escudo en arenas fijas.',         tag: 'Combate'  },
+  { id: 'pixel_survi', title: 'Pixel Survi', desc: 'Mundo abierto por biomas: rompé bloques, construí y sobreviví. Normal o hardcore.', tag: 'Sandbox' },
 ];
 
 // Los 3 juegos sencillos fijos que se muestran siempre en el inicio.
@@ -332,6 +333,7 @@ function gameIconSVG(id, size = 22) {
     runner: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>',
     castle_escape: '<rect x="4" y="10" width="16" height="11"></rect><rect x="4" y="6" width="3" height="4"></rect><rect x="10.5" y="4" width="3" height="6"></rect><rect x="17" y="6" width="3" height="4"></rect><path d="M10 21v-5a2 2 0 0 1 4 0v5"></path>',
     rpg_pixel: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>',
+        pixel_survi: '<rect x="3" y="13" width="18" height="8"></rect><path d="M3 13l4-4 5 3 4-5 5 6"></path>',
     general: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',
     todos: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',
   };
@@ -1213,6 +1215,7 @@ const LOGROS_JUEGOS = [
   { id: 'castle_escape', nombre: 'Castle Escape' },
   { id: 'rpg_pixel',     nombre: 'RPG Pixel' },
   { id: 'general',       nombre: 'Generales' },
+  { id: 'pixel_survi',  nombre: 'Pixel Survi' },
 ];
 
 // Los 50 logros. `check(stats)` recibe las estadísticas acumuladas del
@@ -1817,7 +1820,7 @@ async function initPerfilScreen() {
 // ─── Juegos recomendados (dentro de cada pantalla de minijuego) ───
 // Se muestran 3 juegos al azar de los 9 totales, sin repetir el que
 // se está jugando en ese momento.
-const GAME_SCREEN_IDS = ['sopa', 'preguntados', 'termina', 'ahorcado', 'wordle', 'adivina', 'runner', 'castle_escape', 'rpg_pixel'];
+const GAME_SCREEN_IDS = ['sopa', 'preguntados', 'termina', 'ahorcado', 'wordle', 'adivina', 'runner', 'castle_escape', 'rpg_pixel', 'pixel_survi'];
 
 function renderRecommendedGames(currentGameId) {
   const container = document.getElementById('recBox-' + currentGameId);
@@ -1962,12 +1965,54 @@ function ensureChartJsLoaded() {
   return chartJsLoading;
 }
 
+// Pixel Survi es 100% módulos ES: no necesita ningún script clásico
+// previo (no usa globales tipo SPRITES ni CASTLE_ESCAPE_CUSTOM_LEVELS),
+// así que el CSS y el import() van en paralelo. Igual que los otros,
+// la promesa se cachea: se baja una sola vez por sesión.
+let surviModuleLoading = null;
+function ensureSurviLoaded() {
+  if (!surviModuleLoading) {
+    surviModuleLoading = Promise.all([
+      ensureCSS('src/motor2d/games/pixel-survi/pixel-survi.css'),
+      import('./motor2d/games/pixel-survi/survi_main.js')
+    ]).then(([, mod]) => mod);
+  }
+  return surviModuleLoading;
+}
 // ─── Calidad gráfica → clase en el <html> ───
 // Engine2D.Quality ya recorta lo que dibuja el canvas, pero el CSS de los
 // carteles/overlays no lo puede consultar. Con esta clase, las reglas caras
 // (backdrop-filter, que obliga a la GPU a releer el framebuffer de atrás y
 // se paga por frame mientras el modal está encima del juego corriendo) se
 // apagan solas en calidad baja. Ver el bloque `.q-low` en ui-components.css.
+// ─── Selector de calidad gráfica en Ajustes (los tres juegos) ───
+// Engine2D.Quality.createRow() ya devuelve la fila armada (label + 3
+// botones Bajo/Medio/Alto) y se auto-sincroniza con el nivel actual — no
+// hace falta escribirle lógica de click ni de estado acá. Se inserta UNA
+// vez por panel apenas arranca la página (los tres paneles ya están en el
+// DOM desde el index.html, solo ocultos con clases CSS, así que no hace
+// falta esperar a que se abra ninguno).
+//
+// Es UNA sola preferencia global (Engine2D.Quality), no una por juego: al
+// elegir "Bajo" desde Castle Escape, las otras dos filas —en Pixel Runner
+// y en el RPG— quedan marcadas en "Bajo" también la próxima vez que se
+// abran, porque cada createRow() se suscribió por su cuenta a los cambios.
+// El guard `slot.childElementCount` evita duplicar la fila si esta función
+// se llamara más de una vez.
+function ensureQualityRows() {
+  if (typeof Engine2D === 'undefined' || !Engine2D.Quality) return;
+  const slots = [
+    document.getElementById('runnerQualitySlot'),
+    document.getElementById('trQualitySlot'),
+    document.getElementById('rpgQualitySlot')
+  ];
+  for (const slot of slots) {
+    if (!slot || slot.childElementCount) continue;
+    slot.appendChild(Engine2D.Quality.createRow({ label: '🖼️ Gráficos' }));
+  }
+}
+ensureQualityRows();
+
 function syncQualityClass(level) {
   document.documentElement.classList.toggle('q-low', level === 'low');
 }
@@ -1982,6 +2027,7 @@ function goTo(section) {
   if (typeof stopTrampas === 'function') stopTrampas();
   if (typeof stopRpg === 'function') stopRpg();
   if (typeof rpgStopLoop === 'function') rpgStopLoop();
+  if (typeof stopSurvi === 'function') stopSurvi();  
   
   // Ocultar todas las secciones
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -2009,7 +2055,7 @@ function goTo(section) {
     ['preguntados', 'sopa', 'termina'].forEach(restoreOriginalSection);
   }
 
-if (section === 'runner' || section === 'castle_escape' || section === 'rpg_pixel') {
+if (section === 'runner' || section === 'castle_escape' || section === 'rpg_pixel' || section === 'pixel_survi') {
     // Estos juegos manejan su propia música (la ponen ellos mismos vía
     // setMusic al mostrar su menú). Ojo: NO llamar a mutePageMusic() acá,
     // porque deja pageMusicMuted = true y el setMusic() que viene justo
@@ -2024,6 +2070,11 @@ if (section === 'runner' || section === 'castle_escape' || section === 'rpg_pixe
     if (section === 'rpg_pixel') {
       ensureRpgLoaded().then(() => {
         if (typeof rpgInit === 'function') rpgInit();
+      });
+    }
+    if (section === 'pixel_survi') {
+      ensureSurviLoaded().then(() => {
+        if (typeof initSurvi === 'function') initSurvi();
       });
     }
   } else {
@@ -2136,7 +2187,13 @@ function iniciarRunnerDuelo(dueloId) {
   goTo('runner');
   cerrarPanelesRunner();
   const menu = document.getElementById('runnerMenu');
-  if (menu) menu.style.display = 'none';
+  // classList, no .style.display: showRunnerMenu()/toRunnerMenu() solo
+  // sacan la clase 'hidden' para volver a mostrarlo. Un .style.display
+  // inline puesto acá pisaba esa clase para siempre en esa pestaña — al
+  // volver del duelo al menú normal, quedaba invisible (portada, título y
+  // botones) sin ningún error visible, porque el estilo inline le ganaba a
+  // la clase CSS.
+  if (menu) menu.classList.add('hidden');
   mostrarToast('¡Arrancó el duelo! Modo Infinito.');
   runnerSyncFullscreenBtn();
   ensureRunnerLoaded().then(() => {

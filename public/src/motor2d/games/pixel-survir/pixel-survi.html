@@ -1,0 +1,23 @@
+<!-- ══════════════════════════════════════════════════════════════
+     Pixel Survi — sección para index.html
+     Va junto a las otras secciones de juego (sec-runner, sec-rpg_pixel…).
+     Ojo: NO va ningún <script> acá. El módulo lo carga app2.js con lazy
+     loading recién cuando se entra a esta sección, y el CSS lo inyecta
+     ensureCSS(). Lo único que tiene que existir en el DOM es el
+     contenedor #survi-root — todo lo demás lo arma survi_ui.js.
+     ══════════════════════════════════════════════════════════════ -->
+<section id="sec-pixel_survi" class="section">
+  <div class="container">
+    <div class="game-header">
+      <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
+      <h2 class="section-title">Pixel Survi</h2>
+      <p class="section-sub">Mundo abierto por biomas: rompé, construí y sobreviví. 3 mundos guardados, normal o hardcore.</p>
+    </div>
+
+    <!-- Acá se monta TODO el juego (canvas, HUD, menús) -->
+    <div id="survi-root"></div>
+
+    <!-- Recomendados, igual que el resto de las pantallas de juego -->
+    <div id="recBox-pixel_survi" class="rec-box"></div>
+  </div>
+</section>

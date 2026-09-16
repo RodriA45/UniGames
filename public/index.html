@@ -8,9 +8,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="src/styles.css" />
   <link rel="stylesheet" href="src/motor2d/ui-components.css">
-  <link rel="stylesheet" href="src/motor2d/games/pixel-runner/pixelrunner.css">
-  <link rel="stylesheet" href="src/motor2d/games/castle-escape/castle_escape.css">
-  <link rel="stylesheet" href="src/motor2d/games/rpg-pixel/rpg.css">
+  <!-- Los CSS de cada minijuego (pixelrunner.css, castle_escape.css, rpg.css)
+       ya NO se cargan acá: son ~2300 líneas que se parseaban en la pantalla de
+       Inicio sin usarse una sola regla. Ahora los inyecta ensureRunnerCSS() /
+       ensureCastleCSS() / ensureRpgCSS() en app2.js, junto con el import()
+       del juego, la primera vez que se entra a esa sección. El orden final
+       sigue siendo el mismo (styles.css → ui-components.css → css del juego)
+       porque se agregan al final del <head>. -->
 </head>
 <body class="has-bg-gif">
 
@@ -728,6 +732,11 @@
               <label>🖥️ Pantalla completa</label>
               <button type="button" class="runner-fullscreen-btn" id="runnerFullscreenBtn" onclick="runnerToggleFullscreen()">Activar</button>
             </div>
+            <!-- Selector de calidad gráfica: lo inserta ensureQualityRows()
+                 (app2.js) con Engine2D.Quality.createRow(). Es UNA sola
+                 preferencia global — se sincroniza sola con los otros dos
+                 juegos, no hace falta elegirla en cada uno. -->
+            <div id="runnerQualitySlot"></div>
           </div>
         </div>
       </div>
@@ -845,6 +854,7 @@
             <label>🖥️ Pantalla completa</label>
             <button type="button" class="runner-fullscreen-btn" id="trFullscreenBtn" onclick="trToggleFullscreen()">Activar</button>
           </div>
+          <div id="trQualitySlot"></div>
         </div>
       </div>
 
@@ -984,6 +994,7 @@
                 <label>🖥️ Pantalla completa</label>
                 <button type="button" class="runner-fullscreen-btn rpg-fullscreen-btn" onclick="rpgToggleFullscreen()">Activar</button>
               </div>
+              <div id="rpgQualitySlot"></div>
             </div>
             <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;" onclick="rpgShowMainMenu()">Volver</button>
           </div>
@@ -1007,7 +1018,7 @@
       <!-- HUD superpuesto al juego -->
       <div class="rpg-hud hidden" id="rpgHud">
         <div class="rpg-hud-frame rpg-hud-frame-player">
-            <img class="rpg-hud-frame-img" src="src/motor2d/games/rpg-pixel/models/hud/hud_display.webp" alt="">
+            <img class="rpg-hud-frame-img" loading="lazy" decoding="async" src="src/motor2d/games/rpg-pixel/models/hud/hud_display.webp" alt="">
             <div class="rpg-hud-avatar rpg-expr-feliz" id="rpgPlayerAvatar"></div>
             <div class="rpg-hud-fill-track rpg-hud-fill-track-player">
               <div class="rpg-hud-fill-bar rpg-hud-fill-player" id="rpgPlayerHpFill"></div>
@@ -1017,7 +1028,7 @@
         <div class="rpg-hud-ammo" id="rpgAmmoText">8/8</div>
         <div class="rpg-hud-timer" id="rpgTimeLeft"></div>
         <div class="rpg-hud-frame rpg-hud-frame-boss hidden" id="rpgEnemyHudWrap">
-                <img class="rpg-hud-frame-img" src="src/motor2d/games/rpg-pixel/models/hud/lifeboss1.webp" alt="">
+                <img class="rpg-hud-frame-img" loading="lazy" decoding="async" src="src/motor2d/games/rpg-pixel/models/hud/lifeboss1.webp" alt="">
                 <span class="rpg-hud-label rpg-hud-label-boss" id="rpgEnemyName">Enemigo</span>
                 <div class="rpg-hud-fill-track rpg-hud-fill-track-boss">
                 <div class="rpg-hud-fill-bar rpg-hud-fill-enemy" id="rpgEnemyHpFill"></div>
@@ -1047,6 +1058,30 @@
     <div class="game-recommended-box">
       <h3 class="game-info-title">Juegos recomendados</h3>
       <div class="featured-grid" id="recBox-rpg_pixel"></div>
+    </div>
+  </section>
+
+  <!-- ── SECCIÓN: PIXEL SURVI ── -->
+  <!-- El juego se monta entero adentro de #survi-root (canvas, HUD, menús).
+       No va ningún <script> ni <link> acá: app2.js importa el módulo y el CSS
+       con lazy loading recién al entrar a esta sección (ensureSurviLoaded). -->
+  <section class="section" id="sec-pixel_survi">
+    <div class="game-screen-header">
+      <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
+      <div class="game-screen-title" style="font-family:'Press Start 2P',monospace;color:#14532d;"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="13" width="18" height="8"></rect><path d="M3 13l4-4 5 3 4-5 5 6"></path></svg> Pixel Survi</div>
+    </div>
+
+    <div id="survi-root"></div>
+
+    <div class="game-info-box">
+      <h3 class="game-info-title">⛏️ Pixel Survi</h3>
+      <p class="game-info-story">Junior despierta en un mundo generado de cero: bosque, pradera, desierto, nieve y jungla, con cuevas y minerales abajo. No hay mapa ni camino marcado — lo que haya, hay que picarlo.</p>
+      <p class="game-info-desc">Mundo abierto por biomas: rompé bloques con el clic izquierdo (mantené para seguir picando), colocá con el derecho y armá lo que quieras. Tenés 20 de vida, la caída lastima y hay tres mundos guardados. En hardcore, si morís se borra el mundo.</p>
+    </div>
+
+    <div class="game-recommended-box">
+      <h3 class="game-info-title">Juegos recomendados</h3>
+      <div class="featured-grid" id="recBox-pixel_survi"></div>
     </div>
   </section>
 
@@ -1916,10 +1951,19 @@
 </div>
 
 <!-- Script -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script src="src/motor2d/engine2d.js"></script>
-<script src="src/motor2d/games/rpg-pixel/models/sprites.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="src/app2.js"></script>
+<!-- chart.js NO va acá: solo lo usa el dashboard del panel de admin y lo baja
+     ensureChartJsLoaded() (app2.js) al abrir esa pestaña. Estaba duplicado:
+     el lazy loader ya existía pero esta etiqueta nunca se había borrado, así
+     que ~200KB los descargaba todo el mundo.
+     sprites.js tampoco: es el global SPRITES que usa rpg_render.js, así que
+     ahora lo encadena ensureRpgLoaded() antes de importar rpg_main.js (mismo
+     patrón que castle_escape_levels.js). El resto del RPG ya era diferido.
+     defer en los dos que quedan: sin él, supabase-js (~120KB) y app2.js
+     (5700 líneas) frenan el parseo del HTML. Con defer se bajan en paralelo
+     y se ejecutan en orden al terminar el documento — engine2d.js queda
+     definido antes que app2.js igual. -->
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="src/motor2d/engine2d.js"></script>
+<script defer src="src/app2.js"></script>
 </body>
 </html>
