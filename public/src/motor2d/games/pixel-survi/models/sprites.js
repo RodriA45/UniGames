@@ -10,25 +10,37 @@
 //     iconStyle()   → para los íconos DOM del hotbar / inventario
 // ══════════════════════════════════════════════════════════════
 
+// survi_config.js no importa nada (es solo datos), así que cualquier
+// módulo lo puede leer — incluido este. Lo usamos para el total de tiles
+// del atlas, así tileIconStyle() no depende de que cada caller se
+// acuerde de pasarlo.
+import { TILE_COUNT } from '../survi_config.js';
+
 // Rutas relativas al DOCUMENTO (index.html), igual que ensureCSS en app2.js.
-const BASE = 'src/motor2d/games/pixel-survi/assets/';
+// OJO con la estructura real en disco: todo cuelga de models/, y adentro
+// los assets NO están todos sueltos en una sola carpeta — están separados
+// por tipo (world/ para el tileset, item/ para herramientas, particle/
+// para las grietas) y junior.png vive en su propia carpeta junior/, al
+// lado de assets/, no adentro. Si se mueve algo en models/ hay que
+// actualizar esto (y COVER_SRC en survi_config.js).
+const BASE = 'src/motor2d/games/pixel-survi/models/';
 
 export const ASSETS = {
-  tiles:     BASE + 'tiles.png',
-  junior:    BASE + 'junior.png',
-  toolsHeld: BASE + 'tools-held.png',
-  toolsIcon: BASE + 'tools-icon.png',
-  cracks:    BASE + 'cracks.png'
+  tiles:     BASE + 'assets/world/tiles.png',
+  junior:    BASE + 'junior/junior.png',
+  toolsHeld: BASE + 'assets/item/tools-held.png',
+  toolsIcon: BASE + 'assets/item/tools-icon.png',
+  cracks:    BASE + 'assets/particle/cracks.png'
 };
 
 // Lista para precargar todo de una con Engine2D.loadAll()
 export const PRELOAD = Object.values(ASSETS);
 
 // ─── Tileset del mundo (lo consume Engine2D.TileMap) ───
-// 4 columnas, 16px por tile, id-1 = índice. El orden está fijado en
-// survi_config.js (TILE_ORDER): si se agrega un tile hay que regenerar
-// tiles.png con el mismo orden.
-export const TILESET = { src: ASSETS.tiles, cols: 4, size: 16 };
+// 8 columnas, 16px por tile, id-1 = índice. Tiene que coincidir con
+// COLS_TS de build_assets.py y con el orden de survi_config.js: si se
+// agrega un tile hay que regenerar tiles.png con el mismo orden.
+export const TILESET = { src: ASSETS.tiles, cols: 8, size: 16 };
 
 // ─── Junior (personaje jugable) ───
 // Los sprites originales miran todos para el mismo lado: cuando camina a
@@ -102,7 +114,10 @@ export function spriteStyle(src, col, row, cell, sheetCols, sheetRows, px) {
 }
 
 // Ícono de un tile del mundo (usa el mismo tiles.png que dibuja el mapa).
-export function tileIconStyle(tileId, px, totalTiles) {
+// totalTiles es opcional: si no se pasa, usa TILE_COUNT de survi_config.js
+// (antes esto quedaba undefined cuando el caller no lo pasaba, y las filas
+// del atlas daban NaN → el ícono se recortaba mal / no se veía).
+export function tileIconStyle(tileId, px, totalTiles = TILE_COUNT) {
   const i = tileId - 1;
   const rows = Math.ceil(totalTiles / TILESET.cols);
   return spriteStyle(TILESET.src, i % TILESET.cols, Math.floor(i / TILESET.cols),

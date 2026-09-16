@@ -7,9 +7,16 @@ async function getDb() {
     if (poolInstance) return poolInstance;
     
     try {
+        const connStr = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/unigames';
+        // Las DB en la nube (Supabase, Neon, Render, Railway...) exigen SSL
+        // SIEMPRE, en dev y en prod. Antes esto dependía de NODE_ENV === 'production',
+        // así que en local (npm run dev) se conectaba sin SSL y el proveedor cortaba
+        // la conexión de entrada -> ECONNRESET. Ahora se decide por el host: si NO es
+        // localhost/127.0.0.1, se asume que necesita SSL.
+        const isLocalHost = /localhost|127\.0\.0\.1/.test(connStr);
         poolInstance = new Pool({
-            connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/unigames',
-            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+            connectionString: connStr,
+            ssl: isLocalHost ? false : { rejectUnauthorized: false }
         });
 
         // Test the connection

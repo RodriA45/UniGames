@@ -85,7 +85,7 @@ function wireActions() {
 
       // ── en partida ──
       case 'fullscreen':
-        if (globalThis.Engine2D) Engine2D.Fullscreen.toggle(ui.root);
+        if (typeof Engine2D !== 'undefined') Engine2D.Fullscreen.toggle(ui.root);
         break;
       case 'resume':
         game.setPaused(false);
@@ -162,7 +162,7 @@ async function startWorld(mode) {
 
 // ═══════════ Ajustes ═══════════
 function wireSettings() {
-  const E = globalThis.Engine2D;
+  const E = typeof Engine2D !== 'undefined' ? Engine2D : null;
 
   // Música y efectos salen del mixer del motor (Engine2D.Audio), que ya
   // persiste los volúmenes en localStorage — no hace falta guardarlos acá.

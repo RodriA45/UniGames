@@ -1841,7 +1841,12 @@ const Engine2D = (function () {
     // Solo se llama cuando hace falta (ver draw) — nunca en cada frame.
     _bake() {
       const img = getImage(this.tilesetSrc);
-      if (!img) return; // el tileset todavía no cargó — se reintenta en el próximo draw()
+      // No alcanza con que exista el objeto Image en el caché: puede estar
+      // a mitad de cargar (complete=false) o haber quedado "broken" un
+      // instante después de que algún caller la leyó con getImage() antes
+      // de que el error terminara de propagarse. Dibujarla en cualquiera
+      // de esos dos casos tira InvalidStateError en drawImage().
+      if (!img || !img.complete || !img.naturalWidth) return; // no cargó (todavía o nunca) — se reintenta en el próximo draw()
       if (!this._bakedLayer) this._bakedLayer = new StaticLayer(this.cols * this.tileSize, this.rows * this.tileSize);
       const ts = this.tileSize;
       this._bakedLayer.bake(bctx => {

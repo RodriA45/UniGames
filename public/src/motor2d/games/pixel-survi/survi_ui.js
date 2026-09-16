@@ -10,7 +10,7 @@
 
 import { MAX_HP, COVER_SRC, MODES, ITEM_INFO, HOTBAR_SIZE } from './survi_config.js';
 import { fmtTime } from './survi_save.js';
-import { tileIconStyle, toolIconStyle } from './sprites.js';
+import { tileIconStyle, toolIconStyle } from './models/sprites.js';
 
 // Nombres de pantalla válidos para showScreen()
 export const SCREENS = ['cover', 'worlds', 'mode', 'settings', 'howto', 'pause', 'death', 'inv'];
@@ -24,7 +24,7 @@ export function buildLayout(root) {
     <div class="survi-hud hidden">
       <div class="survi-hud-top">
         <button class="game-icon-btn survi-pause-btn" title="Pausa (Esc)">⏸</button>
-        <button class="game-icon-btn survi-inv-btn" title="Inventario (E)">E</button>
+        <button class="game-icon-btn survi-inv-btn" title="Inventario (I)">I</button>
       </div>
       <div class="survi-hud-bottom">
         <div class="survi-health" title="Vida">
@@ -124,7 +124,7 @@ export function buildLayout(root) {
           <div class="game-info-row"><b>Clic izquierdo</b> (mantenido) — romper bloques y atacar</div>
           <div class="game-info-row"><b>Clic derecho</b> — colocar el bloque del slot elegido</div>
           <div class="game-info-row"><b>1 a 8</b> — elegir slot de la hotbar</div>
-          <div class="game-info-row"><b>E</b> — abrir el inventario</div>
+          <div class="game-info-row"><b>I</b> — abrir el inventario</div>
           <div class="game-info-row"><b>Esc</b> — pausa</div>
           <div class="game-info-row">Caer de más de 4 bloques te saca vida. En <b>hardcore</b> la muerte borra el mundo.</div>
         </div>
@@ -138,7 +138,7 @@ export function buildLayout(root) {
         <h2 class="modal-game-title">Inventario</h2>
         <div class="survi-inv-grid"></div>
         <p class="survi-inv-hint">Clic en un ítem para ponerlo en el slot #<span class="survi-inv-slot">1</span>.</p>
-        <button class="btn-game-primary" data-act="close-inv">Cerrar (E)</button>
+        <button class="btn-game-primary" data-act="close-inv">Cerrar (I)</button>
       </div>
     </div>
 
@@ -170,6 +170,8 @@ export function buildLayout(root) {
     root,
     canvas: q('.survi-canvas'),
     hud: q('.survi-hud'),
+    pauseBtn: q('.survi-pause-btn'),
+    invBtn: q('.survi-inv-btn'),
     hotbar: q('.survi-hotbar'),
     hpBar: q('.survi-health-bar i'),
     hpText: q('.survi-health-text'),

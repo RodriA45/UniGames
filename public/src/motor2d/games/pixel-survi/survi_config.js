@@ -13,7 +13,7 @@ export const WORLD_H = ROWS * TILE;
 export const VIEW_W = 480;   // resolución interna del canvas (30 tiles)
 export const VIEW_H = 288;   // 18 tiles de alto
 
-export const COVER_SRC = 'src/motor2d/games/pixel-survi/assets/portada.png';
+export const COVER_SRC = 'src/motor2d/games/pixel-survi/models/portada.png';
 
 // ══════════════════════════════════════════════════════════════
 //  IDs de tile
@@ -288,7 +288,7 @@ export const ATTACK_DMG = 3;          // a mano; la espada suma su power
 export const PLACE_COOLDOWN = 160;
 export const MOVE_SPEED = 2.2;
 export const JUMP_VEL = -7.6;
-export const REACH_TILES = 5.5;
+export const REACH_TILES = 5;
 
 // La caja de colisión es más chica que el dibujo a propósito: el sprite
 // sobresale, el choque no.

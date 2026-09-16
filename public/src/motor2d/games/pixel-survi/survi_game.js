@@ -20,9 +20,9 @@ import { saveWorld, deleteWorld, fmtTime } from './survi_save.js';
 import { showScreen } from './survi_ui.js';
 import {
   ASSETS, PRELOAD, TILESET, JUNIOR, TOOLS_HELD, CRACKS, toolCell, drawSprite
-} from './sprites.js';
+} from './models/sprites.js';
 
-const E2D = () => globalThis.Engine2D;
+const E2D = () => (typeof Engine2D !== 'undefined' ? Engine2D : undefined);
 
 export class SurviGame {
   constructor(ui) {
@@ -58,6 +58,23 @@ export class SurviGame {
 
     this._bindCanvas();
     this._bindTouch();
+    this._bindHudButtons();
+  }
+
+  // Los botones ⏸ e "I" del HUD no tenían data-act ni listener propio —
+  // el delegado de clicks de survi_main.js solo escucha [data-act], así
+  // que tocarlos no hacía nada. Acá replican exactamente lo mismo que
+  // Esc / I en _attachInput().
+  _bindHudButtons() {
+    this.ui.pauseBtn.addEventListener('click', () => {
+      if (!this.running || this.dead) return;
+      if (this.invOpen) this.toggleInventory(false);
+      else this.setPaused(!this.paused);
+    });
+    this.ui.invBtn.addEventListener('click', () => {
+      if (!this.running || this.dead || this.paused) return;
+      this.toggleInventory();
+    });
   }
 
   // ═══════════ Arranque / parada ═══════════
@@ -80,14 +97,36 @@ export class SurviGame {
     // Todos los PNG de una: tileset, Junior, herramientas y grietas.
     // Si alguno falla igual se arranca: mejor el juego sin una textura que
     // la pantalla trabada esperando un PNG que no está.
-    await E2D().loadAll(PRELOAD.map(src => ({ type: 'image', src })))
-      .catch(err => console.warn('[pixel-survi] falta algún asset:', err));
-    this.img = {
-      tiles: E2D().getImage(ASSETS.tiles),
-      junior: E2D().getImage(ASSETS.junior),
-      held: E2D().getImage(ASSETS.toolsHeld),
-      cracks: E2D().getImage(ASSETS.cracks)
+    //
+    // OJO: antes esto usaba E2D().loadAll(), que por dentro hace
+    // Promise.all — si UNA sola imagen fallaba, la promesa general
+    // rechazaba al toque sin esperar a que las demás terminaran de cargar.
+    // Podíamos terminar acá leyendo con getImage() una imagen que todavía
+    // estaba a mitad de descargar (ni lista ni descartada del caché
+    // todavía); un instante después esa misma imagen fallaba de verdad y
+    // quedaba en estado "broken" — y el primer drawImage() con esa
+    // referencia tiraba InvalidStateError. Promise.allSettled() espera a
+    // que TODAS terminen (bien o mal) antes de seguir.
+    await Promise.allSettled(PRELOAD.map(src => E2D().loadImage(src)));
+
+    // Nos quedamos solo con imágenes realmente usables: si getImage() no
+    // tiene nada (falló y Engine2D la sacó del caché) o todavía no está
+    // decodificada, mejor null que arrastrar un HTMLImageElement roto
+    // hasta el draw() — drawSprite()/drawImage() ya saben saltearse un
+    // null, pero no una imagen "broken".
+    const readyImg = (src) => {
+      const img = E2D().getImage(src);
+      return (img && img.complete && img.naturalWidth > 0) ? img : null;
     };
+    this.img = {
+      tiles: readyImg(ASSETS.tiles),
+      junior: readyImg(ASSETS.junior),
+      held: readyImg(ASSETS.toolsHeld),
+      cracks: readyImg(ASSETS.cracks)
+    };
+    if (!this.img.tiles || !this.img.junior) {
+      console.warn('[pixel-survi] tileset y/o Junior no cargaron — revisá las rutas de ASSETS/BASE en models/sprites.js');
+    }
 
     this.tilemap = new (E2D().TileMap)({
       cols: COLS, rows: ROWS, tileSize: TILE,
@@ -239,7 +278,7 @@ export class SurviGame {
       ArrowUp: 'jump', KeyW: 'jump', Space: 'jump',
       Digit1: 'slot0', Digit2: 'slot1', Digit3: 'slot2', Digit4: 'slot3',
       Digit5: 'slot4', Digit6: 'slot5', Digit7: 'slot6', Digit8: 'slot7',
-      KeyE: 'inv', Escape: 'pause'
+      KeyI: 'inv', Escape: 'pause'
     }, {
       activeCheck: () => this.running && !this.dead,
       preventDefaultFor: new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'Space']),
