@@ -12,12 +12,19 @@ import {
 import { loadHistoriaCompleta, saveHistoriaCompleta } from './runner_economy.js';
 import { drawRunner } from './runner_render.js';
 
-export function startHistoriaWinApproach(C) {
+export async function startHistoriaWinApproach(C) {
   RUNNER.obstacles = [];
   RUNNER.pickups = [];
 
+  // El castillo es una imagen pesada (2400×1792) que solo se ve acá, al
+  // ganar Modo Historia — no tiene sentido tenerla en el manifest inicial
+  // pagando esa VRAM durante toda la partida. Se carga recién ahora, bajo
+  // demanda; Engine2D.loadImage cachea en el mismo lugar que getImage(),
+  // así que el resto del código (drawRunner en runner_render.js) no
+  // necesita saber que la carga fue diferida.
+  const img = await Engine2D.loadImage(RUNNER_ASSETS.castillo).catch(() => null);
+
   const p = RUNNER.player;
-  const img = Engine2D.getImage(RUNNER_ASSETS.castillo);
   const h = CASTLE_TARGET_H;
   const aspect = (img && img.width && img.height) ? (img.width / img.height) : 0.85;
   const w = h * aspect;

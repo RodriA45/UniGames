@@ -896,7 +896,9 @@ function mostrarTabAmigos(tab) {
 // si es un emoji (dato viejo / de respaldo) se muestra tal cual.
 function avatarValueHTML(valor, altText) {
   if (valor && /\.(webp|png|jpe?g|gif|svg)$/i.test(valor)) {
-    return `<img src="${valor}" alt="${sanitizeHTML(altText || '')}">`;
+    // loading/decoding: estos avatares salen en listas largas (amigos,
+    // ranking, búsqueda) donde la mayoría arranca fuera de pantalla.
+    return `<img src="${valor}" alt="${sanitizeHTML(altText || '')}" loading="lazy" decoding="async">`;
   }
   return valor || '🙂';
 }
@@ -1870,10 +1872,51 @@ function restoreOriginalSection(id) {
 // el usuario entra a esa sección — el resto de las visitas no paga ese
 // código. Cada ensure*Loaded() cachea la promesa para no reimportar en
 // entradas siguientes a la misma sección.
+// Los CSS de los juegos salieron del <head> de index.html (eran ~2300
+// líneas parseándose en Inicio sin usarse). Se inyectan acá, al final del
+// <head>, así quedan DESPUÉS de styles.css y ui-components.css — el mismo
+// orden de cascada que tenían antes. Idempotente: si ya está el <link>, no
+// hace nada, aunque se entre diez veces a la sección.
+// Devuelve una promesa que resuelve cuando la hoja ya está aplicada: si el
+// juego arrancara antes, se vería un frame con el canvas y los carteles sin
+// estilos (contenedor sin tamaño, barra de carga desarmada). Si el CSS
+// falla se sigue adelante igual — mejor el juego feo que no jugar.
+const cssPromises = {};
+function ensureCSS(href) {
+  if (cssPromises[href]) return cssPromises[href];
+  if (document.querySelector(`link[rel="stylesheet"][href="${href}"]`)) {
+    cssPromises[href] = Promise.resolve();
+    return cssPromises[href];
+  }
+  cssPromises[href] = new Promise(resolve => {
+    const l = document.createElement('link');
+    l.rel = 'stylesheet';
+    l.href = href;
+    l.onload = resolve;
+    l.onerror = resolve;
+    document.head.appendChild(l);
+  });
+  return cssPromises[href];
+}
+
+// Carga un script clásico (no módulo) una sola vez. Lo usan los juegos que
+// dependen de un global evaluado antes del import(): castle_escape_levels.js
+// (CASTLE_ESCAPE_CUSTOM_LEVELS) y sprites.js (SPRITES, que usa rpg_render.js).
+function loadClassicScript(src) {
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.body.appendChild(s);
+  });
+}
+
 let runnerModuleLoading = null;
 function ensureRunnerLoaded() {
   if (!runnerModuleLoading) {
-    runnerModuleLoading = import('./motor2d/games/pixel-runner/runner_main.js');
+    runnerModuleLoading = ensureCSS('src/motor2d/games/pixel-runner/pixelrunner.css')
+      .then(() => import('./motor2d/games/pixel-runner/runner_main.js'));
   }
   return runnerModuleLoading;
 }
@@ -1884,13 +1927,10 @@ function ensureCastleLoaded() {
     // castle_config.js lee CASTLE_ESCAPE_CUSTOM_LEVELS ni bien se evalúa el
     // módulo, así que ese script clásico tiene que estar cargado ANTES de
     // importar castle_main.js (por eso va encadenado, no en paralelo).
-    castleModuleLoading = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'src/motor2d/games/castle-escape/castle_escape_levels.js';
-      s.onload = resolve;
-      s.onerror = reject;
-      document.body.appendChild(s);
-    }).then(() => import('./motor2d/games/castle-escape/castle_main.js'));
+    castleModuleLoading = Promise.all([
+      ensureCSS('src/motor2d/games/castle-escape/castle_escape.css'),
+      loadClassicScript('src/motor2d/games/castle-escape/castle_escape_levels.js')
+    ]).then(() => import('./motor2d/games/castle-escape/castle_main.js'));
   }
   return castleModuleLoading;
 }
@@ -1898,7 +1938,15 @@ function ensureCastleLoaded() {
 let rpgModuleLoading = null;
 function ensureRpgLoaded() {
   if (!rpgModuleLoading) {
-    rpgModuleLoading = import('./motor2d/games/rpg-pixel/rpg_main.js');
+    // sprites.js define el global SPRITES que rpg_render.js lee ni bien
+    // dibuja, así que tiene que estar evaluado ANTES del import() (va
+    // encadenado, no en paralelo — mismo caso que castle_escape_levels.js).
+    // Antes venía eager desde index.html, siendo que el resto del RPG ya
+    // era diferido.
+    rpgModuleLoading = Promise.all([
+      ensureCSS('src/motor2d/games/rpg-pixel/rpg.css'),
+      loadClassicScript('src/motor2d/games/rpg-pixel/models/sprites.js')
+    ]).then(() => import('./motor2d/games/rpg-pixel/rpg_main.js'));
   }
   return rpgModuleLoading;
 }
@@ -1909,15 +1957,23 @@ function ensureRpgLoaded() {
 let chartJsLoading = null;
 function ensureChartJsLoaded() {
   if (!chartJsLoading) {
-    chartJsLoading = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4';
-      s.onload = resolve;
-      s.onerror = reject;
-      document.body.appendChild(s);
-    });
+    chartJsLoading = loadClassicScript('https://cdn.jsdelivr.net/npm/chart.js@4');
   }
   return chartJsLoading;
+}
+
+// ─── Calidad gráfica → clase en el <html> ───
+// Engine2D.Quality ya recorta lo que dibuja el canvas, pero el CSS de los
+// carteles/overlays no lo puede consultar. Con esta clase, las reglas caras
+// (backdrop-filter, que obliga a la GPU a releer el framebuffer de atrás y
+// se paga por frame mientras el modal está encima del juego corriendo) se
+// apagan solas en calidad baja. Ver el bloque `.q-low` en ui-components.css.
+function syncQualityClass(level) {
+  document.documentElement.classList.toggle('q-low', level === 'low');
+}
+if (typeof Engine2D !== 'undefined' && Engine2D.Quality) {
+  syncQualityClass(Engine2D.Quality.get());
+  Engine2D.Quality.onChange(syncQualityClass);
 }
 
 function goTo(section) {
@@ -4897,7 +4953,18 @@ async function actualizarBadgeNotificaciones() {
 
 // Polling liviano: cada 30s, si hay sesión, refresca el contador para que
 // se note una notificación nueva sin tener que recargar la página.
-setInterval(actualizarBadgeNotificaciones, 30000);
+// Con la pestaña en segundo plano no se pide nada: despertar la radio del
+// celular 120 veces por hora para una respuesta que nadie va a ver es de lo
+// que más batería come en gama baja. Al volver a la pestaña se refresca de
+// una, así el badge no queda desactualizado esperando el próximo tick.
+setInterval(() => {
+  if (document.hidden) return;
+  actualizarBadgeNotificaciones();
+}, 30000);
+
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) actualizarBadgeNotificaciones();
+});
 
 // ==========================================
 // ADMIN PANEL LOGIC

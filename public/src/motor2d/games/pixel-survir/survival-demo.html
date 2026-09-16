@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Supervivencia — demo</title>
+<link rel="stylesheet" href="ui-components.css">
+<link rel="stylesheet" href="survival.css">
+<style>
+  :root { --blue-dark:#0f1e3d; --yellow:#f5c518; }
+  html, body {
+    margin: 0; height: 100%;
+    background: radial-gradient(circle at top, #16243f, #060b16 70%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Nunito', sans-serif; color: #fff;
+  }
+  .wrap { width: 92vw; max-width: 760px; }
+  h1 { text-align: center; font-family: 'Press Start 2P', monospace; font-size: 14px; color: var(--yellow); }
+  .hint { text-align: center; font-size: 0.8rem; opacity: 0.75; margin-bottom: 0.8rem; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>SUPERVIVENCIA</h1>
+    <p class="hint">A/D o ←/→ mover · Espacio/W saltar · click romper/colocar · 1-8 elegir slot · Esc pausa</p>
+    <div id="survival-root"></div>
+  </div>
+
+  <script src="engine2d.js"></script>
+  <script src="survival.js"></script>
+  <script>
+    SurvivalGame.mount(document.getElementById('survival-root'));
+  </script>
+</body>
+</html>

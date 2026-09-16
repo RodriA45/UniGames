@@ -31,23 +31,66 @@ const Engine2D = (function () {
   // ─────────────────────────────────────
   const images = {};
   const atlases = {};
+  // Promesas en vuelo, por src. Sin esto, dos llamadas a loadImage() del
+  // mismo archivo antes de que termine la primera se pisaban el onload del
+  // MISMO objeto Image: la segunda ganaba y la promesa de la primera no
+  // resolvía nunca (su .then quedaba colgado). Pasa en cuanto dos juegos —
+  // o un juego y su DialogueBox — piden el mismo sprite a la vez.
+  const imagePromises = {};
 
   function loadImage(src) {
-    if (images[src] && images[src].complete) return Promise.resolve(images[src]);
-    return new Promise((resolve, reject) => {
-      const img = images[src] || new Image();
-      img.onload = () => resolve(img);
-      img.onerror = reject;
+    const cached = images[src];
+    // .complete queda en true tanto si cargó bien como si falló (404), así
+    // que hace falta naturalWidth: si no, una imagen que 404eó una vez
+    // queda "cacheada como válida" para toda la sesión.
+    if (cached && cached.complete && cached.naturalWidth > 0) return Promise.resolve(cached);
+    if (imagePromises[src]) return imagePromises[src];
+
+    const p = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        delete imagePromises[src];
+        resolve(img);
+      };
+      img.onerror = () => {
+        // No dejar el objeto roto en el cache: si no, un reintento
+        // posterior (ya con la ruta arreglada) lo daría por bueno.
+        delete imagePromises[src];
+        delete images[src];
+        reject(new Error('No se pudo cargar la imagen: ' + src));
+      };
       images[src] = img;
-      if (!img.src) img.src = src;
+      img.src = src;
     });
+    imagePromises[src] = p;
+    return p;
   }
+
+  const atlasPromises = {};
 
   function loadAtlas(src) {
     if (atlases[src]) return Promise.resolve(atlases[src]);
-    return fetch(src)
-      .then(r => r.json())
-      .then(data => { atlases[src] = data; return data; });
+    if (atlasPromises[src]) return atlasPromises[src];
+    const p = fetch(src)
+      .then(r => {
+        // fetch NO rechaza por un 404 (GitHub Pages, por ejemplo, devuelve
+        // un 404.html con status 404 y content-type html): sin este
+        // chequeo, r.json() explota con un error de parseo genérico que ni
+        // siquiera dice qué atlas era.
+        if (!r.ok) throw new Error('No se pudo cargar el atlas (' + r.status + '): ' + src);
+        return r.json();
+      })
+      .then(data => {
+        delete atlasPromises[src];
+        atlases[src] = data;
+        return data;
+      })
+      .catch(err => {
+        delete atlasPromises[src];
+        throw err;
+      });
+    atlasPromises[src] = p;
+    return p;
   }
 
   // manifest: [{type:'image', src}, {type:'atlas', src}, {type:'audio', src}, ...]
@@ -95,6 +138,31 @@ const Engine2D = (function () {
 
   function getImage(src) { return images[src]; }
   function getAtlas(src) { return atlases[src]; }
+
+  // ── Liberar assets ──
+  // Un webp de 1920px pesa 200KB en disco pero ~7MB decodificado en RAM, y
+  // el cache de imágenes solo crece: un juego que carga por nivel/habitación
+  // termina con TODOS los fondos de la partida vivos a la vez. En un celular
+  // de 2GB eso hace que el sistema mate la pestaña sin ningún error visible.
+  //
+  // Soltar la referencia acá deja que el GC libere el bitmap decodificado
+  // (siempre que el juego tampoco se la esté guardando en otro lado). Usarlo
+  // para lo pesado y de un solo uso — fondos de sala, comics — y NO para
+  // sprites que se reusan en toda la partida: volver a cargarlos cuesta más
+  // de lo que ahorra.
+  //
+  //   Engine2D.clearImage(cfg.zoneImage);
+  //   Engine2D.clearImages(src => src.includes('/capitulo1/'));
+  function clearImage(src) {
+    delete images[src];
+    delete imagePromises[src];
+  }
+  function clearAtlas(src) { delete atlases[src]; delete atlasPromises[src]; }
+  function clearImages(predicate) {
+    for (const src in images) {
+      if (!predicate || predicate(src)) clearImage(src);
+    }
+  }
 
   // ─────────────────────────────────────
   // Audio — sistema de audio centralizado
@@ -341,6 +409,349 @@ const Engine2D = (function () {
   };
 
   // ─────────────────────────────────────
+  // Quality — calidad gráfica (bajo / medio / alto)
+  // ─────────────────────────────────────
+  //
+  // Un solo lugar donde vive la decisión de "cuánto efecto visual hago por
+  // frame". No toca assets (no hay sprites en baja resolución): lo que
+  // cambia son los EFECTOS que se calculan/dibujan cada frame, que es lo
+  // que realmente cuesta en gama baja (globalAlpha, gradientes armados por
+  // frame, shadowBlur, capas extra de drawImage).
+  //
+  // El motor lo aplica SOLO donde es dueño de lo que dibuja:
+  //   · Partículas   → menos cantidad, sin glow, tope más bajo.
+  //   · GameLoop     → mide FPS reales para el modo adaptativo.
+  // Todo lo demás (cielo, parallax, auras, sombras) lo decide cada juego
+  // preguntando por los flags. El motor NO sabe qué es un "shimmer de
+  // escudo", así que no puede sacarlo solo — pero sí le da al juego una
+  // única fuente de verdad para preguntarlo.
+  //
+  // Uso en un juego:
+  //
+  //   const Q = Engine2D.Quality;
+  //
+  //   if (Q.fx.gradients) { ...gradiente día/noche... } else { ...color plano... }
+  //   if (Q.fx.shimmer)   drawShieldAura(ctx, player);
+  //   const nubes = Q.pick({ low: 0, medium: 4, high: 10 });
+  //   if (!Q.fx.transitions) groundBlend = 0;
+  //
+  //   // rearmar caches (StaticLayer, gradientes cacheados) al cambiar:
+  //   Q.onChange(level => { skyCache = null; rebuildLayers(); });
+  //
+  // Flags disponibles (Q.fx.*) — alto / medio / bajo:
+  //   gradients      degradados de fondo          ✓ ✓ ✗   (bajo = color plano)
+  //   transitions    crossfade/interpolado x frame ✓ ✗ ✗   (día-noche, groundBlend)
+  //   parallax       capas de fondo con scroll    ✓ ✓ ✗
+  //   ambientSprites decorado no esencial         ✓ ✗ ✗   (estrellas, pájaros)
+  //   shimmer        auras/halos con blend        ✓ ✗ ✗
+  //   glow           shadowBlur en general        ✓ ✗ ✗
+  //   shadows        sombra bajo entidades        ✓ ✓ ✗
+  //   particles      sistema de partículas        ✓ ✓ ✓   (en bajo, reducido)
+  //   screenShake    sacudón de cámara            ✓ ✓ ✗
+  //   smoothCamera   lerp de cámara               ✓ ✓ ✗
+  //
+  // Escalas numéricas (Q.scale.*):
+  //   particles      multiplicador de `amount` en Particles.emit()
+  //   maxParticles   tope duro de partículas vivas
+  //   render         resolución de render (ver Quality.fitCanvas / sizeCanvas)
+  //
+  // El nivel se guarda en localStorage. La primera vez se adivina según el
+  // dispositivo (detect()) en vez de asumir "alto" y que el celular viejo
+  // arranque a 20fps.
+  const Quality = (function () {
+    const LEVELS = ['low', 'medium', 'high'];
+    const KEY = 'engine2d.quality';
+    const KEY_PINNED = 'engine2d.qualityPinned';
+
+    // Presets base. Un juego puede retocarlos con Quality.configure()
+    // (ej. un juego sin partículas puede subir el render en bajo).
+    const PRESETS = {
+      low: {
+        fx: {
+          gradients: false, transitions: false, parallax: false,
+          ambientSprites: false, shimmer: false, glow: false,
+          shadows: false, particles: true, screenShake: false, smoothCamera: false
+        },
+        scale: { particles: 0.35, maxParticles: 250, render: 0.6 }
+      },
+      medium: {
+        fx: {
+          gradients: true, transitions: false, parallax: true,
+          ambientSprites: false, shimmer: false, glow: false,
+          shadows: true, particles: true, screenShake: true, smoothCamera: true
+        },
+        scale: { particles: 0.7, maxParticles: 1000, render: 0.85 }
+      },
+      high: {
+        fx: {
+          gradients: true, transitions: true, parallax: true,
+          ambientSprites: true, shimmer: true, glow: true,
+          shadows: true, particles: true, screenShake: true, smoothCamera: true
+        },
+        scale: { particles: 1, maxParticles: 3000, render: 1 }
+      }
+    };
+
+    const LABELS = { low: 'Bajo', medium: 'Medio', high: 'Alto' };
+
+    const listeners = new Set();
+    let _index = 2;
+    let _pinned = false;   // true = lo eligió el usuario a mano → el auto no lo pisa
+
+    function _norm(level) {
+      const i = LEVELS.indexOf(String(level));
+      return i === -1 ? null : i;
+    }
+
+    // ── Detección inicial ──
+    // Heurística barata (no hay forma confiable de saber la GPU desde JS):
+    // móvil, poca RAM o pocos núcleos bajan el puntaje; un equipo grande lo
+    // sube. prefers-reduced-motion también baja, porque el usuario ya pidió
+    // menos movimiento a nivel sistema.
+    function detect() {
+      let score = 2;
+      const nav = typeof navigator !== 'undefined' ? navigator : {};
+      const ua = nav.userAgent || '';
+      const mem = typeof nav.deviceMemory === 'number' ? nav.deviceMemory : null;
+      const cores = typeof nav.hardwareConcurrency === 'number' ? nav.hardwareConcurrency : null;
+      const mobile = /Android|iPhone|iPad|iPod|Mobile|Silk/i.test(ua);
+
+      if (mobile) score -= 1;
+      if (mem !== null && mem <= 4) score -= 1;
+      if (cores !== null && cores <= 4) score -= 1;
+      if (mem !== null && cores !== null && mem >= 8 && cores >= 8 && !mobile) score += 1;
+      try {
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) score -= 1;
+      } catch {}
+
+      return LEVELS[Math.min(2, Math.max(0, score))];
+    }
+
+    // ── Estado inicial: lo guardado, o lo detectado ──
+    (function init() {
+      let stored = null, pinned = false;
+      try {
+        stored = localStorage.getItem(KEY);
+        pinned = localStorage.getItem(KEY_PINNED) === '1';
+      } catch {}
+      const i = _norm(stored);
+      if (i !== null) { _index = i; _pinned = pinned; }
+      else { _index = _norm(detect()); _pinned = false; }
+    })();
+
+    function _notify(opts) {
+      const level = LEVELS[_index];
+      for (const cb of listeners) {
+        try { cb(level, opts); } catch (e) { console.error('[Engine2D.Quality] listener:', e); }
+      }
+    }
+
+    // set(level, { user:true })  → lo eligió la persona: se fija y el modo
+    //                              adaptativo deja de tocarlo.
+    // set(level, { auto:true })  → lo bajó el motor por FPS: no se fija.
+    function set(level, opts = {}) {
+      const i = _norm(level);
+      if (i === null) return LEVELS[_index];
+      const changed = i !== _index;
+      _index = i;
+      if (opts.user) _pinned = true;
+      try {
+        localStorage.setItem(KEY, LEVELS[_index]);
+        localStorage.setItem(KEY_PINNED, _pinned ? '1' : '0');
+      } catch {}
+      if (changed) _notify(opts);
+      return LEVELS[_index];
+    }
+
+    function get() { return LEVELS[_index]; }
+    function is(level) { return _norm(level) === _index; }
+    function atLeast(level) { const i = _norm(level); return i !== null && _index >= i; }
+    function below(level) { const i = _norm(level); return i !== null && _index < i; }
+
+    // pick({ low: 0, medium: 4, high: 10 }) → el valor del nivel actual.
+    // Si falta el nivel actual, cae al más cercano hacia abajo.
+    function pick(map = {}) {
+      for (let i = _index; i >= 0; i--) {
+        if (map[LEVELS[i]] !== undefined) return map[LEVELS[i]];
+      }
+      for (let i = _index + 1; i < LEVELS.length; i++) {
+        if (map[LEVELS[i]] !== undefined) return map[LEVELS[i]];
+      }
+      return map.default;
+    }
+
+    // Retoca los presets para un juego puntual, sin pisar el resto:
+    //   Engine2D.Quality.configure({ low: { fx: { shadows: true } } });
+    function configure(overrides = {}) {
+      for (const lvl in overrides) {
+        if (!PRESETS[lvl]) continue;
+        const o = overrides[lvl];
+        if (o.fx) Object.assign(PRESETS[lvl].fx, o.fx);
+        if (o.scale) Object.assign(PRESETS[lvl].scale, o.scale);
+      }
+      _notify({ configure: true });
+      return api;
+    }
+
+    function onChange(cb) {
+      if (typeof cb !== 'function') return () => {};
+      listeners.add(cb);
+      return () => listeners.delete(cb);
+    }
+
+    function reset() {
+      _pinned = false;
+      try { localStorage.removeItem(KEY); localStorage.removeItem(KEY_PINNED); } catch {}
+      set(detect(), { auto: true });
+      return get();
+    }
+
+    // ── Modo adaptativo ──
+    // Mide FPS reales (el GameLoop le pasa cada dt) y baja un escalón si el
+    // juego viene sostenidamente lento. Nunca pisa una elección manual del
+    // usuario: si tocó el selector de Ajustes, manda él.
+    //
+    //   Engine2D.Quality.setAdaptive(true);
+    //   Engine2D.Quality.setAdaptive(true, { downFps: 40, seconds: 4, allowUp: true });
+    let _adaptive = false;
+    let _aOpts = { downFps: 45, upFps: 58, seconds: 3, allowUp: false, warmup: 2000 };
+    let _accT = 0, _frames = 0, _lowStreak = 0, _highStreak = 0, _warm = 0;
+
+    function setAdaptive(on = true, opts = {}) {
+      _adaptive = !!on;
+      Object.assign(_aOpts, opts);
+      _accT = _frames = _lowStreak = _highStreak = _warm = 0;
+      return api;
+    }
+
+    // Lo llama GameLoop._tick — no hace falta llamarlo a mano.
+    function _sampleFrame(dt) {
+      if (!_adaptive || _pinned) return;
+      if (_warm < _aOpts.warmup) { _warm += dt; return; } // ignorar el arranque (decodificar assets, JIT)
+      _accT += dt; _frames++;
+      if (_accT < 1000) return;
+      const fps = (_frames * 1000) / _accT;
+      _accT = 0; _frames = 0;
+      if (fps < _aOpts.downFps) { _lowStreak++; _highStreak = 0; }
+      else if (fps > _aOpts.upFps) { _highStreak++; _lowStreak = 0; }
+      else { _lowStreak = 0; _highStreak = 0; }
+
+      if (_lowStreak >= _aOpts.seconds && _index > 0) {
+        _lowStreak = 0;
+        set(LEVELS[_index - 1], { auto: true, reason: 'fps' });
+      } else if (_aOpts.allowUp && _highStreak >= _aOpts.seconds * 2 && _index < LEVELS.length - 1) {
+        _highStreak = 0;
+        set(LEVELS[_index + 1], { auto: true, reason: 'fps' });
+      }
+    }
+
+    // ── Resolución de render ──
+    // Bajar la resolución del canvas y dejar que el navegador lo escale con
+    // CSS es lo que más rinde en gama baja, y en pixel art muchas veces
+    // queda hasta mejor (menos ruido). El tamaño CSS no cambia: cambia el
+    // backing store.
+    //
+    // OJO: sirve si el juego dibuja RELATIVO a canvas.width/height (como
+    // hacen Pixel Runner y el resto acá). Si usás píxeles lógicos fijos,
+    // multiplicalos por Quality.scale.render o usá una versión con
+    // ctx.setTransform propia.
+    //
+    //   Engine2D.Quality.fitCanvas(canvas, 480, 270);        // reemplaza a Engine2D.fitCanvas
+    //   Engine2D.Quality.sizeCanvas(canvas, cssW, cssH);     // para canvas responsive
+    function fitCanvas(canvas, width, height) {
+      const s = PRESETS[LEVELS[_index]].scale.render;
+      const parent = canvas.parentElement;
+      const pW = parent && parent.clientWidth ? parent.clientWidth : window.innerWidth;
+      const pH = parent && parent.clientHeight ? parent.clientHeight : window.innerHeight;
+      const fit = Math.min(pW / width, pH / height);
+      // El tamaño CSS es el de siempre (mismo criterio que Engine2D.fitCanvas);
+      // lo único que baja es el backing store del canvas.
+      canvas.style.width = Math.max(1, Math.floor(width * fit)) + 'px';
+      canvas.style.height = Math.max(1, Math.floor(height * fit)) + 'px';
+      canvas.width = Math.max(1, Math.floor(width * s));
+      canvas.height = Math.max(1, Math.floor(height * s));
+      return fit;
+    }
+
+    function sizeCanvas(canvas, cssW, cssH) {
+      const s = PRESETS[LEVELS[_index]].scale.render;
+      canvas.style.width = Math.max(1, Math.floor(cssW)) + 'px';
+      canvas.style.height = Math.max(1, Math.floor(cssH)) + 'px';
+      canvas.width = Math.max(1, Math.floor(cssW * s));
+      canvas.height = Math.max(1, Math.floor(cssH * s));
+      return s;
+    }
+
+    // ── Selector para el cartel de Ajustes ──
+    // Devuelve un <div> listo para meter dentro de .game-settings-content,
+    // con la misma pinta que las filas de slider (usa .game-slider-row).
+    // Se mantiene solo sincronizado si el nivel cambia desde otro lado
+    // (modo adaptativo, otro menú).
+    //
+    //   const row = Engine2D.Quality.createRow({ label: 'Gráficos' });
+    //   document.querySelector('.game-settings-content').appendChild(row);
+    //   // al cerrar/destruir el menú: row.destroy();
+    function createRow(opts = {}) {
+      const row = document.createElement('div');
+      row.className = 'game-slider-row game-quality-row';
+
+      const label = document.createElement('label');
+      label.textContent = opts.label || 'Gráficos';
+      row.appendChild(label);
+
+      const group = document.createElement('div');
+      group.className = 'game-quality-options';
+      group.setAttribute('role', 'group');
+      row.appendChild(group);
+
+      const btns = {};
+      for (const lvl of LEVELS) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'game-quality-btn';
+        b.dataset.level = lvl;
+        b.textContent = (opts.labels && opts.labels[lvl]) || LABELS[lvl];
+        b.addEventListener('click', () => {
+          set(lvl, { user: true });
+          if (typeof opts.onChange === 'function') opts.onChange(lvl);
+        });
+        group.appendChild(b);
+        btns[lvl] = b;
+      }
+
+      function sync() {
+        const cur = get();
+        for (const lvl of LEVELS) {
+          btns[lvl].classList.toggle('active', lvl === cur);
+          btns[lvl].setAttribute('aria-pressed', lvl === cur ? 'true' : 'false');
+        }
+      }
+      sync();
+
+      const unsub = onChange(sync);
+      row.destroy = () => { unsub(); if (row.parentNode) row.parentNode.removeChild(row); };
+      row.sync = sync;
+      return row;
+    }
+
+    const api = {
+      LEVELS,
+      get, set, is, atLeast, below, pick, configure, onChange, reset, detect,
+      setAdaptive, createRow, fitCanvas, sizeCanvas,
+      get level() { return LEVELS[_index]; },
+      set level(v) { set(v, { user: true }); },
+      get index() { return _index; },
+      get label() { return LABELS[LEVELS[_index]]; },
+      get pinned() { return _pinned; },
+      get fx() { return PRESETS[LEVELS[_index]].fx; },
+      get scale() { return PRESETS[LEVELS[_index]].scale; },
+      get renderScale() { return PRESETS[LEVELS[_index]].scale.render; },
+      _sampleFrame
+    };
+    return api;
+  })();
+
+  // ─────────────────────────────────────
   // Partículas — efectos visuales sin sprites
   // ─────────────────────────────────────
   //
@@ -405,6 +816,11 @@ const Engine2D = (function () {
     }
 
     function _newParticle() {
+      // El tope efectivo es el menor entre el tope duro del motor y el del
+      // nivel de calidad. Se chequea ANTES de reusar del pool libre: si no,
+      // al bajar la calidad las partículas recicladas se saltarían el tope.
+      const cap = Math.min(MAX_PARTICLES, Quality.scale.maxParticles);
+      if (pool.length >= cap) return null;
       if (free.length) return free.pop();
       if (count >= MAX_PARTICLES) return null;
       count++;
@@ -412,7 +828,19 @@ const Engine2D = (function () {
     }
 
     function emit(opts = {}) {
-      const amount = Math.max(0, Math.floor(opts.amount ?? 10));
+      // La calidad gráfica recorta cantidad y glow sin que el juego tenga
+      // que preguntar nada. Un efecto que SÍ o SÍ tiene que verse igual
+      // (ej. el feedback de un golpe que no se entiende sin partículas)
+      // puede pedir `ignoreQuality: true`.
+      const q = opts.ignoreQuality ? null : Quality;
+      if (q && !q.fx.particles) return this;
+      const qScale = q ? q.scale.particles : 1;
+      const rawAmount = opts.amount ?? 10;
+      // Con pocas partículas, redondear para abajo puede dejarlo en 0 y
+      // hacer desaparecer el efecto: se garantiza al menos 1 si se pidió algo.
+      let amount = Math.floor(rawAmount * qScale);
+      if (amount < 1 && rawAmount >= 1) amount = 1;
+      amount = Math.max(0, amount);
       if (!amount) return this;
       const baseAngle = ((opts.angle ?? 0) * Math.PI) / 180;
       const spreadRad = ((opts.spread ?? 360) * Math.PI) / 180;
@@ -421,7 +849,7 @@ const Engine2D = (function () {
       const colors = Array.isArray(opts.colors) && opts.colors.length ? opts.colors : ['#ffffff'];
       const shape = opts.shape === 'circle' ? 'circle' : 'square';
       const fade = opts.fade !== false;
-      const glow = opts.glow ?? 0;
+      const glow = (q && !q.fx.glow) ? 0 : (opts.glow ?? 0);
       const gravity = opts.gravity ?? 0;
       const drag = opts.drag ?? 0;
       const startSize = _rand(opts.size, 4);
@@ -841,6 +1269,9 @@ const Engine2D = (function () {
       const dt = this.lastTs ? Math.min(ts - this.lastTs, this.maxDt) : 16;
       this.lastTs = ts;
       const step = dt / 16.6;
+      // Le pasa el frame al modo adaptativo de Quality (no hace nada si
+      // está apagado o si el usuario fijó la calidad a mano).
+      Quality._sampleFrame(dt);
       this.updateFn(dt, step);
       this.drawFn();
       this.raf = requestAnimationFrame(this._tick);
@@ -2412,6 +2843,8 @@ const Engine2D = (function () {
   return {
     // assets
     loadImage, loadAtlas, loadAll, loadAllWithProgress, getImage, getAtlas,
+    // liberar assets pesados de un solo uso (fondos por sala/nivel)
+    clearImage, clearAtlas, clearImages,
     // barra de carga autocontenida (usar junto con loadAllWithProgress)
     LoadingBar,
     // cache de dibujo estático en un canvas oculto (piso/paredes que no cambian)
@@ -2420,6 +2853,8 @@ const Engine2D = (function () {
     Audio: AudioSystem,
     // partículas — efectos visuales sin sprites
     Particles,
+    // calidad gráfica bajo/medio/alto (flags de efectos + escalas)
+    Quality,
     // utils
     randRange, floorBounds,
     // configuración por juego + canvas ajustado + overlay de debug

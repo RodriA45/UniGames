@@ -56,7 +56,10 @@ export function initRunner() {
       { type: 'atlas', src: RUNNER_ASSETS.mapaAt },
       { type: 'image', src: RUNNER_ASSETS.item },
       { type: 'atlas', src: RUNNER_ASSETS.itemAt },
-      { type: 'image', src: RUNNER_ASSETS.castillo },
+      // castillo.webp NO va acá: solo se ve al ganar Modo Historia, así
+      // que se carga bajo demanda en startHistoriaWinApproach() (ver
+      // runner_sequence.js) en vez de pesar en el arranque de TODAS las
+      // partidas, ganen o no.
     ], (loaded, total) => {
       runnerLoadingBar.update(loaded / total);
     }).then(() => {

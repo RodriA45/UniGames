@@ -59,7 +59,13 @@ body.has-bg-gif::before {
   inset: 0;
   z-index: -1;
   background: var(--blue-dark) url('../fondo.webp') center center / cover no-repeat;
-  will-change: transform;
+  /* Sin will-change: este elemento es fixed + inset:0, así que un
+     will-change permanente le pide al navegador una capa GPU del tamaño del
+     viewport entero, viva toda la sesión, en una página que casi no
+     scrollea — en un celular de 2GB esa capa compite con los buffers del
+     canvas de los juegos. will-change es para avisar de un cambio
+     INMINENTE; acá el fondo nunca se mueve. El translateZ(0) de abajo ya
+     lo promociona a su propia capa, que era lo que se buscaba. */
   transform: translateZ(0);
   pointer-events: none;
 }

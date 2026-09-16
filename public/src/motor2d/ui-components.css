@@ -336,6 +336,63 @@
   }
 }
 
+/* ─── Selector de calidad gráfica (Bajo / Medio / Alto) ──────────
+   Lo genera Engine2D.Quality.createRow() y se mete dentro de
+   .game-settings-content, al lado de los sliders de volumen. Reusa
+   .game-slider-row para el marco (mismo fondo, borde y padding que
+   las filas de Música/Efectos) y solo agrega el grupo de botones,
+   así el cartel de Ajustes queda parejo sin CSS por juego. */
+.game-quality-options {
+  flex: 1;
+  display: flex;
+  gap: 0.3rem;
+  justify-content: flex-end;
+}
+
+.game-quality-btn {
+  flex: 1 1 0;
+  min-width: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+  font-family: 'Nunito', sans-serif;
+  font-weight: 700;
+  font-size: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--game-radius-sm);
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  transition: background var(--game-transition), color var(--game-transition), border-color var(--game-transition);
+}
+
+.game-quality-btn:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+/* El activo va en amarillo lleno — mismo lenguaje que .btn-game-primary,
+   para que se lea de una cuál está puesto sin tener que buscar. */
+.game-quality-btn.active {
+  background: var(--yellow, #f5c518);
+  color: var(--blue-dark, #0f1e3d);
+  border-color: var(--yellow, #f5c518);
+}
+
+/* Sin scale en hover acá a propósito: son tres botones pegados y el
+   scale los hace pisarse entre sí. */
+@media (max-width: 480px) {
+  .game-quality-row {
+    flex-wrap: wrap;
+  }
+  .game-quality-options {
+    flex-basis: 100%;
+    justify-content: stretch;
+  }
+  .game-quality-btn {
+    font-size: 0.68rem;
+    padding: 0.3rem 0.35rem;
+  }
+}
+
 /* ─── Botón / fila de pantalla completa ──────────────────────────
    Idéntico patrón entre Pixel Runner y Castle Escape con nombres
    distintos (.runner-fullscreen-* / .trampas-fullscreen-*). Un juego
@@ -380,5 +437,62 @@
 .rpg-fullscreen-row.unsupported {
   display: none;
 }
-c a n v a s   {   i m a g e - r e n d e r i n g :   p i x e l a t e d ;   }  
- 
+/* ─── Calidad baja — efectos caros apagados ─────────────────────
+   La clase .q-low la pone app2.js en el <html> siguiendo a
+   Engine2D.Quality (ver syncQualityClass en app2.js). Va acá porque este
+   archivo se carga siempre y alcanza a los overlays de los tres juegos,
+   que viven en CSS distintos.
+
+   backdrop-filter es lo más caro de la lista: obliga a la GPU a releer el
+   framebuffer de atrás, y se paga CADA frame mientras el cartel está
+   encima de un canvas que sigue corriendo. En una GPU móvil vieja, un
+   menú de pausa abierto puede costar más que el juego entero. El fondo se
+   compensa subiendo la opacidad, así el texto se sigue leyendo igual sin
+   el blur.
+
+   Las transiciones/scale de los botones también se apagan: son baratas de
+   a una, pero son las que disparan repintados justo cuando el dedo está
+   sobre el control. */
+.q-low .modal-game {
+  backdrop-filter: none;
+  background: rgba(10, 15, 20, 0.96);
+}
+
+.q-low [class*="-overlay"],
+.q-low [class*="-panel"],
+.q-low [class*="-menu"] {
+  backdrop-filter: none;
+}
+
+.q-low .btn-game-primary,
+.q-low .btn-game-secondary,
+.q-low .game-icon-btn,
+.q-low .game-card,
+.q-low .game-info-row,
+.q-low .game-fullscreen-btn {
+  transition: none;
+}
+
+.q-low .btn-game-primary:hover,
+.q-low .btn-game-secondary:hover,
+.q-low .game-icon-btn:hover,
+.q-low .game-card:hover:not(.locked),
+.q-low .game-fullscreen-btn:hover {
+  transform: none;
+}
+
+/* Sombras de color grandes: cada una es un blur aparte al componer. */
+.q-low .btn-game-primary:hover {
+  box-shadow: none;
+}
+
+.q-low .modal-game-title {
+  text-shadow: none;
+}
+
+/* OJO: esta línea estaba guardada en UTF-16 (un byte nulo entre cada
+   carácter) mientras el resto del archivo es UTF-8 — pasa cuando se
+   agrega algo con `>>` desde PowerShell. El navegador levanta el archivo
+   como UTF-8 y ese tramo le llega como basura, así que la regla se
+   descartaba sin avisar. Reescrita en UTF-8. */
+canvas { image-rendering: pixelated; }

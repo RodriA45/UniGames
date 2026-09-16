@@ -1,7 +1,7 @@
 import { rpgLoop, rpgSetOverlay, rpgStartDialogue, setupRpgEvents } from './rpg_combat_input.js';
 import { RPG_ASSET_BASE, RPG_CHEST_SHEET, RPG_EL, RPG_ELITE_SPEED_MULT, RPG_ELITE_STAT_MULT, RPG_ITEM_SHEET, RPG_LIFE_UPGRADE_HP, RPG_LOGICAL_H, RPG_LOGICAL_W, RPG_PLAYER_MAX_AMMO, RPG_PLAYER_SPEED, RPG_POWERUP_SHEET, RPG_ROOM_WORLD_MULT, RPG_SAVE_SLOTS, rpgRecalcFloorTopRatio } from './rpg_config.js';
 import { rpgCreateEnemies, rpgUpdateHudAmmo, rpgUpdateHudBars } from './rpg_enemies_ai.js';
-import { RPG, RPG_CHAPTERS, RPG_ENEMY_TYPES, rpgChapterCfg, rpgComputeRoomZoom, rpgEliteActive, rpgFloorBounds, rpgLoadAtlas, rpgLoadImage, rpgLoadWithProgress, rpgRoomCfg } from './rpg_enemies_data.js';
+import { RPG, RPG_CHAPTERS, RPG_ENEMY_TYPES, rpgChapterCfg, rpgComputeRoomZoom, rpgEliteActive, rpgFloorBounds, rpgLoadAtlas, rpgLoadImage, rpgLoadWithProgress, rpgReleaseImage, rpgRoomCfg } from './rpg_enemies_data.js';
 import { RPG_META } from './rpg_meta.js';
 import { rpgDeleteSlotData, rpgHideAllMenuViews, rpgLoadSlotData, rpgNewSaveData, rpgSaveSlotData, rpgShowMenu } from './rpg_save_ui.js';
 
@@ -146,6 +146,56 @@ export function rpgStartChapter(chapterIndex, keepUpgrades) {
 }
 
 // ─── Arrancar una habitación puntual dentro del capítulo actual ─────
+// Resolución interna del canvas: el buffer real es más grande que
+// RPG_LOGICAL_W/H (escalado por devicePixelRatio, con techo según la
+// calidad gráfica elegida — ver Engine2D.Quality) para que se vea nítido en
+// pantallas HiDPI. RPG_LOGICAL_W/H (480x270 de siempre) sigue siendo la
+// unidad con la que se calcula TODO el juego (posiciones, cámara, mundo);
+// el resto del código nunca lee C.width/C.height directo.
+//
+// Techo de densidad por calidad: este es el número más caro de todo el
+// proyecto. Pixel Runner y Castle Escape dibujan 480x270 fijo (130k px por
+// frame); el RPG, con dpr 2.5, dibuja 1200x675 = 810k px por frame — seis
+// veces más trabajo de rasterizado. En calidad baja el techo es 1, o sea
+// exactamente la misma carga que los otros dos juegos.
+//
+// Separada de rpgStartRoom para poder llamarla también desde el listener de
+// Quality.onChange (más abajo) y que el cambio de calidad se note DE UNA,
+// en vez de recién en la próxima sala. Solo toca la resolución del buffer:
+// no resetea cámara, mundo ni roomZoom (rpgComputeRoomZoom no depende del
+// dpr, solo de RPG.worldWidth/RPG_LOGICAL_H — la relación lógica no cambia).
+export function rpgApplyCanvasScale(C) {
+  if (!C) return;
+  const dprCap = (typeof Engine2D !== 'undefined' && Engine2D.Quality)
+    ? Engine2D.Quality.pick({ low: 1, medium: 1.5, high: 2.5 })
+    : 2.5;
+  const dpr = Math.min(window.devicePixelRatio || 1, dprCap);
+  RPG.dpr = dpr;
+  C.width = RPG_LOGICAL_W * dpr;
+  C.height = RPG_LOGICAL_H * dpr;
+  // Cambiar el tamaño del canvas resetea el contexto (transform y smoothing
+  // incluidos), así que ambos se vuelven a fijar acá: el transform mapea el
+  // espacio lógico 480x270 sobre el buffer más grande, y el smoothing
+  // apagado mantiene los sprites pixel-art nítidos (solo lo que se dibuja a
+  // mano con fillText/paths gana nitidez extra).
+  RPG.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  RPG.ctx.imageSmoothingEnabled = false;
+}
+
+// Si el usuario cambia la calidad DURANTE una partida (no solo desde el
+// menú), el canvas se redimensiona en el próximo frame en vez de esperar a
+// la sala siguiente. Este módulo se importa una sola vez por sesión (el
+// import() de app2.js está cacheado en una promesa — ver ensureRpgLoaded),
+// así que el listener también queda registrado una sola vez.
+if (typeof Engine2D !== 'undefined' && Engine2D.Quality) {
+  Engine2D.Quality.onChange(() => {
+    // Sin canvas todavía (nunca se abrió el RPG en esta sesión) no hay nada
+    // que redimensionar — rpgStartRoom lo va a hacer con el valor correcto
+    // cuando se entre por primera vez.
+    if (RPG.canvas && RPG.ctx) rpgApplyCanvasScale(RPG.canvas);
+  });
+}
+
 export function rpgStartRoom(roomIndex) {
   const chapterCfg = rpgChapterCfg();
   const cfg = chapterCfg ? chapterCfg.rooms[roomIndex] : null;
@@ -168,24 +218,7 @@ export function rpgStartRoom(roomIndex) {
 
   requestAnimationFrame(() => {
     const C = RPG.canvas;
-    // Resolución interna: el buffer real del canvas ahora es más grande
-    // (escalado por devicePixelRatio, con techo en 2.5x para no pedirle
-    // demasiados píxeles a celulares muy densos) para que todo se vea
-    // nítido en pantallas HiDPI. RPG_LOGICAL_W/H (480x270 de siempre) siguen
-    // siendo la unidad con la que se calcula TODO el juego (posiciones,
-    // cámara, mundo) — por eso a partir de acá el código sigue usando esas
-    // constantes en vez de leer C.width/C.height directo.
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-    RPG.dpr = dpr;
-    C.width = RPG_LOGICAL_W * dpr;
-    C.height = RPG_LOGICAL_H * dpr;
-    // Cambiar el tamaño del canvas resetea el contexto (transform y
-    // smoothing incluidos), así que ambos se vuelven a fijar acá: el
-    // transform mapea el espacio lógico 480x270 sobre el buffer más
-    // grande, y el smoothing apagado mantiene los sprites pixel-art nítidos
-    // (solo lo que se dibuja a mano con fillText/paths gana nitidez extra).
-    RPG.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    RPG.ctx.imageSmoothingEnabled = false;
+    rpgApplyCanvasScale(C);
 
     // ── Mundo de esta habitación ──
     // El jefe ahora vive en un mundo del mismo ancho que las salas
@@ -262,6 +295,16 @@ export function rpgStartRoom(roomIndex) {
     // freno/hitch de carga justo al aparecer en medio del combate.
     const allSpawns = cfg.waves ? cfg.waves.flat() : cfg.enemySpawns;
     const speciesInRoom = Array.from(new Set(allSpawns.map(s => s.species)));
+
+    // Soltar el fondo de la sala anterior antes de pedir el nuevo. Los
+    // fondos son lo más pesado del juego en memoria (un webp de 1920px son
+    // ~200KB en disco pero ~7MB decodificado) y no se reusan: después de
+    // diez salas había diez bitmaps vivos a la vez. Solo el fondo — los
+    // sprites de personajes se quedan, que esos sí se repiten sala a sala.
+    if (RPG._lastZoneImage && RPG._lastZoneImage !== cfg.zoneImage) {
+      rpgReleaseImage(RPG._lastZoneImage);
+    }
+    RPG._lastZoneImage = cfg.zoneImage;
 
     const loaders = [
       rpgLoadImage(cfg.zoneImage),

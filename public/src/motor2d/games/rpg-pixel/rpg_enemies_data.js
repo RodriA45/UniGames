@@ -752,37 +752,36 @@ export function rpgRoomCfg() {
 }
 
 // ─── Carga de imágenes (con cache) ─────
+// El cache real ahora es el de Engine2D; RPG.images/RPG.atlases quedan como
+// espejo de solo lectura para todo el código que ya los venía consultando
+// directo (rpg_render.js es el que más los usa). Antes eran DOS caches
+// independientes: los retratos del DialogueBox iban por Engine2D y el resto
+// por RPG.images, así que una imagen usada por los dos caminos se
+// descargaba y —lo caro— se decodificaba dos veces, con dos bitmaps vivos
+// en memoria. El chequeo de naturalWidth que tenía esta función se movió
+// adentro de Engine2D.loadImage, así que lo hereda todo el motor.
 export function rpgLoadImage(src) {
-  // OJO con .complete: el navegador lo pone en true tanto si la imagen
-  // cargó bien como si falló (404) — sin el chequeo de naturalWidth, una
-  // imagen que 404eó una vez queda "cacheada como válida" para siempre en
-  // esta pestaña (ej: el fondo de una sala quedándose en negro para
-  // siempre aunque después arregles la ruta del archivo, sin ningún error
-  // visible porque técnicamente "ya está cargada").
-  if (RPG.images[src] && RPG.images[src].complete && RPG.images[src].naturalWidth > 0) {
-    return Promise.resolve(RPG.images[src]);
-  }
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error('No se pudo cargar la imagen: ' + src));
+  return Engine2D.loadImage(src).then(img => {
     RPG.images[src] = img;
-    img.src = src;
+    return img;
   });
 }
 
 // ─── Carga de atlas JSON (con cache) ─────
 export function rpgLoadAtlas(src) {
-  if (RPG.atlases[src]) return Promise.resolve(RPG.atlases[src]);
-  return fetch(src)
-    .then(r => {
-      // fetch no rechaza solo por un 404 (v. gr. GitHub Pages devuelve un
-      // 404.html) — sin este chequeo, r.json() explota con un error de
-      // parseo genérico que tampoco dice qué atlas era.
-      if (!r.ok) throw new Error('No se pudo cargar el atlas (' + r.status + '): ' + src);
-      return r.json();
-    })
-    .then(data => { RPG.atlases[src] = data; return data; });
+  return Engine2D.loadAtlas(src).then(data => {
+    RPG.atlases[src] = data;
+    return data;
+  });
+}
+
+// Suelta el fondo de una sala que ya no se juega. Los sprites de personajes
+// NO se tocan: se reusan sala a sala y recargarlos costaría más de lo que
+// ahorra. Ver Engine2D.clearImage.
+export function rpgReleaseImage(src) {
+  if (!src) return;
+  delete RPG.images[src];
+  Engine2D.clearImage(src);
 }
 
 // ─── Progreso de carga (para Engine2D.LoadingBar) ─────
