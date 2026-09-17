@@ -131,6 +131,8 @@ export function rpgStartChapter(chapterIndex, keepUpgrades) {
   const cfg = RPG_CHAPTERS[chapterIndex];
   if (!cfg) return;
   RPG.chapter = chapterIndex;
+  // Tótem: se recarga en cada capítulo (también al pasar al siguiente).
+  RPG.totemUsed = false;
   if (!keepUpgrades) {
     RPG.upgrades = {
       maxHpBonus: 0,
@@ -241,7 +243,7 @@ export function rpgStartRoom(roomIndex) {
     RPG.combatElapsed = 0;
     RPG.timeLimitMs = null;
     RPG.facing = 'down';
-    RPG.keys = { up: false, down: false, left: false, right: false };
+    RPG.keys = { up: false, down: false, left: false, right: false, block: false, fire: false };
     // Junior entra siempre pegado al costado izquierdo del mundo (la
     // "puerta" de entrada) — incluida ahora la sala del jefe, que dejó de
     // ser un caso especial al unificarse su worldWidth con el resto.
@@ -267,6 +269,7 @@ export function rpgStartRoom(roomIndex) {
     RPG.player.reloadTimer = 0;
     RPG.player.hitFlash = 0;
     RPG.player.speedBoostTimer = 0;
+    RPG.player.invulnTimer = 0;
     // ── Arma RPG.enemies a partir de cfg.enemySpawns (o cfg.waves[0]) ──
     // La creación en sí vive en rpgCreateEnemies (rpg_enemies_ai.js) para
     // poder reusarla también al spawnear una oleada siguiente en salas con

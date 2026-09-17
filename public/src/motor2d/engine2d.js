@@ -210,6 +210,11 @@ const Engine2D = (function () {
   const _audioCache = {};       // src -> HTMLAudioElement (reusado y pre-cargado)
   const _channels = { music: null, ambient: null }; // canal único por categoría continua
   const _activeSfx = new Set(); // efectos sonando en este momento
+  const _sfxPools = {};          // src -> [HTMLAudioElement] reusables (ver playSFX)
+  const SFX_MIN_GAP = 35;        // ms mínimos entre dos disparos del MISMO sonido
+  const SFX_MAX_PER_SRC = 4;     // voces por sonido (calidad media/alta)
+  const SFX_MAX_PER_SRC_LOW = 2; // voces por sonido en calidad baja
+  const SFX_MAX_ACTIVE = 10;     // voces totales sonando a la vez
   const _persistKeys = {
     master:  'engine2d.masterVolume',
     music:   'engine2d.musicVolume',
@@ -328,6 +333,11 @@ const Engine2D = (function () {
     _channels[key] = null;
   }
 
+  function _forEachAudio(fn) {
+    for (const k in _audioCache) fn(_audioCache[k]);
+    for (const k in _sfxPools) _sfxPools[k].forEach(fn);
+  }
+
   const AudioSystem = {
     // Carga y cachea una pista sin reproducirla (para pre-cargar).
     load(src) { return loadAudio(src); },
@@ -345,16 +355,45 @@ const Engine2D = (function () {
     // Efecto corto: puede solaparse con otros efectos. Devolvemos el
     // elemento por si el juego quiere escuchar cuándo termina ('ended').
     // opts: { volume: 0..1, rate: playbackRate }
+    // PERF: antes hacía cloneNode() en CADA disparo → un <audio> nuevo por
+    // bala/moneda/golpe, cada uno con su decoder. En gama baja eso es de lo
+    // que más tirones mete. Ahora hay un pool chico por archivo que se
+    // reusa, un tope de voces simultáneas y un anti-spam del mismo sonido.
     playSFX(src, opts = {}) {
-      const a = loadAudio(src).cloneNode(true);
+      const key = _resolve(src);
+      const now = performance.now();
+      const pool = _sfxPools[key] || (_sfxPools[key] = []);
+      // Mismo sonido pedido hace < SFX_MIN_GAP ms: se ignora (no se oye la
+      // diferencia y ahorra un play()). Devuelve el último para no romper
+      // a quien encadene .addEventListener sobre el retorno.
+      if (pool._last && now - pool._lastAt < SFX_MIN_GAP) return pool._last;
+
+      let a = null;
+      for (const el of pool) { if (el.paused || el.ended) { a = el; break; } }
+      if (!a) {
+        const maxVoices = Quality.below('medium') ? SFX_MAX_PER_SRC_LOW : SFX_MAX_PER_SRC;
+        if (pool.length < maxVoices) {
+          a = loadAudio(src).cloneNode(true);
+          a.preload = 'auto';
+          a.addEventListener('ended', () => _activeSfx.delete(a));
+          a.addEventListener('error', () => _activeSfx.delete(a));
+          pool.push(a);
+        } else {
+          // Pool lleno: se reinicia la voz más vieja en vez de crear otra.
+          a = pool.shift();
+          pool.push(a);
+        }
+      }
+      // Tope global de voces: si hay demasiadas sonando, no suma otra.
+      if (!_activeSfx.has(a) && _activeSfx.size >= SFX_MAX_ACTIVE) return a;
+
       a.muted = _muted;
       a._baseVol = _clamp01(opts.volume ?? 1);
       a.volume = _masterVolume * _volumes.sfx * a._baseVol;
-      if (opts.rate) a.playbackRate = opts.rate;
+      a.playbackRate = opts.rate || 1;
       _activeSfx.add(a);
-      const done = () => { _activeSfx.delete(a); a.removeEventListener('ended', done); a.removeEventListener('error', done); };
-      a.addEventListener('ended', done);
-      a.addEventListener('error', done);
+      pool._last = a;
+      pool._lastAt = now;
       _play(a, true);
       return a;
     },
@@ -379,8 +418,8 @@ const Engine2D = (function () {
     getAmbientVolume()  { return _volumes.ambient; },
 
     // Silencia todo sin cortar la reproducción (vuelve con unmute()).
-    mute()   { _muted = true;  Object.values(_audioCache).forEach(a => { a.muted = true; }); },
-    unmute() { _muted = false; Object.values(_audioCache).forEach(a => { a.muted = false; }); _applyVolumes(); },
+    mute()   { _muted = true;  _forEachAudio(a => { a.muted = true; }); },
+    unmute() { _muted = false; _forEachAudio(a => { a.muted = false; }); _applyVolumes(); },
     toggleMute() { return this.isMuted() ? this.unmute() : this.mute(); },
     isMuted() { return _muted; },
 
@@ -458,6 +497,47 @@ const Engine2D = (function () {
   // El nivel se guarda en localStorage. La primera vez se adivina según el
   // dispositivo (detect()) en vez de asumir "alto" y que el celular viejo
   // arranque a 20fps.
+  // ── Tamaño de canvas sin trabajo de más ──
+  // Asignar canvas.width/height (aunque sea el MISMO valor) borra el canvas,
+  // resetea TODO el estado del contexto (imageSmoothingEnabled incluido) y
+  // hace que el navegador realoque el buffer en la GPU. Si un juego llama a
+  // fitCanvas en cada resize (o peor, en cada frame), eso se paga caro. Acá
+  // solo se toca si cambió de verdad, y se re-aplica el pixel-art.
+  function _setCssSize(canvas, w, h) {
+    const cw = Math.max(1, Math.floor(w)) + 'px';
+    const ch = Math.max(1, Math.floor(h)) + 'px';
+    if (canvas.style.width !== cw) canvas.style.width = cw;
+    if (canvas.style.height !== ch) canvas.style.height = ch;
+  }
+  function _setBackingSize(canvas, w, h) {
+    const bw = Math.max(1, Math.floor(w));
+    const bh = Math.max(1, Math.floor(h));
+    if (canvas.width === bw && canvas.height === bh) return false;
+    canvas.width = bw;
+    canvas.height = bh;
+    if (canvas._e2dPixelArt) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.imageSmoothingEnabled = false;
+    }
+    return true;
+  }
+
+  // Contexto 2D "bien configurado" para un juego. LLAMARLO ANTES que
+  // cualquier otro canvas.getContext('2d') sobre ese canvas (las opciones
+  // solo cuentan en la primera llamada).
+  //   const ctx = Engine2D.getContext(canvas);                  // pixel art
+  //   const ctx = Engine2D.getContext(canvas, { alpha: false }); // si el canvas
+  //         tapa todo lo de atrás (NO usar si se ve un fondo CSS por debajo)
+  function getContext(canvas, opts = {}) {
+    const ctx = canvas.getContext('2d', {
+      alpha: opts.alpha !== false,
+      desynchronized: !!opts.desynchronized
+    });
+    canvas._e2dPixelArt = opts.pixelArt !== false;
+    if (ctx && canvas._e2dPixelArt) ctx.imageSmoothingEnabled = false;
+    return ctx;
+  }
+
   const Quality = (function () {
     const LEVELS = ['low', 'medium', 'high'];
     const KEY = 'engine2d.quality';
@@ -470,25 +550,32 @@ const Engine2D = (function () {
         fx: {
           gradients: false, transitions: false, parallax: false,
           ambientSprites: false, shimmer: false, glow: false,
-          shadows: false, particles: true, screenShake: false, smoothCamera: false
+          shadows: false, particles: true, screenShake: false, smoothCamera: false,
+          roundParticles: false
         },
-        scale: { particles: 0.35, maxParticles: 250, render: 0.6 }
+        // fpsCap: tope de FPS del GameLoop (0 = sin tope). En bajo, 30 fijos
+        // se sienten mejor que 35-50 saltando y liberan la mitad de CPU.
+        scale: { particles: 0.35, maxParticles: 250, render: 0.6, fpsCap: 30 }
       },
       medium: {
         fx: {
           gradients: true, transitions: false, parallax: true,
           ambientSprites: false, shimmer: false, glow: false,
-          shadows: true, particles: true, screenShake: true, smoothCamera: true
+          shadows: true, particles: true, screenShake: true, smoothCamera: true,
+          roundParticles: true
         },
-        scale: { particles: 0.7, maxParticles: 1000, render: 0.85 }
+        scale: { particles: 0.7, maxParticles: 1000, render: 0.85, fpsCap: 60 }
       },
       high: {
         fx: {
           gradients: true, transitions: true, parallax: true,
           ambientSprites: true, shimmer: true, glow: true,
-          shadows: true, particles: true, screenShake: true, smoothCamera: true
+          shadows: true, particles: true, screenShake: true, smoothCamera: true,
+          roundParticles: true
         },
-        scale: { particles: 1, maxParticles: 3000, render: 1 }
+        // 60 también en alto: en monitores de 120/144Hz el juego hacía el
+        // doble de trabajo sin que se note (la lógica ya va por dt).
+        scale: { particles: 1, maxParticles: 3000, render: 1, fpsCap: 60 }
       }
     };
 
@@ -666,19 +753,15 @@ const Engine2D = (function () {
       const fit = Math.min(pW / width, pH / height);
       // El tamaño CSS es el de siempre (mismo criterio que Engine2D.fitCanvas);
       // lo único que baja es el backing store del canvas.
-      canvas.style.width = Math.max(1, Math.floor(width * fit)) + 'px';
-      canvas.style.height = Math.max(1, Math.floor(height * fit)) + 'px';
-      canvas.width = Math.max(1, Math.floor(width * s));
-      canvas.height = Math.max(1, Math.floor(height * s));
+      _setCssSize(canvas, width * fit, height * fit);
+      _setBackingSize(canvas, width * s, height * s);
       return fit;
     }
 
     function sizeCanvas(canvas, cssW, cssH) {
       const s = PRESETS[LEVELS[_index]].scale.render;
-      canvas.style.width = Math.max(1, Math.floor(cssW)) + 'px';
-      canvas.style.height = Math.max(1, Math.floor(cssH)) + 'px';
-      canvas.width = Math.max(1, Math.floor(cssW * s));
-      canvas.height = Math.max(1, Math.floor(cssH * s));
+      _setCssSize(canvas, cssW, cssH);
+      _setBackingSize(canvas, cssW * s, cssH * s);
       return s;
     }
 
@@ -915,15 +998,39 @@ const Engine2D = (function () {
       }
     }
 
+    // Buckets por color reusados entre frames: antes se armaba un Map y un
+    // array por color EN CADA FRAME (basura para el GC → tirones periódicos).
+    const _buckets = new Map();
+
     function draw(ctx, camera) {
       if (!pool.length) return;
-      // Agrupar por color para no cambiar fillStyle por partícula.
-      const groups = new Map();
-      for (const p of pool) {
-        let g = groups.get(p.color);
-        if (!g) { g = { color: p.color, items: [] }; groups.set(p.color, g); }
-        g.items.push(p);
+      // Recorte a lo visible (con margen): una explosión fuera de pantalla no
+      // tiene por qué costar fillRects.
+      let minX = -Infinity, minY = -Infinity, maxX = Infinity, maxY = Infinity;
+      if (camera) {
+        const z = camera.zoom || 1;
+        const vw = camera.width / z, vh = camera.height / z;
+        const cx = camera.x + camera.width / 2, cy = camera.y + camera.height / 2;
+        minX = cx - vw / 2 - 32; maxX = cx + vw / 2 + 32;
+        minY = cy - vh / 2 - 32; maxY = cy + vh / 2 + 32;
       }
+
+      for (const b of _buckets.values()) b.length = 0;
+      let anyGlow = false;
+      for (let i = 0; i < pool.length; i++) {
+        const p = pool[i];
+        if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
+        let b = _buckets.get(p.color);
+        if (!b) { b = []; _buckets.set(p.color, b); }
+        b.push(p);
+        if (p.glow > 0) anyGlow = true;
+      }
+      // Evita que el Map crezca sin límite si un juego usa colores random.
+      if (_buckets.size > 64) {
+        for (const [k, b] of _buckets) if (!b.length) _buckets.delete(k);
+      }
+
+      const round = Quality.fx.roundParticles !== false;
       ctx.save();
       // Transformación mundo → pantalla (cámara opcional, con zoom centrado).
       if (camera) {
@@ -936,26 +1043,32 @@ const Engine2D = (function () {
           ctx.translate(-cx, -cy);
         }
       }
-      for (const g of groups.values()) {
-        ctx.fillStyle = g.color;
-        ctx.globalAlpha = 1;
-        const needGlow = g.items.some(p => p.glow > 0);
-        for (const p of g.items) {
-          ctx.globalAlpha = p.alpha;
-          ctx.shadowBlur = p.glow > 0 ? p.glow : (needGlow ? 0 : ctx.shadowBlur);
-          if (p.glow > 0) ctx.shadowColor = p.color;
+      ctx.shadowBlur = 0;
+      let curAlpha = -1, curBlur = 0;
+      for (const [color, items] of _buckets) {
+        if (!items.length) continue;
+        ctx.fillStyle = color;
+        if (anyGlow) ctx.shadowColor = color;
+        for (let i = 0; i < items.length; i++) {
+          const p = items[i];
+          if (p.alpha !== curAlpha) { ctx.globalAlpha = p.alpha; curAlpha = p.alpha; }
+          if (anyGlow && p.glow !== curBlur) { ctx.shadowBlur = p.glow; curBlur = p.glow; }
           const s = p.size;
-          if (p.shape === 'circle') {
+          if (p.shape === 'circle' && round) {
             ctx.beginPath();
             ctx.arc(p.x, p.y, Math.max(0.5, s / 2), 0, Math.PI * 2);
             ctx.fill();
-          } else if (p.rotation !== 0) {
-            ctx.save();
+          } else if (p.rotation !== 0 && round) {
+            // translate/rotate y vuelta atrás: más barato que save/restore
+            // (que copia TODO el estado del contexto por partícula).
             ctx.translate(p.x, p.y);
             ctx.rotate(p.rotation);
             ctx.fillRect(-s / 2, -s / 2, s, s);
-            ctx.restore();
+            ctx.rotate(-p.rotation);
+            ctx.translate(-p.x, -p.y);
           } else {
+            // En calidad baja círculos y rotadas se dibujan como cuadrados
+            // (fillRect es lo más barato que hay; en pixel art ni se nota).
             ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
           }
         }
@@ -1089,10 +1202,8 @@ const Engine2D = (function () {
     const pW = parent && parent.clientWidth ? parent.clientWidth : window.innerWidth;
     const pH = parent && parent.clientHeight ? parent.clientHeight : window.innerHeight;
     const scale = Math.min(pW / width, pH / height);
-    canvas.style.width = Math.max(1, Math.floor(width * scale)) + 'px';
-    canvas.style.height = Math.max(1, Math.floor(height * scale)) + 'px';
-    canvas.width = Math.max(1, Math.floor(width));
-    canvas.height = Math.max(1, Math.floor(height));
+    _setCssSize(canvas, width * scale, height * scale);
+    _setBackingSize(canvas, width, height);
     return scale;
   }
 
@@ -1175,11 +1286,24 @@ const Engine2D = (function () {
     const sh = rowData.cellHeight;
     const dh = targetH;
     const dw = dh * (sw / sh);
-    ctx.save();
-    ctx.translate(Math.trunc(x), Math.trunc(y));
-    if (flip) ctx.scale(-1, 1);
-    ctx.drawImage(img, sx, sy, sw, sh, Math.trunc(-dw / 2), Math.trunc(-dh), Math.trunc(dw), Math.trunc(dh));
-    ctx.restore();
+    _blit(ctx, img, sx, sy, sw, sh, x, y, Math.trunc(-dw / 2), Math.trunc(-dh), Math.trunc(dw), Math.trunc(dh), flip);
+  }
+
+  // PERF: los helpers de sprites hacían save()/restore() por CADA sprite
+  // (save copia todo el estado del contexto). Sin flip se dibuja directo;
+  // con flip se aplica y se deshace la transformación a mano, que da el
+  // mismo resultado (enteros y ±1 son exactos) y cuesta bastante menos.
+  function _blit(ctx, img, sx, sy, sw, sh, x, y, ox, oy, dw, dh, flip) {
+    const tx = Math.trunc(x), ty = Math.trunc(y);
+    if (!flip) {
+      ctx.drawImage(img, sx, sy, sw, sh, tx + ox, ty + oy, dw, dh);
+      return;
+    }
+    ctx.translate(tx, ty);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, sx, sy, sw, sh, ox, oy, dw, dh);
+    ctx.scale(-1, 1);
+    ctx.translate(-tx, -ty);
   }
 
   // Dibuja un frame por NOMBRE desde un atlas JSON
@@ -1190,15 +1314,8 @@ const Engine2D = (function () {
     if (!f) return;
     const dh = targetH;
     const dw = dh * (f.w / f.h);
-    ctx.save();
-    ctx.translate(Math.trunc(x), Math.trunc(y));
-    if (flip) ctx.scale(-1, 1);
-    if (centered) {
-      ctx.drawImage(img, f.x, f.y, f.w, f.h, Math.trunc(-dw / 2), Math.trunc(-dh / 2), Math.trunc(dw), Math.trunc(dh));
-    } else {
-      ctx.drawImage(img, f.x, f.y, f.w, f.h, Math.trunc(-dw / 2), Math.trunc(-dh), Math.trunc(dw), Math.trunc(dh));
-    }
-    ctx.restore();
+    const oy = centered ? Math.trunc(-dh / 2) : Math.trunc(-dh);
+    _blit(ctx, img, f.x, f.y, f.w, f.h, x, y, Math.trunc(-dw / 2), oy, Math.trunc(dw), Math.trunc(dh), flip);
   }
 
   // Dibuja un ícono recortado a mano por coordenadas fijas {x,y,w,h}
@@ -1207,6 +1324,11 @@ const Engine2D = (function () {
   function drawIconRect(ctx, img, rect, x, y, targetH, opts = {}) {
     const dh = targetH;
     const dw = dh * (rect.w / rect.h);
+    if (!opts.rotation && !opts.flip) {
+      const oy = opts.centered ? -dh / 2 : -dh;
+      ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h, x - dw / 2, y + oy, dw, dh);
+      return;
+    }
     ctx.save();
     ctx.translate(x, y);
     if (opts.rotation) ctx.rotate(opts.rotation);
@@ -1237,14 +1359,20 @@ const Engine2D = (function () {
   // GameLoop — requestAnimationFrame con dt normalizado a "frames" de 60fps
   // ─────────────────────────────────────
   class GameLoop {
-    // opts: { update(dt, step), draw(), maxDt=50 }
+    // opts: { update(dt, step), draw(), maxDt=50, maxFps }
     // step = dt/16.6, para mover cosas en unidades "por frame a 60fps"
     // sin depender del refresh rate real de la pantalla (mismo criterio
     // que ya usaba rpgUpdate).
-    constructor({ update, draw, maxDt = 50 }) {
+    //
+    // maxFps: tope de cuadros por segundo. Si no se pasa, lo decide
+    // Engine2D.Quality (scale.fpsCap: 30 en bajo, 60 en medio/alto).
+    // 0 = sin tope. Como la lógica ya va por dt/step, capar NO cambia la
+    // velocidad del juego, solo cuántas veces por segundo se calcula/dibuja.
+    constructor({ update, draw, maxDt = 50, maxFps }) {
       this.updateFn = update;
       this.drawFn = draw;
       this.maxDt = maxDt;
+      this.maxFps = maxFps; // undefined = usar Quality
       this.running = false;
       this.raf = null;
       this.lastTs = 0;
@@ -1258,6 +1386,7 @@ const Engine2D = (function () {
       this.stop();
       this.running = true;
       this.lastTs = 0;
+      this._nextAt = 0;
       this.raf = requestAnimationFrame(this._tick);
     }
     stop() {
@@ -1266,6 +1395,22 @@ const Engine2D = (function () {
     }
     _tick(ts) {
       if (!this.running) return;
+      // Se pide el próximo frame primero: si update/draw tiran un error, el
+      // loop no queda muerto en silencio.
+      this.raf = requestAnimationFrame(this._tick);
+
+      const cap = this.maxFps !== undefined ? this.maxFps : (Quality.scale.fpsCap || 0);
+      if (cap > 0) {
+        // Reloj de "próximo frame permitido" (no distancia al anterior): así
+        // en 144Hz con tope 60 da ~60 reales y no 48. Con tolerancia del 20%
+        // porque rAF nunca llega exacto y no queremos saltear frames de más.
+        const interval = 1000 / cap;
+        if (this._nextAt && ts < this._nextAt - interval * 0.2) return;
+        this._nextAt = (this._nextAt && ts - this._nextAt < interval)
+          ? this._nextAt + interval
+          : ts + interval; // arranque o se atrasó mucho: re-sincroniza
+      }
+
       const dt = this.lastTs ? Math.min(ts - this.lastTs, this.maxDt) : 16;
       this.lastTs = ts;
       const step = dt / 16.6;
@@ -1274,7 +1419,6 @@ const Engine2D = (function () {
       Quality._sampleFrame(dt);
       this.updateFn(dt, step);
       this.drawFn();
-      this.raf = requestAnimationFrame(this._tick);
     }
   }
 
@@ -1678,15 +1822,27 @@ const Engine2D = (function () {
     }
     clear() { this.entities.length = 0; }
     update(dt, step) {
-      this.entities.forEach(e => e.update(dt, step, this));
+      const list = this.entities;
+      // Largo fijado antes: lo que se agregue durante el update arranca el
+      // frame que viene (mismo comportamiento que tenía el forEach).
+      const n = list.length;
+      for (let i = 0; i < n; i++) list[i].update(dt, step, this);
       // Zonas de trigger (aparece enemigo, cambia habitación, activa trampa...)
-      if (this.triggers) this.triggers.update(this.entities);
+      if (this.triggers) this.triggers.update(list);
       // Limpieza de entidades muertas (bala que salió de pantalla,
-      // proyectil que impactó, etc) — un solo lugar en vez de repetirlo
-      // por cada array como pasaba en rpg.js.
-      this.entities = this.entities.filter(e => !e.dead);
+      // proyectil que impactó, etc). Compactado EN EL LUGAR: antes era un
+      // filter() que creaba un array nuevo 60 veces por segundo.
+      let w = 0;
+      for (let r = 0; r < list.length; r++) {
+        const e = list[r];
+        if (!e.dead) list[w++] = e;
+      }
+      list.length = w;
     }
-    draw(ctx) { this.entities.forEach(e => e.draw(ctx, this)); }
+    draw(ctx) {
+      const list = this.entities;
+      for (let i = 0; i < list.length; i++) list[i].draw(ctx, this);
+    }
     // Filtra por un campo, ej: scene.byType('bullet')
     byType(type) { return this.entities.filter(e => e.type === type); }
 
@@ -1757,6 +1913,19 @@ const Engine2D = (function () {
     draw(ctx, dx = 0, dy = 0) {
       ctx.drawImage(this.canvas, dx, dy);
     }
+
+    // Igual que draw() pero volcando SOLO el rectángulo visible (x,y,w,h en
+    // coordenadas de la capa, normalmente la vista de la cámara). Con una
+    // capa del tamaño del nivel entero, draw() le hace procesar al
+    // navegador todo el canvas aunque se vea un pedacito.
+    drawRegion(ctx, x, y, w, h) {
+      const sx = Math.max(0, Math.floor(x));
+      const sy = Math.max(0, Math.floor(y));
+      const sw = Math.min(this.width - sx, Math.ceil(x + w) - sx);
+      const sh = Math.min(this.height - sy, Math.ceil(y + h) - sy);
+      if (sw <= 0 || sh <= 0) return;
+      ctx.drawImage(this.canvas, sx, sy, sw, sh, sx, sy, sw, sh);
+    }
   }
 
   // ─────────────────────────────────────
@@ -1767,14 +1936,15 @@ const Engine2D = (function () {
   // tileset. solidIds: Set de ids que bloquean movimiento (ej. tierra,
   // piedra sí; una antorcha de fondo no).
   //
-  // Dibujado (ver draw): el mapa completo se pre-pinta UNA sola vez en un
-  // StaticLayer interno (this._bakedLayer) en vez de recorrer tile por
-  // tile en cada frame. Solo se vuelve a hornear cuando cambia un tile de
-  // verdad (set/breakTile/placeTile marcan this._dirty = true) — nunca
-  // dentro del loop de 60fps. Cada frame termina siendo un solo drawImage
-  // recortado a lo que ve la cámara.
+  // PERF (versión por chunks): antes el mapa entero se horneaba en UN solo
+  // canvas. En un mundo de 200x200 tiles eso es un canvas de 3200x3200 (o
+  // 6400x6400 con tiles de 32) → 40-160MB de RAM/VRAM y, en GPUs integradas
+  // viejas (textura máx. 4096), el navegador lo pasa a software y SUBE la
+  // textura a la GPU en cada frame. Ahora el mapa se divide en chunks de
+  // ~512px que se hornean recién cuando entran en cámara, se reparan solo
+  // en la zona tocada y se descartan (LRU) cuando quedan lejos.
   class TileMap {
-    constructor({ cols, rows, tileSize, tilesetSrc, tilesetCols, solidIds = new Set(), data = null }) {
+    constructor({ cols, rows, tileSize, tilesetSrc, tilesetCols, solidIds = new Set(), data = null, chunkTiles }) {
       this.cols = cols;
       this.rows = rows;
       this.tileSize = tileSize;
@@ -1782,8 +1952,14 @@ const Engine2D = (function () {
       this.tilesetCols = tilesetCols; // columnas del tileset (grilla uniforme, id-1 = índice)
       this.solidIds = solidIds;
       this.data = data || new Uint16Array(cols * rows); // 0 = aire
-      this._bakedLayer = null; // StaticLayer — se crea recién en el primer draw()
-      this._dirty = true;      // true = hay que (re)hornear antes de dibujar
+
+      this.chunkTiles = chunkTiles || Math.max(4, Math.round(512 / tileSize));
+      this.chunkPx = this.chunkTiles * tileSize;
+      this.chunksX = Math.ceil(cols / this.chunkTiles);
+      this.chunksY = Math.ceil(rows / this.chunkTiles);
+      this._chunks = new Map();  // key -> { canvas, ctx, dirty:{minCol,...}|null }
+      this._dataRef = this.data; // si el juego reemplaza .data, se invalida todo
+      this._dirty = false;       // compat: ya no hace falta, se deja por si alguien lo lee
     }
 
     inBounds(col, row) {
@@ -1797,8 +1973,29 @@ const Engine2D = (function () {
 
     set(col, row, id) {
       if (!this.inBounds(col, row)) return;
-      this.data[row * this.cols + col] = id;
-      this._dirty = true; // el tile cambió — hay que rehornear el StaticLayer
+      const i = row * this.cols + col;
+      if (this.data[i] === id) return; // no cambió: no ensucia nada
+      this.data[i] = id;
+      // Solo se marca el chunk que contiene la celda (si está horneado; si
+      // no, ya se va a pintar completo cuando entre en cámara).
+      const key = Math.floor(row / this.chunkTiles) * this.chunksX + Math.floor(col / this.chunkTiles);
+      const ch = this._chunks.get(key);
+      if (!ch) return;
+      const r = ch.dirty;
+      if (!r) ch.dirty = { minCol: col, maxCol: col, minRow: row, maxRow: row };
+      else {
+        if (col < r.minCol) r.minCol = col;
+        if (col > r.maxCol) r.maxCol = col;
+        if (row < r.minRow) r.minRow = row;
+        if (row > r.maxRow) r.maxRow = row;
+      }
+    }
+
+    // Tirar todos los chunks horneados (ej: se cargó otro mundo en el mismo
+    // TileMap, o cambió el tileset). Se vuelven a pintar al verse.
+    invalidate() {
+      this._chunks.clear();
+      this._dataRef = this.data;
     }
 
     isSolidAt(col, row) {
@@ -1837,42 +2034,62 @@ const Engine2D = (function () {
       return true;
     }
 
-    // (Re)pinta el mapa entero, tile por tile, sobre el StaticLayer interno.
-    // Solo se llama cuando hace falta (ver draw) — nunca en cada frame.
-    _bake() {
-      const img = getImage(this.tilesetSrc);
-      // No alcanza con que exista el objeto Image en el caché: puede estar
-      // a mitad de cargar (complete=false) o haber quedado "broken" un
-      // instante después de que algún caller la leyó con getImage() antes
-      // de que el error terminara de propagarse. Dibujarla en cualquiera
-      // de esos dos casos tira InvalidStateError en drawImage().
-      if (!img || !img.complete || !img.naturalWidth) return; // no cargó (todavía o nunca) — se reintenta en el próximo draw()
-      if (!this._bakedLayer) this._bakedLayer = new StaticLayer(this.cols * this.tileSize, this.rows * this.tileSize);
-      const ts = this.tileSize;
-      this._bakedLayer.bake(bctx => {
-        for (let row = 0; row < this.rows; row++) {
-          for (let col = 0; col < this.cols; col++) {
-            const id = this.get(col, row);
-            if (id === 0) continue; // aire, no dibuja nada
-            const tileIndex = id - 1; // id 1 = primer tile del tileset
-            const sx = (tileIndex % this.tilesetCols) * ts;
-            const sy = Math.floor(tileIndex / this.tilesetCols) * ts;
-            bctx.drawImage(img, sx, sy, ts, ts, col * ts, row * ts, ts, ts);
-          }
+    // Pinta celdas [c0..c1] x [r0..r1] (inclusive) sobre bctx, desplazadas
+    // por (ox, oy) — el origen del chunk en coordenadas de mundo.
+    _paintCells(bctx, img, c0, c1, r0, r1, ox = 0, oy = 0) {
+      const ts = this.tileSize, cols = this.cols, tc = this.tilesetCols, data = this.data;
+      for (let row = r0; row <= r1; row++) {
+        const base = row * cols;
+        const dy = row * ts - oy;
+        for (let col = c0; col <= c1; col++) {
+          const id = data[base + col];
+          if (id === 0) continue; // aire, no dibuja nada
+          const tileIndex = id - 1; // id 1 = primer tile del tileset
+          bctx.drawImage(img, (tileIndex % tc) * ts, ((tileIndex / tc) | 0) * ts, ts, ts,
+            col * ts - ox, dy, ts, ts);
         }
-      });
-      this._dirty = false;
+      }
     }
 
-    // Dibuja solo lo que ve la cámara — pero a diferencia de antes, ya no
-    // recorre tiles: recorta esa región de this._bakedLayer (pre-pintado
-    // por _bake) y la vuelca con un solo drawImage. Esto es lo que dispara
-    // los FPS en mapas grandes o en computadoras de bajos recursos: el
-    // trabajo pesado (un drawImage por tile) se hace una vez por nivel, no
-    // 60 veces por segundo.
+    // Devuelve el chunk (cx,cy) listo para dibujar: lo crea/hornea si no
+    // existía y repara su zona sucia si la tiene.
+    _getChunk(cx, cy, img) {
+      const key = cy * this.chunksX + cx;
+      let ch = this._chunks.get(key);
+      const ct = this.chunkTiles, ts = this.tileSize;
+      const c0 = cx * ct, r0 = cy * ct;
+      const c1 = Math.min(this.cols - 1, c0 + ct - 1);
+      const r1 = Math.min(this.rows - 1, r0 + ct - 1);
+      const ox = c0 * ts, oy = r0 * ts;
+      if (!ch) {
+        const canvas = document.createElement('canvas');
+        canvas.width = (c1 - c0 + 1) * ts;
+        canvas.height = (r1 - r0 + 1) * ts;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ch = { canvas, ctx, dirty: null, ox, oy };
+        this._paintCells(ctx, img, c0, c1, r0, r1, ox, oy);
+      } else {
+        this._chunks.delete(key); // re-insertar = marcar como usado (LRU)
+        if (ch.dirty) {
+          const d = ch.dirty;
+          ch.ctx.clearRect(d.minCol * ts - ox, d.minRow * ts - oy,
+            (d.maxCol - d.minCol + 1) * ts, (d.maxRow - d.minRow + 1) * ts);
+          this._paintCells(ch.ctx, img, d.minCol, d.maxCol, d.minRow, d.maxRow, ox, oy);
+          ch.dirty = null;
+        }
+      }
+      this._chunks.set(key, ch);
+      return ch;
+    }
+
+    // Dibuja solo lo que ve la cámara: un drawImage por chunk visible.
     draw(ctx, camera) {
-      if (this._dirty || !this._bakedLayer) this._bake();
-      if (!this._bakedLayer) return; // el tileset no cargó todavía
+      const img = getImage(this.tilesetSrc);
+      // Puede estar a mitad de cargar o rota: dibujarla tira InvalidStateError.
+      if (!img || !img.complete || !img.naturalWidth) return;
+      if (this.data !== this._dataRef) this.invalidate();
+
       const mapW = this.cols * this.tileSize;
       const mapH = this.rows * this.tileSize;
       const sx = Math.max(0, Math.floor(camera.x));
@@ -1880,7 +2097,29 @@ const Engine2D = (function () {
       const sw = Math.max(0, Math.min(mapW - sx, Math.ceil(camera.width)));
       const sh = Math.max(0, Math.min(mapH - sy, Math.ceil(camera.height)));
       if (sw === 0 || sh === 0) return;
-      ctx.drawImage(this._bakedLayer.canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+
+      const cp = this.chunkPx;
+      const cx0 = Math.floor(sx / cp), cx1 = Math.floor((sx + sw - 1) / cp);
+      const cy0 = Math.floor(sy / cp), cy1 = Math.floor((sy + sh - 1) / cp);
+      for (let cy = cy0; cy <= cy1; cy++) {
+        for (let cx = cx0; cx <= cx1; cx++) {
+          const ch = this._getChunk(cx, cy, img);
+          // Intersección chunk ∩ vista, en coordenadas de mundo.
+          const ix0 = Math.max(sx, ch.ox), iy0 = Math.max(sy, ch.oy);
+          const ix1 = Math.min(sx + sw, ch.ox + ch.canvas.width);
+          const iy1 = Math.min(sy + sh, ch.oy + ch.canvas.height);
+          const iw = ix1 - ix0, ih = iy1 - iy0;
+          if (iw <= 0 || ih <= 0) continue;
+          ctx.drawImage(ch.canvas, ix0 - ch.ox, iy0 - ch.oy, iw, ih, ix0 - sx, iy0 - sy, iw, ih);
+        }
+      }
+
+      // LRU: se guardan el doble de los chunks visibles (mínimo 16) para que
+      // ir y volver no obligue a re-hornear, sin acumular el mundo entero.
+      const keep = Math.max(16, (cx1 - cx0 + 1) * (cy1 - cy0 + 1) * 2);
+      while (this._chunks.size > keep) {
+        this._chunks.delete(this._chunks.keys().next().value);
+      }
     }
   }
 
@@ -2234,30 +2473,38 @@ const Engine2D = (function () {
     // esquinas, que es el bug clásico de resolver todo junto.
     // Al terminar, entity.grounded queda en true si tocó piso este step
     // (usalo para permitir saltar solo si está parado).
-    resolveTileCollisions(entity, tilemap) {
+    // step (opcional, default 1): el mismo `step` del GameLoop. Antes el
+    // desplazamiento era "vx por frame" sin importar cuánto duró el frame:
+    // a 30fps todo iba a la mitad de velocidad y a 144Hz a más del doble.
+    // Con step, la velocidad es la misma a cualquier FPS. Si el paso es
+    // grande (frame lento) se parte en sub-pasos de ≤ medio tile para no
+    // atravesar el piso.
+    resolveTileCollisions(entity, tilemap, step = 1) {
       const ts = tilemap.tileSize;
-
-      // ── Eje X ──
-      entity.x += entity.vx;
-      this._forEachOverlappingSolid(entity, tilemap, (tileBox) => {
-        if (entity.vx > 0) entity.x = tileBox.x - entity.w;
-        else if (entity.vx < 0) entity.x = tileBox.x + tileBox.w;
-        entity.vx = 0;
-      });
-
-      // ── Eje Y ──
-      entity.y += entity.vy;
+      const dx = entity.vx * step, dy = entity.vy * step;
+      const n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / (ts * 0.5)));
+      const sub = step / n;
       entity.grounded = false;
-      this._forEachOverlappingSolid(entity, tilemap, (tileBox) => {
-        if (entity.vy > 0) { entity.y = tileBox.y - entity.h; entity.grounded = true; }
-        else if (entity.vy < 0) { entity.y = tileBox.y + tileBox.h; }
-        entity.vy = 0;
-      });
+      for (let i = 0; i < n; i++) {
+        // ── Eje X ──
+        if (entity.vx !== 0) {
+          entity.x += entity.vx * sub;
+          this._forEachOverlappingSolid(entity, tilemap, (tileBox) => {
+            if (entity.vx > 0) entity.x = tileBox.x - entity.w;
+            else if (entity.vx < 0) entity.x = tileBox.x + tileBox.w;
+            entity.vx = 0;
+          });
+        }
+        // ── Eje Y ──
+        entity.y += entity.vy * sub;
+        this._forEachOverlappingSolid(entity, tilemap, (tileBox) => {
+          if (entity.vy > 0) { entity.y = tileBox.y - entity.h; entity.grounded = true; }
+          else if (entity.vy < 0) { entity.y = tileBox.y + tileBox.h; }
+          entity.vy = 0;
+        });
+      }
     },
 
-    // Recorre las celdas sólidas que se superponen con la caja actual de
-    // la entidad y llama cb(tileBox) por cada una, re-chequeando la caja
-    // después de cada corrección (para no dejar overlap residual).
     _forEachOverlappingSolid(entity, tilemap, cb) {
       const ts = tilemap.tileSize;
       let changed = true;
@@ -2450,8 +2697,11 @@ const Engine2D = (function () {
     // Usa logicalWidth/Height si se pasaron (ver constructor); si no, cae
     // al tamaño real del buffer (canvas.width/height), que es correcto
     // solo cuando el juego NO escala el canvas por devicePixelRatio.
-    _canvasPos(e) {
-      const rect = this.canvas.getBoundingClientRect();
+    // getBoundingClientRect() fuerza layout: se mide al apoyar el dedo y
+    // se reusa durante el arrastre (pointermove llega decenas de veces/seg).
+    _canvasPos(e, fresh) {
+      if (fresh || !this._rect) this._rect = this.canvas.getBoundingClientRect();
+      const rect = this._rect;
       const refW = this.logicalWidth || this.canvas.width;
       const refH = this.logicalHeight || this.canvas.height;
       const scaleX = refW / rect.width;
@@ -2461,7 +2711,7 @@ const Engine2D = (function () {
 
     _onDown(e) {
       if (!this.visible) return;
-      const pos = this._canvasPos(e);
+      const pos = this._canvasPos(e, true);
       for (const zone of this.zones) {
         if (this._active.has(zone.id)) continue; // ya usado por otro dedo
         const dx = pos.x - zone.x, dy = pos.y - zone.y;
@@ -2848,6 +3098,7 @@ const Engine2D = (function () {
   return {
     // assets
     loadImage, loadAtlas, loadAll, loadAllWithProgress, getImage, getAtlas,
+    getContext,
     // liberar assets pesados de un solo uso (fondos por sala/nivel)
     clearImage, clearAtlas, clearImages,
     // barra de carga autocontenida (usar junto con loadAllWithProgress)

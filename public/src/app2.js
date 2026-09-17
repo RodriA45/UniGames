@@ -2002,13 +2002,13 @@ function ensureSurviLoaded() {
 function ensureQualityRows() {
   if (typeof Engine2D === 'undefined' || !Engine2D.Quality) return;
   const slots = [
-    document.getElementById('runnerQualitySlot'),
-    document.getElementById('trQualitySlot'),
-    document.getElementById('rpgQualitySlot')
+    [document.getElementById('runnerQualitySlot'), '🖼️ Gráficos'],
+    [document.getElementById('trQualitySlot'), '🖼️ Gráficos'],
+    [document.getElementById('rpgQualitySlot'), 'Gráficos'] // el RPG no usa emojis en Ajustes
   ];
-  for (const slot of slots) {
+  for (const [slot, label] of slots) {
     if (!slot || slot.childElementCount) continue;
-    slot.appendChild(Engine2D.Quality.createRow({ label: '🖼️ Gráficos' }));
+    slot.appendChild(Engine2D.Quality.createRow({ label }));
   }
 }
 ensureQualityRows();
@@ -2055,7 +2055,12 @@ function goTo(section) {
     ['preguntados', 'sopa', 'termina'].forEach(restoreOriginalSection);
   }
 
-if (section === 'runner' || section === 'castle_escape' || section === 'rpg_pixel' || section === 'pixel_survi') {
+  // Marca "estoy en un juego del motor": el CSS apaga animaciones del sitio
+  // que repintan por frame (brillo del logo) mientras corre el canvas.
+  const isEngineGame = section === 'runner' || section === 'castle_escape' || section === 'rpg_pixel' || section === 'pixel_survi';
+  document.body.classList.toggle('in-engine-game', isEngineGame);
+
+if (isEngineGame) {
     // Estos juegos manejan su propia música (la ponen ellos mismos vía
     // setMusic al mostrar su menú). Ojo: NO llamar a mutePageMusic() acá,
     // porque deja pageMusicMuted = true y el setMusic() que viene justo

@@ -579,7 +579,7 @@ export const RPG = {
   inDialogue: false,
   dialogueOnDone: null,
 
-  keys: { up: false, down: false, left: false, right: false, block: false },
+  keys: { up: false, down: false, left: false, right: false, block: false, fire: false },
   facing: 'down', // última dirección caminada; define hacia dónde se dispara
   player: {
     x: 0, y: 0,
@@ -595,8 +595,10 @@ export const RPG = {
     reloading: false,
     reloadTimer: 0,
     hitFlash: 0,
-    speedBoostTimer: 0
+    speedBoostTimer: 0,
+    invulnTimer: 0 // ms de inmunidad restante (tótem)
   },
+  totemUsed: false, // true si el tótem ya se gastó en este capítulo
   // Lista de enemigos vivos/muertos de la habitación actual. Se arma en
   // rpgStartRoom a partir de cfg.enemySpawns (1 a N enemigos simultáneos).
   // El jefe de la habitación 5 también vive acá como enemies[0] — así el
@@ -850,7 +852,7 @@ export const RPG_POWERUP_DEFS = {
       const amount = 5 + Math.floor(Math.random() * 11); // 5–15
       RPG.upgrades.coins += amount;
       rpgAddMetaGold(amount); // banca directo a la tienda de mejoras permanentes
-      return '🪙 Monedas · +' + amount;
+      return 'Monedas · +' + amount; // el cartel ya muestra el sprite de monedas al lado
     }
   },
   armor: {

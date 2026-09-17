@@ -25,6 +25,7 @@ export function rpgStartDialogue(lines, onDone) {
   // justo al entrar en diálogo (ej: se soltó fuera de foco de la ventana
   // y el keyup nunca llegó), que no arranque el combate con Junior trabado.
   RPG.keys.up = RPG.keys.down = RPG.keys.left = RPG.keys.right = false;
+  RPG.keys.fire = false;
   RPG.player.blocking = false;
   RPG.dialogue.say(lines);
   rpgDialogueLastTs = 0;
@@ -94,7 +95,12 @@ export function rpgPauseGame() {
   RPG_EL.overlay.classList.remove('hidden');
 }
 
+function rpgDestroyPauseQualityRow() {
+  if (RPG._pauseQualityRow) { RPG._pauseQualityRow.destroy(); RPG._pauseQualityRow = null; }
+}
+
 export function rpgRenderPauseOverlay() {
+  rpgDestroyPauseQualityRow();
   RPG_EL.overlayTitle.textContent = '⏸ Pausa';
   RPG_EL.overlaySub.innerHTML =
     '<div class="rpg-pause-layout">' +
@@ -116,24 +122,34 @@ export function rpgRenderPauseOverlay() {
 // armaron los ajustes de verdad — quedaba vacío. Volver reconstruye el
 // cartel normal de pausa.
 export function rpgShowPauseSettings() {
-  RPG_EL.overlayTitle.textContent = '⚙ Ajustes';
+  RPG_EL.overlayTitle.textContent = 'Ajustes';
   RPG_EL.overlaySub.innerHTML =
     '<div class="trampas-settings-content rpg-ajustes-content">' +
       '<div class="trampas-slider-row">' +
-        '<label>🎵 Música</label>' +
+        '<label>Música</label>' +
         '<input type="range" class="rpg-music-volume-input" min="0" max="100" value="50" oninput="rpgOnMusicVolumeChange(this.value)">' +
         '<span class="trampas-slider-value rpg-music-volume-value">50%</span>' +
       '</div>' +
       '<div class="trampas-slider-row">' +
-        '<label>🔊 Efectos</label>' +
+        '<label>Efectos</label>' +
         '<input type="range" class="rpg-sfx-volume-input" min="0" max="100" value="80" oninput="rpgOnSfxVolumeChange(this.value)">' +
         '<span class="trampas-slider-value rpg-sfx-volume-value">80%</span>' +
       '</div>' +
       '<div class="trampas-slider-row runner-fullscreen-row rpg-fullscreen-row">' +
-        '<label>🖥️ Pantalla completa</label>' +
+        '<label>Pantalla completa</label>' +
         '<button type="button" class="runner-fullscreen-btn rpg-fullscreen-btn" onclick="rpgToggleFullscreen()">Activar</button>' +
       '</div>' +
+      '<div class="rpg-pause-quality-slot"></div>' +
     '</div>';
+  // Selector de calidad gráfica también en la pausa (se puede ajustar sin
+  // salir de la partida; rpg_menu_flow.js ya redimensiona el canvas al
+  // cambiar). Se destruye la fila anterior para no acumular listeners.
+  rpgDestroyPauseQualityRow();
+  const qSlot = RPG_EL.overlaySub.querySelector('.rpg-pause-quality-slot');
+  if (qSlot && typeof Engine2D !== 'undefined' && Engine2D.Quality) {
+    RPG._pauseQualityRow = Engine2D.Quality.createRow({ label: 'Gráficos' });
+    qSlot.appendChild(RPG._pauseQualityRow);
+  }
   RPG_EL.overlayButtons.innerHTML =
     '<button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;" onclick="rpgRenderPauseOverlay()">← Volver</button>';
   // Clases, no ids (ver rpgRenderAjustes): puede haber otra copia de estos
@@ -170,7 +186,14 @@ export function setupRpgEvents() {
     if (e.code === 'ArrowRight' || e.code === 'KeyD') RPG.keys.right = true;
     rpgUpdateFacing();
     if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','KeyX','Enter','NumpadEnter'].includes(e.code)) e.preventDefault();
-    if (e.code === 'Space') rpgFire();
+    // Espacio: dispara al apretar y, mientras se mantenga, rpgUpdate sigue
+    // disparando al ritmo del cooldown (RPG.keys.fire). Los keydown de
+    // auto-repetición del sistema se ignoran: el ritmo lo pone el juego,
+    // no la configuración de teclado de cada PC.
+    if (e.code === 'Space') {
+      if (!e.repeat) rpgFire();
+      if (!RPG.inDialogue) RPG.keys.fire = true;
+    }
     if (e.code === 'KeyX' || e.code === 'Enter' || e.code === 'NumpadEnter') rpgInteract();
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') RPG.keys.block = true;
 
@@ -197,9 +220,20 @@ export function setupRpgEvents() {
     if (e.code === 'ArrowRight' || e.code === 'KeyD') RPG.keys.right = false;
     rpgUpdateFacing();
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') RPG.keys.block = false;
+    if (e.code === 'Space') RPG.keys.fire = false;
   };
   document.addEventListener('keydown', RPG.keyHandlerDown);
   document.addEventListener('keyup', RPG.keyHandlerUp);
+
+  // Si la ventana pierde el foco con una tecla apretada, el keyup nunca
+  // llega: sin esto Junior seguiría caminando/disparando solo.
+  if (!RPG.blurHandler) {
+    RPG.blurHandler = function () {
+      const k = RPG.keys;
+      k.up = k.down = k.left = k.right = k.block = k.fire = false;
+    };
+    window.addEventListener('blur', RPG.blurHandler);
+  }
 }
 
 // Recalcula RPG.facing según qué teclas de movimiento siguen apretadas en
@@ -531,6 +565,11 @@ export function rpgUpdate(dt) {
   if (p.fireCooldown > 0) p.fireCooldown -= dt;
   if (p.blockCooldown > 0) p.blockCooldown -= dt;
   if (p.hitFlash > 0) p.hitFlash -= dt;
+  if (p.invulnTimer > 0) p.invulnTimer -= dt;
+
+  // Disparo sostenido con teclado (el táctil ya lo hace en
+  // rpgPollTouchActions): rpgFire respeta cooldown, bloqueo y recarga.
+  if (RPG.keys.fire) rpgFire();
 
   // ── Cofre: animación de apertura (4 frames) y aplicación de la
   // recompensa recién en el último frame, no al tocar Interactuar. ──

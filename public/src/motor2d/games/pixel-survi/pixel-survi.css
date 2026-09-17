@@ -114,6 +114,45 @@
   text-align: right;
 }
 
+/* Hambre: mismo look que la barra de vida, al lado */
+.survi-hunger {
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.12rem 0.4rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+.survi-hunger-icon { font-size: 0.65rem; line-height: 1; }
+
+.survi-hunger-bar {
+  width: 4.5rem;
+  height: 0.38rem;
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.survi-hunger-bar i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: #caa24a;
+  transition: width 0.15s ease, background 0.15s ease;
+}
+
+.survi-hunger-text {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  color: #fff;
+  text-shadow: 0 0 2px #000;
+  min-width: 3.1rem;
+  text-align: right;
+}
+
 /* ─── Hotbar ───────────────────────────────────────────────────── */
 .survi-hotbar {
   pointer-events: auto;
@@ -416,6 +455,8 @@
   .survi-slot-key { font-size: 0.45rem; }
   .survi-health-bar { width: 3.2rem; }
   .survi-health-text { font-size: 0.42rem; min-width: 2.6rem; }
+  .survi-hunger-bar { width: 3.2rem; }
+  .survi-hunger-text { font-size: 0.42rem; min-width: 2.6rem; }
   .survi-inv-grid { grid-template-columns: repeat(auto-fill, minmax(4.2rem, 1fr)); max-height: 34vh; }
   .survi-inv-name { font-size: 0.55rem; }
   .survi-howto-list { font-size: 0.65rem; max-height: 40vh; }

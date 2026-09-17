@@ -13,7 +13,13 @@ import {
   HARDNESS, TOOL_FOR, DROPS, STARTER_TOOLS, PLAYER_BOX, PLAYER_SPRITE,
   MAX_HP, FALL_SAFE_TILES, FALL_DMG_PER_TILE, INVULN_MS,
   ATTACK_COOLDOWN, ATTACK_DMG, PLACE_COOLDOWN,
-  MOVE_SPEED, JUMP_VEL, REACH_TILES
+  MOVE_SPEED, JUMP_VEL, REACH_TILES,
+  MAX_HUNGER, HUNGER_DRAIN_PER_MS, HUNGER_REGEN_THRESHOLD,
+  STARVE_DAMAGE, STARVE_INTERVAL_MS, HP_REGEN_INTERVAL_MS, HP_REGEN_AMOUNT,
+  LEAF_FOOD_DROP, leafPalette,
+  WEAPON_STATS, BARE_HAND_ATTACK,
+  HIT_FLASH_MS, HIT_SHAKE_INTENSITY, HIT_SHAKE_MS,
+  CAMERA_DEADZONE_W, CAMERA_DEADZONE_H, CAMERA_SMOOTHING
 } from './survi_config.js';
 import { generateWorld, pickSpawn, autotileId } from './survi_world.js';
 import { saveWorld, deleteWorld, fmtTime } from './survi_save.js';
@@ -42,6 +48,11 @@ export class SurviGame {
 
     this.reachPx = REACH_TILES * TILE;
     this.hp = MAX_HP;
+    this.hunger = MAX_HUNGER;
+    this._starveTimer = 0;
+    this._regenTimer = 0;
+    this._lastHungerShown = -1;
+    this._hitFlashMs = 0;
     this.enemies = [];
 
     this.pointer = { down: false, button: 0 };
@@ -142,6 +153,11 @@ export class SurviGame {
       vx: 0, vy: 0, grounded: false, facing: 1
     };
     this.hp = save && save.hp ? Math.min(MAX_HP, save.hp) : MAX_HP;
+    this.hunger = save && save.hunger != null ? Math.min(MAX_HUNGER, save.hunger) : MAX_HUNGER;
+    this._starveTimer = 0;
+    this._regenTimer = 0;
+    this._lastHungerShown = -1;
+    this._hitFlashMs = 0;
     this.inventory = save ? (save.inventory || {}) : {};
     this.hotbarSlots = save ? (save.hotbarSlots || new Array(HOTBAR_SIZE).fill(null))
                             : new Array(HOTBAR_SIZE).fill(null);
@@ -156,6 +172,13 @@ export class SurviGame {
     this.camera = new (E2D().Camera)({
       width: VIEW_W, height: VIEW_H, worldWidth: WORLD_W, worldHeight: WORLD_H
     });
+    // followSmooth() + deadzone en vez de follow(): así saltar (movimiento
+    // vertical chico y momentáneo) no mueve la cámara y no arruina la
+    // puntería al colocar bloques. El primer follow() es un snap instantáneo
+    // para arrancar ya centrado, sin que se vea la cámara "viajando" desde
+    // el (0,0) inicial.
+    this.camera.smoothing = CAMERA_SMOOTHING;
+    this.camera.deadzone = { width: CAMERA_DEADZONE_W, height: CAMERA_DEADZONE_H };
     this.camera.follow(this.player.x, this.player.y);
 
     this._fit();
@@ -167,6 +190,7 @@ export class SurviGame {
     this._attachInput();
     this._renderHotbar();
     this._renderHealth();
+    this._renderHunger();
     showScreen(this.ui, null);
 
     this._autosave = setInterval(() => { if (!this.paused && !this.dead) this.save(); }, 30000);
@@ -235,6 +259,7 @@ export class SurviGame {
       tiles: Array.from(this.tilemap.data),
       px: this.player.x, py: this.player.y,
       hp: this.hp,
+      hunger: this.hunger,
       inventory: this.inventory,
       hotbarSlots: this.hotbarSlots,
       selectedSlot: this.selectedSlot
@@ -307,7 +332,7 @@ export class SurviGame {
     this.canvas.addEventListener('pointerdown', (e) => {
       if (this._blocked()) return;
       try { this.canvas.setPointerCapture(e.pointerId); } catch {}
-      this._hoverTile = this._pointerToTile(e);
+      this._hoverTile = this._pointerToTile(e, true);
       this.pointer.down = true;
       this.pointer.button = e.pointerType === 'touch'
         ? (this.touchMode === 'place' ? 2 : 0)
@@ -326,6 +351,10 @@ export class SurviGame {
     this.canvas.addEventListener('pointercancel', stop);
     this.canvas.addEventListener('pointerleave', (e) => { this._hoverTile = null; stop(e); });
     window.addEventListener('blur', () => { this.pointer.down = false; this._resetMine(); });
+    const dropRect = () => { this._canvasRect = null; };
+    window.addEventListener('resize', dropRect);
+    window.addEventListener('scroll', dropRect, { passive: true, capture: true });
+    this.canvas.addEventListener('pointerenter', dropRect);
     this.canvas.addEventListener('pointermove', (e) => {
       if (this._blocked()) { this._hoverTile = null; return; }
       this._hoverTile = this._pointerToTile(e);
@@ -351,8 +380,11 @@ export class SurviGame {
     return !this.running || this.paused || this.invOpen || this.dead || !this.tilemap;
   }
 
-  _pointerToTile(e) {
-    const rect = this.canvas.getBoundingClientRect();
+  // getBoundingClientRect() fuerza layout y pointermove llega decenas de
+  // veces por segundo: se mide una vez y se invalida en resize/scroll/down.
+  _pointerToTile(e, fresh = false) {
+    if (fresh || !this._canvasRect) this._canvasRect = this.canvas.getBoundingClientRect();
+    const rect = this._canvasRect;
     const sx = (e.clientX - rect.left) * (this.canvas.width / rect.width);
     const sy = (e.clientY - rect.top) * (this.canvas.height / rect.height);
     const w = this.camera.screenToWorld(sx, sy);
@@ -399,6 +431,9 @@ export class SurviGame {
     if (this._mine.progress >= 1) {
       const broken = this.tilemap.breakTile(col, row);
       this._addItem(DROPS[broken] || 0);
+      const pal = leafPalette(broken);
+      const foodDrop = pal ? LEAF_FOOD_DROP[pal] : null;
+      if (foodDrop && Math.random() < foodDrop.chance) this._addItem(foodDrop.id);
       this._retileAround(col, row);
       this._resetMine();
       this._attackAnim = 120;
@@ -406,7 +441,16 @@ export class SurviGame {
   }
 
   _tryPlace() {
-    if (this._placeCd > 0 || !this._hoverTile) return;
+    if (this._placeCd > 0) return;
+
+    // Comida: no es colocable, así que el mismo botón (clic derecho) la
+    // come en vez de intentar plantarla en el mundo. No depende de estar
+    // apuntando a un tile — comer no necesita puntería.
+    const heldId = this.hotbarSlots[this.selectedSlot];
+    const heldInfo = heldId ? ITEM_INFO[heldId] : null;
+    if (heldInfo && heldInfo.food) { this._eat(heldId, heldInfo); return; }
+
+    if (!this._hoverTile) return;
     const { col, row } = this._hoverTile;
     if (!this._inReach(col, row) || this.tilemap.get(col, row) !== 0) return;
 
@@ -424,6 +468,14 @@ export class SurviGame {
       this._retileAround(col, row);
       this._placeCd = PLACE_COOLDOWN;
     }
+  }
+
+  _eat(id, info) {
+    if ((this.inventory[id] || 0) <= 0) return;
+    this.hunger = Math.min(MAX_HUNGER, this.hunger + info.food);
+    this._removeItem(id);
+    this._placeCd = PLACE_COOLDOWN;
+    this._renderHunger();
   }
 
   // ═══════════ Autotile en caliente ═══════════
@@ -455,13 +507,18 @@ export class SurviGame {
     }
   }
 
+  // Con cualquier cosa en la mano (o la mano vacía) se puede pegar, pero
+  // no todas pegan igual: la espada es la única pensada para pelear (más
+  // rápida, más alcance, daño completo + su power); el resto de las
+  // herramientas golpea peor, y a mano limpia es lo más flojo.
   _tryAttack() {
     if (this._attackCd > 0) return;
-    this._attackCd = ATTACK_COOLDOWN;
-    this._attackAnim = 160;
     const tool = this.heldTool;
-    const dmg = ATTACK_DMG + (tool && tool.tool === 'sword' ? tool.power * 2 : 0);
-    const reach = 20;
+    const stats = (tool && WEAPON_STATS[tool.tool]) || BARE_HAND_ATTACK;
+    this._attackCd = stats.cooldown;
+    this._attackAnim = 160;
+    const dmg = ATTACK_DMG * stats.dmgMult + (tool && tool.tool === 'sword' ? tool.power * 2 : 0);
+    const reach = stats.reach;
     const box = {
       x: this.player.facing > 0 ? this.player.x + this.player.w : this.player.x - reach,
       y: this.player.y + 2, w: reach, h: this.player.h - 4
@@ -510,11 +567,24 @@ export class SurviGame {
     this.ui.hpText.textContent = `${Math.max(0, Math.round(this.hp))}/${MAX_HP}`;
   }
 
+  _renderHunger() {
+    const pct = Math.max(0, this.hunger / MAX_HUNGER) * 100;
+    this.ui.hungerBar.style.width = pct + '%';
+    this.ui.hungerBar.style.background = pct > 50 ? '#caa24a' : pct > 20 ? '#d98a3d' : '#c0392b';
+    this.ui.hungerText.textContent = `${Math.max(0, Math.round(this.hunger))}/${MAX_HUNGER}`;
+  }
+
   _damage(amount, { ignoreInvuln = false } = {}) {
     if (this.dead || amount <= 0) return;
     if (!ignoreInvuln && this.invulnMs > 0) return;
     this.hp -= amount;
     this.invulnMs = INVULN_MS;
+    // Feedback aparte del parpadeo largo de invulnerabilidad: un flash
+    // rojo corto sobre el personaje y un temblor de cámara breve, así el
+    // golpe se siente aunque el parpadeo por invulnerabilidad no aplique
+    // (ignoreInvuln=true, como el daño de caída o el de hambre).
+    this._hitFlashMs = HIT_FLASH_MS;
+    if (this.camera) this.camera.shake(HIT_SHAKE_INTENSITY, HIT_SHAKE_MS);
     this._renderHealth();
     if (this.hp <= 0) this._die();
   }
@@ -525,6 +595,13 @@ export class SurviGame {
     this.pointer.down = false;
     this._resetMine();
     this._renderHealth();
+    // El hambre vuelve al máximo apenas morís (no recién al respawnear):
+    // así el HUD de la pantalla de muerte no se queda mostrando el 0 que
+    // probablemente te mató, y si es partida normal, save() de acá abajo
+    // ya persiste el mundo con el hambre llena.
+    this.hunger = MAX_HUNGER;
+    this._starveTimer = 0;
+    this._renderHunger();
 
     const hardcore = this.mode === 'hardcore';
     this.ui.deathTime.textContent =
@@ -542,6 +619,12 @@ export class SurviGame {
     if (this.mode === 'hardcore') return;
     this.dead = false;
     this.hp = MAX_HP;
+    // Sin esto, si morías con el hambre en 0 (la causa más común de morir
+    // sin enemigos cerca) reaparecías con vida llena pero el hambre seguía
+    // en 0 — el _starveTimer te volvía a pegar en STARVE_INTERVAL_MS casi
+    // de inmediato, como si el respawn no hubiera hecho nada.
+    this.hunger = MAX_HUNGER;
+    this._starveTimer = 0;
     this.invulnMs = INVULN_MS;
     this.player.x = this.spawn.x;
     this.player.y = this.spawn.y;
@@ -549,6 +632,7 @@ export class SurviGame {
     this._fallFromY = null;
     this.enemies.length = 0;
     this._renderHealth();
+    this._renderHunger();
     this.camera.follow(this.player.x, this.player.y);
     showScreen(this.ui, null);
   }
@@ -581,7 +665,7 @@ export class SurviGame {
 
       const before = en.vx;
       E2D().Physics.applyGravity(en, step);
-      E2D().Physics.resolveTileCollisions(en, this.tilemap);
+      E2D().Physics.resolveTileCollisions(en, this.tilemap, step);
 
       const ahead = Math.floor((en.x + (before > 0 ? en.w + 2 : -2)) / TILE);
       const below = Math.floor((en.y + en.h + 2) / TILE);
@@ -606,6 +690,36 @@ export class SurviGame {
     if (this._placeCd > 0) this._placeCd -= dt;
     if (this._attackAnim > 0) this._attackAnim -= dt;
     if (this.invulnMs > 0) this.invulnMs -= dt;
+    if (this._hitFlashMs > 0) this._hitFlashMs -= dt;
+
+    // Hambre: se vacía sola con el tiempo jugado. En 0 pega daño cada
+    // tanto (ignora invulnerabilidad, como la caída); bien alimentado
+    // (arriba del umbral) regenera vida de a poco como premio por comer.
+    this.hunger = Math.max(0, this.hunger - HUNGER_DRAIN_PER_MS * dt);
+    if (this.hunger <= 0) {
+      this._starveTimer += dt;
+      if (this._starveTimer >= STARVE_INTERVAL_MS) {
+        this._starveTimer = 0;
+        this._damage(STARVE_DAMAGE, { ignoreInvuln: true });
+      }
+    } else {
+      this._starveTimer = 0;
+    }
+    if (this.hunger >= HUNGER_REGEN_THRESHOLD && this.hp < MAX_HP) {
+      this._regenTimer += dt;
+      if (this._regenTimer >= HP_REGEN_INTERVAL_MS) {
+        this._regenTimer = 0;
+        this.hp = Math.min(MAX_HP, this.hp + HP_REGEN_AMOUNT);
+        this._renderHealth();
+      }
+    } else {
+      this._regenTimer = 0;
+    }
+    const hungerShown = Math.round(this.hunger);
+    if (hungerShown !== this._lastHungerShown) {
+      this._lastHungerShown = hungerShown;
+      this._renderHunger();
+    }
 
     const st = this.input.state;
     const left = st.left || this.touchState.left;
@@ -619,7 +733,9 @@ export class SurviGame {
 
     const wasGrounded = this.player.grounded;
     E2D().Physics.applyGravity(this.player, step);
-    E2D().Physics.resolveTileCollisions(this.player, this.tilemap);
+    // step: sin esto la velocidad dependía de los FPS (a 30fps, mitad de
+    // velocidad; en monitores de 144Hz, más del doble).
+    E2D().Physics.resolveTileCollisions(this.player, this.tilemap, step);
 
     // Daño de caída
     if (!this.player.grounded) {
@@ -657,7 +773,7 @@ export class SurviGame {
 
     this._updateEnemies(dt, step);
 
-    this.camera.follow(this.player.x + this.player.w / 2, this.player.y + this.player.h / 2);
+    this.camera.followSmooth(this.player.x + this.player.w / 2, this.player.y + this.player.h / 2);
     this.camera.update(dt);
   }
 
@@ -672,6 +788,17 @@ export class SurviGame {
   _draw() {
     const ctx = this.ctx;
     if (!this.tilemap) { ctx.clearRect(0, 0, VIEW_W, VIEW_H); return; }
+
+    // El shake de la cámara (camera.shake()) solo se ve solo si se dibuja
+    // con camera.begin()/end() — acá se arma el frame a mano con
+    // worldToScreen/tilemap.draw(camera), que leen camera.x/y directo y no
+    // saben nada de shake. Se corre la cámara el offset de este frame,
+    // se dibuja todo con ella corrida, y se devuelve al final: mismo
+    // resultado que begin()/end() pero sin tocar el resto del dibujo.
+    const shakeX = this.camera._shakeOffsetX || 0;
+    const shakeY = this.camera._shakeOffsetY || 0;
+    this.camera.x -= shakeX;
+    this.camera.y -= shakeY;
 
     const pcol = Math.max(0, Math.min(COLS - 1, Math.floor((this.player.x + this.player.w / 2) / TILE)));
     const prow = Math.floor((this.player.y + this.player.h / 2) / TILE);
@@ -730,9 +857,25 @@ export class SurviGame {
       }
     }
 
+    // Flash corto sobre el propio personaje al recibir un golpe — aparte
+    // del parpadeo largo de invulnerabilidad, para que el impacto se
+    // sienta también cuando ese parpadeo no se dispara (daño de hambre,
+    // de caída).
+    if (this._hitFlashMs > 0) {
+      const p = this.camera.worldToScreen(this.player.x, this.player.y);
+      ctx.fillStyle = `rgba(255,60,60,${0.5 * (this._hitFlashMs / HIT_FLASH_MS)})`;
+      ctx.fillRect(p.x - 2, p.y - 2, this.player.w + 4, this.player.h + 4);
+    }
+
     if (this.invulnMs > 0) {
       ctx.fillStyle = `rgba(200,30,30,${0.25 * (this.invulnMs / INVULN_MS)})`;
       ctx.fillRect(0, 0, VIEW_W, VIEW_H);
     }
+
+    // Deshacer el corrimiento de shake del principio de _draw(): camera.x/y
+    // tienen que quedar como los dejó camera.update() para el próximo
+    // frame (clamp, deadzone, etc).
+    this.camera.x += shakeX;
+    this.camera.y += shakeY;
   }
 }

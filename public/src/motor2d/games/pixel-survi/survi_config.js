@@ -232,6 +232,30 @@ export const ITEM_INFO = {};
   }
 }
 
+// ══════════ Comida ══════════
+// Ids >= 2000 para no pisar bloques (van por id de tile) ni herramientas
+// (1000+). No son colocables (no tienen `place`): se comen con clic
+// derecho estando seleccionadas en la hotbar (ver survi_game.js `_eat`).
+export const FOOD_IDS = { berry: 2001, apple: 2002 };
+ITEM_INFO[FOOD_IDS.berry] = { name: 'Bayas', food: 14 };
+ITEM_INFO[FOOD_IDS.apple] = { name: 'Manzana', food: 26 };
+
+// Al romper hojas hay una chance de que además caiga comida — cada
+// paleta de árbol (forest/pradera/jungle) tiene la suya.
+export const LEAF_FOOD_DROP = {
+  forest:  { id: FOOD_IDS.apple, chance: 0.045 },
+  pradera: { id: FOOD_IDS.berry, chance: 0.05 },
+  jungle:  { id: FOOD_IDS.berry, chance: 0.06 }
+};
+
+// Palabra de la paleta de árbol si el tile roto era una hoja (para el
+// drop de comida de arriba), o null si no es una hoja.
+export function leafPalette(tileId) {
+  const key = FAMILY_OF.get(tileId);
+  if (key && key.endsWith('Leaf')) return key.slice(0, -4);
+  return null;
+}
+
 export const MATERIALS = {
   copper:  { label: 'cobre',    power: 1.0 },
   silver:  { label: 'plata',    power: 1.6 },
@@ -299,3 +323,50 @@ export const MODES = {
   normal:   { label: 'Modo normal', desc: 'Si morís, reaparecés y conservás el mundo.' },
   hardcore: { label: 'Hardcore',    desc: 'Si morís, se borra el mundo. Sin respawn.' }
 };
+
+// ─── Hambre ───
+// Se vacía sola con el tiempo jugado; en 0 empieza a pegar daño cada
+// STARVE_INTERVAL_MS. Arriba de HUNGER_REGEN_THRESHOLD (bien alimentado)
+// regenera vida de a poco, como premio por comer.
+export const MAX_HUNGER = 100;
+export const HUNGER_DRAIN_PER_MS = MAX_HUNGER / (10 * 60 * 1000); // se vacía en ~10min jugados
+export const HUNGER_REGEN_THRESHOLD = 70;
+export const STARVE_DAMAGE = 1;
+export const STARVE_INTERVAL_MS = 4000;
+export const HP_REGEN_INTERVAL_MS = 5000;
+export const HP_REGEN_AMOUNT = 1;
+
+// ─── Ataque cuerpo a cuerpo por arma ───
+// Antes cualquier ítem en la mano pegaba lo mismo (ATTACK_DMG) salvo la
+// espada, que sumaba su power. Ahora cada arma tiene su propio alcance,
+// cadencia y multiplicador de daño: la espada es la única pensada para
+// pelear (más rápida, más alcance, daño completo + su power); el resto
+// de las herramientas golpea pero peor, y a mano limpia es lo más flojo
+// de todo. `dmgMult` se aplica sobre ATTACK_DMG.
+export const WEAPON_STATS = {
+  sword:   { cooldown: 260, reach: 22, dmgMult: 1 },
+  pickaxe: { cooldown: ATTACK_COOLDOWN, reach: 18, dmgMult: 0.75 },
+  axe:     { cooldown: ATTACK_COOLDOWN, reach: 18, dmgMult: 0.75 },
+  shovel:  { cooldown: ATTACK_COOLDOWN, reach: 16, dmgMult: 0.65 }
+};
+export const BARE_HAND_ATTACK = { cooldown: ATTACK_COOLDOWN + 40, reach: 14, dmgMult: 0.5 };
+
+// ─── Feedback de golpe recibido ───
+// _hitFlashMs es un flash corto y bien visible (además del parpadeo largo
+// de invulnerabilidad, que ya existía). El shake es un temblor de cámara
+// breve — Engine2D.Camera.shake() ya lo soporta, solo faltaba dispararlo.
+export const HIT_FLASH_MS = 140;
+export const HIT_SHAKE_INTENSITY = 3;
+export const HIT_SHAKE_MS = 180;
+
+// ─── Cámara: deadzone vertical para que saltar no la mueva ───
+// Con JUMP_VEL y la gravedad de Physics (0.6 px/step²) un salto sube
+// ~48px (v²/2g). Con una deadzone vertical de 110px (55px para cada
+// lado del centro) todo salto normal queda adentro y la cámara no se
+// mueve — así no se pierde la puntería al colocar bloques mientras se
+// salta. El ancho horizontal queda chico porque ahí sí conviene seguir
+// de cerca. followSmooth() + smoothing evita el corte brusco cuando sí
+// hace falta moverse (caídas largas, cruzar el mapa).
+export const CAMERA_DEADZONE_W = 24;
+export const CAMERA_DEADZONE_H = 110;
+export const CAMERA_SMOOTHING = 0.85;

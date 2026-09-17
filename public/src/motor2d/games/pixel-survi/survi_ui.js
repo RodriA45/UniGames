@@ -8,7 +8,7 @@
 //   game-icon-btn, game-slider-row) para no reinventar estilos.
 // ══════════════════════════════════════════════════════════════
 
-import { MAX_HP, COVER_SRC, MODES, ITEM_INFO, HOTBAR_SIZE } from './survi_config.js';
+import { MAX_HP, MAX_HUNGER, COVER_SRC, MODES, ITEM_INFO, HOTBAR_SIZE } from './survi_config.js';
 import { fmtTime } from './survi_save.js';
 import { tileIconStyle, toolIconStyle } from './models/sprites.js';
 
@@ -31,6 +31,11 @@ export function buildLayout(root) {
           <span class="survi-health-heart">♥</span>
           <div class="survi-health-bar"><i></i></div>
           <span class="survi-health-text">${MAX_HP}/${MAX_HP}</span>
+        </div>
+        <div class="survi-hunger" title="Hambre">
+          <span class="survi-hunger-icon">🍖</span>
+          <div class="survi-hunger-bar"><i></i></div>
+          <span class="survi-hunger-text">${MAX_HUNGER}/${MAX_HUNGER}</span>
         </div>
         <div class="survi-hotbar"></div>
       </div>
@@ -127,6 +132,8 @@ export function buildLayout(root) {
           <div class="game-info-row"><b>I</b> — abrir el inventario</div>
           <div class="game-info-row"><b>Esc</b> — pausa</div>
           <div class="game-info-row">Caer de más de 4 bloques te saca vida. En <b>hardcore</b> la muerte borra el mundo.</div>
+          <div class="game-info-row">Cualquier herramienta pega, pero la <b>espada</b> es la que más daño hace y más rápido pega.</div>
+          <div class="game-info-row">🍖 El hambre baja solo. Rompé hojas para conseguir comida y comela con <b>clic derecho</b>. En 0 empieza a sacarte vida; bien alimentado, la regenerás de a poco.</div>
         </div>
         <button class="btn-game-secondary" data-act="back-cover">Volver</button>
       </div>
@@ -175,6 +182,8 @@ export function buildLayout(root) {
     hotbar: q('.survi-hotbar'),
     hpBar: q('.survi-health-bar i'),
     hpText: q('.survi-health-text'),
+    hungerBar: q('.survi-hunger-bar i'),
+    hungerText: q('.survi-hunger-text'),
     touch: q('.survi-touch'),
     touchMode: q('.survi-touch-mode'),
     screens: {

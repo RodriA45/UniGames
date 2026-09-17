@@ -27,7 +27,8 @@ export function drawRunner(dead = false) {
   // queda forzado a pasto (ver startHistoriaWinApproach) y sin esta guarda
   // el degradé de transición pintaba desierto encima igual, calculado a
   // partir del score en vez del bioma real de la escena.
-  const groundBlend = (!RUNNER.winCastle && segmentIndex > 0 && posInSegment < GROUND_TRANSITION_RANGE)
+  const Q = Engine2D.Quality.fx;
+  const groundBlend = (Q.transitions && !RUNNER.winCastle && segmentIndex > 0 && posInSegment < GROUND_TRANSITION_RANGE)
     ? 1 - (posInSegment / GROUND_TRANSITION_RANGE)
     : 0;
   drawGroundTexture(ctx, W, groundY, RUNNER.biome, groundBlend);
@@ -93,12 +94,17 @@ export function drawRunner(dead = false) {
 
   // Aura del escudo: usa los frames de brillo del item.png como un pulso
   // detrás del personaje mientras el power-up está activo.
+  // En calidad baja se ve igual (es info de juego: tenés escudo), pero con
+  // un solo frame fijo y sin alpha.
   if (p.shield && itemImg && itemAtlas) {
-    const shimmerIdx = Math.floor(RUNNER.frameCount / 4) % SHIELD_SHIMMER_FRAMES.length;
-    ctx.save();
-    ctx.globalAlpha = 0.75;
-    Engine2D.drawAtlasFrame(ctx, itemImg, itemAtlas, SHIELD_SHIMMER_FRAMES[shimmerIdx], p.x + p.w / 2, p.y + p.h / 2, p.h * 1.6, false, true);
-    ctx.restore();
+    if (Q.shimmer) {
+      const shimmerIdx = Math.floor(RUNNER.frameCount / 4) % SHIELD_SHIMMER_FRAMES.length;
+      ctx.globalAlpha = 0.75;
+      Engine2D.drawAtlasFrame(ctx, itemImg, itemAtlas, SHIELD_SHIMMER_FRAMES[shimmerIdx], p.x + p.w / 2, p.y + p.h / 2, p.h * 1.6, false, true);
+      ctx.globalAlpha = 1;
+    } else {
+      Engine2D.drawAtlasFrame(ctx, itemImg, itemAtlas, SHIELD_SHIMMER_FRAMES[0], p.x + p.w / 2, p.y + p.h / 2, p.h * 1.6, false, true);
+    }
   }
 
   const juniorImg = Engine2D.getImage(RUNNER_ASSETS.junior);
@@ -152,11 +158,15 @@ export function lerpColorHex(hexA, hexB, t) {
 export function drawTiledFrame(ctx, img, atlas, frameName, x, y, width, height) {
   const f = atlas.frames[frameName];
   if (!f) return;
+  // Cache en dos niveles (frame → tamaño) en vez de armar un string de
+  // clave por llamada: esto corre varias veces por frame.
   if (!RUNNER._cachedTiles) RUNNER._cachedTiles = {};
-  const cacheKey = frameName + '_' + Math.round(width) + '_' + Math.round(height);
-  
-  if (!RUNNER._cachedTiles[cacheKey]) {
-    const cvs = document.createElement('canvas');
+  const byFrame = RUNNER._cachedTiles[frameName] || (RUNNER._cachedTiles[frameName] = {});
+  const sizeKey = Math.round(width) * 4096 + Math.round(height);
+  let cvs = byFrame[sizeKey];
+
+  if (!cvs) {
+    cvs = document.createElement('canvas');
     cvs.width = Math.ceil(width);
     cvs.height = Math.ceil(height);
     const cctx = cvs.getContext('2d');
@@ -167,9 +177,9 @@ export function drawTiledFrame(ctx, img, atlas, frameName, x, y, width, height) 
       cctx.drawImage(img, f.x, f.y, f.w * (w / tileW), f.h, Math.round(cx), 0, Math.ceil(w), height);
       cx += tileW;
     }
-    RUNNER._cachedTiles[cacheKey] = cvs;
+    byFrame[sizeKey] = cvs;
   }
-  ctx.drawImage(RUNNER._cachedTiles[cacheKey], Math.round(x), Math.round(y));
+  ctx.drawImage(cvs, Math.round(x), Math.round(y));
 }
 
 export function drawSky(ctx, W, H, groundY, skyH) {
@@ -203,21 +213,26 @@ export function drawSky(ctx, W, H, groundY, skyH) {
     dctx.fillStyle = dbg; dctx.fillRect(0, 0, W, H);
   }
 
-  // Dibujar base de noche
-  ctx.drawImage(RUNNER._bgNight, 0, 0);
-  
-  // Superponer día con alpha (muchísimo más rápido que lerpColorHex)
-  if (L > 0.01) {
-    ctx.save();
-    ctx.globalAlpha = L;
+  // (la base de noche se dibuja más abajo, solo si el día no la tapa entera)
+
+  // Superponer día con alpha (muchísimo más rápido que lerpColorHex).
+  // Sin transiciones (calidad baja/media) el cielo cambia en 4 escalones en
+  // vez de un fundido continuo, y en pleno día se dibuja un solo fondo.
+  const Q = Engine2D.Quality.fx;
+  const Ls = Q.transitions ? L : Math.round(L * 4) / 4;
+  if (Ls < 0.99) ctx.drawImage(RUNNER._bgNight, 0, 0);
+  if (Ls >= 0.99) {
     ctx.drawImage(RUNNER._bgDay, 0, 0);
-    ctx.restore();
+  } else if (Ls > 0.01) {
+    ctx.globalAlpha = Ls;
+    ctx.drawImage(RUNNER._bgDay, 0, 0);
+    ctx.globalAlpha = 1;
   }
 
   // Estrellas — solo de noche, se desvanecen con L (más L = más de día = menos visibles)
   const mapaImg = Engine2D.getImage(RUNNER_ASSETS.mapa);
   const mapaAtlas = Engine2D.getAtlas(RUNNER_ASSETS.mapaAt);
-  if (mapaImg && mapaAtlas && L < 0.6) {
+  if (Q.ambientSprites && mapaImg && mapaAtlas && L < 0.6) {
     ctx.save();
     ctx.globalAlpha = (0.6 - L) / 0.6; // 1 en plena noche, 0 apenas empieza a clarear
     // Eliminado el ctx.clip() porque consumía mucha CPU y las estrellas ya están acotadas a Y=50

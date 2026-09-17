@@ -16,7 +16,7 @@
 import { rpgInit, rpgExitToHub, rpgGoToAjustes, rpgGoToComoJugar, rpgGoToMejoras, rpgGoToPlay, rpgShowMainMenu, rpgToggleFullscreen, rpgOnMusicVolumeChange, rpgOnSfxVolumeChange, rpgShowMenu } from './rpg_save_ui.js';
 import { rpgStopLoop, rpgBackToSlots, rpgBeginCombat, rpgSelectDifficulty, rpgStartChapter, rpgSelectSlot, rpgDeleteSlotConfirm, rpgShowSlotsView } from './rpg_menu_flow.js';
 import { rpgPauseGame, rpgResumeGame, rpgShowPauseSettings, rpgQuitToMenuFromRoom, rpgRenderPauseOverlay, rpgCollectChestReward } from './rpg_combat_input.js';
-import { rpgBuyLifeUpgrade, rpgBuyDmgUpgrade, rpgBuyGuaranteedChest, rpgBuyExtraChestChance } from './rpg_meta.js';
+import { rpgBuyLifeUpgrade, rpgBuyDmgUpgrade, rpgBuyGuaranteedChest, rpgBuyExtraChestChance, rpgBuyTotem } from './rpg_meta.js';
 
 Object.assign(window, {
   // app2.js (typeof-guardado en goTo)
@@ -52,4 +52,5 @@ Object.assign(window, {
   rpgBuyDmgUpgrade,
   rpgBuyGuaranteedChest,
   rpgBuyExtraChestChance,
+  rpgBuyTotem,
 });

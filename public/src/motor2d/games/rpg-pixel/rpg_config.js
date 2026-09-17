@@ -284,12 +284,20 @@ export const RPG_SAVE_KEY_PREFIX = 'rpg_save_slot_';
 // se pierde al morir ni al borrar un slot. Vive en su propia key de
 // localStorage, totalmente aparte del sistema de guardado.
 export const RPG_META_KEY = 'rpg_meta_progress';
-export const RPG_LIFE_UPGRADE_MAX = 5;     // hasta 5 niveles
-export const RPG_LIFE_UPGRADE_HP = 5;      // +5 HP máx. por nivel (25 HP máx. en total)
+export const RPG_LIFE_UPGRADE_MAX = 10;    // hasta 10 niveles (antes 5)
+export const RPG_LIFE_UPGRADE_HP = 5;      // +5 HP máx. por nivel (50 HP extra en total)
 export const RPG_DMG_UPGRADE_MAX = 10;     // hasta 10 niveles
 export const RPG_DMG_UPGRADE_STEP = 1;     // +1 daño por nivel (10 daño máx. en total)
 export const RPG_UPGRADE_COST_STEP = 50;   // costo del nivel N = N * 50 → 50/100/150/200/250/...
 export const RPG_CHEST_GUARANTEED_COST = 500; // mejora única: cofre del cap. 1 hab. 1 siempre oro
 export const RPG_CHEST_EXTRA_COST = 1000;     // mejora única: chance de recompensa extra en cofres
 export const RPG_CHEST_EXTRA_CHANCE = 0.25;
+
+// Tótem (mejora única): cuando un golpe te dejaría en 0 HP, en vez de
+// morir quedás con RPG_TOTEM_HEAL de vida e inmune RPG_TOTEM_INVULN_MS.
+// Se activa UNA vez por capítulo (se recarga al arrancar cada capítulo,
+// ver rpgStartChapter).
+export const RPG_TOTEM_COST = 1000;
+export const RPG_TOTEM_HEAL = 25;
+export const RPG_TOTEM_INVULN_MS = 3000;
 

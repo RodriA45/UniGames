@@ -9,20 +9,51 @@ import {
   TR_FALL_FRAMES, TR_JUMP_FRAME, TR_RUN_FRAMES
 } from './castle_config.js';
 
-export function trGetMapaAssets() {
-  const img = Engine2D.getImage(TR_ASSET_BASE + 'models/mapa.webp');
-  const atlas = Engine2D.getAtlas(TR_ASSET_BASE + 'models/mapa_atlas.json');
-  return (img && img.complete && atlas) ? { img, atlas } : null;
+// Se llaman varias veces por frame: antes armaban 2 strings y un objeto
+// nuevo en cada llamada. Ahora las rutas son constantes y el par
+// {img, atlas} se cachea apenas los dos están listos.
+const TR_ASSET_KEYS = {
+  mapa:   [TR_ASSET_BASE + 'models/mapa.webp',   TR_ASSET_BASE + 'models/mapa_atlas.json'],
+  deco:   [TR_ASSET_BASE + 'models/deco.webp',   TR_ASSET_BASE + 'models/deco_atlas.json'],
+  junior: [TR_ASSET_BASE + 'models/junior.webp', TR_ASSET_BASE + 'models/junior.atlas.json'],
+};
+const trAssetCache = {};
+function trGetAssets(key) {
+  const cached = trAssetCache[key];
+  const [imgSrc, atlasSrc] = TR_ASSET_KEYS[key];
+  const img = Engine2D.getImage(imgSrc);
+  // Si alguien liberó la imagen del cache del motor, se vuelve a buscar.
+  if (cached && cached.img === img) return cached;
+  const atlas = Engine2D.getAtlas(atlasSrc);
+  if (img && img.complete && img.naturalWidth > 0 && atlas) {
+    return (trAssetCache[key] = { img, atlas });
+  }
+  return null;
 }
-export function trGetDecoAssets() {
-  const img = Engine2D.getImage(TR_ASSET_BASE + 'models/deco.webp');
-  const atlas = Engine2D.getAtlas(TR_ASSET_BASE + 'models/deco_atlas.json');
-  return (img && img.complete && atlas) ? { img, atlas } : null;
-}
-export function trGetJuniorAssets() {
-  const img = Engine2D.getImage(TR_ASSET_BASE + 'models/junior.webp');
-  const atlas = Engine2D.getAtlas(TR_ASSET_BASE + 'models/junior.atlas.json');
-  return (img && img.complete && atlas) ? { img, atlas } : null;
+export function trGetMapaAssets() { return trGetAssets('mapa'); }
+export function trGetDecoAssets() { return trGetAssets('deco'); }
+export function trGetJuniorAssets() { return trGetAssets('junior'); }
+
+// Plataformas que se mueven o se rompen ('moving'/'crumble') no pueden ir
+// en la capa estática, pero su TEXTURA no cambia: antes se re-dibujaba la
+// piedra bloque por bloque (clip + decenas de fillRect + strings de color
+// + seno por bloque) en cada frame. Ahora se hornea una vez por plataforma
+// en un canvas chico y cada frame es un solo drawImage. La textura queda
+// "pegada" a la plataforma (antes el patrón se recalculaba con la posición
+// actual y titilaba mientras se movía).
+function trPlatformSprite(plat) {
+  if (plat._sprite) return plat._sprite;
+  const top = plat.decor === 'spike' ? 20 : 0;
+  const w = Math.max(1, Math.ceil(plat.w));
+  const h = Math.max(1, Math.ceil(plat.h + top));
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const c = canvas.getContext('2d');
+  trDrawStoneFloorAt(c, plat.x, plat.y, 0, top, plat.w, plat.h);
+  if (top) trDrawSpikeRow(c, 0, 0, plat.w, 20);
+  plat._sprite = { canvas, top };
+  return plat._sprite;
 }
 
 // Dibuja una plataforma. El sprite de "isla flotante" (mapa.png) se usa
@@ -116,11 +147,17 @@ export function trDrawDecor(ctx) {
   const decor = lvl.decor;
   if (!decor || !decor.length) return;
   const F = assets.atlas.frames;
-  decor.forEach(d => {
+  // Un solo cálculo por frame (antes: performance.now() + string por antorcha).
+  const torchF = F[TR_TORCH_FRAMES[Math.floor(performance.now() / 150) % 4]];
+  // Vista actual en coordenadas de mundo, para no dibujar lo que no se ve.
+  const fov = TRAMPAS.fov || 1;
+  const vx0 = TRAMPAS.camera.x - 64, vx1 = TRAMPAS.camera.x + TR_W * fov + 64;
+  const vy0 = TRAMPAS.camera.y - 64, vy1 = TRAMPAS.camera.y + TR_H * fov + 64;
+  for (const d of decor) {
+    if (d.x > vx1 || d.x < vx0 - 200 || d.y > vy1 || d.y < vy0 - 200) continue;
     let f;
     if (d.type === 'torch') {
-      const frame = Math.floor(performance.now() / 150) % 4;
-      f = F['torch_' + (frame + 1)];
+      f = torchF;
     } else if (d.type === 'ivy') {
       f = F.ivy_1;
     } else if (d.type === 'ivy_2') {
@@ -136,12 +173,13 @@ export function trDrawDecor(ctx) {
     } else if (d.type === 'rat') {
       f = F.rat;
     }
-    if (!f) return;
+    if (!f) continue;
     const h = d.h || 40;
     const w = h * (f.w / f.h);
     ctx.drawImage(assets.img, f.x, f.y, f.w, f.h, d.x, d.y, w, h);
-  });
+  }
 }
+const TR_TORCH_FRAMES = ['torch_1', 'torch_2', 'torch_3', 'torch_4'];
 
 // Sprite de pincho más chico, repetido para llenar un ancho — reemplaza
 // los triángulos dibujados a mano, tanto para el peligro 'spike' (pozo)
@@ -184,13 +222,12 @@ export function drawTrampasPlayer(ctx, p) {
     const frameName = p.dead
       ? (p.animFrameName || TR_FALL_FRAMES[0])
       : (!p.onGround ? TR_JUMP_FRAME : TR_RUN_FRAMES[p.animFrame]);
-    ctx.save();
     if (p.dead) ctx.globalAlpha = 0.85;
     // Ancla: centro-x del hitbox, borde inferior — mismo criterio que ya
     // usa Pixel Runner con este mismo sprite (targetH = altura del hitbox,
     // drawAtlasFrame centra el ancho solo y sube desde `y`).
     Engine2D.drawAtlasFrame(ctx, junior.img, junior.atlas, frameName, p.x + p.w / 2, p.y + p.h, p.h, p.facing === -1, false);
-    ctx.restore();
+    if (p.dead) ctx.globalAlpha = 1;
     return;
   }
 
@@ -293,24 +330,33 @@ export function spawnExplosion(cx, cy) {
   }
 }
 
-export function updateExplosions() {
+// step: el del GameLoop (antes avanzaba "1 por frame dibujado", así que
+// con pocos FPS la explosión duraba más y en 144Hz casi no se veía).
+export function updateExplosions(step = 1) {
   for (let i = TRAMPAS.explosions.length - 1; i >= 0; i--) {
     const e = TRAMPAS.explosions[i];
-    e.x += e.vx;
-    e.y += e.vy;
-    e.vy += 0.1;
-    e.life -= e.decay;
+    e.x += e.vx * step;
+    e.y += e.vy * step;
+    e.vy += 0.1 * step;
+    e.life -= e.decay * step;
     if (e.life <= 0) TRAMPAS.explosions.splice(i, 1);
   }
 }
 
 export function drawExplosions(ctx) {
+  if (!TRAMPAS.explosions.length) return;
+  const round = Engine2D.Quality.fx.roundParticles !== false;
   for (const e of TRAMPAS.explosions) {
     ctx.globalAlpha = e.life;
     ctx.fillStyle = e.color;
-    ctx.beginPath();
-    ctx.arc(e.x, e.y, e.r * e.life, 0, Math.PI * 2);
-    ctx.fill();
+    const r = e.r * e.life;
+    if (round) {
+      ctx.beginPath();
+      ctx.arc(e.x, e.y, r, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillRect(e.x - r, e.y - r, r * 2, r * 2);
+    }
   }
   ctx.globalAlpha = 1;
 }
@@ -344,7 +390,11 @@ export function drawTrampas() {
   // pincho-antes-que-plataforma que hacía falta para el truco de "piso
   // falso con pinchos escondidos debajo" (niveles 7 y 15) ya quedó
   // resuelto adentro del bake, en el mismo orden de siempre.
-  if (TRAMPAS.staticLayer) TRAMPAS.staticLayer.draw(ctx);
+  // Solo el pedazo que ve la cámara (la capa mide lo que el nivel entero).
+  if (TRAMPAS.staticLayer) {
+    const fov = TRAMPAS.fov || 1;
+    TRAMPAS.staticLayer.drawRegion(ctx, TRAMPAS.camera.x, TRAMPAS.camera.y, TR_W * fov, TR_H * fov);
+  }
 
   // Lo único que sí cambia en tiempo real —plataformas 'moving' (se
   // desplazan) y 'crumble' (se tiñen de rojo y desaparecen)— se sigue
@@ -353,9 +403,11 @@ export function drawTrampas() {
   for (const plat of TRAMPAS.platforms) {
     if (plat.gone) continue;
     if (plat.type !== 'moving' && plat.type !== 'crumble') continue;
-    trDrawPlatform(ctx, plat);
-    if (plat.decor === 'spike') {
-      trDrawSpikeRow(ctx, plat.x, plat.y - 20, plat.w, 20);
+    const spr = trPlatformSprite(plat);
+    ctx.drawImage(spr.canvas, Math.round(plat.x), Math.round(plat.y) - spr.top);
+    if (plat.type === 'crumble' && plat.touchedAt !== null) {
+      ctx.fillStyle = 'rgba(232,84,63,0.45)';
+      ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
     }
   }
 
@@ -453,7 +505,13 @@ export function drawTrampas() {
   drawTrampasPlayer(ctx, p);
 
   // Explosiones
-  updateExplosions();
+  // Las explosiones avanzan por tiempo real (step = ms/16.6), no "1 por
+  // dibujado": así duran lo mismo a 30, 60 o 144 fps, y siguen andando
+  // aunque la secuencia de muerte dibuje fuera del GameLoop.
+  const now = performance.now();
+  const exStep = TRAMPAS._lastDrawAt ? Math.min(3, (now - TRAMPAS._lastDrawAt) / 16.6) : 1;
+  TRAMPAS._lastDrawAt = now;
+  if (TRAMPAS.explosions.length) updateExplosions(exStep);
   drawExplosions(ctx);
 
   // Salir del espacio de world (cámara)

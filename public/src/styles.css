@@ -3988,3 +3988,45 @@ body.theme-light .section-title {
   color: var(--primary);
   text-decoration: underline;
 }
+
+
+/* ═══════════════════════════════════
+   PERF — gama baja
+   ═══════════════════════════════════ */
+
+/* Overlays con backdrop-filter: cerrados (opacity 0) igual quedaban como
+   capa con blur viva. Con visibility: hidden el navegador ni los compone.
+   El delay en visibility deja terminar el fade de salida. */
+.drawer-backdrop,
+.info-overlay,
+.duelo-overlay {
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+.drawer-backdrop.open,
+.info-overlay.show,
+.duelo-overlay.show {
+  visibility: visible;
+  transition: opacity 0.3s ease, visibility 0s linear 0s;
+}
+
+/* El brillo del logo anima text-shadow (no lo hace la GPU): repinta el
+   header sticky en cada frame, justo mientras el canvas del juego también
+   dibuja. Se apaga dentro de los juegos del motor, en calidad baja y si el
+   sistema pide menos movimiento. */
+body.in-engine-game .logo,
+html.q-low .logo {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .logo { animation: none; }
+}
+
+/* Calidad baja: sin blur detrás de los overlays (color sólido alcanza). */
+html.q-low .drawer-backdrop,
+html.q-low .info-overlay,
+html.q-low .duelo-overlay {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+

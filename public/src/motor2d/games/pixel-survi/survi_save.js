@@ -52,7 +52,7 @@ export function loadWorld(slot) {
   return { ...meta, ...data };
 }
 
-// payload: { seed, mode, playedMs, biome, tiles, px, py, hp, inventory, hotbarSlots, selectedSlot }
+// payload: { seed, mode, playedMs, biome, tiles, px, py, hp, hunger, inventory, hotbarSlots, selectedSlot }
 export function saveWorld(slot, payload) {
   try {
     localStorage.setItem(metaKey(slot), JSON.stringify({
@@ -67,6 +67,7 @@ export function saveWorld(slot, payload) {
       tiles: payload.tiles,
       px: payload.px, py: payload.py,
       hp: payload.hp,
+      hunger: payload.hunger,
       inventory: payload.inventory,
       hotbarSlots: payload.hotbarSlots,
       selectedSlot: payload.selectedSlot

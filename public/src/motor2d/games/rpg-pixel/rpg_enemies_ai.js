@@ -1,5 +1,5 @@
 import { rpgIconToDataUrl, rpgLoop, rpgSetOverlay, rpgStartDialogue } from './rpg_combat_input.js';
-import { RPG_EL, RPG_ELITE_SPEED_MULT, RPG_ELITE_STAT_MULT, RPG_LOGICAL_H, RPG_LOGICAL_W, RPG_PLAYER_HITBOX, RPG_PLAYER_MAX_AMMO, RPG_POWERUP_ICONS, RPG_POWERUP_SHEET } from './rpg_config.js';
+import { RPG_EL, RPG_ELITE_SPEED_MULT, RPG_ELITE_STAT_MULT, RPG_LOGICAL_H, RPG_LOGICAL_W, RPG_PLAYER_HITBOX, RPG_PLAYER_MAX_AMMO, RPG_POWERUP_ICONS, RPG_POWERUP_SHEET, RPG_TOTEM_HEAL, RPG_TOTEM_INVULN_MS } from './rpg_config.js';
 import { RPG, RPG_CHAPTERS, RPG_ENEMY_TYPES, RPG_SPAWN_SAFE_DIST, rpgChapterCfg, rpgEliteActive, rpgFloorBounds, rpgRandRange, rpgRoomCfg } from './rpg_enemies_data.js';
 import { rpgSideX, rpgStartChapter, rpgStopLoop, rpgUpdateEnemyLabel } from './rpg_menu_flow.js';
 import { RPG_META } from './rpg_meta.js';
@@ -839,6 +839,8 @@ export function rpgOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
 
 export function rpgPlayerHit(dmg, opts) {
   const p = RPG.player;
+  // Inmune (tótem recién activado): el golpe no hace nada, ni gasta el bloqueo.
+  if (p.invulnTimer > 0) return;
   const fullyBlockable = opts && opts.fullyBlockable;
   let finalDmg = dmg;
   if (p.blocking) {
@@ -854,8 +856,20 @@ export function rpgPlayerHit(dmg, opts) {
   if (RPG.upgrades.dmgReduction > 0) finalDmg = Math.round(finalDmg * (1 - RPG.upgrades.dmgReduction));
   p.hp = Math.max(0, p.hp - finalDmg);
   p.hitFlash = 200;
+  if (p.hp <= 0 && RPG_META.totem && !RPG.totemUsed) rpgActivateTotem();
   rpgUpdateHudBars();
   if (p.hp <= 0) rpgGameOver();
+}
+
+// Tótem (mejora de la tienda): en vez de morir, vuelve con RPG_TOTEM_HEAL
+// de vida y queda inmune RPG_TOTEM_INVULN_MS. Una vez por capítulo.
+export function rpgActivateTotem() {
+  const p = RPG.player;
+  RPG.totemUsed = true;
+  p.hp = Math.min(p.maxHp, RPG_TOTEM_HEAL);
+  p.invulnTimer = RPG_TOTEM_INVULN_MS;
+  p.hitFlash = 0;
+  RPG.banner = { text: '¡Tótem activado!', timer: 1800, durationMs: 1800 };
 }
 
 // dmg ahora se aplica a un enemigo puntual `e` (puede haber varios vivos
@@ -1023,6 +1037,10 @@ export function rpgBuildUpgradesSummaryHtml() {
   if (u.doubleShot) rows.push(rpgUpgradeIconOnlyHtml(img, 'gun'));
   if (u.burning) rows.push(rpgUpgradeIconOnlyHtml(img, 'blueOrb'));
   if (u.speedPermanent) rows.push(rpgUpgradeIconOnlyHtml(img, 'potionOrange'));
+  if (RPG_META.totem) {
+    rows.push('<div class="rpg-reward-row"><span class="rpg-reward-label">Tótem: ' +
+      (RPG.totemUsed ? 'usado en este capítulo' : 'listo') + '</span></div>');
+  }
 
   if (rows.length === 0) return '<p class="rpg-pause-empty">Todavía no juntaste nada este intento.</p>';
   return '<div class="rpg-reward-list">' + rows.join('') + '</div>';

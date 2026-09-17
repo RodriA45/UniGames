@@ -42,7 +42,14 @@ export function rpgDraw() {
     // recalculaba el recorte con un aspect ratio distinto al original y
     // terminaba empujando el piso fuera de cuadro por abajo. Ver
     // rpgComputeRoomZoom para cómo se calcula el zoom.
-    rpgDrawRoomBackground(ctx, bg, RPG.worldWidth, RPG_LOGICAL_H);
+    //
+    // PERF: se le pasa la vista de la cámara para que vuelque SOLO la parte
+    // visible del fondo (antes se escalaba la imagen entera — un webp de
+    // 1920px o más — a todo el ancho del mundo en cada frame).
+    const z = RPG.roomZoom || 1;
+    rpgDrawRoomBackground(ctx, bg, RPG.worldWidth, RPG_LOGICAL_H, {
+      x: RPG.camera.x, y: RPG.camera.y, w: RPG_LOGICAL_W / z, h: RPG_LOGICAL_H / z
+    });
   } else {
     ctx.fillStyle = '#0a0f0a';
     ctx.fillRect(0, 0, RPG.worldWidth, RPG_LOGICAL_H);
@@ -136,6 +143,8 @@ export function rpgDraw() {
   const p = RPG.player;
   ctx.save();
   if (p.hitFlash > 0) ctx.globalAlpha = 0.55;
+  // Inmunidad del tótem: parpadeo (igual criterio que el dash del jefe).
+  else if (p.invulnTimer > 0 && Math.floor(p.invulnTimer / 100) % 2 === 0) ctx.globalAlpha = 0.35;
   if (p.blocking) {
     const sheet = SPRITES.bloquear;
     const img = RPG.images[RPG_ASSET_BASE + 'models/junior/bloquear.webp'];
@@ -151,13 +160,25 @@ export function rpgDraw() {
       rpgDrawFrame(ctx, img, sheet.rows[rowIdx], p.animFrame, p.x, p.y, RPG_PLAYER_DRAW_H, false);
     }
   }
+  // Aura dorada mientras dura la inmunidad del tótem.
+  if (p.invulnTimer > 0) {
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = '#facc15';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y - RPG_PLAYER_DRAW_H * 0.45, RPG_PLAYER_DRAW_H * 0.5, RPG_PLAYER_DRAW_H * 0.62, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
   // Aura sutil mientras dura el boost de velocidad de la poción naranja.
   if (p.speedBoostTimer > 0) {
     ctx.globalAlpha = 0.35;
     ctx.strokeStyle = '#fb923c';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(0, -RPG_PLAYER_DRAW_H * 0.35, RPG_PLAYER_DRAW_H * 0.42, RPG_PLAYER_DRAW_H * 0.55, 0, 0, Math.PI * 2);
+    // (antes centrada en (0, …): el sprite ya no deja el contexto trasladado
+    // a los pies de Junior, así que el aura salía en la esquina del mundo)
+    ctx.ellipse(p.x, p.y - RPG_PLAYER_DRAW_H * 0.35, RPG_PLAYER_DRAW_H * 0.42, RPG_PLAYER_DRAW_H * 0.55, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
@@ -365,11 +386,23 @@ export function rpgDrawFrame(ctx, img, rowData, frameIndex, x, y, targetH, flip)
   const sh = rowData.cellHeight;
   const dh = targetH;
   const dw = dh * (sw / sh);
-  ctx.save();
+  rpgBlit(ctx, img, sx, sy, sw, sh, x, y, -dw / 2, -dh, dw, dh, flip);
+}
+
+// PERF: los helpers hacían save()/restore() por sprite (copia TODO el
+// estado del contexto). Sin flip se dibuja directo; con flip se aplica y
+// se deshace la transformación a mano — mismo resultado, bastante más
+// barato.
+function rpgBlit(ctx, img, sx, sy, sw, sh, x, y, ox, oy, dw, dh, flip) {
+  if (!flip) {
+    ctx.drawImage(img, sx, sy, sw, sh, x + ox, y + oy, dw, dh);
+    return;
+  }
   ctx.translate(x, y);
-  if (flip) ctx.scale(-1, 1);
-  ctx.drawImage(img, sx, sy, sw, sh, -dw / 2, -dh, dw, dh);
-  ctx.restore();
+  ctx.scale(-1, 1);
+  ctx.drawImage(img, sx, sy, sw, sh, ox, oy, dw, dh);
+  ctx.scale(-1, 1);
+  ctx.translate(-x, -y);
 }
 
 // Calcula (y cachea) la escala fija px-del-sheet → px-del-juego de una
@@ -401,11 +434,7 @@ export function rpgDrawAtlasFrameScaled(ctx, img, atlas, frameName, x, y, scale,
   if (!f) return;
   const dw = f.w * scale;
   const dh = f.h * scale;
-  ctx.save();
-  ctx.translate(x, y);
-  if (flip) ctx.scale(-1, 1);
-  ctx.drawImage(img, f.x, f.y, f.w, f.h, -dw / 2, -dh, dw, dh);
-  ctx.restore();
+  rpgBlit(ctx, img, f.x, f.y, f.w, f.h, x, y, -dw / 2, -dh, dw, dh, flip);
 }
 
 // Dibuja un frame por NOMBRE desde un atlas JSON ({frameSize, frames:{nombre:{x,y,w,h}}}).
@@ -416,15 +445,7 @@ export function rpgDrawAtlasFrame(ctx, img, atlas, frameName, x, y, targetH, fli
   if (!f) return;
   const dh = targetH;
   const dw = dh * (f.w / f.h);
-  ctx.save();
-  ctx.translate(x, y);
-  if (flip) ctx.scale(-1, 1);
-  if (centered) {
-    ctx.drawImage(img, f.x, f.y, f.w, f.h, -dw / 2, -dh / 2, dw, dh);
-  } else {
-    ctx.drawImage(img, f.x, f.y, f.w, f.h, -dw / 2, -dh, dw, dh);
-  }
-  ctx.restore();
+  rpgBlit(ctx, img, f.x, f.y, f.w, f.h, x, y, -dw / 2, centered ? -dh / 2 : -dh, dw, dh, flip);
 }
 
 // Dibuja un ícono recortado directamente por coordenadas (RPG_ITEM_ICONS),
@@ -440,6 +461,10 @@ export function rpgDrawIconRect(ctx, img, rect, x, y, targetH, opts) {
   opts = opts || {};
   const dh = targetH;
   const dw = dh * (rect.w / rect.h);
+  if (!opts.smooth && !opts.rotation) {
+    rpgBlit(ctx, img, rect.x, rect.y, rect.w, rect.h, x, y, -dw / 2, opts.centered ? -dh / 2 : -dh, dw, dh, !!opts.flip);
+    return;
+  }
   ctx.save();
   if (opts.smooth) ctx.imageSmoothingEnabled = true;
   ctx.translate(x, y);
@@ -484,7 +509,7 @@ export function rpgDrawCover(ctx, img, dx, dy, dw, dh, anchorBottom) {
 // justo lo que rpgDraw necesita: aplica ctx.scale(roomZoom) + el
 // camera.y fijo de la habitación, y ese sobrante entra en cuadro según
 // cuánto zoom-out le tocó a esa habitación (0 = queda igual que hoy).
-export function rpgDrawRoomBackground(ctx, img, worldWidth, canvasHeight) {
+export function rpgDrawRoomBackground(ctx, img, worldWidth, canvasHeight, view) {
   const ir = img.width / img.height;
   const dr = worldWidth / canvasHeight;
   if (ir > dr) {
@@ -494,7 +519,7 @@ export function rpgDrawRoomBackground(ctx, img, worldWidth, canvasHeight) {
     const sh = img.height;
     const sw = sh * dr;
     const sx = (img.width - sw) / 2;
-    ctx.drawImage(img, sx, 0, sw, sh, 0, 0, worldWidth, canvasHeight);
+    rpgDrawImageInView(ctx, img, sx, 0, sw, sh, 0, 0, worldWidth, canvasHeight, view);
     return;
   }
   // Anclado abajo: se dibuja la imagen COMPLETA escalada a lo ancho del
@@ -504,5 +529,20 @@ export function rpgDrawRoomBackground(ctx, img, worldWidth, canvasHeight) {
   const scale = worldWidth / img.width;
   const dh = img.height * scale;
   const dy = canvasHeight - dh; // ancla el borde inferior de la imagen al borde inferior del canvas
-  ctx.drawImage(img, 0, 0, img.width, img.height, 0, dy, worldWidth, dh);
+  rpgDrawImageInView(ctx, img, 0, 0, img.width, img.height, 0, dy, worldWidth, dh, view);
+}
+
+// drawImage(img, sx,sy,sw,sh, dx,dy,dw,dh) pero recortado a `view` (rect en
+// las mismas coordenadas que el destino): calcula qué parte de la fuente
+// cae adentro y dibuja solo eso. Sin view, dibuja todo como antes.
+export function rpgDrawImageInView(ctx, img, sx, sy, sw, sh, dx, dy, dw, dh, view) {
+  if (!view) { ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh); return; }
+  const m = 2; // margen para que el borde no quede sin pintar por redondeo
+  const x0 = Math.max(dx, view.x - m), y0 = Math.max(dy, view.y - m);
+  const x1 = Math.min(dx + dw, view.x + view.w + m), y1 = Math.min(dy + dh, view.y + view.h + m);
+  if (x1 <= x0 || y1 <= y0) return;
+  const kx = sw / dw, ky = sh / dh; // px de fuente por px de destino
+  ctx.drawImage(img,
+    sx + (x0 - dx) * kx, sy + (y0 - dy) * ky, (x1 - x0) * kx, (y1 - y0) * ky,
+    x0, y0, x1 - x0, y1 - y0);
 }

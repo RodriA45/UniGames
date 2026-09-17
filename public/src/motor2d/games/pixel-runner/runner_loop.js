@@ -192,6 +192,7 @@ export function startRunner() {
   RUNNER.score = 0;
   RUNNER.speed = RUNNER.baseSpeed;
   RUNNER.frameCount = 0;
+  RUNNER._frameAcc = 0;
   RUNNER.obstacleTimer = 0;
   RUNNER.obstacleInterval = 90;
   RUNNER.obstacles = [];
@@ -285,21 +286,30 @@ export function updateRunner(step) {
   }
 
   // Score + velocidad
-  RUNNER.frameCount++;
-  if (RUNNER.frameCount % 6 === 0) {
+  // frameCount cuenta "frames de 60fps" acumulando step, no frames reales:
+  // antes sumaba 1 por frame dibujado, así que el puntaje, el ciclo
+  // día/noche y los biomas avanzaban más lento con pocos FPS (o con el
+  // tope de 30 en calidad baja) y más rápido en monitores de 144Hz.
+  RUNNER._frameAcc = (RUNNER._frameAcc || 0) + step;
+  let scoreChanged = false;
+  while (RUNNER._frameAcc >= 1) {
+    RUNNER._frameAcc -= 1;
+    RUNNER.frameCount++;
+    if (RUNNER.frameCount % 6 !== 0) continue;
     RUNNER.score += RUNNER.doublePointsFrames > 0 ? runnerScoreMultiplier() : 1; // x2/x3 (según mejora) activo = puntaje multiplicado por tick
+    scoreChanged = true;
     if (RUNNER.mode === 'historia' && RUNNER.score >= HISTORIA_GOAL) {
       RUNNER.score = HISTORIA_GOAL; // no pasarse de la meta en el HUD
       RUNNER_EL.scoreDisplay.textContent = runnerScoreText(RUNNER.score);
       startHistoriaWinApproach(C);
       return;
     }
-    RUNNER_EL.scoreDisplay.textContent = runnerScoreText(RUNNER.score);
     if (RUNNER.score % 250 === 0) {
       RUNNER.speed += 0.8;
       RUNNER.obstacleInterval = Math.max(45, RUNNER.obstacleInterval - 5);
     }
   }
+  if (scoreChanged) RUNNER_EL.scoreDisplay.textContent = runnerScoreText(RUNNER.score);
   if (RUNNER.doublePointsFrames > 0) RUNNER.doublePointsFrames = Math.max(0, RUNNER.doublePointsFrames - step);
   if (p.shieldFrames > 0) {
     p.shieldFrames = Math.max(0, p.shieldFrames - step);
