@@ -78,7 +78,8 @@ const APP_EL = {
   runnerComoJugarPanel: document.getElementById('runnerComoJugarPanel'),
   runnerFullscreenBtn: document.getElementById('runnerFullscreenBtn'),
   runnerFullscreenRow: document.getElementById('runnerFullscreenRow'),
-  runnerHudFullscreenBtn: document.getElementById('runnerHudFullscreenBtn'),
+  runnerHudPauseBtn: document.getElementById('runnerHudPauseBtn'),
+  runnerPausePanel: document.getElementById('runnerPausePanel'),
   runnerMejorasCoinsTotal: document.getElementById('runnerMejorasCoinsTotal'),
   runnerMejorasGrid: document.getElementById('runnerMejorasGrid'),
   runnerMejorasPanel: document.getElementById('runnerMejorasPanel'),
@@ -2002,13 +2003,13 @@ function ensureSurviLoaded() {
 function ensureQualityRows() {
   if (typeof Engine2D === 'undefined' || !Engine2D.Quality) return;
   const slots = [
-    [document.getElementById('runnerQualitySlot'), '🖼️ Gráficos'],
-    [document.getElementById('trQualitySlot'), '🖼️ Gráficos'],
-    [document.getElementById('rpgQualitySlot'), 'Gráficos'] // el RPG no usa emojis en Ajustes
+    document.getElementById('runnerQualitySlot'),
+    document.getElementById('trQualitySlot'),
+    document.getElementById('rpgQualitySlot')
   ];
-  for (const [slot, label] of slots) {
+  for (const slot of slots) {
     if (!slot || slot.childElementCount) continue;
-    slot.appendChild(Engine2D.Quality.createRow({ label }));
+    slot.appendChild(Engine2D.Quality.createRow({ label: '🖼️ Gráficos' }));
   }
 }
 ensureQualityRows();
@@ -2154,10 +2155,62 @@ function iniciarJuego(gameKey) {
 // del menú del juego, dentro del mismo recuadro. Todos comparten
 // cerrarPanelesRunner() para volver al menú.
 function cerrarPanelesRunner() {
-  ['runnerMejorasPanel', 'runnerAjustesPanel', 'runnerComoJugarPanel', 'runnerModePanel'].forEach(id => {
+  ['runnerMejorasPanel', 'runnerAjustesPanel', 'runnerComoJugarPanel', 'runnerModePanel', 'runnerPausePanel'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
   });
+}
+
+// ─── Pausa durante la partida (botón que reemplazó al de pantalla
+// completa, arriba a la derecha del canvas) ───
+// 3 opciones nada más: Continuar, Ajustes, Volver al menú. Ajustes es el
+// único cartel alcanzable desde DOS lugares (el menú principal y acá) —
+// runnerAjustesFromPause recuerda por cuál vino para que su "← Volver"
+// sepa a dónde mandarte de nuevo.
+let runnerAjustesFromPause = false;
+
+function runnerOpenPause() {
+  if (typeof pauseRunner === 'function') pauseRunner();
+  const panel = APP_EL.runnerPausePanel;
+  if (panel) panel.classList.remove('hidden');
+}
+
+function runnerResumeFromPause() {
+  const panel = APP_EL.runnerPausePanel;
+  if (panel) panel.classList.add('hidden');
+  if (typeof resumeRunner === 'function') resumeRunner();
+}
+
+function runnerPauseToAjustes() {
+  const panel = APP_EL.runnerPausePanel;
+  if (panel) panel.classList.add('hidden');
+  runnerAjustesFromPause = true;
+  mostrarAjustes();
+}
+
+function runnerPauseToMenu() {
+  const panel = APP_EL.runnerPausePanel;
+  if (panel) panel.classList.add('hidden');
+  // stopRunner corta el loop del todo (a diferencia de pauseRunner, que
+  // solo lo congela) — correcto acá porque de verdad se abandona la
+  // partida, no se vuelve a ella.
+  if (typeof stopRunner === 'function') stopRunner();
+  if (typeof showRunnerMenu === 'function') showRunnerMenu();
+}
+
+// "← Volver" del cartel de Ajustes: si se abrió desde la pausa, vuelve a
+// la pausa (la partida sigue congelada atrás); si se abrió desde el menú
+// principal, vuelve al menú — mismo comportamiento de siempre.
+function cerrarAjustesRunner() {
+  const ajustes = APP_EL.runnerAjustesPanel;
+  if (ajustes) ajustes.classList.add('hidden');
+  if (runnerAjustesFromPause) {
+    runnerAjustesFromPause = false;
+    const pausePanel = APP_EL.runnerPausePanel;
+    if (pausePanel) pausePanel.classList.remove('hidden');
+  } else {
+    cerrarPanelesRunner();
+  }
 }
 
 // ─── Selección de modo (Historia / Infinito) ───
@@ -2228,12 +2281,20 @@ function elegirModoRunner(mode) {
 // (RUNNER.upgrades / RUNNER.totalCoins + localStorage). Acá solo se arma
 // el HTML del panel a partir de ese estado, cada vez que se abre o se
 // compra algo — así siempre se ve al día.
+// Orden a propósito: primero TODAS las mejoras de nivel (se compran
+// muchas veces, van subiendo de a poco) y después TODAS las especiales
+// (compra única, cambian una regla del juego). `campo` es la propiedad
+// de RUNNER.upgrades que cada una lee/escribe — antes esto era un
+// ternario a mano por cada mejora nueva; con 6 en vez de 4 ya no daba,
+// así que quedó genérico.
 const RUNNER_UPGRADE_DEFS = [
+  // ── Mejoras de nivel (10 niveles, misma tabla de costos 100..1000) ──
   {
     tipo: 'shieldDuration',
     icon: '🛡️',
     nombre: 'Duración del Escudo',
     tipoNivel: true,
+    campo: 'shieldLevel',
     formatEfecto: (nivel) => `Dura ${15 + nivel} seg`,
   },
   {
@@ -2241,13 +2302,32 @@ const RUNNER_UPGRADE_DEFS = [
     icon: '⚡',
     nombre: 'Duración del x2',
     tipoNivel: true,
+    campo: 'x2Level',
     formatEfecto: (nivel) => `Dura ${15 + nivel} seg`,
   },
+  {
+    tipo: 'slowFallDuration',
+    icon: '🥾',
+    nombre: 'Duración de Caída Lenta',
+    tipoNivel: true,
+    campo: 'slowFallLevel',
+    formatEfecto: (nivel) => `Dura ${10 + nivel * 2} seg`,
+  },
+  {
+    tipo: 'slowSpeedDuration',
+    icon: '🐢',
+    nombre: 'Duración de Velocidad Reducida',
+    tipoNivel: true,
+    campo: 'slowSpeedLevel',
+    formatEfecto: (nivel) => `Dura ${10 + nivel} seg`,
+  },
+  // ── Mejoras especiales (compra única) ──
   {
     tipo: 'shieldHits',
     icon: '🛡️✨',
     nombre: 'Escudo Reforzado',
     tipoNivel: false,
+    campo: 'shieldHits',
     costo: 1000,
     descripcion: 'El escudo aguanta 2 golpes en vez de 1',
   },
@@ -2256,15 +2336,26 @@ const RUNNER_UPGRADE_DEFS = [
     icon: '🔥',
     nombre: 'Triple Puntos',
     tipoNivel: false,
+    campo: 'x2Triple',
     costo: 1500,
     descripcion: 'El power-up de puntos pasa de x2 a x3',
+  },
+  {
+    tipo: 'slowSpeedStrong',
+    icon: '🐢💨',
+    nombre: 'Frenada Fuerte',
+    tipoNivel: false,
+    campo: 'slowSpeedStrong',
+    costo: 1200,
+    descripcion: 'Velocidad reducida pasa de -25% a -50%',
   },
 ];
 
 function mejoraCardHtml(def, upgrades, coins) {
   if (def.tipoNivel) {
-    const nivel = def.tipo === 'shieldDuration' ? upgrades.shieldLevel : upgrades.x2Level;
-    const maxed = nivel >= 10;
+    const nivel = upgrades[def.campo];
+    const maxLevel = def.maxLevel || 10;
+    const maxed = nivel >= maxLevel;
     const costo = maxed ? null : getUpgradeCost(def.tipo, upgrades);
     const puedeComprar = !maxed && coins >= costo;
     const efectoActual = def.formatEfecto(nivel);
@@ -2274,7 +2365,7 @@ function mejoraCardHtml(def, upgrades, coins) {
         <div class="runner-mejora-icon">${def.icon}</div>
         <div class="runner-mejora-info">
           <div class="runner-mejora-nombre">${def.nombre}</div>
-          <div class="runner-mejora-nivel">Nivel ${nivel}/10</div>
+          <div class="runner-mejora-nivel">Nivel ${nivel}/${maxLevel}</div>
           <div class="runner-mejora-efecto">${maxed ? efectoActual : (efectoActual + ' → ' + efectoSiguiente)}</div>
         </div>
         <button class="runner-mejora-btn" ${maxed || !puedeComprar ? 'disabled' : ''} onclick="comprarMejora('${def.tipo}')">
@@ -2282,7 +2373,7 @@ function mejoraCardHtml(def, upgrades, coins) {
         </button>
       </div>`;
   } else {
-    const comprado = def.tipo === 'shieldHits' ? upgrades.shieldHits : upgrades.x2Triple;
+    const comprado = upgrades[def.campo];
     const puedeComprar = !comprado && coins >= def.costo;
     return `
       <div class="runner-mejora-card${comprado ? ' maxed' : ''}">
@@ -2340,6 +2431,7 @@ function mostrarAjustes() {
   if (panel) panel.classList.remove('hidden');
 }
 
+
 function runnerOnMusicVolumeChange(value) {
   const pct = parseInt(value, 10) || 0;
   setGlobalMusicVolume(pct / 100);
@@ -2389,16 +2481,6 @@ function runnerSyncFullscreenBtn() {
   if (row) row.classList.toggle('unsupported', !soportado);
   const btn = APP_EL.runnerFullscreenBtn;
   if (btn) btn.textContent = enFullscreen ? 'Salir' : 'Activar';
-
-  // Botón dentro del HUD del juego (arriba a la derecha): mismo estado,
-  // pero con ícono en vez de texto (maximize / minimize) para no ocupar
-  // espacio sobre el canvas.
-  const hudBtn = APP_EL.runnerHudFullscreenBtn;
-  if (hudBtn) {
-    hudBtn.classList.toggle('unsupported', !soportado);
-    hudBtn.title = enFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa';
-    hudBtn.innerHTML = uiIconSVG(enFullscreen ? 'minimize' : 'maximize', 18);
-  }
 }
 
 document.addEventListener('fullscreenchange', runnerSyncFullscreenBtn);

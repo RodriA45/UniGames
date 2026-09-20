@@ -7,6 +7,8 @@ import {
   RUNNER, COINS_STORAGE_KEY, UPGRADES_STORAGE_KEY, UPGRADE_MAX_LEVEL,
   UPGRADE_LEVEL_COSTS, UPGRADE_SHIELD_HITS_COST, UPGRADE_X2_TRIPLE_COST,
   SHIELD_DURATION, DOUBLE_POINTS_DURATION, UPGRADE_DURATION_STEP,
+  SLOWFALL_DURATION, SLOWSPEED_DURATION, SLOWFALL_DURATION_STEP,
+  SLOWSPEED_FACTOR_BASE, SLOWSPEED_FACTOR_STRONG, UPGRADE_SLOWSPEED_STRONG_COST,
   HISTORIA_STORAGE_KEY
 } from './runner_config.js';
 
@@ -20,19 +22,25 @@ export function saveTotalCoins(total) {
 }
 
 // ─── Tienda de mejoras ──────────────────────────────────────────────────
-// 4 mejoras permanentes, pagadas con las monedas juntadas (RUNNER.totalCoins),
+// 6 mejoras permanentes, pagadas con las monedas juntadas (RUNNER.totalCoins),
 // persistidas en localStorage igual que las monedas y el progreso de Historia.
 //
-//  - shieldLevel (0..10): +1 seg de duración del escudo por nivel.
-//  - x2Level     (0..10): +1 seg de duración del x2 por nivel.
-//  - shieldHits  (bool):  el escudo pasa de aguantar 1 golpe a 2.
-//  - x2Triple    (bool):  el power-up de puntos pasa de x2 a x3.
+//  - shieldLevel     (0..10): +1 seg de duración del escudo por nivel.
+//  - x2Level         (0..10): +1 seg de duración del x2 por nivel.
+//  - slowFallLevel   (0..10): +2 seg de duración de caída lenta por nivel.
+//  - slowSpeedLevel  (0..10): +1 seg de duración de velocidad reducida por nivel.
+//  - shieldHits      (bool):  el escudo pasa de aguantar 1 golpe a 2.
+//  - x2Triple        (bool):  el power-up de puntos pasa de x2 a x3.
+//  - slowSpeedStrong (bool):  velocidad reducida pasa de -25% a -50%.
 //
 // Las mejoras de nivel cuestan más cada vez (100,200,...,1000 = 5500 en
-// total para llevar una al máximo); las de un solo golpe (shieldHits /
-// x2Triple) son compras únicas.
+// total para llevar una al máximo, misma tabla para las 4); las de un
+// solo golpe (shieldHits / x2Triple / slowSpeedStrong) son compras únicas.
 export function defaultRunnerUpgrades() {
-  return { shieldLevel: 0, x2Level: 0, shieldHits: false, x2Triple: false };
+  return {
+    shieldLevel: 0, x2Level: 0, slowFallLevel: 0, slowSpeedLevel: 0,
+    shieldHits: false, x2Triple: false, slowSpeedStrong: false,
+  };
 }
 
 export function loadUpgrades() {
@@ -45,8 +53,11 @@ export function loadUpgrades() {
     return {
       shieldLevel: clampLevel(parsed.shieldLevel),
       x2Level: clampLevel(parsed.x2Level),
+      slowFallLevel: clampLevel(parsed.slowFallLevel),
+      slowSpeedLevel: clampLevel(parsed.slowSpeedLevel),
       shieldHits: !!parsed.shieldHits,
       x2Triple: !!parsed.x2Triple,
+      slowSpeedStrong: !!parsed.slowSpeedStrong,
     };
   } catch (e) {
     return def;
@@ -79,8 +90,11 @@ export function getUpgradeCost(tipo, upgrades) {
   const u = upgrades || getRunnerUpgrades();
   if (tipo === 'shieldDuration') return u.shieldLevel >= UPGRADE_MAX_LEVEL ? null : UPGRADE_LEVEL_COSTS[u.shieldLevel];
   if (tipo === 'x2Duration') return u.x2Level >= UPGRADE_MAX_LEVEL ? null : UPGRADE_LEVEL_COSTS[u.x2Level];
+  if (tipo === 'slowFallDuration') return u.slowFallLevel >= UPGRADE_MAX_LEVEL ? null : UPGRADE_LEVEL_COSTS[u.slowFallLevel];
+  if (tipo === 'slowSpeedDuration') return u.slowSpeedLevel >= UPGRADE_MAX_LEVEL ? null : UPGRADE_LEVEL_COSTS[u.slowSpeedLevel];
   if (tipo === 'shieldHits') return u.shieldHits ? null : UPGRADE_SHIELD_HITS_COST;
   if (tipo === 'x2Triple') return u.x2Triple ? null : UPGRADE_X2_TRIPLE_COST;
+  if (tipo === 'slowSpeedStrong') return u.slowSpeedStrong ? null : UPGRADE_SLOWSPEED_STRONG_COST;
   return null;
 }
 
@@ -99,8 +113,11 @@ export function buyRunnerUpgrade(tipo) {
   const u = RUNNER.upgrades;
   if (tipo === 'shieldDuration') u.shieldLevel++;
   else if (tipo === 'x2Duration') u.x2Level++;
+  else if (tipo === 'slowFallDuration') u.slowFallLevel++;
+  else if (tipo === 'slowSpeedDuration') u.slowSpeedLevel++;
   else if (tipo === 'shieldHits') u.shieldHits = true;
   else if (tipo === 'x2Triple') u.x2Triple = true;
+  else if (tipo === 'slowSpeedStrong') u.slowSpeedStrong = true;
   saveUpgrades(u);
   return true;
 }
@@ -113,6 +130,18 @@ export function shieldDurationFrames() {
 }
 export function doublePointsDurationFrames() {
   return DOUBLE_POINTS_DURATION + getRunnerUpgrades().x2Level * UPGRADE_DURATION_STEP;
+}
+export function slowFallDurationFrames() {
+  return SLOWFALL_DURATION + getRunnerUpgrades().slowFallLevel * SLOWFALL_DURATION_STEP;
+}
+export function slowSpeedDurationFrames() {
+  return SLOWSPEED_DURATION + getRunnerUpgrades().slowSpeedLevel * UPGRADE_DURATION_STEP;
+}
+// % de naturalSpeed al que queda RUNNER.speed mientras "velocidad
+// reducida" está activo: 0.75 (-25%) de base, 0.50 (-50%) con la mejora
+// especial "Frenada Fuerte" comprada.
+export function slowSpeedFactor() {
+  return getRunnerUpgrades().slowSpeedStrong ? SLOWSPEED_FACTOR_STRONG : SLOWSPEED_FACTOR_BASE;
 }
 // Golpes que aguanta el escudo antes de romperse (1, o 2 con la mejora).
 export function shieldMaxHits() {

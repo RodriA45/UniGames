@@ -1,101 +1,94 @@
 {
-  "note": "Coordenadas escaladas x0.32 respecto al item.png original subido por el usuario. Frames: coin_0..coin_7 = ciclo de giro de la moneda (loop de 8), coin_crown = variante sin usar por ahora, powerup_shield = icono del power-up de escudo (el que se dibuja flotando en el juego), powerup_x2 = icono del power-up de doble puntaje, shield_shimmer_0..4 = frames de brillo/pulso (usados como aura alrededor del jugador mientras el escudo está activo).",
   "frames": {
-    "coin_0": {
-      "x": 4,
-      "y": 18,
-      "w": 63,
-      "h": 67
-    },
-    "coin_1": {
-      "x": 71,
-      "y": 18,
-      "w": 62,
-      "h": 67
-    },
-    "coin_2": {
-      "x": 137,
-      "y": 19,
-      "w": 44,
-      "h": 66
-    },
-    "coin_3": {
-      "x": 185,
-      "y": 19,
-      "w": 28,
-      "h": 66
-    },
-    "coin_4": {
-      "x": 217,
-      "y": 18,
-      "w": 26,
-      "h": 67
-    },
-    "coin_5": {
-      "x": 247,
-      "y": 19,
-      "w": 25,
-      "h": 66
-    },
-    "coin_6": {
-      "x": 276,
-      "y": 19,
-      "w": 28,
-      "h": 66
-    },
-    "coin_7": {
-      "x": 308,
-      "y": 19,
-      "w": 44,
-      "h": 66
-    },
-    "coin_crown": {
-      "x": 356,
-      "y": 19,
-      "w": 62,
-      "h": 66
-    },
-    "powerup_x2": {
-      "x": 422,
-      "y": 17,
-      "w": 66,
-      "h": 68
-    },
     "shield_shimmer_0": {
-      "x": 492,
+      "x": 4,
       "y": 4,
-      "w": 85,
-      "h": 81
+      "w": 109,
+      "h": 110
     },
     "shield_shimmer_1": {
-      "x": 581,
+      "x": 117,
       "y": 4,
-      "w": 86,
-      "h": 81
+      "w": 109,
+      "h": 110
     },
     "shield_shimmer_2": {
-      "x": 671,
+      "x": 230,
       "y": 4,
-      "w": 84,
-      "h": 81
+      "w": 107,
+      "h": 110
     },
     "shield_shimmer_3": {
-      "x": 759,
+      "x": 341,
       "y": 4,
-      "w": 86,
-      "h": 81
+      "w": 107,
+      "h": 110
     },
     "shield_shimmer_4": {
-      "x": 849,
+      "x": 452,
       "y": 4,
-      "w": 85,
-      "h": 81
+      "w": 109,
+      "h": 110
     },
     "powerup_shield": {
-      "x": 938,
-      "y": 10,
-      "w": 74,
-      "h": 75
+      "x": 565,
+      "y": 4,
+      "w": 107,
+      "h": 110
+    },
+    "powerup_x2": {
+      "x": 676,
+      "y": 4,
+      "w": 108,
+      "h": 110
+    },
+    "powerup_x3": {
+      "x": 788,
+      "y": 4,
+      "w": 105,
+      "h": 110
+    },
+    "powerup_slowfall": {
+      "x": 897,
+      "y": 4,
+      "w": 104,
+      "h": 110
+    },
+    "powerup_slowspeed": {
+      "x": 1005,
+      "y": 4,
+      "w": 105,
+      "h": 110
+    },
+    "coin_0": {
+      "x": 1114,
+      "y": 4,
+      "w": 91,
+      "h": 98
+    },
+    "coin_1": {
+      "x": 1209,
+      "y": 4,
+      "w": 68,
+      "h": 98
+    },
+    "coin_2": {
+      "x": 1281,
+      "y": 4,
+      "w": 15,
+      "h": 98
+    },
+    "coin_3": {
+      "x": 1300,
+      "y": 4,
+      "w": 68,
+      "h": 98
+    },
+    "coin_4": {
+      "x": 1372,
+      "y": 4,
+      "w": 91,
+      "h": 98
     }
   }
 }

@@ -1,0 +1,3306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Castle Escape — Editor de Niveles</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --bg:#12051b; --panel:#1b0c28; --panel2:#261338; --line:#3d2254;
+    --text:#f3e8ff; --dim:#a890c2; --gold:#facc15; --gold-hover:#eab308;
+    --red:#f87171; --red-bg:#450a0a; --green:#22c55e; --green-hover:#16a34a;
+    --blue:#38bdf8; --purple:#c084fc;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;user-select:none;}
+  
+  /* ── Header ── */
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:8px 14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;z-index:20;}
+  header h1{font-size:15px;margin:0;color:var(--gold);display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  header .sub{font-size:11.5px;color:var(--dim);margin-right:auto;}
+  .header-actions{display:flex;align-items:center;gap:8px;}
+
+  /* ── Layout ── */
+  .layout{flex:1;display:flex;min-height:0;position:relative;}
+
+  /* ── Sidebar Izquierda (Herramientas) ── */
+  .toolbar{width:210px;background:var(--panel);border-right:1px solid var(--line);padding:10px;overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column;gap:4px;}
+  .toolbar h3, .side h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin:12px 0 6px;}
+  .toolbar h3:first-child, .side h3:first-child{margin-top:0;}
+  .tool-btn{
+    display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:var(--panel2);
+    border:1px solid var(--line);color:var(--text);padding:8px 10px;border-radius:6px;cursor:pointer;
+    font-size:12px;transition:all .15s ease;
+  }
+  .tool-btn .key-hint{margin-left:auto;font-size:10px;color:var(--dim);background:rgba(0,0,0,0.3);padding:2px 5px;border-radius:3px;}
+  .tool-btn:hover{border-color:var(--gold);color:#fff;}
+  .tool-btn.active{background:var(--gold);color:#1f1300;border-color:var(--gold);font-weight:700;}
+  .tool-btn.active .key-hint{color:#5c4400;background:rgba(255,255,255,0.4);}
+  
+  /* Paleta tipo Geometry Dash: se elige el sprite, no un nombre de lista */
+  .palette{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-bottom:8px;}
+  .pal-item{position:relative;background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+    padding:2px;cursor:pointer;display:flex;align-items:center;justify-content:center;aspect-ratio:1;}
+  .pal-item:hover{border-color:var(--gold);}
+  .pal-item.active{border-color:var(--green);box-shadow:0 0 0 2px rgba(34,197,94,0.35) inset;}
+  .pal-item canvas{width:100%;height:100%;image-rendering:pixelated;display:block;}
+  .pal-title{font-size:10.5px;color:var(--dim);margin:6px 0 3px;text-transform:uppercase;letter-spacing:.5px;}
+  /* Selección por sprite: las listas de tipo/dirección quedan fuera de la
+     vista (el código las sigue usando como estado interno). */
+  #platformTypeSel, #platformMovingOptions select, #platformNormalOptions,
+  #platformSpikeChk, #hazardTypeSel, #arrowDirSel,
+  .tool-btn[data-tool="platform"], .tool-btn[data-tool="hazard"], .tool-btn[data-tool="arrow"]{display:none;}
+  .tool-options{background:rgba(0,0,0,0.25);border:1px solid var(--line);border-radius:6px;padding:8px;margin-top:4px;}
+
+  /* ── Centro (Canvas de Edición y Playtest) ── */
+  .center{flex:1;display:flex;flex-direction:column;min-width:0;background:#09020e;position:relative;}
+  .canvas-toolbar{display:flex;align-items:center;gap:10px;padding:6px 12px;background:var(--panel2);border-bottom:1px solid var(--line);font-size:12px;flex-wrap:wrap;}
+  /* Paneles plegables: el canvas se queda con todo el ancho libre. */
+  /* Paneles plegables con animación (ancho + padding, no display:none) */
+  .toolbar, .side{transition:width .25s ease, padding .25s ease, opacity .2s ease;}
+  .toolbar.collapsed, .side.collapsed{width:0;padding-left:0;padding-right:0;opacity:0;overflow:hidden;border:none;}
+  .panel-toggle{
+    position:absolute;top:50%;transform:translateY(-50%);z-index:20;
+    background:var(--panel2);border:1px solid var(--line);color:var(--dim);
+    cursor:pointer;font-size:13px;line-height:1;padding:14px 3px;opacity:.75;
+    transition:opacity .2s ease, color .2s ease, border-color .2s ease;
+  }
+  .panel-toggle:hover{border-color:var(--gold);color:var(--gold);opacity:1;}
+  #toggleLeft{left:0;border-left:none;border-radius:0 8px 8px 0;}
+  #toggleRight{right:0;border-right:none;border-radius:8px 0 0 8px;}
+  .canvas-wrap{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:24px;position:relative;}
+  .canvas-wrap:fullscreen, .canvas-wrap:-webkit-full-screen {
+    background:#000;padding:0;width:100vw;height:100vh;
+  }
+  canvas{background:#150620;image-rendering:pixelated;border:1px solid var(--line);box-shadow:0 8px 30px rgba(0,0,0,0.6);}
+  .canvas-wrap:fullscreen canvas, .canvas-wrap:-webkit-full-screen canvas {
+    border:none;max-width:100vw;max-height:100vh;
+  }
+  
+  /* ── Playtest Overlay / HUD ── */
+  .play-hud{
+    position:absolute;top:12px;left:12px;right:12px;display:none;justify-content:space-between;
+    align-items:center;pointer-events:none;z-index:30;
+  }
+  .play-badge{
+    background:rgba(21,6,32,0.85);backdrop-filter:blur(4px);border:1px solid var(--gold);
+    color:var(--gold);padding:6px 14px;border-radius:20px;font-size:12px;font-weight:700;
+    display:flex;align-items:center;gap:8px;box-shadow:0 4px 12px rgba(0,0,0,0.5);
+  }
+  .play-stats{
+    background:rgba(21,6,32,0.85);backdrop-filter:blur(4px);border:1px solid var(--line);
+    color:var(--text);padding:6px 14px;border-radius:20px;font-size:12px;
+    display:flex;align-items:center;gap:14px;
+  }
+  .play-win-modal{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    background:rgba(27,12,40,0.96);border:2px solid var(--green);border-radius:12px;
+    padding:24px 32px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,0.8);
+    display:none;flex-direction:column;align-items:center;gap:12px;z-index:40;min-width:280px;
+  }
+  .play-win-modal h2{margin:0;color:var(--green);font-size:22px;}
+  .play-win-modal p{margin:0;font-size:13px;color:var(--dim);}
+
+  /* ── Sidebar Derecha (Propiedades, Exportar, Importar) ── */
+  .side{width:310px;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;flex-shrink:0;padding:12px;display:flex;flex-direction:column;gap:6px;}
+  label{display:block;font-size:11px;color:var(--dim);margin-top:6px;}
+  input[type=text], input[type=number], select, textarea{
+    /* box-sizing: sin esto el padding + borde se suman al 100% y los
+       cuadros de código se salían del panel (quedaban cortados). */
+    width:100%;box-sizing:border-box;max-width:100%;
+    background:#0a020f;border:1px solid var(--line);color:var(--text);
+    padding:6px 8px;border-radius:5px;font-size:12px;margin-top:3px;outline:none;
+  }
+  .side textarea{min-height:110px;display:block;}
+  .side .btn-row .btn{flex:1 1 auto;min-width:0;white-space:nowrap;}
+  input[type=text]:focus, input[type=number]:focus, select:focus, textarea:focus{border-color:var(--gold);}
+  textarea{font-family:Consolas,Monaco,monospace;font-size:11px;resize:vertical;}
+  
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .row4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;}
+  
+  .btn{
+    background:var(--panel2);border:1px solid var(--line);color:var(--text);
+    padding:6px 12px;border-radius:5px;cursor:pointer;font-size:12px;display:inline-flex;
+    align-items:center;justify-content:center;gap:6px;font-weight:500;transition:all .15s ease;
+  }
+  .btn:hover{border-color:var(--gold);color:#fff;}
+  .btn.primary{background:var(--gold);color:#1b1000;font-weight:700;border-color:var(--gold);}
+  .btn.primary:hover{background:var(--gold-hover);border-color:var(--gold-hover);}
+  .btn.play-btn{background:var(--green);color:#05200c;font-weight:800;border-color:var(--green);padding:7px 16px;font-size:13px;}
+  .btn.play-btn:hover{background:var(--green-hover);border-color:var(--green-hover);}
+  .btn.stop-btn{background:var(--red);color:#fff;font-weight:800;border-color:var(--red);padding:7px 16px;font-size:13px;}
+  .btn.danger{border-color:var(--red);color:var(--red);}
+  .btn.danger:hover{background:var(--red-bg);color:#fca5a5;}
+  .btn-row{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;}
+  
+  .checkbox-row{display:flex;align-items:center;gap:7px;margin-top:7px;font-size:11.5px;color:var(--text);cursor:pointer;}
+  .checkbox-row input{width:auto;margin:0;cursor:pointer;}
+  
+  .level-tabs{display:flex;gap:4px;flex-wrap:wrap;max-height:160px;overflow-y:auto;padding:2px;background:rgba(0,0,0,0.2);border-radius:6px;border:1px solid var(--line);margin-bottom:8px;}
+  .level-tab{background:var(--panel2);border:1px solid var(--line);color:var(--dim);padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11.5px;font-weight:600;}
+  .level-tab:hover{border-color:var(--gold);color:var(--text);}
+  .level-tab.active{background:var(--gold);color:#1f1300;border-color:var(--gold);font-weight:800;}
+  
+  .list-item{display:flex;align-items:center;justify-content:space-between;background:var(--panel2);border:1px solid var(--line);padding:5px 8px;border-radius:5px;margin-bottom:4px;font-size:11px;cursor:pointer;}
+  .list-item:hover{border-color:var(--gold);}
+  .list-item.sel{border-color:var(--gold);background:#331e08;}
+  .list-item button{background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:0 4px;}
+  .empty-hint{font-size:11px;color:var(--dim);font-style:italic;padding:4px 0;}
+  
+  .coords{font-size:11px;color:var(--dim);margin-left:auto;font-family:monospace;}
+  .no-sel{color:var(--dim);font-size:11.5px;font-style:italic;padding:6px 0;}
+  .field-title{font-size:11.5px;color:var(--gold);font-weight:700;margin-top:6px;display:flex;align-items:center;gap:5px;}
+  
+  .legend{font-size:10.5px;color:var(--dim);line-height:1.6;margin-top:8px;background:rgba(0,0,0,0.2);padding:8px;border-radius:6px;border:1px solid var(--line);}
+  .swatch{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:middle;}
+  
+  /* ── Notificación Flotante ── */
+  .toast{
+    position:fixed;bottom:20px;right:20px;background:var(--panel2);border:1px solid var(--gold);
+    color:var(--gold);padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;
+    box-shadow:0 6px 20px rgba(0,0,0,0.6);opacity:0;transform:translateY(10px);
+    transition:all .25s ease;pointer-events:none;z-index:99;
+  }
+  .toast.show{opacity:1;transform:translateY(0);}
+
+  /* ── Botón "Niveles" del header (con contador) ── */
+  .levels-count-badge{
+    display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;
+    padding:0 4px;border-radius:8px;background:rgba(0,0,0,0.35);font-size:10px;font-weight:800;
+  }
+
+  /* ── Modal "Gestionar Niveles" ── */
+  .levels-modal-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(5,1,10,0.75);backdrop-filter:blur(2px);
+    z-index:200;align-items:center;justify-content:center;padding:20px;
+  }
+  .levels-modal-backdrop.show{display:flex;}
+  .levels-modal{
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    width:min(960px,100%);max-height:min(720px,90vh);display:flex;flex-direction:column;
+    box-shadow:0 20px 60px rgba(0,0,0,0.7);overflow:hidden;
+  }
+  .levels-modal-header{
+    display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);
+    background:var(--panel2);flex-wrap:wrap;
+  }
+  .levels-modal-header h2{margin:0;font-size:16px;color:var(--gold);display:flex;align-items:center;gap:8px;}
+  .levels-modal-header .muted{font-size:11.5px;color:var(--dim);margin-right:auto;}
+  .levels-modal-body{flex:1;overflow-y:auto;padding:16px 18px;}
+  .levels-grid{
+    display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;
+  }
+  .level-card{
+    background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:10px 12px;
+    display:flex;flex-direction:column;gap:6px;cursor:pointer;transition:all .15s ease;
+  }
+  .level-card:hover{border-color:var(--gold);}
+  .level-card.active{border-color:var(--gold);background:#331e08;box-shadow:0 0 0 1px var(--gold) inset;}
+  .level-card-top{display:flex;align-items:baseline;gap:8px;}
+  .level-card-num{
+    font-size:11px;font-weight:800;color:#1f1300;background:var(--gold);border-radius:5px;
+    padding:1px 6px;flex-shrink:0;
+  }
+  .level-card-name{font-size:13px;font-weight:700;color:var(--text);word-break:break-word;}
+  .level-card-hint{font-size:11px;color:var(--dim);font-style:italic;min-height:14px;line-height:1.4;}
+  .level-card-stats{font-size:10.5px;color:var(--dim);display:flex;gap:8px;flex-wrap:wrap;}
+  .level-card-actions{display:flex;gap:6px;margin-top:4px;}
+  .btn-sm{padding:4px 8px;font-size:11px;}
+  .levels-modal-empty{color:var(--dim);font-size:12.5px;font-style:italic;text-align:center;padding:30px 10px;}
+
+  @media (max-width: 1050px){
+    .toolbar{width:180px;}
+    .side{width:260px;}
+  }
+  @media (max-width: 820px){
+    .layout{flex-direction:column;overflow-y:auto;}
+    .toolbar, .side{width:100%;max-height:220px;border:none;border-bottom:1px solid var(--line);}
+    .center{min-height:360px;}
+    header .sub{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Castle Escape <span>— Editor de Niveles</span></h1>
+  <span class="sub">Diseñá, probá y exportá niveles listos para Castle Escape.</span>
+
+  <div class="header-actions">
+    <button class="btn play-btn" id="btnPlayToggle">▶ PROBAR NIVEL <span style="font-size:10px;opacity:.8">(Espacio / P)</span></button>
+    <button class="btn" id="btnUndo" title="Deshacer (Ctrl+Z)">↶</button>
+    <button class="btn" id="btnRedo" title="Rehacer (Ctrl+Y)">↷</button>
+    <button class="btn primary" id="btnLevelsMenu" title="Elegir, agregar o borrar niveles">Niveles <span class="levels-count-badge" id="levelsCountBadge">1</span></button>
+    <a href="../index.html" class="btn" style="text-decoration:none;">Volver al Juego</a>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- ─────────── TOOLBAR IZQUIERDA ─────────── -->
+  <div class="toolbar" id="leftToolbar">
+    <h3>Paleta</h3>
+    <div class="pal-title">Inicio y salida</div>
+    <div class="palette" id="paletteSpecial"></div>
+    <div class="pal-title">Bloques</div>
+    <div class="palette" id="paletteBlocks"></div>
+    <div class="pal-title">Obstáculos</div>
+    <div class="palette" id="paletteHazards"></div>
+    <div class="pal-title">Plataformas</div>
+    <div class="palette" id="paletteArrows"></div>
+    <div class="checkbox-row" style="margin-top:6px;">
+      <input type="checkbox" id="chkPaint"> Modo pincel <span class="key-hint">P</span>
+    </div>
+    <div style="font-size:10px;color:var(--dim);line-height:1.5;">
+      Con el pincel activado, mantené apretado y movés el mouse para ir
+      colocando la pieza elegida celda por celda.
+    </div>
+
+    <h3>Herramientas</h3>
+    <button class="tool-btn active" data-tool="select"><span>Seleccionar</span><span class="key-hint">1 / V</span></button>
+    <button class="tool-btn" data-tool="platform"><span>▭ Plataforma</span><span class="key-hint">2 / B</span></button>
+    <button class="tool-btn" data-tool="hazard"><span>Peligro / Trampa</span><span class="key-hint">3 / H</span></button>
+    <button class="tool-btn" data-tool="arrow"><span>Flecha de pared</span><span class="key-hint">4 / A</span></button>
+    <button class="tool-btn" data-tool="decor"><span>Decoración</span><span class="key-hint">5 / D</span></button>
+    <button class="tool-btn" data-tool="start"><span>Spawn Jugador</span><span class="key-hint">6 / S</span></button>
+    <button class="tool-btn" data-tool="exit"><span>Salida (Puerta)</span><span class="key-hint">7 / E</span></button>
+
+    <!-- Opciones dinámicas de Plataforma -->
+    <div id="platformOptions" class="tool-options" style="display:none">
+      <div class="field-title">Tipo de plataforma</div>
+      <select id="platformTypeSel">
+        <option value="normal">Normal (Sólida)</option>
+        <option value="fake">Falsa (Se traspasa)</option>
+        <option value="crumble">Se derrumba (Crumble 400ms)</option>
+        <option value="moving">Móvil (Ascensor oscilante)</option>
+      </select>
+      <div id="platformMovingOptions" style="display:none;margin-top:6px;">
+        <label>Eje de movimiento</label>
+        <select id="platformAxisSel">
+          <option value="x">Horizontal (X)</option>
+          <option value="y" selected>Vertical (Y)</option>
+        </select>
+        <div class="checkbox-row"><input type="checkbox" id="platformFakeChk"> Falsa (móvil y traspasable)</div>
+      </div>
+      <div id="platformNormalOptions" style="margin-top:6px;">
+        <div class="checkbox-row"><input type="checkbox" id="platformVerticalChk"> Pared vertical (bloquea el paso, no solo piso)</div>
+      </div>
+      <div class="checkbox-row"><input type="checkbox" id="platformSpikeChk"> Pinchos arriba (decor: 'spike')</div>
+    </div>
+
+    <!-- Opciones dinámicas de Peligro -->
+    <div id="hazardOptions" class="tool-options" style="display:none">
+      <div class="field-title">Tipo de peligro</div>
+      <select id="hazardTypeSel">
+        <option value="spike">Pinchos en piso (Spike)</option>
+        <option value="saw">Sierra móvil (Saw)</option>
+        <option value="star">Estrella trampa (Star)</option>
+      </select>
+      <div id="spikeOptions" style="margin-top:6px;">
+        <label>Tamaño de pincho</label>
+        <select id="spikeSizeSel">
+          <option value="small">Pequeño</option>
+          <option value="medium" selected>Mediano</option>
+          <option value="large">Grande</option>
+        </select>
+        <div class="checkbox-row"><input type="checkbox" id="spikeFakeChk"> Falso (se ve igual, no mata)</div>
+      </div>
+    </div>
+
+    <!-- Opciones dinámicas de Flecha -->
+    <div id="arrowOptions" class="tool-options" style="display:none">
+      <div class="field-title">Dirección de disparo</div>
+      <select id="arrowDirSel">
+        <option value="-1">Viene de la derecha (va hacia izq)</option>
+        <option value="1">Viene de la izquierda (va hacia der)</option>
+        <option value="up">Viene de abajo (sube)</option>
+        <option value="down">Viene de arriba (baja)</option>
+      </select>
+      <label>Velocidad</label>
+      <input type="number" id="arrowSpeedInp" value="4.5" step="0.2" min="1" max="15">
+      <div class="field-title">Tipo de disparo (trigger)</div>
+      <select id="arrowTriggerTypeSel">
+        <option value="line">Línea vertical (todo el alto)</option>
+        <option value="area">Zona de área (rectángulo)</option>
+      </select>
+      <div id="arrowAreaOptions" style="display:none;margin-top:6px;">
+        <label>Tamaño de la zona (ancho × alto)</label>
+        <div class="row2">
+          <div><input type="number" id="arrowAreaWInp" value="60" min="8"></div>
+          <div><input type="number" id="arrowAreaHInp" value="60" min="8"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Opciones dinámicas de Decoración -->
+    <div id="decorOptions" class="tool-options" style="display:none">
+      <div class="field-title">Elemento decorativo</div>
+      <select id="decorTypeSel">
+        <option value="torch">Antorcha animada</option>
+        <option value="ivy">Hiedra (Ivy 1)</option>
+        <option value="ivy_2">Hiedra (Ivy 2)</option>
+        <option value="chain">Cadena recta</option>
+        <option value="chain_hook">Cadena con gancho</option>
+        <option value="banner">Estandarte</option>
+        <option value="banner_tattered">Estandarte roto</option>
+        <option value="rat">Rata de calabozo</option>
+      </select>
+    </div>
+
+    <h3>Ajustes de Edición</h3>
+    <div class="checkbox-row"><input type="checkbox" id="chkKeepTool" checked> Mantener herramienta activa</div>
+    <div class="checkbox-row" style="opacity:.7;">Grilla fija de 30 px — todo se coloca por cuadrados</div>
+    <input type="checkbox" id="chkSnap" checked style="display:none;">
+    <select id="gridSizeSel" style="display:none;"><option value="30" selected>30</option></select>
+
+    <div class="legend">
+      <div><span class="swatch" style="background:#5a6978"></span>Plataforma normal</div>
+      <div><span class="swatch" style="background:#c084fc"></span>Plataforma normal vertical (pared)</div>
+      <div><span class="swatch" style="background:#a855f7"></span>Plataforma falsa (fake)</div>
+      <div><span class="swatch" style="background:#e8543f"></span>Crumble (se derrumba)</div>
+      <div><span class="swatch" style="background:#60a5fa"></span>Móvil (ascensor)</div>
+      <div><span class="swatch" style="background:#f87171"></span>Pinchos / Sierra</div>
+      <div><span class="swatch" style="background:#facc15"></span>Flecha trampa (línea)</div>
+      <div><span class="swatch" style="background:rgba(250,204,21,0.5)"></span>Flecha trampa (zona de área)</div>
+      <div><span class="swatch" style="background:#22c55e"></span>Puerta salida</div>
+    </div>
+  </div>
+
+  <!-- ─────────── CENTRO: CANVAS ─────────── -->
+  <div class="center">
+    <div class="canvas-toolbar" id="canvasToolbar">
+      <span>Zoom:</span>
+      <button class="btn" id="zoomOut">−</button>
+      <span id="zoomLabel" style="font-weight:700;min-width:24px;text-align:center;">2x</span>
+      <button class="btn" id="zoomIn">+</button>
+      <button class="btn" id="btnFullscreen" title="Pantalla completa">Pantalla completa</button>
+      <button class="btn" id="btnDelete" title="Borrar seleccionado (Supr)">✕ Borrar</button>
+      <button class="btn" id="btnDuplicate" title="Duplicar seleccionado (Ctrl+D)">⧉ Duplicar</button>
+      <button class="btn" id="btnFitView" title="Centrar la vista en el nivel">⤢ Centrar vista</button>
+      <span class="coords" id="coordsLabel">x: 0, y: 0</span>
+    </div>
+
+    <!-- HUD de Playtest -->
+    <div class="play-hud" id="playHud">
+      <div class="play-badge">MODO DE PRUEBA ACTIVO (Presioná ESC para volver)</div>
+      <div class="play-stats">
+        <span id="playHudDeaths">Muertes: 0</span>
+        <span id="playHudTime">Tiempo: 0.0s</span>
+        <span>Controles: <b>← → / A D</b> Moverse, <b>Espacio / ↑ / W</b> Saltar, <b>R</b> Reiniciar</span>
+      </div>
+    </div>
+
+    <!-- Modal de Victoria en Playtest -->
+    <div class="play-win-modal" id="playWinModal">
+      <h2>¡Nivel Superado!</h2>
+      <p id="playWinStats">Completado en 0.0s con 0 muertes.</p>
+      <div class="btn-row" style="margin-top:10px;">
+        <button class="btn primary" id="btnPlayAgain">Reintentar</button>
+        <button class="btn" id="btnExitPlay">Volver al Editor</button>
+      </div>
+    </div>
+
+    <button class="panel-toggle" id="toggleLeft" title="Mostrar u ocultar el panel de piezas">‹</button>
+    <button class="panel-toggle" id="toggleRight" title="Mostrar u ocultar el panel de propiedades">›</button>
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="editorCanvas" width="960" height="540"></canvas>
+    </div>
+  </div>
+
+  <!-- ─────────── PANEL DERECHO ─────────── -->
+  <div class="side" id="rightSidebar">
+    <h3>Nivel Actual</h3>
+    <div class="btn-row" style="margin-top:0;">
+      <button class="btn primary" id="btnOpenLevelsFromSide" style="flex:1;" title="Elegir, agregar o borrar niveles">Gestionar Niveles (<span id="levelsSideCount">1</span>)</button>
+    </div>
+
+    <div class="row2">
+      <div><label>Nombre del Nivel</label><input type="text" id="lvlNombre"></div>
+      <div><label>Pista (hint)</label><input type="text" id="lvlHint"></div>
+    </div>
+    <div class="row2">
+      <div><label>Ancho (bloques de 30px)</label><input type="number" id="lvlWidth" min="480" step="30" value="480"></div>
+      <div><label>Alto (bloques de 30px)</label><input type="number" id="lvlHeight" min="270" step="30" value="270"></div>
+    </div>
+    <label>Campo de visión (zoom de cámara)</label>
+    <div class="row2">
+      <input type="number" id="lvlFov" min="0.4" max="3" step="0.1" value="1">
+      <button class="btn" id="btnFovReset" title="Volver a 1x (vista normal)">↺ Reset</button>
+    </div>
+    <div class="empty-hint" style="margin-top:2px;">
+      1 = vista normal (480×270 visibles). Más de 1 = se ve MÁS mapa (cámara alejada). Menos de 1 = se ve MENOS (cámara acercada/zoom in).
+    </div>
+
+    <h3>Propiedades del Objeto</h3>
+    <div id="propsPanel"><div class="no-sel">Nada seleccionado. Hacé clic en un objeto o elegí una herramienta para crearlo.</div></div>
+
+    <h3>Objetos en este Nivel</h3>
+    <div id="objList" style="max-height:180px;overflow-y:auto;"></div>
+
+    <h3>Exportar / Guardar</h3>
+    <div class="empty-hint" style="margin-bottom:4px;">
+      Mientras editás, los niveles se guardan solos en ESTE navegador (el juego los usa al toque si lo abrís acá mismo).
+      Para que se vean SIEMPRE — en cualquier navegador o al publicar el sitio — descargá el .js y reemplazá
+      <code>src/games/castle_escape_levels.js</code> con el archivo descargado.
+    </div>
+    <div class="btn-row">
+      <button class="btn primary" id="btnExportOne" title="Copia el objeto JS de este nivel">Copiar este nivel</button>
+      <button class="btn" id="btnExportAll" title="Copia el array completo de niveles">Copiar todos</button>
+      <button class="btn" id="btnDownloadJs" title="Descargar castle_escape_levels.js — reemplazá el de src/games/ con este archivo">Descargar castle_escape_levels.js</button>
+    </div>
+    <textarea id="exportBox" rows="6" readonly placeholder="El código listo para copiar/pegar aparecerá acá..."></textarea>
+
+    <h3>Importar Código</h3>
+    <textarea id="importBox" rows="4" placeholder="Pegá acá un nivel, un array de niveles, o el contenido completo de un .js exportado..."></textarea>
+    <div class="btn-row">
+      <button class="btn" id="btnImport">Cargar Código</button>
+      <button class="btn" id="btnImportFile">Importar archivo .js</button>
+      <button class="btn" id="btnClearImport">Limpiar</button>
+    </div>
+    <input type="file" id="importFileInput" accept=".js,.txt" style="display:none;">
+  </div>
+
+</div>
+
+<!-- Notificación Toast -->
+<div class="toast" id="toastMsg">Mensaje</div>
+
+<!-- ─────────── MODAL: GESTIONAR NIVELES ─────────── -->
+<div class="levels-modal-backdrop" id="levelsModalBackdrop">
+  <div class="levels-modal">
+    <div class="levels-modal-header">
+      <h2>Niveles <span class="levels-count-badge" id="levelsModalCount">1</span></h2>
+      <span class="muted">Elegí un nivel para editarlo, o agregá / duplicá / borrá desde acá.</span>
+      <button class="btn primary btn-sm" id="btnAddLevelModal">+ Nuevo nivel</button>
+      <button class="btn btn-sm" id="btnCloseLevelsModal">Cerrar</button>
+    </div>
+    <div class="levels-modal-body">
+      <div class="levels-grid" id="levelsGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+const TR_W = 480, TR_H = 270;
+// Grilla FIJA: todo se coloca en cuadrados de TR_TILE px (16x9 celdas en
+// pantalla). No se puede cambiar ni apagar — es el mismo valor que usa el
+// juego (TR_TILE en castle_config.js) y el tamaño de una celda del
+// autotile de mapa_tiles.png.
+const TR_TILE = 30;
+const TR_GRAVITY = 0.42;
+const TR_JUMP_VY = -7.4;
+const TR_MOVE_SPEED = 2.7;
+
+// ─── ATLAS DEFINITIONS ───
+const DECO_ATLAS = {
+  "frames": {
+    "torch_1":         { "x": 105,  "y": 133, "w": 67,  "h": 162 },
+    "torch_2":         { "x": 290,  "y": 142, "w": 67,  "h": 153 },
+    "torch_3":         { "x": 476,  "y": 155, "w": 66,  "h": 140 },
+    "torch_4":         { "x": 663,  "y": 130, "w": 68,  "h": 165 },
+    "ivy_1":           { "x": 942,  "y": 109, "w": 134, "h": 197 },
+    "ivy_2":           { "x": 1140, "y": 109, "w": 136, "h": 196 },
+    "chain_straight":  { "x": 110,  "y": 373, "w": 33,  "h": 293 },
+    "chain_hook":      { "x": 196,  "y": 373, "w": 104, "h": 307 },
+    "banner":          { "x": 1007, "y": 381, "w": 149, "h": 281 },
+    "banner_tattered": { "x": 2170, "y": 382, "w": 148, "h": 280 },
+    "rat":             { "x": 1297, "y": 785, "w": 227, "h": 88  }
+  }
+};
+
+const MAPA_ATLAS = {
+  "frames": {
+    "door":        { "x": 4,   "y": 4,   "w": 212, "h": 327 },
+    "wall":        { "x": 220, "y": 4,   "w": 199, "h": 217 },
+    "trapdoor":    { "x": 4,   "y": 335, "w": 425, "h": 190 },
+    "spike_1b":    { "x": 433, "y": 335, "w": 100, "h": 158 },
+    "spike_1a":    { "x": 4,   "y": 529, "w": 90,  "h": 149 },
+    "spike_1c":    { "x": 98,  "y": 529, "w": 91,  "h": 149 },
+    "spike_3b":    { "x": 193, "y": 529, "w": 206, "h": 149 },
+    "spike_3a":    { "x": 403, "y": 529, "w": 188, "h": 142 },
+    "arrow_right": { "x": 4,   "y": 682, "w": 177, "h": 42  },
+    "arrow_left":  { "x": 185, "y": 682, "w": 168, "h": 38  }
+  }
+};
+
+// Texturas nuevas: bloques (autotile 3x3 + 3 plataformas de madera) y
+// obstáculos (flechas + sierra de 13 frames + pinchos).
+const TILES_ATLAS = {
+  "frames": {
+    "wall_tl": {
+      "x": 19,
+      "y": 60,
+      "w": 203,
+      "h": 195
+    },
+    "wall_t": {
+      "x": 268,
+      "y": 61,
+      "w": 204,
+      "h": 194
+    },
+    "wall_tr": {
+      "x": 520,
+      "y": 61,
+      "w": 205,
+      "h": 194
+    },
+    "wall_l": {
+      "x": 21,
+      "y": 302,
+      "w": 201,
+      "h": 203
+    },
+    "wall_c": {
+      "x": 268,
+      "y": 301,
+      "w": 204,
+      "h": 204
+    },
+    "wall_r": {
+      "x": 520,
+      "y": 302,
+      "w": 203,
+      "h": 203
+    },
+    "wall_bl": {
+      "x": 20,
+      "y": 548,
+      "w": 202,
+      "h": 233
+    },
+    "wall_b": {
+      "x": 268,
+      "y": 548,
+      "w": 205,
+      "h": 233
+    },
+    "wall_br": {
+      "x": 520,
+      "y": 548,
+      "w": 203,
+      "h": 233
+    },
+    "plat_small": {
+      "x": 792,
+      "y": 181,
+      "w": 160,
+      "h": 168
+    },
+    "plat_medium": {
+      "x": 985,
+      "y": 182,
+      "w": 270,
+      "h": 168
+    },
+    "plat_large": {
+      "x": 1309,
+      "y": 186,
+      "w": 429,
+      "h": 169
+    }
+  }
+};
+
+const OBST_ATLAS = {
+  "frames": {
+    "arrow_up_a": {
+      "x": 0,
+      "y": 0,
+      "w": 32,
+      "h": 32
+    },
+    "arrow_up_b": {
+      "x": 32,
+      "y": 0,
+      "w": 32,
+      "h": 32
+    },
+    "arrow_down": {
+      "x": 64,
+      "y": 0,
+      "w": 32,
+      "h": 32
+    },
+    "arrow_right_a": {
+      "x": 96,
+      "y": 0,
+      "w": 32,
+      "h": 32
+    },
+    "arrow_right_b": {
+      "x": 128,
+      "y": 0,
+      "w": 32,
+      "h": 32
+    },
+    "saw_0": {
+      "x": 0,
+      "y": 32,
+      "w": 32,
+      "h": 32
+    },
+    "saw_1": {
+      "x": 32,
+      "y": 32,
+      "w": 32,
+      "h": 32
+    },
+    "saw_2": {
+      "x": 64,
+      "y": 32,
+      "w": 32,
+      "h": 32
+    },
+    "saw_3": {
+      "x": 96,
+      "y": 32,
+      "w": 32,
+      "h": 32
+    },
+    "saw_4": {
+      "x": 128,
+      "y": 32,
+      "w": 32,
+      "h": 32
+    },
+    "saw_5": {
+      "x": 160,
+      "y": 32,
+      "w": 32,
+      "h": 32
+    },
+    "saw_6": {
+      "x": 192,
+      "y": 32,
+      "w": 32,
+      "h": 32
+    },
+    "saw_7": {
+      "x": 0,
+      "y": 64,
+      "w": 32,
+      "h": 32
+    },
+    "saw_8": {
+      "x": 32,
+      "y": 64,
+      "w": 32,
+      "h": 32
+    },
+    "saw_9": {
+      "x": 64,
+      "y": 64,
+      "w": 32,
+      "h": 32
+    },
+    "saw_10": {
+      "x": 96,
+      "y": 64,
+      "w": 32,
+      "h": 32
+    },
+    "saw_11": {
+      "x": 128,
+      "y": 64,
+      "w": 32,
+      "h": 32
+    },
+    "saw_12": {
+      "x": 160,
+      "y": 64,
+      "w": 32,
+      "h": 32
+    },
+    "spike_a": {
+      "x": 0,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    },
+    "spike_b": {
+      "x": 32,
+      "y": 96,
+      "w": 32,
+      "h": 32
+    }
+  }
+};
+
+// Las 9 piezas del autotile, según dónde cae la celda en el bloque.
+const WALL_FRAMES = [
+  ['wall_tl', 'wall_t', 'wall_tr'],
+  ['wall_l',  'wall_c', 'wall_r'],
+  ['wall_bl', 'wall_b', 'wall_br'],
+];
+const SAW_FRAMES = 13;
+
+const JUNIOR_ATLAS = {
+  "frames": {
+    "run_0":    { "x": 22,  "y": 35,  "w": 74,  "h": 131 },
+    "run_1":    { "x": 120, "y": 35,  "w": 93,  "h": 131 },
+    "run_2":    { "x": 228, "y": 35,  "w": 94,  "h": 118 },
+    "run_3":    { "x": 338, "y": 35,  "w": 76,  "h": 131 },
+    "run_4":    { "x": 438, "y": 35,  "w": 82,  "h": 130 },
+    "run_5":    { "x": 543, "y": 35,  "w": 96,  "h": 131 },
+    "run_6":    { "x": 658, "y": 36,  "w": 78,  "h": 129 },
+    "action_0": { "x": 31,  "y": 265, "w": 79,  "h": 124 },
+    "action_1": { "x": 129, "y": 251, "w": 88,  "h": 138 },
+    "action_2": { "x": 237, "y": 214, "w": 73,  "h": 150 },
+    "action_3": { "x": 331, "y": 191, "w": 82,  "h": 134 },
+    "action_4": { "x": 431, "y": 202, "w": 103, "h": 144 },
+    "action_5": { "x": 537, "y": 227, "w": 111, "h": 135 },
+    "action_6": { "x": 660, "y": 266, "w": 79,  "h": 123 },
+    "fall_0":   { "x": 27,  "y": 411, "w": 126, "h": 151 },
+    "fall_1":   { "x": 194, "y": 418, "w": 138, "h": 135 },
+    "fall_2":   { "x": 364, "y": 425, "w": 147, "h": 124 },
+    "fall_3":   { "x": 575, "y": 447, "w": 115, "h": 115 }
+  }
+};
+
+const DECOR_TYPE_TO_FRAME = {
+  torch: null,
+  ivy: 'ivy_1',
+  ivy_2: 'ivy_2',
+  chain: 'chain_straight',
+  chain_hook: 'chain_hook',
+  banner: 'banner',
+  banner_tattered: 'banner_tattered',
+  rat: 'rat',
+};
+
+const SPIKE_SIZE_H = { small: 12, medium: 18, large: 28 };
+
+// ─── CARGA DE ASSETS CON FALLBACKS DE RUTAS ───
+function tryLoadImage(paths) {
+  return new Promise(resolve => {
+    const allPaths = [];
+    paths.forEach(p => {
+      allPaths.push(p);
+      const enc = encodeURI(p);
+      if (enc !== p) allPaths.push(enc);
+    });
+    let i = 0;
+    function attempt() {
+      if (i >= allPaths.length) { console.warn('[editor] no se encontró la textura en ninguna ruta:', paths[0]); resolve(null); return; }
+      const img = new Image();
+      const used = allPaths[i];
+      img.onload = () => { console.log('[editor] textura cargada:', used); resolve(img); };
+      img.onerror = () => { i++; attempt(); };
+      img.src = used;
+    }
+    attempt();
+  });
+}
+
+// Rutas candidatas para una textura nueva de models/. Orden: al lado del
+// editor primero, después rutas absolutas/relativas del sitio.
+function TEX_PATHS(file) {
+  return [
+    'models/' + file,
+    './models/' + file,
+    '../castle-escape/models/' + file,
+    'src/motor2d/games/castle-escape/models/' + file,
+    '/src/motor2d/games/castle-escape/models/' + file,
+    '../src/motor2d/games/castle-escape/models/' + file,
+    '../../src/motor2d/games/castle-escape/models/' + file,
+    '../../../src/motor2d/games/castle-escape/models/' + file,
+    '../assert/Castle Escape/models/' + file,
+    '../assert/Castle Escape/' + file,
+    file,
+  ];
+}
+
+const IMG = { mapa: null, deco: null, back: null, junior: null, tiles: null, obst: null };
+Promise.all([
+  tryLoadImage(['../assert/Castle Escape/mapa.png', 'assert/Castle Escape/mapa.png', '/assert/Castle Escape/mapa.png', './assert/Castle Escape/mapa.png']),
+  tryLoadImage(['../assert/Castle Escape/deco.png', 'assert/Castle Escape/deco.png', '/assert/Castle Escape/deco.png', './assert/Castle Escape/deco.png']),
+  tryLoadImage(['../assert/Castle Escape/back.png', 'assert/Castle Escape/back.png', '/assert/Castle Escape/back.png', './assert/Castle Escape/back.png']),
+  tryLoadImage(['../assert/Castle Escape/models/junior.png', 'assert/Castle Escape/models/junior.png', '/assert/Castle Escape/models/junior.png', '../assert/pixel runner/models/junior.png', 'assert/pixel runner/models/junior.png']),
+  // Se prueban varias rutas porque el editor puede estar abierto desde la
+  // carpeta del juego, desde la raíz del sitio o con Live Server. La que
+  // funcionó queda logueada en la consola (F12).
+  tryLoadImage(TEX_PATHS('mapa_tiles.png').concat(TEX_PATHS('mapa.png'))),
+  tryLoadImage(TEX_PATHS('obstaculo.webp').concat(TEX_PATHS('obstaculo.png'))),
+]).then(([mapa, deco, back, junior, tiles, obst]) => {
+  IMG.mapa = mapa; IMG.deco = deco; IMG.back = back; IMG.junior = junior;
+  IMG.tiles = tiles; IMG.obst = obst;
+  buildPalette();
+  render();
+  // Aviso visible: si falta una textura, el editor sigue andando con el
+  // dibujo viejo a mano, y si no se avisa parece que el cambio no se aplicó.
+  const faltan = [];
+  if (!IMG.tiles) faltan.push('mapa_tiles.png');
+  if (!IMG.obst) faltan.push('obstaculo.webp');
+  if (faltan.length) {
+    showToast('Falta en models/: ' + faltan.join(', ') + ' (ver consola)');
+    console.warn('[editor] Poné estos archivos en la carpeta models/ del juego:', faltan);
+  }
+});
+
+// ─── CREACIÓN DE NIVEL DEFAULT ───
+function defaultLevel(num) {
+  return {
+    nombre: 'Nivel ' + (num || 1),
+    hint: '',
+    width: TR_W,
+    height: TR_H,
+    fov: 1,
+    // Nivel nuevo = lienzo en blanco: sin piso, sin puerta y sin spawn.
+    // Los dos últimos se colocan con las piezas "Inicio" y "Puerta" de la
+    // paleta (null = todavía no puestos).
+    start: null,
+    platforms: [],
+    hazards: [],
+    arrows: [],
+    exit: null,
+    decor: [],
+  };
+}
+
+function lvlW(lvl) { return (lvl && lvl.width) || TR_W; }
+function lvlH(lvl) { return (lvl && lvl.height) || TR_H; }
+function lvlFov(lvl) { return (lvl && lvl.fov) || 1; }
+
+// ─── ESTADO GLOBAL ───
+const state = {
+  levels: [defaultLevel(1)],
+  currentLevel: 0,
+  tool: 'select',
+  
+  // Herramientas
+  platformType: 'normal',
+  platformFake: false,
+  platformSpike: false,
+  platformAxis: 'y',
+  platformVertical: false,
+  hazardType: 'spike',
+  spikeSize: 'medium',
+  spikeFake: false,
+  arrowDir: -1,
+  arrowSpeed: 4.5,
+  arrowTriggerType: 'line',
+  arrowAreaW: 60,
+  arrowAreaH: 60,
+  decorType: 'torch',
+  
+  // Modos y grids
+  keepTool: true,
+  paint: false,          // modo pincel (colocar arrastrando)
+  palette: null,         // pieza elegida en la paleta
+  snap: true,            // fijo: la grilla no se puede apagar
+  gridSize: TR_TILE,     // fijo: siempre cuadrados de TR_TILE
+  zoom: 2,
+  selected: null,
+  drag: null,
+  mouse: { x: 0, y: 0 },
+  
+  // Playtest Mode
+  playtest: false,
+  playPlayer: null,
+  playPlatforms: [],
+  playHazards: [],
+  playArrows: [],
+  playExplosions: [],
+  playKeys: { left: false, right: false, jump: false },
+  playStartTime: 0,
+  playDeaths: 0,
+  playWon: false,
+  playRespawnTimer: null,
+};
+
+// Historial Undo / Redo
+const history = { past: [], future: [] };
+function pushHistory() {
+  history.past.push(JSON.stringify(state.levels));
+  if (history.past.length > 30) history.past.shift();
+  history.future = [];
+}
+function undo() {
+  if (!history.past.length) return;
+  history.future.push(JSON.stringify(state.levels));
+  const snap = history.past.pop();
+  state.levels = JSON.parse(snap);
+  state.currentLevel = Math.min(state.currentLevel, state.levels.length - 1);
+  state.selected = null;
+  refreshAll();
+  showToast('Deshecho');
+}
+function redo() {
+  if (!history.future.length) return;
+  history.past.push(JSON.stringify(state.levels));
+  const snap = history.future.pop();
+  state.levels = JSON.parse(snap);
+  state.currentLevel = Math.min(state.currentLevel, state.levels.length - 1);
+  state.selected = null;
+  refreshAll();
+  showToast('Rehecho');
+}
+
+function curLevel() { return state.levels[state.currentLevel] || state.levels[0]; }
+// Siempre a la grilla: no hay modo libre.
+function snapVal(v) {
+  return Math.round(v / TR_TILE) * TR_TILE;
+}
+// Redondea un tamaño a celdas enteras (mínimo 1 celda).
+function snapSize(v) {
+  return Math.max(TR_TILE, Math.round(v / TR_TILE) * TR_TILE);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toastMsg');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ─── GEOMETRÍA Y BOUNDING BOXES ───
+function decorSize(d) {
+  const h = d.h || 40;
+  let frame = d.type === 'torch' ? DECO_ATLAS.frames.torch_1 : DECO_ATLAS.frames[DECOR_TYPE_TO_FRAME[d.type]];
+  const ratio = frame ? (frame.w / frame.h) : 0.6;
+  return { w: h * ratio, h };
+}
+
+function bboxOf(cat, obj) {
+  if (!obj) return { x: 0, y: 0, w: 0, h: 0 };
+  if (cat === 'start') return { x: obj.x - 2, y: obj.y - 2, w: 28, h: 31 };
+  if (cat === 'exit' || cat === 'platforms' || cat === 'hazards') return { x: obj.x, y: obj.y, w: obj.w, h: obj.h };
+  if (cat === 'arrows') {
+    // La caja de selección es el trigger, que es lo único que se ve en el
+    // editor (el proyectil nace fuera de cuadro).
+    if (obj.triggerType === 'area' && obj.triggerZone) {
+      const z = obj.triggerZone;
+      return { x: z.x, y: z.y, w: z.w, h: z.h };
+    }
+    return { x: obj.triggerX - 10, y: obj.y - 10, w: 20, h: 20 + obj.h };
+  }
+  if (cat === 'decor') { const s = decorSize(obj); return { x: obj.x, y: obj.y, w: s.w, h: s.h }; }
+  return { x: 0, y: 0, w: 0, h: 0 };
+}
+
+function pointInRect(px, py, r) { return px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h; }
+
+const HIT_ORDER = ['start', 'exit', 'arrows', 'decor', 'hazards', 'platforms'];
+function hitTest(px, py) {
+  const lvl = curLevel();
+  for (const cat of HIT_ORDER) {
+    if (cat === 'start') { if (lvl.start && pointInRect(px, py, bboxOf('start', lvl.start))) return { cat: 'start', idx: -1 }; continue; }
+    if (cat === 'exit') { if (lvl.exit && pointInRect(px, py, bboxOf('exit', lvl.exit))) return { cat: 'exit', idx: -1 }; continue; }
+    const arr = lvl[cat];
+    if (!arr) continue;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      if (pointInRect(px, py, bboxOf(cat, arr[i]))) return { cat, idx: i };
+    }
+  }
+  return null;
+}
+
+const HANDLE_SIZE = 6;
+function getHandles(bbox) {
+  const { x, y, w, h } = bbox;
+  return { tl: { x, y }, tr: { x: x + w, y }, bl: { x, y: y + h }, br: { x: x + w, y: y + h } };
+}
+function handleAt(px, py, bbox) {
+  const hs = getHandles(bbox);
+  const r = HANDLE_SIZE + 4;
+  for (const key in hs) {
+    const h = hs[key];
+    if (Math.abs(px - h.x) <= r && Math.abs(py - h.y) <= r) return key;
+  }
+  return null;
+}
+// Punta del recorrido azul (plataforma móvil / sierra): devuelve 'from' o
+// 'to' si el mouse está encima de una de las dos bolitas.
+function moveHandleAt(px, py, obj) {
+  const m = obj.move;
+  if (!m) return null;
+  const r = (HANDLE_SIZE + 5) / state.zoom;
+  const pts = m.axis === 'x'
+    ? { from: { x: m.from + obj.w / 2, y: obj.y + obj.h / 2 }, to: { x: m.to + obj.w / 2, y: obj.y + obj.h / 2 } }
+    : { from: { x: obj.x + obj.w / 2, y: m.from + obj.h / 2 }, to: { x: obj.x + obj.w / 2, y: m.to + obj.h / 2 } };
+  for (const k in pts) {
+    if (Math.abs(px - pts[k].x) <= r && Math.abs(py - pts[k].y) <= r) return k;
+  }
+  return null;
+}
+
+// Esquinas de la zona de activación de una flecha.
+function zoneHandleAt(px, py, obj) {
+  if (obj.triggerType !== 'area' || !obj.triggerZone) return null;
+  return handleAt(px, py, obj.triggerZone);
+}
+
+function isResizable(cat) { return cat === 'platforms' || cat === 'hazards' || cat === 'exit'; }
+
+// ─── AGREGAR OBJETOS ───
+function addPlatform(x, y, w, h) {
+  pushHistory();
+  const p = { x, y, w: Math.max(8, w), h: Math.max(8, h), type: state.platformType };
+  if (state.platformType === 'moving') {
+    const axis = state.platformAxis || 'y';
+    p.move = { axis, from: axis === 'x' ? x : y, to: axis === 'x' ? x + 100 : y + 80, speed: 1.2 };
+    if (state.platformFake) p.fake = true;
+  }
+  if (state.platformType === 'normal' && state.platformVertical) p.vertical = true;
+  if (state.platformSpike) p.decor = 'spike';
+  curLevel().platforms.push(p);
+  return { cat: 'platforms', idx: curLevel().platforms.length - 1 };
+}
+
+// ─── Colocar una pieza de la paleta en la celda (x, y) ───
+// Todo entra con tamaño fijo: un bloque = 1 celda, una plataforma = 1/2/3
+// celdas, los pinchos se apoyan en el piso de su celda.
+const SPIKES_PER_CELL = { small: 4, medium: 2, large: 1 };
+function spikeHeight(size) { return TR_TILE / (SPIKES_PER_CELL[size] || 2); }
+
+function placePiece(x, y) {
+  const item = state.palette;
+  if (!item) return null;
+  const cx = cellVal(x), cy = cellVal(y);
+  const lvl = curLevel();
+  pushHistory();
+  if (item.tool === 'block') {
+    lvl.platforms.push({ x: cx, y: cy, w: TR_TILE, h: TR_TILE, type: 'normal', tile: item.make.tile });
+    return { cat: 'platforms', idx: lvl.platforms.length - 1 };
+  }
+  if (item.tool === 'plat') {
+    // Las plataformas de madera ocupan medio cuadrado de alto (se pisan,
+    // no son un bloque macizo).
+    lvl.platforms.push({
+      x: cx, y: cy + TR_TILE / 2, w: TR_TILE * item.make.cells, h: TR_TILE / 2,
+      type: 'normal', piece: item.make.piece,
+    });
+    return { cat: 'platforms', idx: lvl.platforms.length - 1 };
+  }
+  if (item.tool === 'spike') {
+    const h = spikeHeight('medium');
+    lvl.hazards.push({ x: cx, y: cy + TR_TILE - h, w: TR_TILE, h, type: 'spike', size: 'medium' });
+    return { cat: 'hazards', idx: lvl.hazards.length - 1 };
+  }
+  if (item.tool === 'saw') {
+    lvl.hazards.push({
+      x: cx, y: cy, w: TR_TILE, h: TR_TILE, type: 'saw',
+      move: { axis: 'x', from: cx, to: cx + TR_TILE * 4, speed: 1.8 },
+    });
+    return { cat: 'hazards', idx: lvl.hazards.length - 1 };
+  }
+  if (item.tool === 'arrow') {
+    const zw = TR_TILE * 2, zh = TR_TILE * 2;
+    const arrow = {
+      triggerType: 'area',
+      triggerX: cx,
+      x: 0, y: 0, w: ARROW_LEN, h: ARROW_THICK, dir: -1, speed: 4.5,
+      triggerZone: { x: cx - zw / 2 + TR_TILE / 2, y: cy + TR_TILE / 2 - zh / 2, w: zw, h: zh },
+      active: false, fired: false,
+    };
+    repositionArrow(arrow, lvl);
+    lvl.arrows.push(arrow);
+    return { cat: 'arrows', idx: lvl.arrows.length - 1 };
+  }
+  return null;
+}
+
+// ¿Ya hay una pieza igual en esta celda? (para el modo pincel: no apilar
+// 20 bloques en el mismo lugar mientras se arrastra)
+function cellTaken(x, y) {
+  const cx = cellVal(x), cy = cellVal(y);
+  const item = state.palette;
+  const cat = (item && (item.tool === 'spike' || item.tool === 'saw')) ? 'hazards'
+            : (item && item.tool === 'arrow') ? 'arrows' : 'platforms';
+  return (curLevel()[cat] || []).some(o => cellVal(o.x) === cx && Math.abs(cellVal(o.y) - cy) < TR_TILE);
+}
+
+function addHazard(x, y, w, h) {
+  pushHistory();
+  const hz = { x, y, w: Math.max(8, w), h: Math.max(8, h), type: state.hazardType };
+  if (state.hazardType === 'spike') {
+    hz.size = state.spikeSize;
+    hz.h = SPIKE_SIZE_H[state.spikeSize] || 18;
+    if (state.spikeFake) hz.fake = true;
+  } else if (state.hazardType === 'saw') {
+    hz.w = 26; hz.h = 26;
+    hz.move = { axis: 'x', from: x, to: x + 120, speed: 1.8 };
+  } else if (state.hazardType === 'star') {
+    hz.w = 20; hz.h = 20;
+  }
+  curLevel().hazards.push(hz);
+  return { cat: 'hazards', idx: curLevel().hazards.length - 1 };
+}
+
+function addArrow(x, y) {
+  pushHistory();
+  const vertical = state.arrowDir === 'up' || state.arrowDir === 'down';
+  const triggerType = state.arrowTriggerType || 'line';
+  const a = {
+    triggerType,
+    triggerX: Math.round(x),
+    x: vertical ? Math.round(x) : (state.arrowDir === 1 ? 0 : (curLevel().width || TR_W)),
+    y: Math.round(y),
+    w: vertical ? 8 : 22,
+    h: vertical ? 22 : 8,
+    dir: state.arrowDir,
+    speed: parseFloat(state.arrowSpeed) || 4.5,
+    active: false, fired: false,
+  };
+  if (triggerType === 'area') {
+    const zw = Math.max(8, parseFloat(state.arrowAreaW) || 60);
+    const zh = Math.max(8, parseFloat(state.arrowAreaH) || 60);
+    a.triggerZone = { x: Math.round(x - zw / 2), y: Math.round(y - zh / 2), w: zw, h: zh };
+  }
+  curLevel().arrows.push(a);
+  return { cat: 'arrows', idx: curLevel().arrows.length - 1 };
+}
+
+function addDecor(x, y) {
+  pushHistory();
+  const d = { type: state.decorType, x: Math.round(x), y: Math.round(y), h: 40 };
+  curLevel().decor.push(d);
+  return { cat: 'decor', idx: curLevel().decor.length - 1 };
+}
+
+function deleteSelected() {
+  const sel = state.selected;
+  if (!sel || sel.cat === 'start' || sel.cat === 'exit') return;
+  pushHistory();
+  curLevel()[sel.cat].splice(sel.idx, 1);
+  state.selected = null;
+  refreshAll();
+  showToast('Objeto eliminado');
+}
+
+function duplicateSelected() {
+  const sel = state.selected;
+  if (!sel || sel.cat === 'start' || sel.cat === 'exit') return;
+  pushHistory();
+  const arr = curLevel()[sel.cat];
+  const copy = JSON.parse(JSON.stringify(arr[sel.idx]));
+  if (copy.x !== undefined) copy.x += 15;
+  if (copy.y !== undefined) copy.y += 10;
+  if (copy.triggerX !== undefined) copy.triggerX += 15;
+  if (copy.move) {
+    copy.move.from += 15;
+    copy.move.to += 15;
+  }
+  arr.push(copy);
+  state.selected = { cat: sel.cat, idx: arr.length - 1 };
+  refreshAll();
+  showToast('Objeto duplicado');
+}
+
+function getSelObj() {
+  const sel = state.selected;
+  if (!sel) return null;
+  const lvl = curLevel();
+  if (sel.cat === 'start') return lvl.start;
+  if (sel.cat === 'exit') return lvl.exit;
+  return lvl[sel.cat] ? lvl[sel.cat][sel.idx] : null;
+}
+
+// ══════════════════════════════════════
+//  MOTOR DE DIBUJO Y RENDERIZADO
+// ══════════════════════════════════════
+const canvas = document.getElementById('editorCanvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const W = lvlW(curLevel());
+  const H = lvlH(curLevel());
+  canvas.width = W * state.zoom;
+  canvas.height = H * state.zoom;
+}
+
+function drawGrid() {
+  const W = lvlW(curLevel()), H = lvlH(curLevel());
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1 / state.zoom;
+  const g = state.gridSize || 10;
+  for (let x = 0; x <= W; x += g) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y <= H; y += g) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  for (let x = 0; x <= W; x += 100) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+}
+
+const TR_STONE_MORTAR = '#232025';
+function stoneShade(bx, by) {
+  const n = Math.sin(bx * 12.9898 + by * 78.233) * 43758.5453;
+  return n - Math.floor(n);
+}
+
+// Bloques con la textura nueva: el rectángulo se reparte en celdas de
+// TR_TILE y cada una elige su pieza del autotile (esquinas, bordes,
+// relleno) — el mismo criterio que trDrawBlockRect en castle_render.js.
+function drawBlockRect(x, y, w, h, tileName) {
+  if (!IMG.tiles) return false;
+  // Pieza fija elegida en la paleta (no se recalcula por vecinos).
+  if (tileName && TILES_ATLAS.frames[tileName]) {
+    const f = TILES_ATLAS.frames[tileName];
+    const cs = Math.max(1, Math.round(w / TR_TILE)), rs = Math.max(1, Math.round(h / TR_TILE));
+    for (let r = 0; r < rs; r++) for (let c = 0; c < cs; c++) {
+      ctx.drawImage(IMG.tiles, f.x, f.y, f.w, f.h,
+        x + c * (w / cs), y + r * (h / rs), Math.ceil(w / cs), Math.ceil(h / rs));
+    }
+    return true;
+  }
+  const cols = Math.max(1, Math.round(w / TR_TILE));
+  const rows = Math.max(1, Math.round(h / TR_TILE));
+  const cw = w / cols, ch = h / rows;
+  for (let r = 0; r < rows; r++) {
+    const fr = rows === 1 ? 0 : (r === 0 ? 0 : (r === rows - 1 ? 2 : 1));
+    for (let c = 0; c < cols; c++) {
+      const fc = cols === 1 ? 1 : (c === 0 ? 0 : (c === cols - 1 ? 2 : 1));
+      const f = TILES_ATLAS.frames[WALL_FRAMES[fr][fc]];
+      if (!f) continue;
+      ctx.drawImage(IMG.tiles, f.x, f.y, f.w, f.h, x + c * cw, y + r * ch, Math.ceil(cw), Math.ceil(ch));
+    }
+  }
+  return true;
+}
+
+// Plataforma de madera (lo que se mueve o se rompe): la pieza se elige por
+// ancho en celdas — 1 chica, 2 mediana, 3+ grande estirada.
+function drawWoodPlatform(x, y, w, h, piece) {
+  if (!IMG.tiles) return false;
+  const cells = Math.max(1, Math.round(w / TR_TILE));
+  const f = TILES_ATLAS.frames[piece || (cells <= 1 ? 'plat_small' : (cells === 2 ? 'plat_medium' : 'plat_large'))];
+  if (!f) return false;
+  ctx.drawImage(IMG.tiles, f.x, f.y, f.w, f.h, x, y, Math.ceil(w), Math.ceil(h));
+  return true;
+}
+
+function drawStoneFloor(plat) {
+  const { x, y, w, h } = plat;
+  const wood = plat.piece || (!plat.tile && (plat.type === 'moving' || plat.type === 'crumble'));
+  if (wood ? drawWoodPlatform(x, y, w, h, plat.piece) : drawBlockRect(x, y, w, h, plat.tile)) return;
+  const isWall = plat.type === 'normal' && plat.vertical;
+  ctx.fillStyle = TR_STONE_MORTAR;
+  ctx.fillRect(x, y, w, h);
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x, y, w, h); ctx.clip();
+  if (isWall) {
+    // Pared vertical: columnas de piedra apiladas de arriba a abajo,
+    // con hiladas intercaladas (igual criterio que el piso, pero rotado 90°).
+    const blockW = Math.max(9, Math.round(w / 2));
+    const blockH = blockW * 1.7;
+    let col = 0;
+    for (let bx = x; bx < x + w; bx += blockW) {
+      const offset = (col % 2 === 0) ? 0 : -blockH / 2;
+      for (let by = y + offset; by < y + h; by += blockH) {
+        const t = stoneShade(Math.round(bx), Math.round(by));
+        const gr = Math.round(46 + t * 26);
+        ctx.fillStyle = `rgb(${gr},${gr - 2},${gr + 3})`;
+        ctx.fillRect(bx + 1, by + 1, blockW - 2, blockH - 2);
+      }
+      col++;
+    }
+  } else {
+    const blockH = Math.max(9, Math.round(h / 2));
+    const blockW = blockH * 1.7;
+    let row = 0;
+    for (let by = y; by < y + h; by += blockH) {
+      const offset = (row % 2 === 0) ? 0 : -blockW / 2;
+      for (let bx = x + offset; bx < x + w; bx += blockW) {
+        const t = stoneShade(Math.round(bx), Math.round(by));
+        const gr = Math.round(46 + t * 26);
+        ctx.fillStyle = `rgb(${gr},${gr - 2},${gr + 3})`;
+        ctx.fillRect(bx + 1, by + 1, blockW - 2, blockH - 2);
+      }
+      row++;
+    }
+  }
+  ctx.restore();
+  if (isWall) {
+    // Resalte/sombra en los bordes laterales (luz lateral, como una pared)
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y, 2, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x + w - 2, y, 2, h);
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.12)'; ctx.fillRect(x, y, w, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fillRect(x, y + h - 2, w, 2);
+  }
+}
+
+function drawPlatform(plat) {
+  if (plat.gone) return;
+  drawStoneFloor(plat);
+  
+  if (plat.type === 'fake' || plat.fake) {
+    ctx.fillStyle = 'rgba(168,85,247,0.30)'; ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+  }
+  if (plat.type === 'crumble') {
+    ctx.fillStyle = (plat.touchedAt !== null && plat.touchedAt !== undefined) ? 'rgba(232,84,63,0.55)' : 'rgba(232,84,63,0.30)';
+    ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+  }
+  if (plat.type === 'moving') {
+    ctx.strokeStyle = 'rgba(96,165,250,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(plat.x + 1, plat.y + 1, plat.w - 2, plat.h - 2);
+    if (!state.playtest && plat.move) drawMoveGhost(plat, plat.w, plat.h);
+  }
+  if (plat.type === 'normal' && plat.vertical) {
+    ctx.fillStyle = 'rgba(192,132,252,0.16)'; ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+    ctx.strokeStyle = 'rgba(192,132,252,0.9)'; ctx.lineWidth = 1.5; ctx.strokeRect(plat.x + 1, plat.y + 1, plat.w - 2, plat.h - 2);
+  }
+  if (plat.decor === 'spike') drawSpikeRow(plat.x, plat.y - 16, plat.w, 16);
+}
+
+function drawMoveGhost(obj, w, h) {
+  const m = obj.move;
+  if (!m) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(96,165,250,0.6)';
+  ctx.setLineDash([4, 3]);
+  ctx.lineWidth = 1.2 / state.zoom;
+  if (m.axis === 'x') {
+    ctx.beginPath(); ctx.moveTo(m.from + w / 2, obj.y + h / 2); ctx.lineTo(m.to + w / 2, obj.y + h / 2); ctx.stroke();
+    ctx.fillStyle = '#60a5fa';
+    ctx.beginPath(); ctx.arc(m.from + w / 2, obj.y + h / 2, 3, 0, Math.PI * 2); ctx.arc(m.to + w / 2, obj.y + h / 2, 3, 0, Math.PI * 2); ctx.fill();
+  } else {
+    ctx.beginPath(); ctx.moveTo(obj.x + w / 2, m.from + h / 2); ctx.lineTo(obj.x + w / 2, m.to + h / 2); ctx.stroke();
+    ctx.fillStyle = '#60a5fa';
+    ctx.beginPath(); ctx.arc(obj.x + w / 2, m.from + h / 2, 3, 0, Math.PI * 2); ctx.arc(obj.x + w / 2, m.to + h / 2, 3, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawSpikeRow(x, y, w, h, hz) {
+  const size = (hz && hz.size) || 'medium';
+  const per = SPIKES_PER_CELL[size] || 2;
+  const cnt = Math.max(1, Math.round((w / TR_TILE) * per));
+  const stepW = w / cnt;
+  const sh = Math.min(h, stepW);   // pincho cuadrado
+  const top = y + h - sh;          // siempre apoyado en el borde de abajo
+  const rot = hz && hz.rot45;
+  ctx.save();
+  if (rot) { ctx.translate(x + w / 2, y + h / 2); ctx.rotate(Math.PI / 4); ctx.translate(-(x + w / 2), -(y + h / 2)); }
+  if (IMG.obst) {
+    for (let i = 0; i < cnt; i++) {
+      const f = OBST_ATLAS.frames[i % 2 === 0 ? 'spike_a' : 'spike_b'];
+      ctx.drawImage(IMG.obst, f.x, f.y, f.w, f.h, x + i * stepW, top, Math.ceil(stepW), sh);
+    }
+    ctx.restore();
+    return;
+  }
+  ctx.restore();
+  const n = Math.max(1, Math.floor(w / 14));
+  const step = w / n;
+  for (let i = 0; i < n; i++) {
+    const sx = x + i * step;
+    const grad = ctx.createLinearGradient(sx, y + h, sx, y);
+    grad.addColorStop(0, '#7f1d1d'); grad.addColorStop(1, '#f87171');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.moveTo(sx, y + h); ctx.lineTo(sx + step / 2, y); ctx.lineTo(sx + step, y + h); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx + step / 2, y); ctx.lineTo(sx + step, y + h); ctx.stroke();
+  }
+}
+
+function drawSaw(hz) {
+  if (IMG.obst) {
+    const idx = Math.floor(performance.now() / 50) % SAW_FRAMES;
+    const f = OBST_ATLAS.frames['saw_' + idx];
+    const pad = Math.max(2, hz.w * 0.12);
+    ctx.drawImage(IMG.obst, f.x, f.y, f.w, f.h, hz.x - pad, hz.y - pad, hz.w + pad * 2, hz.h + pad * 2);
+    if (!state.playtest && hz.move) drawMoveGhost(hz, hz.w, hz.h);
+    return;
+  }
+  const cx = hz.x + hz.w / 2, cy = hz.y + hz.h / 2, r = hz.w / 2;
+  ctx.save(); ctx.translate(cx, cy);
+  const rot = (performance.now() / 80) % (Math.PI * 2);
+  ctx.rotate(rot);
+  const teeth = 8;
+  ctx.fillStyle = '#94a3b8';
+  ctx.beginPath();
+  for (let i = 0; i < teeth * 2; i++) {
+    const rr = i % 2 === 0 ? r : r * 0.7;
+    const a = (Math.PI * 2 / (teeth * 2)) * i;
+    ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  ctx.closePath(); ctx.fill();
+  ctx.fillStyle = '#475569'; ctx.beginPath(); ctx.arc(0, 0, r * 0.35, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  if (!state.playtest && hz.move) drawMoveGhost(hz, hz.w, hz.h);
+}
+
+function drawStar(hz) {
+  ctx.fillStyle = '#fde047'; ctx.beginPath();
+  const cx = hz.x + hz.w / 2, cy = hz.y + hz.h / 2, r = hz.w / 2;
+  for (let i = 0; i < 5; i++) {
+    const ang = (Math.PI * 2 / 5) * i - Math.PI / 2;
+    const angIn = ang + Math.PI / 5;
+    ctx.lineTo(cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
+    ctx.lineTo(cx + Math.cos(angIn) * r * 0.45, cy + Math.sin(angIn) * r * 0.45);
+  }
+  ctx.closePath(); ctx.fill();
+}
+
+function drawDecorItem(d) {
+  const s = decorSize(d);
+  let frame;
+  if (d.type === 'torch') {
+    const fr = Math.floor(performance.now() / 150) % 4;
+    frame = DECO_ATLAS.frames['torch_' + (fr + 1)];
+  } else {
+    frame = DECO_ATLAS.frames[DECOR_TYPE_TO_FRAME[d.type]];
+  }
+  if (IMG.deco && frame) {
+    ctx.drawImage(IMG.deco, frame.x, frame.y, frame.w, frame.h, d.x, d.y, s.w, s.h);
+    return;
+  }
+  // Vector fallback
+  const colors = { torch: '#f97316', ivy: '#22c55e', ivy_2: '#16a34a', chain: '#94a3b8', chain_hook: '#94a3b8', banner: '#a855f7', banner_tattered: '#7e22ce', rat: '#78716c' };
+  ctx.fillStyle = colors[d.type] || '#999';
+  ctx.globalAlpha = 0.85;
+  ctx.fillRect(d.x, d.y, s.w, s.h);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#fff';
+  ctx.font = `${Math.max(7, Math.min(10, s.w))}px sans-serif`;
+  ctx.fillText(d.type, d.x + 2, d.y + 10);
+}
+
+// En el editor la flecha NO se dibuja donde nace (tapaba media pantalla):
+// se ve solo la zona de activación amarilla, con el sprite de la flecha
+// adentro apuntando hacia donde va a salir disparada. En modo Probar sí se
+// dibuja el proyectil, que es cuando importa.
+// Tamaño y punto de nacimiento de la flecha según su dirección.
+// ANTES: al cambiar de dirección en el panel de propiedades, la flecha se
+// seguía dibujando desde donde había nacido originalmente (siempre desde
+// la derecha, porque ese es el default al colocarla) — por eso "arriba",
+// "abajo" e "izquierda" no se veían: nacían fuera del nivel, en un punto
+// que no tenía nada que ver con la nueva dirección. Ahora, cada vez que
+// cambia la dirección, la zona o el tipo de trigger, se recalcula desde
+// qué borde del nivel nace y hacia dónde apunta.
+const ARROW_LEN = 34;   // largo en la dirección de vuelo (antes 22 — se pidió más grande)
+const ARROW_THICK = 13; // grosor (antes 8)
+
+function arrowDims(dir) {
+  return (dir === 'up' || dir === 'down')
+    ? { w: ARROW_THICK, h: ARROW_LEN }
+    : { w: ARROW_LEN, h: ARROW_THICK };
+}
+
+// Punto de referencia (centro) desde el que se alinea la flecha: el
+// centro de la zona de activación, o el punto del trigger de línea.
+function arrowAnchor(a) {
+  if (a.triggerType === 'area' && a.triggerZone) {
+    const z = a.triggerZone;
+    return { x: z.x + z.w / 2, y: z.y + z.h / 2 };
+  }
+  return { x: a.triggerX, y: (a.y || 0) + (a.h || ARROW_THICK) / 2 };
+}
+
+// Recalcula w/h y x/y de nacimiento para que la flecha salga del borde
+// correcto del nivel según su dirección actual. Se llama al elegir la
+// pieza, al cambiar la dirección, y al mover/agrandar la zona o la línea.
+function repositionArrow(a, lvl) {
+  const dims = arrowDims(a.dir);
+  a.w = dims.w; a.h = dims.h;
+  const anchor = arrowAnchor(a);
+  const W = lvlW(lvl), H = lvlH(lvl);
+  const MARGIN = 10;
+  if (a.dir === -1) { a.x = W + MARGIN; a.y = anchor.y - a.h / 2; }
+  else if (a.dir === 1) { a.x = -MARGIN - a.w; a.y = anchor.y - a.h / 2; }
+  else if (a.dir === 'up') { a.y = H + MARGIN; a.x = anchor.x - a.w / 2; }
+  else if (a.dir === 'down') { a.y = -MARGIN - a.h; a.x = anchor.x - a.w / 2; }
+}
+
+function arrowFrameFor(dir) {
+  if (!IMG.obst) return null;
+  if (dir === 'up') return { f: OBST_ATLAS.frames.arrow_up_a, flip: false, rot: 0 };
+  if (dir === 'down') return { f: OBST_ATLAS.frames.arrow_down, flip: false, rot: 0 };
+  return { f: OBST_ATLAS.frames.arrow_right_a, flip: dir === -1, rot: 0 };
+}
+
+function drawArrowSprite(x, y, w, h, dir) {
+  const info = arrowFrameFor(dir);
+  if (!info || !info.f) {
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(x, y, w, h);
+    return;
+  }
+  ctx.save();
+  if (info.flip) { ctx.translate(x + w / 2, 0); ctx.scale(-1, 1); ctx.drawImage(IMG.obst, info.f.x, info.f.y, info.f.w, info.f.h, -w / 2, y, w, h); }
+  else ctx.drawImage(IMG.obst, info.f.x, info.f.y, info.f.w, info.f.h, x, y, w, h);
+  ctx.restore();
+}
+
+function drawArrow(a) {
+  if (state.playtest) {
+    // El proyectil se dibuja con su propio w/h (ya vienen orientados según
+    // la dirección — ver arrowDims): antes esto estiraba con un *3 pensado
+    // para el tamaño viejo y quedaba desproporcionado con el nuevo.
+    if (a.active) drawArrowSprite(a.x, a.y, a.w, a.h, a.dir);
+    return;
+  }
+
+  ctx.save();
+  if (a.triggerType === 'area' && a.triggerZone) {
+    const z = a.triggerZone;
+    ctx.fillStyle = 'rgba(250,204,21,0.15)';
+    ctx.fillRect(z.x, z.y, z.w, z.h);
+    ctx.strokeStyle = 'rgba(250,204,21,0.85)';
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 1.2 / state.zoom;
+    ctx.strokeRect(z.x, z.y, z.w, z.h);
+    ctx.setLineDash([]);
+    // Sprite adentro de la zona: muestra hacia dónde sale la flecha.
+    const lado = Math.min(z.w, z.h) * 0.7;
+    drawArrowSprite(z.x + z.w / 2 - lado / 2, z.y + z.h / 2 - lado / 2, lado, lado, a.dir);
+    // Cuántas veces dispara.
+    const veces = Math.max(1, a.repeat || 1);
+    if (veces > 1) {
+      ctx.fillStyle = '#facc15';
+      ctx.font = `bold ${11 / state.zoom}px system-ui`;
+      ctx.fillText('x' + veces, z.x + 3, z.y + 12 / state.zoom);
+    }
+  } else {
+    ctx.strokeStyle = 'rgba(250,204,21,0.6)';
+    ctx.setLineDash([4, 3]);
+    ctx.lineWidth = 1.2 / state.zoom;
+    ctx.beginPath(); ctx.moveTo(a.triggerX, 0); ctx.lineTo(a.triggerX, lvlH(curLevel())); ctx.stroke();
+    ctx.setLineDash([]);
+    drawArrowSprite(a.triggerX - 10, a.y - 10, 20, 20, a.dir);
+  }
+  ctx.restore();
+}
+
+function drawExit(exit) {
+  const f = MAPA_ATLAS.frames.door;
+  if (IMG.mapa && f) {
+    ctx.drawImage(IMG.mapa, f.x, f.y, f.w, f.h, exit.x, exit.y, exit.w, exit.h);
+  } else {
+    ctx.fillStyle = '#15803d'; ctx.fillRect(exit.x, exit.y, exit.w, exit.h);
+    ctx.fillStyle = '#22c55e'; ctx.fillRect(exit.x + 2, exit.y + 2, exit.w - 4, exit.h - 4);
+    ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(exit.x + 6, exit.y + exit.h / 2, 2.5, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawPlayer(p) {
+  if (IMG.junior && IMG.junior.complete && IMG.junior.naturalWidth > 0) {
+    const frameName = p.dead ? 'fall_0' : (!p.onGround ? 'action_2' : `run_${p.animFrame || 0}`);
+    const f = JUNIOR_ATLAS.frames[frameName] || JUNIOR_ATLAS.frames.run_0;
+    if (f) {
+      ctx.save();
+      if (p.dead) ctx.globalAlpha = 0.85;
+      const targetH = p.h; // 27px
+      const targetW = targetH * (f.w / f.h);
+      ctx.translate(p.x + p.w / 2, p.y + p.h);
+      if (p.facing === -1) ctx.scale(-1, 1);
+      ctx.drawImage(IMG.junior, f.x, f.y, f.w, f.h, -targetW / 2, -targetH, targetW, targetH);
+      ctx.restore();
+      return;
+    }
+  }
+
+  // Fallback vectorial de Junior completo
+  const x = Math.round(p.x), y = Math.round(p.y);
+  const W = p.w, H = p.h;
+  const S = W / 32;
+
+  ctx.save();
+  if (p.dead) ctx.globalAlpha = 0.75;
+
+  const legColors = ['#1e3a5f', '#1e3a5f'];
+  const shoeColor = '#f5c518';
+
+  // Piernas y zapatos
+  ctx.fillStyle = legColors[0];
+  ctx.fillRect(x + 8*S, y + 25*S, 7*S, 8*S);
+  ctx.fillStyle = shoeColor;
+  ctx.fillRect(x + 6*S, y + 33*S, 9*S, 3*S);
+  ctx.fillStyle = legColors[1];
+  ctx.fillRect(x + 17*S, y + 25*S, 7*S, 8*S);
+  ctx.fillStyle = shoeColor;
+  ctx.fillRect(x + 17*S, y + 33*S, 9*S, 3*S);
+
+  // Buzo azul
+  ctx.fillStyle = '#2563eb';
+  ctx.fillRect(x + 8*S, y + 14*S, 16*S, 11*S);
+
+  // Cuello y manos
+  ctx.fillStyle = '#fbbf7a';
+  ctx.fillRect(x + 12*S, y + 14*S, 8*S, 3*S);
+  ctx.fillRect(x + 3*S, y + 16*S, 5*S, 3*S);
+  ctx.fillRect(x + 24*S, y + 16*S, 5*S, 3*S);
+
+  // Cabeza / cara
+  ctx.fillStyle = '#fbbf7a';
+  ctx.fillRect(x + 8*S, y + 2*S, 16*S, 13*S);
+
+  // Pelo
+  ctx.fillStyle = '#3b2506';
+  ctx.fillRect(x + 8*S, y, 16*S, 3*S);
+  ctx.fillRect(x + 7*S, y + 1*S, 2*S, 2*S);
+  ctx.fillRect(x + 23*S, y + 1*S, 2*S, 2*S);
+
+  // Lentes
+  ctx.strokeStyle = '#1a3a6b';
+  ctx.lineWidth = Math.max(1, S * 1.5);
+  ctx.strokeRect(x + 8*S, y + 8*S, 7*S, 5*S);
+  ctx.strokeRect(x + 17*S, y + 8*S, 7*S, 5*S);
+  ctx.fillStyle = '#1a3a6b';
+  ctx.fillRect(x + 15*S, y + 10*S, 2*S, 1.5*S);
+  ctx.fillStyle = 'rgba(147,197,253,0.55)';
+  ctx.fillRect(x + 9*S, y + 9*S, 5*S, 3*S);
+  ctx.fillRect(x + 18*S, y + 9*S, 5*S, 3*S);
+
+  // Ojos / Boca
+  if (!p.dead) {
+    ctx.fillStyle = '#1e1e1e';
+    ctx.fillRect(x + (p.facing === -1 ? 9*S : 13*S), y + 9.5*S, 2*S, 1.5*S);
+    ctx.fillRect(x + (p.facing === -1 ? 17*S : 21*S), y + 9.5*S, 2*S, 1.5*S);
+    ctx.fillStyle = '#d97706';
+    ctx.fillRect(x + 12*S, y + 12*S, 8*S, 2*S);
+  } else {
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = S;
+    ctx.beginPath();
+    ctx.moveTo(x + 9*S, y + 9*S); ctx.lineTo(x + 14*S, y + 13*S);
+    ctx.moveTo(x + 14*S, y + 9*S); ctx.lineTo(x + 9*S, y + 13*S);
+    ctx.moveTo(x + 18*S, y + 9*S); ctx.lineTo(x + 23*S, y + 13*S);
+    ctx.moveTo(x + 23*S, y + 9*S); ctx.lineTo(x + 18*S, y + 13*S);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function drawStart(start) {
+  ctx.save();
+  // Dibuja a Junior en pose idle
+  drawPlayer({
+    x: start.x, y: start.y, w: 24, h: 27,
+    dead: false, onGround: true, facing: 1, animFrame: 0
+  });
+  
+  // Marco / Badge de Spawn
+  ctx.strokeStyle = 'rgba(56,189,248,0.7)';
+  ctx.lineWidth = 1.2 / state.zoom;
+  ctx.setLineDash([3, 2]);
+  ctx.strokeRect(start.x - 2, start.y - 2, 28, 31);
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#38bdf8';
+  ctx.font = 'bold 8px sans-serif';
+  ctx.fillText('SPAWN', start.x - 1, start.y - 5);
+  ctx.restore();
+}
+
+function drawExplosions() {
+  for (const e of state.playExplosions) {
+    ctx.globalAlpha = Math.max(0, e.life);
+    ctx.fillStyle = e.color;
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r * e.life, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawSelection(cat, obj) {
+  const bbox = bboxOf(cat, obj);
+  ctx.save();
+  ctx.strokeStyle = '#facc15'; ctx.lineWidth = 1.5 / state.zoom; ctx.setLineDash([4 / state.zoom, 3 / state.zoom]);
+  ctx.strokeRect(bbox.x - 1, bbox.y - 1, bbox.w + 2, bbox.h + 2);
+  ctx.setLineDash([]);
+  if (isResizable(cat)) {
+    const hs = getHandles(bbox);
+    ctx.fillStyle = '#facc15';
+    for (const k in hs) ctx.fillRect(hs[k].x - HANDLE_SIZE / 2, hs[k].y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+  }
+  // Manijas del recorrido azul (se arrastran para alargar/acortar)
+  if (obj.move) {
+    const m = obj.move;
+    const pts = m.axis === 'x'
+      ? [{ x: m.from + obj.w / 2, y: obj.y + obj.h / 2 }, { x: m.to + obj.w / 2, y: obj.y + obj.h / 2 }]
+      : [{ x: obj.x + obj.w / 2, y: m.from + obj.h / 2 }, { x: obj.x + obj.w / 2, y: m.to + obj.h / 2 }];
+    ctx.fillStyle = '#60a5fa';
+    pts.forEach(pt => { ctx.beginPath(); ctx.arc(pt.x, pt.y, HANDLE_SIZE / 1.4, 0, Math.PI * 2); ctx.fill(); });
+  }
+  // Manijas de la zona de activación de la flecha
+  if (cat === 'arrows' && obj.triggerType === 'area' && obj.triggerZone) {
+    const zs = getHandles(obj.triggerZone);
+    ctx.fillStyle = '#fde047';
+    for (const k in zs) ctx.fillRect(zs[k].x - HANDLE_SIZE / 2, zs[k].y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+  }
+  ctx.restore();
+}
+
+function render() {
+  ctx.save();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.scale(state.zoom, state.zoom);
+
+  const W = lvlW(curLevel()), H = lvlH(curLevel());
+  if (IMG.back) { ctx.drawImage(IMG.back, 0, 0, W, H); }
+  else { ctx.fillStyle = '#150620'; ctx.fillRect(0, 0, W, H); }
+
+  drawGrid();
+
+  // Marco de vista estándar de juego (480x270 × el campo de visión del nivel).
+  // El canvas del juego siempre es 480x270 px, pero con fov != 1 la cámara
+  // muestra un área más grande o más chica del mundo comprimida/estirada
+  // a ese mismo canvas — este rectángulo es justamente esa área.
+  const fovNow = lvlFov(curLevel());
+  const viewW = TR_W * fovNow, viewH = TR_H * fovNow;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(96,165,250,0.4)';
+  ctx.setLineDash([6 / state.zoom, 4 / state.zoom]);
+  ctx.lineWidth = 1.5 / state.zoom;
+  ctx.strokeRect(0, 0, viewW, viewH);
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(96,165,250,0.7)';
+  ctx.font = (9 / state.zoom) + 'px sans-serif';
+  ctx.fillText('Vista de pantalla (' + Math.round(viewW) + '×' + Math.round(viewH) + ')', 4 / state.zoom, 12 / state.zoom);
+  ctx.restore();
+
+  const lvl = curLevel();
+
+  // Decoración de fondo
+  lvl.decor.forEach(drawDecorItem);
+
+  // Hazards tipo spike detrás de plataformas
+  const hazardsList = state.playtest ? state.playHazards : lvl.hazards;
+  hazardsList.forEach(hz => { if (hz.type === 'spike') drawSpikeRow(hz.x, hz.y, hz.w, hz.h, hz); });
+
+  // Plataformas
+  const platList = state.playtest ? state.playPlatforms : lvl.platforms;
+  platList.forEach(p => drawPlatform(p));
+
+  // Hazards tipo sierra y estrella
+  hazardsList.forEach(hz => { if (hz.type === 'saw') drawSaw(hz); else if (hz.type === 'star') drawStar(hz); });
+
+  // Flechas
+  const arrowList = state.playtest ? state.playArrows : lvl.arrows;
+  arrowList.forEach(drawArrow);
+
+  // Salida (puede no estar puesta todavía)
+  if (lvl.exit) drawExit(lvl.exit);
+
+  // Spawn o Jugador
+  if (state.playtest && state.playPlayer) {
+    drawPlayer(state.playPlayer);
+    drawExplosions();
+  } else if (lvl.start) {
+    drawStart(lvl.start);
+  }
+
+  // Selección activa (solo en modo editor)
+  if (!state.playtest && state.selected) {
+    const obj = getSelObj();
+    if (obj) drawSelection(state.selected.cat, obj);
+  }
+
+  if (!state.playtest) drawLevelHandles();
+
+  ctx.restore();
+}
+
+// ─── Tamaño del nivel con el mouse ───
+// Tres manijas verdes en el borde derecho, el de abajo y la esquina: se
+// arrastran para agrandar o achicar el nivel, siempre de a un cuadrado.
+function levelHandlePoints() {
+  const W = lvlW(curLevel()), H = lvlH(curLevel());
+  return { e: { x: W, y: H / 2 }, s: { x: W / 2, y: H }, se: { x: W, y: H } };
+}
+
+function levelHandleAt(px, py) {
+  const pts = levelHandlePoints();
+  const r = (HANDLE_SIZE + 6) / state.zoom;
+  for (const k in pts) {
+    if (Math.abs(px - pts[k].x) <= r && Math.abs(py - pts[k].y) <= r) return k;
+  }
+  return null;
+}
+
+function drawLevelHandles() {
+  const pts = levelHandlePoints();
+  const sz = HANDLE_SIZE / state.zoom * 1.6;
+  ctx.save();
+  ctx.fillStyle = '#22c55e';
+  ctx.strokeStyle = 'rgba(34,197,94,0.5)';
+  ctx.lineWidth = 1 / state.zoom;
+  ctx.strokeRect(0, 0, lvlW(curLevel()), lvlH(curLevel()));
+  for (const k in pts) ctx.fillRect(pts[k].x - sz / 2, pts[k].y - sz / 2, sz, sz);
+  ctx.restore();
+}
+
+// ══════════════════════════════════════
+//  MODO PLAYTEST (FÍSICA REAL CASTLE ESCAPE)
+// ══════════════════════════════════════
+function startPlaytest() {
+  // Sin spawn no hay dónde aparecer: se avisa en vez de arrancar roto.
+  if (!curLevel().start) { showToast('Falta el punto de aparición (paleta: Inicio)'); return; }
+  if (!curLevel().exit) showToast('Ojo: este nivel todavía no tiene puerta de salida');
+  state.playtest = true;
+  state.selected = null;
+  state.playWon = false;
+  state.playStartTime = performance.now();
+  state.playDeaths = 0;
+  state.playExplosions = [];
+  
+  const lvl = curLevel();
+  initPlayLevel(lvl);
+  
+  document.getElementById('playHud').style.display = 'flex';
+  document.getElementById('playWinModal').style.display = 'none';
+  document.getElementById('leftToolbar').style.opacity = '0.3';
+  document.getElementById('rightSidebar').style.opacity = '0.3';
+  document.getElementById('btnPlayToggle').textContent = '■ VOLVER AL EDITOR (Esc)';
+  document.getElementById('btnPlayToggle').classList.remove('play-btn');
+  document.getElementById('btnPlayToggle').classList.add('stop-btn');
+  canvas.style.cursor = 'none';
+}
+
+function stopPlaytest() {
+  state.playtest = false;
+  document.getElementById('playHud').style.display = 'none';
+  document.getElementById('playWinModal').style.display = 'none';
+  document.getElementById('leftToolbar').style.opacity = '1';
+  document.getElementById('rightSidebar').style.opacity = '1';
+  document.getElementById('btnPlayToggle').textContent = '▶ PROBAR NIVEL (Espacio / P)';
+  document.getElementById('btnPlayToggle').classList.remove('stop-btn');
+  document.getElementById('btnPlayToggle').classList.add('play-btn');
+  canvas.style.cursor = state.tool === 'select' ? 'default' : 'crosshair';
+  refreshAll();
+}
+
+function initPlayLevel(lvl) {
+  state.playPlatforms = lvl.platforms.map(p => ({ ...p, touchedAt: null, gone: false }));
+  state.playHazards = lvl.hazards.map(h => ({ ...h }));
+  state.playArrows = lvl.arrows.map(a => ({ ...a, active: false, fired: false, fires: 0, ox: a.x, oy: a.y }));
+  state.playPlayer = {
+    x: (lvl.start || { x: 20 }).x, y: (lvl.start || { y: 200 }).y, w: 24, h: 27, vx: 0, vy: 0,
+    onGround: false, dead: false, ridingPlatform: null,
+    facing: 1, animFrame: 0, animTick: 0
+  };
+}
+
+function playPlayerDie() {
+  const p = state.playPlayer;
+  if (!p || p.dead) return;
+  p.dead = true;
+  state.playDeaths++;
+  document.getElementById('playHudDeaths').textContent = 'Muertes: ' + state.playDeaths;
+  
+  // Spawn explosions
+  const colors = ['#ef4444', '#f97316', '#facc15', '#fff'];
+  for (let i = 0; i < 18; i++) {
+    const angle = (Math.PI * 2 / 18) * i + (Math.random() - 0.5) * 0.4;
+    const speed = 2 + Math.random() * 4;
+    state.playExplosions.push({
+      x: p.x + p.w / 2, y: p.y + p.h / 2,
+      vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+      r: 2 + Math.random() * 3, life: 1,
+      decay: 0.02 + Math.random() * 0.03,
+      color: colors[Math.floor(Math.random() * colors.length)]
+    });
+  }
+  
+  setTimeout(() => {
+    if (state.playtest) initPlayLevel(curLevel());
+  }, 450);
+}
+
+function playPlayerWin() {
+  state.playWon = true;
+  const elapsed = ((performance.now() - state.playStartTime) / 1000).toFixed(1);
+  document.getElementById('playWinStats').textContent = `Completado en ${elapsed}s con ${state.playDeaths} muertes.`;
+  document.getElementById('playWinModal').style.display = 'flex';
+}
+
+function updatePlaytest(step) {
+  if (!state.playtest || state.playWon) return;
+  
+  // Timer
+  const elapsed = ((performance.now() - state.playStartTime) / 1000).toFixed(1);
+  document.getElementById('playHudTime').textContent = `Tiempo: ${elapsed}s`;
+  
+  // Partículas
+  for (let i = state.playExplosions.length - 1; i >= 0; i--) {
+    const e = state.playExplosions[i];
+    e.x += e.vx; e.y += e.vy; e.vy += 0.1; e.life -= e.decay;
+    if (e.life <= 0) state.playExplosions.splice(i, 1);
+  }
+
+  const p = state.playPlayer;
+  if (!p || p.dead) return;
+  const lvl = curLevel();
+  const W = lvlW(lvl), H = lvlH(lvl);
+
+  // Mover plataformas móviles
+  for (const plat of state.playPlatforms) {
+    if (plat.type !== 'moving' || plat.gone || !plat.move) continue;
+    const axis = plat.move.axis;
+    const prev = plat[axis];
+    plat[axis] += (plat._dir || 1) * plat.move.speed * step;
+    if (plat[axis] >= plat.move.to) { plat[axis] = plat.move.to; plat._dir = -1; }
+    else if (plat[axis] <= plat.move.from) { plat[axis] = plat.move.from; plat._dir = 1; }
+    const delta = plat[axis] - prev;
+    if (delta !== 0 && p.ridingPlatform === plat) p[axis] += delta;
+  }
+
+  // Mover sierras
+  for (const hz of state.playHazards) {
+    if (hz.type === 'saw' && hz.move) {
+      const axis = hz.move.axis;
+      hz[axis] += (hz._dir || 1) * hz.move.speed * step;
+      if (hz[axis] >= hz.move.to) { hz[axis] = hz.move.to; hz._dir = -1; }
+      else if (hz[axis] <= hz.move.from) { hz[axis] = hz.move.from; hz._dir = 1; }
+    }
+  }
+
+  // Movimiento horizontal
+  p.vx = 0;
+  if (state.playKeys.left) p.vx = -TR_MOVE_SPEED;
+  if (state.playKeys.right) p.vx = TR_MOVE_SPEED;
+  p.x += p.vx * step;
+  p.x = Math.max(0, Math.min(p.x, W - p.w));
+
+  // Colisión horizontal: cualquier bloque sólido frena de costado. Las
+  // 'moving' quedan afuera (ver el mismo comentario en castle_loop.js del
+  // juego): por redondeo, el jugador que sube con una plataforma podía
+  // rozar el borde y salir despedido de costado.
+  for (const plat of state.playPlatforms) {
+    if (plat.gone || plat.type === 'fake' || plat.fake || plat.type === 'moving') continue;
+    if (!rectsOverlap(p, plat)) continue;
+    if (p.vx > 0) p.x = plat.x - p.w;
+    else if (p.vx < 0) p.x = plat.x + plat.w;
+    else if (p.x + p.w / 2 < plat.x + plat.w / 2) p.x = plat.x - p.w;
+    else p.x = plat.x + plat.w;
+  }
+
+  if (p.vx > 0) p.facing = 1;
+  else if (p.vx < 0) p.facing = -1;
+
+  if (p.onGround && p.vx !== 0) {
+    p.animTick += step;
+    if (p.animTick >= 6) { p.animTick = 0; p.animFrame = ((p.animFrame || 0) + 1) % 7; }
+  } else if (p.onGround) {
+    p.animFrame = 0; p.animTick = 0;
+  }
+
+  // Gravedad
+  p.vy += TR_GRAVITY * step;
+  p.y += p.vy * step;
+  p.onGround = false;
+  p.ridingPlatform = null;
+
+  // Colisión vertical: piso arriba y techo abajo del bloque.
+  for (const plat of state.playPlatforms) {
+    if (plat.type === 'fake' || plat.gone || plat.fake) continue;
+    if (!rectsOverlap(p, plat)) continue;
+    if (p.vy < 0) { p.y = plat.y + plat.h; p.vy = 0; continue; }
+    p.y = plat.y - p.h;
+    p.vy = 0;
+    p.onGround = true;
+    if (plat.type === 'crumble' && plat.touchedAt === null) plat.touchedAt = performance.now();
+    if (plat.type === 'moving') p.ridingPlatform = plat;
+  }
+
+  // Derrumbe crumble
+  for (const plat of state.playPlatforms) {
+    if (plat.type === 'crumble' && plat.touchedAt !== null && !plat.gone) {
+      if (performance.now() - plat.touchedAt > 400) plat.gone = true;
+    }
+  }
+
+  // Flechas
+  state.playArrows.forEach(a => {
+    const maxDisparos = Math.max(1, a.repeat || 1);
+    if (!a.active && (a.fires || 0) < maxDisparos) {
+      const shouldFire = (a.triggerType === 'area' && a.triggerZone)
+        ? rectsOverlap(p, a.triggerZone)
+        : p.x >= a.triggerX;
+      if (shouldFire) {
+        a.fired = true; a.active = true;
+        a.fires = (a.fires || 0) + 1;
+        a.x = a.ox; a.y = a.oy;
+      }
+    }
+    if (a.active) {
+      if (a.dir === 'up') a.y -= a.speed * step;
+      else if (a.dir === 'down') a.y += a.speed * step;
+      else a.x += a.dir * a.speed * step;
+      if (a.x < -40 || a.x > W + 40 || a.y < -40 || a.y > H + 40) a.active = false;
+      if (rectsOverlap(p, a)) { playPlayerDie(); return; }
+    }
+  });
+
+  if (p.dead) return;
+
+  // Colisión peligros
+  for (const hz of state.playHazards) {
+    if (hz.fake) continue;
+    if (rectsOverlap(p, hz)) { playPlayerDie(); return; }
+  }
+
+  // Caerse del mapa
+  if (p.y > H + 20) { playPlayerDie(); return; }
+
+  // Llegar a la salida
+  if (lvl.exit && rectsOverlap(p, lvl.exit)) { playPlayerWin(); }
+}
+
+function rectsOverlap(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+// ══════════════════════════════════════
+//  INTERACCIÓN DE MOUSE EN EL CANVAS
+// ══════════════════════════════════════
+function toLogical(e) {
+  const r = canvas.getBoundingClientRect();
+  // El canvas puede estar mostrado a otra escala (pantalla completa, o el
+  // borde de 1px): se convierte de píxeles de pantalla a píxeles del canvas
+  // y recién ahí se divide por el zoom. Sin esto el clic caía corrido.
+  const sx = canvas.width / (r.width - (canvas.clientLeft || 0) * 2 || r.width);
+  const sy = canvas.height / (r.height - (canvas.clientTop || 0) * 2 || r.height);
+  return {
+    x: (e.clientX - r.left - (canvas.clientLeft || 0)) * sx / state.zoom,
+    y: (e.clientY - r.top - (canvas.clientTop || 0)) * sy / state.zoom,
+  };
+}
+
+// Celda que contiene al puntero (floor, no round): la pieza se coloca en el
+// cuadrado que estás señalando, no en el más cercano.
+function cellVal(v) { return Math.floor(v / TR_TILE) * TR_TILE; }
+
+canvas.addEventListener('mousedown', e => {
+  if (state.playtest) return;
+  const { x, y } = toLogical(e);
+  const tool = state.tool;
+
+  if (tool === 'select') {
+    const lh = levelHandleAt(x, y);
+    if (lh) {
+      pushHistory();
+      state.drag = { mode: 'level-resize', side: lh };
+      return;
+    }
+    if (state.selected) {
+      const obj = getSelObj();
+      const cat = state.selected.cat;
+      // Manijas azules del recorrido (from/to) y de la zona de activación:
+      // se estiran con el mouse, sin tocar ningún número.
+      const mh = obj && moveHandleAt(x, y, obj);
+      if (mh) {
+        pushHistory();
+        state.drag = { mode: 'move-range', end: mh, obj };
+        return;
+      }
+      const zh = obj && cat === 'arrows' && zoneHandleAt(x, y, obj);
+      if (zh) {
+        pushHistory();
+        state.drag = { mode: 'zone-resize', handle: zh, obj, orig: { ...obj.triggerZone } };
+        return;
+      }
+      if (obj && isResizable(cat)) {
+        const bbox = bboxOf(cat, obj);
+        const h = handleAt(x, y, bbox);
+        if (h) {
+          pushHistory();
+          state.drag = { mode: 'resize', handle: h, cat, obj, orig: { ...obj } };
+          return;
+        }
+      }
+    }
+    const hit = hitTest(x, y);
+    if (hit) {
+      state.selected = hit;
+      const obj = getSelObj();
+      pushHistory();
+      state.drag = { mode: 'move', cat: hit.cat, obj, offsetX: x - obj.x, offsetY: y - obj.y };
+    } else {
+      // Clic en vacío: además de deseleccionar, arrastrar mueve la vista
+      // (como el "mano" de cualquier editor).
+      state.selected = null;
+      const wrap = document.getElementById('canvasWrap');
+      state.drag = {
+        mode: 'pan',
+        sx: e.clientX, sy: e.clientY,
+        sl: wrap.scrollLeft, st: wrap.scrollTop,
+      };
+      canvas.style.cursor = 'grabbing';
+    }
+    refreshAll();
+    return;
+  }
+
+  // Piezas de la paleta: siempre tamaño fijo, una por celda. Con el modo
+  // pincel activo, arrastrar sigue colocando en cada celda nueva.
+  if (tool === 'block' || tool === 'plat' || tool === 'spike' || tool === 'saw' || tool === 'arrow') {
+    const ref = placePiece(x, y);
+    state.selected = ref;
+    if (state.paint) state.drag = { mode: 'paint' };
+    else if (!state.keepTool) setTool('select');
+    refreshAll();
+    return;
+  }
+
+  if (tool === 'decor') {
+    const ref = addDecor(snapVal(x), snapVal(y));
+    state.selected = ref;
+    if (!state.keepTool) setTool('select');
+    refreshAll();
+    return;
+  }
+
+  if (tool === 'start') {
+    pushHistory();
+    // Centrado en el cuadrado y con los pies apoyados en el borde de abajo
+    // (antes quedaba con medio cuerpo metido en el piso).
+    // Solo puede haber UN punto de aparición: si ya había, se mueve.
+    curLevel().start = {
+      x: cellVal(x) + Math.round((TR_TILE - 24) / 2),
+      y: cellVal(y) + TR_TILE - 27,
+    };
+    state.selected = { cat: 'start', idx: -1 };
+    if (!state.keepTool) setTool('select');
+    refreshAll();
+    return;
+  }
+
+  if (tool === 'exit') {
+    // La puerta ocupa 1 cuadrado de ancho y 2 de alto, apoyada en el
+    // cuadrado que señalás (crece hacia arriba).
+    pushHistory();
+    curLevel().exit = { x: cellVal(x), y: cellVal(y) - TR_TILE, w: TR_TILE, h: TR_TILE * 2 };
+    state.selected = { cat: 'exit', idx: -1 };
+    if (!state.keepTool) setTool('select');
+    refreshAll();
+    return;
+  }
+});
+
+window.addEventListener('mousemove', e => {
+  const { x, y } = toLogical(e);
+  state.mouse = { x: Math.round(x), y: Math.round(y) };
+  document.getElementById('coordsLabel').textContent = `x: ${Math.round(x)}, y: ${Math.round(y)}`;
+
+  const d = state.drag;
+  if (!d) return;
+
+  if (d.mode === 'paint') {
+    if (!cellTaken(x, y)) {
+      state.selected = placePiece(x, y);
+      refreshAll();
+    }
+    return;
+  }
+
+  if (d.mode === 'pan') {
+    const wrap = document.getElementById('canvasWrap');
+    wrap.scrollLeft = d.sl - (e.clientX - d.sx);
+    wrap.scrollTop = d.st - (e.clientY - d.sy);
+    return;
+  }
+
+  if (d.mode === 'level-resize') {
+    const lvl = curLevel();
+    const aCuadros = v => Math.round(v / TR_TILE) * TR_TILE;
+    if (d.side === 'e' || d.side === 'se') lvl.width = Math.max(TR_W, aCuadros(x));
+    if (d.side === 's' || d.side === 'se') lvl.height = Math.max(TR_H, aCuadros(y));
+    resizeCanvas();
+    render();
+    document.getElementById('lvlWidth').value = lvlW(lvl);
+    document.getElementById('lvlHeight').value = lvlH(lvl);
+    return;
+  }
+
+  if (d.mode === 'move-range') {
+    const m = d.obj.move;
+    if (m) {
+      const v = m.axis === 'x' ? snapVal(x - d.obj.w / 2) : snapVal(y - d.obj.h / 2);
+      if (d.end === 'from') m.from = Math.min(v, m.to);
+      else m.to = Math.max(v, m.from);
+      render(); refreshProps();
+    }
+    return;
+  }
+
+  if (d.mode === 'zone-resize') {
+    const z = d.obj.triggerZone;
+    const o = d.orig;
+    const sx = snapVal(x), sy = snapVal(y);
+    if (d.handle === 'br') { z.w = Math.max(TR_TILE, sx - o.x); z.h = Math.max(TR_TILE, sy - o.y); }
+    if (d.handle === 'bl') { z.x = Math.min(sx, o.x + o.w - TR_TILE); z.w = Math.max(TR_TILE, o.x + o.w - z.x); z.h = Math.max(TR_TILE, sy - o.y); }
+    if (d.handle === 'tr') { z.y = Math.min(sy, o.y + o.h - TR_TILE); z.h = Math.max(TR_TILE, o.y + o.h - z.y); z.w = Math.max(TR_TILE, sx - o.x); }
+    if (d.handle === 'tl') {
+      z.x = Math.min(sx, o.x + o.w - TR_TILE); z.y = Math.min(sy, o.y + o.h - TR_TILE);
+      z.w = Math.max(TR_TILE, o.x + o.w - z.x); z.h = Math.max(TR_TILE, o.y + o.h - z.y);
+    }
+    repositionArrow(d.obj, curLevel());
+    render(); refreshProps();
+    return;
+  }
+
+  if (d.mode === 'create-rect') {
+    d.x = x; d.y = y;
+    render();
+    ctx.save(); ctx.scale(state.zoom, state.zoom);
+    const rx = Math.min(d.startX, snapVal(x)), ry = Math.min(d.startY, snapVal(y));
+    const rw = Math.abs(snapVal(x) - d.startX), rh = Math.abs(snapVal(y) - d.startY);
+    ctx.strokeStyle = '#facc15'; ctx.lineWidth = 1.5 / state.zoom; ctx.setLineDash([4 / state.zoom, 3 / state.zoom]);
+    ctx.strokeRect(rx, ry, rw, rh);
+    ctx.restore();
+    return;
+  }
+
+  if (d.mode === 'move') {
+    d.obj.x = snapVal(x - d.offsetX);
+    d.obj.y = snapVal(y - d.offsetY);
+    render();
+    refreshProps();
+    return;
+  }
+
+  if (d.mode === 'resize') {
+    const o = d.orig;
+    let nx = o.x, ny = o.y, nw = o.w, nh = o.h;
+    const sx = snapVal(x), sy = snapVal(y);
+    if (d.handle === 'br') { nw = Math.max(8, sx - o.x); nh = Math.max(8, sy - o.y); }
+    if (d.handle === 'bl') { nx = Math.min(sx, o.x + o.w - 8); nw = Math.max(8, o.x + o.w - sx); nh = Math.max(8, sy - o.y); }
+    if (d.handle === 'tr') { ny = Math.min(sy, o.y + o.h - 8); nh = Math.max(8, o.y + o.h - sy); nw = Math.max(8, sx - o.x); }
+    if (d.handle === 'tl') { nx = Math.min(sx, o.x + o.w - 8); ny = Math.min(sy, o.y + o.h - 8); nw = Math.max(8, o.x + o.w - sx); nh = Math.max(8, sy - o.y); }
+    d.obj.x = nx; d.obj.y = ny; d.obj.w = nw; d.obj.h = nh;
+    render();
+    refreshProps();
+    return;
+  }
+});
+
+window.addEventListener('mouseup', () => {
+  const d = state.drag;
+  if (!d) return;
+  if (d.mode === 'create-rect') {
+    const x2 = snapVal(d.x), y2 = snapVal(d.y);
+    let rx = Math.min(d.startX, x2), ry = Math.min(d.startY, y2);
+    let rw = Math.abs(x2 - d.startX), rh = Math.abs(y2 - d.startY);
+    // Un clic sin arrastrar = un bloque de 1 celda (como en GD).
+    rw = snapSize(rw);
+    rh = snapSize(rh);
+    let ref;
+    if (d.kind === 'platform') ref = addPlatform(rx, ry, rw, rh);
+    else if (d.kind === 'hazard') ref = addHazard(rx, ry, rw, rh);
+    else if (d.kind === 'exit') {
+      pushHistory();
+      curLevel().exit = { x: rx, y: ry, w: rw, h: rh };
+      ref = { cat: 'exit', idx: -1 };
+    }
+    state.selected = ref;
+    if (!state.keepTool) setTool('select');
+  }
+  if (d.mode === 'level-resize') save();
+  if (d.mode === 'pan') canvas.style.cursor = state.tool === 'select' ? 'default' : 'crosshair';
+  state.drag = null;
+  refreshAll();
+});
+
+// ══════════════════════════════════════
+//  TECLADO Y SHORTCUTS
+// ══════════════════════════════════════
+window.addEventListener('keydown', e => {
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
+
+  // Playtest controls
+  if (state.playtest) {
+    if (e.key === 'Escape') { e.preventDefault(); stopPlaytest(); return; }
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') state.playKeys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') state.playKeys.right = true;
+    if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+      e.preventDefault();
+      if (state.playPlayer && state.playPlayer.onGround && !state.playPlayer.dead) {
+        state.playPlayer.vy = TR_JUMP_VY;
+        state.playPlayer.onGround = false;
+      }
+    }
+    if (e.key === 'r' || e.key === 'R') initPlayLevel(curLevel());
+    return;
+  }
+
+  // Editor Mode Shortcuts
+  if (e.key === ' ' || e.key === 'p' || e.key === 'P') { e.preventDefault(); startPlaytest(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); redo(); return; }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) { e.preventDefault(); duplicateSelected(); return; }
+  if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); return; }
+  if (e.key === 'Escape') { state.selected = null; refreshAll(); return; }
+  if (e.key === 'g' || e.key === 'G') {
+    // La grilla es fija: no se puede apagar (todo va por cuadrados).
+    showToast('La grilla es fija: 30 px');
+    return;
+  }
+
+  // Herramientas rápidas 1..7
+  if (e.key === '1' || e.key === 'v' || e.key === 'V') setTool('select');
+  if (e.key === 'b' || e.key === 'B') {
+    // Modo pincel: colocar muchas piezas manteniendo apretado.
+    const el = document.getElementById('chkPaint');
+    el.checked = !el.checked;
+    el.dispatchEvent(new Event('change'));
+  }
+  if (e.key === '5' || e.key === 'd' || e.key === 'D') setTool('decor');
+  if (e.key === '6' || e.key === 's' || e.key === 'S') setTool('start');
+  if (e.key === '7' || e.key === 'e' || e.key === 'E') setTool('exit');
+
+  // Mover con flechas de cursor
+  if (state.selected && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+    e.preventDefault();
+    const obj = getSelObj();
+    if (!obj) return;
+    pushHistory();
+    const step = e.shiftKey ? (state.gridSize || 10) : 1;
+    if (e.key === 'ArrowUp') obj.y -= step;
+    if (e.key === 'ArrowDown') obj.y += step;
+    if (e.key === 'ArrowLeft') obj.x -= step;
+    if (e.key === 'ArrowRight') obj.x += step;
+    refreshAll();
+  }
+});
+
+window.addEventListener('keyup', e => {
+  if (!state.playtest) return;
+  if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') state.playKeys.left = false;
+  if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') state.playKeys.right = false;
+});
+
+// ══════════════════════════════════════
+//  UI Y CONTROLES DEL TOOLBAR
+// ══════════════════════════════════════
+// ══════════════════════════════════════
+//  PALETA DE SPRITES (estilo Geometry Dash)
+// ══════════════════════════════════════
+// Cada ítem muestra el sprite real y, al tocarlo, deja la herramienta y
+// sus opciones listas — no hay que elegir nada de ninguna lista.
+const BLOCK_TILES = [
+  ['wall_tl', 'Esquina arriba-izquierda'], ['wall_t', 'Borde de arriba'], ['wall_tr', 'Esquina arriba-derecha'],
+  ['wall_l',  'Borde izquierdo'],          ['wall_c', 'Relleno (centro)'], ['wall_r',  'Borde derecho'],
+  ['wall_bl', 'Esquina abajo-izquierda'],  ['wall_b', 'Borde de abajo'],  ['wall_br', 'Esquina abajo-derecha'],
+];
+
+// La paleta tiene SOLO las piezas: 9 bloques, 1 flecha, pinchos, 3
+// plataformas y la sierra. Traspasable / se rompe / dirección / velocidad
+// se eligen después, en el panel de propiedades del objeto colocado.
+const PALETTE = {
+  paletteBlocks: BLOCK_TILES.map(([tile, title]) => ({
+    id: 'blk-' + tile, title: 'Bloque — ' + title, tool: 'block',
+    make: { tile }, thumb: { tiles: tile },
+  })),
+  paletteSpecial: [
+    { id: 'sp-start', title: 'Inicio (dónde aparece el jugador)', tool: 'start', make: {}, thumb: { spawn: true } },
+    { id: 'sp-exit',  title: 'Puerta de salida',                  tool: 'exit',  make: {}, thumb: { door: true } },
+  ],
+  paletteHazards: [
+    { id: 'hz-spike', title: 'Pinchos', tool: 'spike', make: {}, thumb: { obst: 'spike_a' } },
+    { id: 'hz-saw',   title: 'Sierra',  tool: 'saw',   make: {}, thumb: { obst: 'saw_0' } },
+    { id: 'ar-one',   title: 'Flecha',  tool: 'arrow', make: {}, thumb: { obst: 'arrow_right_a' } },
+  ],
+  paletteArrows: [
+    { id: 'pl-1', title: 'Plataforma 1x', tool: 'plat', make: { piece: 'plat_small',  cells: 1 }, thumb: { tiles: 'plat_small' } },
+    { id: 'pl-2', title: 'Plataforma 2x', tool: 'plat', make: { piece: 'plat_medium', cells: 2 }, thumb: { tiles: 'plat_medium' } },
+    { id: 'pl-3', title: 'Plataforma 3x', tool: 'plat', make: { piece: 'plat_large',  cells: 3 }, thumb: { tiles: 'plat_large' } },
+  ],
+};
+
+let activePaletteId = 'blk-wall_c';
+
+function drawThumb(cv, thumb) {
+  const c = cv.getContext('2d');
+  if (!c) return;
+  const S = cv.width;
+  c.clearRect(0, 0, S, S);
+  let drawn = false;
+  if (thumb.tiles && IMG.tiles) {
+    const f = TILES_ATLAS.frames[thumb.tiles];
+    if (f) {
+      // Encaja el recorte en el cuadrado sin deformarlo.
+      const k = Math.min(S / f.w, S / f.h);
+      const w = f.w * k, h = f.h * k;
+      if (thumb.over === 'spikes' && IMG.obst) {
+        const sp = OBST_ATLAS.frames.spike_a;
+        c.drawImage(IMG.obst, sp.x, sp.y, sp.w, sp.h, (S - w) / 2, (S - h) / 2 - h * 0.25, w, h * 0.5);
+      }
+      c.drawImage(IMG.tiles, f.x, f.y, f.w, f.h, (S - w) / 2, (S - h) / 2, w, h);
+      drawn = true;
+    }
+  } else if (thumb.obst && IMG.obst) {
+    const f = OBST_ATLAS.frames[thumb.obst];
+    if (f) {
+      c.save();
+      if (thumb.flip) { c.translate(S, 0); c.scale(-1, 1); }
+      c.drawImage(IMG.obst, f.x, f.y, f.w, f.h, 0, 0, S, S);
+      c.restore();
+      drawn = true;
+    }
+  } else if (thumb.spawn) {
+    c.fillStyle = '#22c55e';
+    c.fillRect(S * 0.3, S * 0.2, S * 0.4, S * 0.55);
+    c.fillStyle = '#0a020f';
+    c.fillRect(S * 0.38, S * 0.32, S * 0.08, S * 0.08);
+    c.fillRect(S * 0.55, S * 0.32, S * 0.08, S * 0.08);
+    c.fillStyle = 'rgba(34,197,94,0.35)';
+    c.fillRect(S * 0.15, S * 0.78, S * 0.7, S * 0.1);
+    drawn = true;
+  } else if (thumb.door) {
+    c.fillStyle = '#15803d';
+    c.fillRect(S * 0.25, S * 0.12, S * 0.5, S * 0.8);
+    c.fillStyle = '#22c55e';
+    c.fillRect(S * 0.3, S * 0.17, S * 0.4, S * 0.7);
+    c.fillStyle = '#facc15';
+    c.beginPath(); c.arc(S * 0.37, S * 0.52, S * 0.05, 0, Math.PI * 2); c.fill();
+    drawn = true;
+  } else if (thumb.star) {
+    c.fillStyle = '#fde047';
+    c.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const ang = (Math.PI * 2 / 5) * i - Math.PI / 2, angIn = ang + Math.PI / 5;
+      c.lineTo(S / 2 + Math.cos(ang) * S * 0.42, S / 2 + Math.sin(ang) * S * 0.42);
+      c.lineTo(S / 2 + Math.cos(angIn) * S * 0.19, S / 2 + Math.sin(angIn) * S * 0.19);
+    }
+    c.closePath(); c.fill();
+    drawn = true;
+  }
+  if (!drawn) { // textura todavía sin cargar
+    c.fillStyle = '#3b3050'; c.fillRect(2, 2, S - 4, S - 4);
+  }
+  if (thumb.tint) { c.fillStyle = thumb.tint; c.fillRect(0, 0, S, S); }
+  if (thumb.badge) {
+    c.fillStyle = '#e8e6ef'; c.font = 'bold ' + Math.round(S * 0.42) + 'px system-ui';
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText(thumb.badge, S / 2, S / 2);
+  }
+}
+
+function buildPalette() {
+  Object.keys(PALETTE).forEach(containerId => {
+    const cont = document.getElementById(containerId);
+    if (!cont) return;
+    cont.innerHTML = '';
+    PALETTE[containerId].forEach(item => {
+      const btn = document.createElement('div');
+      btn.className = 'pal-item' + (item.id === activePaletteId ? ' active' : '');
+      btn.title = item.title;
+      btn.dataset.palId = item.id;
+      const cv = document.createElement('canvas');
+      cv.width = 48; cv.height = 48;
+      drawThumb(cv, item.thumb);
+      btn.appendChild(cv);
+      btn.addEventListener('click', () => pickPalette(item));
+      cont.appendChild(btn);
+    });
+  });
+}
+
+// Aplica el ítem: setea el estado y sincroniza los <select> que el resto
+// del editor sigue leyendo (props panel, duplicar, etc.).
+function pickPalette(item) {
+  activePaletteId = item.id;
+  state.palette = item;
+  document.querySelectorAll('.pal-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.palId === item.id);
+  });
+  setTool(item.tool);
+  showToast(item.title);
+}
+
+function setTool(t) {
+  state.tool = t;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === t));
+  document.getElementById('platformOptions').style.display = t === 'platform' ? 'block' : 'none';
+  document.getElementById('hazardOptions').style.display = t === 'hazard' ? 'block' : 'none';
+  document.getElementById('arrowOptions').style.display = t === 'arrow' ? 'block' : 'none';
+  document.getElementById('decorOptions').style.display = t === 'decor' ? 'block' : 'none';
+  canvas.style.cursor = t === 'select' ? 'default' : 'crosshair';
+}
+
+document.querySelectorAll('.tool-btn').forEach(b => b.addEventListener('click', () => setTool(b.dataset.tool)));
+
+document.getElementById('platformTypeSel').addEventListener('change', e => {
+  state.platformType = e.target.value;
+  document.getElementById('platformMovingOptions').style.display = (state.platformType === 'moving') ? 'block' : 'none';
+});
+document.getElementById('platformAxisSel').addEventListener('change', e => { state.platformAxis = e.target.value; });
+document.getElementById('platformFakeChk').addEventListener('change', e => { state.platformFake = e.target.checked; });
+document.getElementById('platformSpikeChk').addEventListener('change', e => { state.platformSpike = e.target.checked; });
+document.getElementById('platformVerticalChk').addEventListener('change', e => { state.platformVertical = e.target.checked; });
+
+document.getElementById('hazardTypeSel').addEventListener('change', e => {
+  state.hazardType = e.target.value;
+  document.getElementById('spikeOptions').style.display = (state.hazardType === 'spike') ? 'block' : 'none';
+});
+document.getElementById('spikeSizeSel').addEventListener('change', e => { state.spikeSize = e.target.value; });
+document.getElementById('spikeFakeChk').addEventListener('change', e => { state.spikeFake = e.target.checked; });
+
+document.getElementById('arrowDirSel').addEventListener('change', e => {
+  state.arrowDir = isNaN(e.target.value) ? e.target.value : parseInt(e.target.value, 10);
+});
+document.getElementById('arrowSpeedInp').addEventListener('input', e => { state.arrowSpeed = parseFloat(e.target.value) || 4.5; });
+document.getElementById('arrowTriggerTypeSel').addEventListener('change', e => {
+  state.arrowTriggerType = e.target.value;
+  document.getElementById('arrowAreaOptions').style.display = (state.arrowTriggerType === 'area') ? 'block' : 'none';
+});
+document.getElementById('arrowAreaWInp').addEventListener('input', e => { state.arrowAreaW = parseFloat(e.target.value) || 60; });
+document.getElementById('arrowAreaHInp').addEventListener('input', e => { state.arrowAreaH = parseFloat(e.target.value) || 60; });
+document.getElementById('decorTypeSel').addEventListener('change', e => { state.decorType = e.target.value; });
+
+document.getElementById('chkKeepTool').addEventListener('change', e => { state.keepTool = e.target.checked; });
+// Plegar/desplegar los dos paneles laterales.
+function togglePanel(id, btn, abierto, cerrado) {
+  const el = document.getElementById(id);
+  const estaCerrado = el.classList.toggle('collapsed');
+  btn.textContent = estaCerrado ? cerrado : abierto;
+  // El canvas se recentra cuando termina la animación del panel.
+  setTimeout(render, 260);
+}
+document.getElementById('toggleLeft').addEventListener('click', e => {
+  togglePanel('leftToolbar', e.currentTarget, '\u2039', '\u203a');
+});
+document.getElementById('toggleRight').addEventListener('click', e => {
+  togglePanel('rightSidebar', e.currentTarget, '\u203a', '\u2039');
+});
+
+document.getElementById('chkPaint').addEventListener('change', e => {
+  state.paint = e.target.checked;
+  showToast(state.paint ? 'Pincel activado: mantené apretado y movéte' : 'Pincel desactivado');
+});
+
+// Grilla fija: los dos controles quedan ocultos y el estado no se toca.
+state.snap = true;
+state.gridSize = TR_TILE;
+
+document.getElementById('btnPlayToggle').addEventListener('click', () => { if (state.playtest) stopPlaytest(); else startPlaytest(); });
+document.getElementById('btnFitView').addEventListener('click', () => {
+  const wrap = document.getElementById('canvasWrap');
+  wrap.scrollLeft = (canvas.width - wrap.clientWidth) / 2;
+  wrap.scrollTop = (canvas.height - wrap.clientHeight) / 2;
+});
+document.getElementById('btnUndo').addEventListener('click', undo);
+document.getElementById('btnRedo').addEventListener('click', redo);
+document.getElementById('btnDelete').addEventListener('click', deleteSelected);
+document.getElementById('btnDuplicate').addEventListener('click', duplicateSelected);
+
+// ══════════════════════════════════════
+//  MODAL "GESTIONAR NIVELES"
+// ══════════════════════════════════════
+function openLevelsModal() {
+  renderLevelsModal();
+  document.getElementById('levelsModalBackdrop').classList.add('show');
+}
+function closeLevelsModal() {
+  document.getElementById('levelsModalBackdrop').classList.remove('show');
+}
+function renderLevelsModal() {
+  const grid = document.getElementById('levelsGrid');
+  document.getElementById('levelsModalCount').textContent = state.levels.length;
+  if (!state.levels.length) {
+    grid.innerHTML = '<div class="levels-modal-empty">No hay niveles todavía. Tocá "+ Nuevo nivel" para crear el primero.</div>';
+    return;
+  }
+  grid.innerHTML = state.levels.map((lvl, i) => {
+    const active = i === state.currentLevel;
+    const nombre = (lvl.nombre || 'Sin nombre').replace(/</g, '&lt;');
+    const hint = (lvl.hint || 'Sin pista').replace(/</g, '&lt;');
+    return `<div class="level-card ${active ? 'active' : ''}" data-i="${i}">
+      <div class="level-card-top">
+        <span class="level-card-num">#${i + 1}</span>
+        <span class="level-card-name">${nombre}</span>
+      </div>
+      <div class="level-card-hint">${hint}</div>
+      <div class="level-card-stats">
+        <span>▭ ${(lvl.platforms || []).length}</span>
+        <span>${(lvl.hazards || []).length}</span>
+        <span>${(lvl.arrows || []).length}</span>
+        <span>${(lvl.decor || []).length}</span>
+      </div>
+      <div class="level-card-actions">
+        <button class="btn primary btn-sm" data-act="edit" data-i="${i}" style="flex:1;">Editar</button>
+        <button class="btn btn-sm" data-act="dup" data-i="${i}" title="Duplicar">⧉</button>
+        <button class="btn danger btn-sm" data-act="del" data-i="${i}" title="Borrar"></button>
+      </div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.level-card').forEach(card => {
+    card.addEventListener('click', (ev) => {
+      if (ev.target.closest('button')) return;
+      selectLevel(parseInt(card.dataset.i, 10));
+    });
+  });
+  grid.querySelectorAll('button[data-act]').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const i = parseInt(btn.dataset.i, 10);
+      const act = btn.dataset.act;
+      if (act === 'edit') selectLevel(i);
+      else if (act === 'dup') duplicateLevelAt(i);
+      else if (act === 'del') deleteLevelAt(i);
+    });
+  });
+}
+function selectLevel(i) {
+  state.currentLevel = i;
+  state.selected = null;
+  refreshAll();
+  closeLevelsModal();
+}
+function duplicateLevelAt(i) {
+  pushHistory();
+  const copy = JSON.parse(JSON.stringify(state.levels[i]));
+  copy.nombre = (copy.nombre || 'Nivel') + ' (Copia)';
+  state.levels.splice(i + 1, 0, copy);
+  if (i <= state.currentLevel) state.currentLevel++;
+  refreshAll();
+  renderLevelsModal();
+  showToast('Nivel duplicado');
+}
+function deleteLevelAt(i) {
+  if (state.levels.length <= 1) { alert('Necesitás tener al menos un nivel.'); return; }
+  if (!confirm('¿Borrar "' + (state.levels[i].nombre || 'este nivel') + '"?')) return;
+  pushHistory();
+  state.levels.splice(i, 1);
+  if (state.currentLevel >= state.levels.length) state.currentLevel = state.levels.length - 1;
+  else if (i < state.currentLevel) state.currentLevel--;
+  state.selected = null;
+  refreshAll();
+  renderLevelsModal();
+  showToast('Nivel eliminado');
+}
+function addNewLevel() {
+  pushHistory();
+  state.levels.push(defaultLevel(state.levels.length + 1));
+  state.currentLevel = state.levels.length - 1;
+  state.selected = null;
+  refreshAll();
+  renderLevelsModal();
+  showToast('Nuevo nivel agregado');
+}
+
+document.getElementById('btnLevelsMenu').addEventListener('click', openLevelsModal);
+document.getElementById('btnOpenLevelsFromSide').addEventListener('click', openLevelsModal);
+document.getElementById('btnCloseLevelsModal').addEventListener('click', closeLevelsModal);
+document.getElementById('btnAddLevelModal').addEventListener('click', addNewLevel);
+document.getElementById('levelsModalBackdrop').addEventListener('click', (ev) => {
+  if (ev.target.id === 'levelsModalBackdrop') closeLevelsModal();
+});
+window.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape' && document.getElementById('levelsModalBackdrop').classList.contains('show')) {
+    closeLevelsModal();
+  }
+});
+
+document.getElementById('btnFullscreen').addEventListener('click', () => {
+  const el = document.getElementById('canvasWrap');
+  if (!document.fullscreenElement) {
+    if (el.requestFullscreen) el.requestFullscreen();
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  } else {
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+});
+
+document.getElementById('btnPlayAgain').addEventListener('click', () => {
+  state.playWon = false;
+  document.getElementById('playWinModal').style.display = 'none';
+  initPlayLevel(curLevel());
+});
+document.getElementById('btnExitPlay').addEventListener('click', stopPlaytest);
+
+document.getElementById('zoomIn').addEventListener('click', () => { state.zoom = Math.min(4, state.zoom + 0.5); afterZoom(); });
+document.getElementById('zoomOut').addEventListener('click', () => { state.zoom = Math.max(1, state.zoom - 0.5); afterZoom(); });
+function afterZoom() { document.getElementById('zoomLabel').textContent = state.zoom + 'x'; resizeCanvas(); render(); }
+
+// Rueda del mouse = zoom (sin Ctrl ni nada). Se mantiene el punto bajo el
+// puntero lo más quieto posible ajustando el scroll del contenedor.
+document.getElementById('canvasWrap').addEventListener('wheel', e => {
+  e.preventDefault();
+  const wrap = document.getElementById('canvasWrap');
+  const before = toLogical(e);
+  const paso = e.deltaY < 0 ? 0.25 : -0.25;
+  const nuevo = Math.max(0.5, Math.min(6, Math.round((state.zoom + paso) * 100) / 100));
+  if (nuevo === state.zoom) return;
+  state.zoom = nuevo;
+  afterZoom();
+  const after = toLogical(e);
+  wrap.scrollLeft += (before.x - after.x) * state.zoom;
+  wrap.scrollTop += (before.y - after.y) * state.zoom;
+}, { passive: false });
+
+// ══════════════════════════════════════
+//  PANEL DE PROPIEDADES DINÁMICAS
+// ══════════════════════════════════════
+function refreshProps() {
+  const panel = document.getElementById('propsPanel');
+  const sel = state.selected;
+  if (!sel) { panel.innerHTML = '<div class="no-sel">Nada seleccionado.</div>'; return; }
+  const obj = getSelObj();
+  if (!obj) { panel.innerHTML = '<div class="no-sel">Nada seleccionado.</div>'; return; }
+
+  let html = '';
+  if (sel.cat === 'start') {
+    html = `<div class="field-title">Punto de Inicio (Spawn)</div>
+      <div class="row2">
+        <div><label>x</label><input id="p_x" type="number" value="${obj.x}"></div>
+        <div><label>y</label><input id="p_y" type="number" value="${obj.y}"></div>
+      </div>`;
+  } else if (sel.cat === 'exit') {
+    html = `<div class="field-title">Puerta de Salida</div>
+      <div class="row4">
+        <div><label>x</label><input id="p_x" type="number" value="${obj.x}"></div>
+        <div><label>y</label><input id="p_y" type="number" value="${obj.y}"></div>
+        <div><label>w</label><input id="p_w" type="number" value="${obj.w}"></div>
+        <div><label>h</label><input id="p_h" type="number" value="${obj.h}"></div>
+      </div>`;
+  } else if (sel.cat === 'platforms') {
+    const esPieza = !!obj.piece;             // plataforma de madera 1x/2x/3x
+    const movil = obj.type === 'moving';
+    const rompe = obj.type === 'crumble';
+    html = `<div class="field-title">${esPieza ? 'Plataforma' : 'Bloque'}</div>
+      <div class="row4">
+        <div><label>x</label><input id="p_x" type="number" step="${TR_TILE}" value="${obj.x}"></div>
+        <div><label>y</label><input id="p_y" type="number" step="${TR_TILE}" value="${obj.y}"></div>
+        <div><label>w</label><input id="p_w" type="number" step="${TR_TILE}" value="${obj.w}"></div>
+        <div><label>h</label><input id="p_h" type="number" step="${TR_TILE}" value="${obj.h}"></div>
+      </div>
+      <div class="checkbox-row"><input type="checkbox" id="p_pass" ${obj.type === 'fake' || obj.fake ? 'checked' : ''}> Traspasable (se cruza)</div>
+      ${esPieza ? `
+      <div class="field-title">Movimiento</div>
+      <div class="checkbox-row"><input type="checkbox" id="p_moving" ${movil ? 'checked' : ''}> Se mueve</div>
+      ${movil ? `
+      <label>Dirección</label>
+      <select id="p_axis">
+        <option value="x" ${obj.move && obj.move.axis === 'x' ? 'selected' : ''}>Lateral (horizontal)</option>
+        <option value="y" ${obj.move && obj.move.axis === 'y' ? 'selected' : ''}>Vertical</option>
+      </select>
+      <label>Velocidad</label>
+      <input id="p_speed" type="number" step="0.1" min="0.1" value="${obj.move ? obj.move.speed : 1.2}">
+      <div style="font-size:10px;color:var(--dim);margin-top:4px;">El recorrido se estira arrastrando las bolitas azules.</div>`
+      : `<div class="checkbox-row"><input type="checkbox" id="p_crumble" ${rompe ? 'checked' : ''}> Se rompe al pisarla</div>`}`
+      : `<div class="checkbox-row"><input type="checkbox" id="p_crumble" ${rompe ? 'checked' : ''}> Se rompe al pisarlo</div>
+         <div class="checkbox-row"><input type="checkbox" id="p_wall" ${obj.vertical ? 'checked' : ''}> Bloquea el paso de costado</div>`}`;
+  } else if (sel.cat === 'hazards') {
+    const esPincho = obj.type === 'spike';
+    html = `<div class="field-title">${esPincho ? 'Pinchos' : 'Sierra'}</div>
+      <div class="row4">
+        <div><label>x</label><input id="p_x" type="number" step="${TR_TILE}" value="${obj.x}"></div>
+        <div><label>y</label><input id="p_y" type="number" value="${obj.y}"></div>
+        <div><label>w</label><input id="p_w" type="number" step="${TR_TILE}" value="${obj.w}"></div>
+        <div><label>h</label><input id="p_h" type="number" value="${obj.h}"></div>
+      </div>
+      ${esPincho ? `
+      <label>Tamaño</label>
+      <select id="p_spikeSize">
+        <option value="small" ${obj.size === 'small' ? 'selected' : ''}>Pequeño (4 por cuadrado)</option>
+        <option value="medium" ${!obj.size || obj.size === 'medium' ? 'selected' : ''}>Mediano (2 por cuadrado)</option>
+        <option value="large" ${obj.size === 'large' ? 'selected' : ''}>Grande (1 por cuadrado)</option>
+      </select>
+      <div class="checkbox-row"><input type="checkbox" id="p_pass" ${obj.fake ? 'checked' : ''}> Traspasable (no mata)</div>
+      <div class="checkbox-row"><input type="checkbox" id="p_rot45" ${obj.rot45 ? 'checked' : ''}> ↻ Girar 45°</div>`
+      : `
+      <div class="field-title">Movimiento</div>
+      <label>Dirección</label>
+      <select id="p_axis">
+        <option value="x" ${obj.move && obj.move.axis === 'x' ? 'selected' : ''}>Lateral (horizontal)</option>
+        <option value="y" ${obj.move && obj.move.axis === 'y' ? 'selected' : ''}>Vertical</option>
+      </select>
+      <label>Velocidad</label>
+      <input id="p_speed" type="number" step="0.1" min="0.1" value="${obj.move ? obj.move.speed : 1.8}">
+      <div style="font-size:10px;color:var(--dim);margin-top:4px;">El recorrido se estira arrastrando las bolitas azules.</div>`}`;
+  } else if (sel.cat === 'arrows') {
+    const trigType = obj.triggerType === 'area' ? 'area' : 'line';
+    html = `<div class="field-title">Flecha</div>
+      <label>¿De dónde viene?</label>
+      <select id="p_dir">
+        <option value="-1" ${obj.dir === -1 ? 'selected' : ''}>Desde la derecha (va hacia la izquierda)</option>
+        <option value="1" ${obj.dir === 1 ? 'selected' : ''}>Desde la izquierda (va hacia la derecha)</option>
+        <option value="up" ${obj.dir === 'up' ? 'selected' : ''}>Desde abajo (sube)</option>
+        <option value="down" ${obj.dir === 'down' ? 'selected' : ''}>Desde arriba (baja)</option>
+      </select>
+      <label>Velocidad</label>
+      <input id="p_speed" type="number" step="0.2" min="1" value="${obj.speed}">
+      <label>Veces que dispara</label>
+      <input id="p_repeat" type="number" min="1" max="20" step="1" value="${obj.repeat || 1}">
+      <div style="font-size:10px;color:var(--dim);margin-top:2px;">1 = una sola vez. Más de 1 = vuelve a disparar mientras sigas en la zona.</div>
+      <div class="row2">
+        <div><label>x (origen)</label><input id="p_x" type="number" value="${obj.x}"></div>
+        <div><label>y (altura)</label><input id="p_y" type="number" value="${obj.y}"></div>
+      </div>
+      <div class="field-title">Activación</div>
+      <select id="p_triggerType">
+        <option value="area" ${trigType === 'area' ? 'selected' : ''}>Zona de área</option>
+        <option value="line" ${trigType === 'line' ? 'selected' : ''}>Línea vertical</option>
+      </select>
+      ${trigType === 'area' ? `
+      <div class="row2">
+        <div><label>ancho</label><input id="p_zoneW" type="number" min="${TR_TILE}" step="${TR_TILE}" value="${obj.triggerZone ? fmtNum(obj.triggerZone.w) : TR_TILE * 2}"></div>
+        <div><label>alto</label><input id="p_zoneH" type="number" min="${TR_TILE}" step="${TR_TILE}" value="${obj.triggerZone ? fmtNum(obj.triggerZone.h) : TR_TILE * 2}"></div>
+      </div>
+      <div style="font-size:10px;color:var(--dim);margin-top:4px;">También se agranda arrastrando las esquinas amarillas de la zona.</div>`
+      : `<div><label>triggerX (línea)</label><input id="p_triggerX" type="number" value="${obj.triggerX}"></div>`}`;
+  } else if (sel.cat === 'decor') {
+    html = `<div class="field-title">Decoración</div>
+      <label>Tipo</label>
+      <select id="p_dtype">
+        ${['torch','ivy','ivy_2','chain','chain_hook','banner','banner_tattered','rat'].map(t => `<option value="${t}" ${obj.type===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <div class="row3">
+        <div><label>x</label><input id="p_x" type="number" value="${obj.x}"></div>
+        <div><label>y</label><input id="p_y" type="number" value="${obj.y}"></div>
+        <div><label>h (alto)</label><input id="p_h" type="number" value="${obj.h}"></div>
+      </div>`;
+  }
+
+  panel.innerHTML = html;
+  wirePropInputs(sel, obj);
+}
+
+function wirePropInputs(sel, obj) {
+  const num = (id, apply) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      pushHistory();
+      apply(parseFloat(el.value) || 0);
+      render(); refreshList();
+    });
+  };
+  const chk = (id, apply) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', () => { pushHistory(); apply(el.checked); refreshProps(); render(); refreshList(); });
+  };
+  const sel_ = (id, apply) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('change', () => { pushHistory(); apply(el.value); refreshProps(); render(); refreshList(); });
+  };
+
+  ['x', 'y', 'w', 'h', 'triggerX'].forEach(k => num('p_' + k, v => {
+    obj[k] = v;
+    if (k === 'triggerX' && sel.cat === 'arrows') repositionArrow(obj, curLevel());
+  }));
+  num('p_repeat', v => { obj.repeat = Math.max(1, Math.round(v) || 1); });
+
+  // Velocidad: la flecha la tiene propia; lo demás, dentro de move.
+  num('p_speed', v => {
+    if (sel.cat === 'arrows') obj.speed = v;
+    else { if (!obj.move) obj.move = { axis: 'x', from: obj.x, to: obj.x + TR_TILE * 4, speed: 1.2 }; obj.move.speed = v; }
+  });
+
+  // ── Bloques y plataformas ──
+  chk('p_pass', on => {
+    if (sel.cat === 'hazards') { if (on) obj.fake = true; else delete obj.fake; return; }
+    if (obj.type === 'moving') { if (on) obj.fake = true; else delete obj.fake; return; }
+    obj.type = on ? 'fake' : 'normal';
+  });
+  chk('p_crumble', on => { obj.type = on ? 'crumble' : 'normal'; });
+  chk('p_wall', on => { if (on) obj.vertical = true; else delete obj.vertical; });
+  chk('p_moving', on => {
+    if (on) {
+      obj.type = 'moving';
+      if (!obj.move) {
+        obj.move = { axis: 'x', from: obj.x, to: obj.x + TR_TILE * 3, speed: 1.2 };
+      }
+    } else {
+      obj.type = 'normal';
+      delete obj.move;
+    }
+  });
+
+  // ── Pinchos ──
+  sel_('p_spikeSize', v => {
+    const bottom = obj.y + obj.h;          // se mantiene apoyado donde estaba
+    obj.size = v;
+    obj.h = spikeHeight(v);
+    obj.y = bottom - obj.h;
+  });
+  chk('p_rot45', on => { if (on) obj.rot45 = true; else delete obj.rot45; });
+
+  // ── Eje de movimiento ──
+  sel_('p_axis', v => {
+    if (!obj.move) obj.move = { axis: v, from: obj.x, to: obj.x + TR_TILE * 3, speed: 1.2 };
+    obj.move.axis = v;
+    // Al cambiar de eje el recorrido viejo no sirve: se reinicia desde la
+    // posición actual (después se estira con el mouse).
+    const base = v === 'x' ? obj.x : obj.y;
+    obj.move.from = base;
+    obj.move.to = base + TR_TILE * 3;
+  });
+
+  // ── Flecha ──
+  sel_('p_dir', v => {
+    obj.dir = isNaN(v) ? v : parseInt(v, 10);
+    if (sel.cat === 'arrows') repositionArrow(obj, curLevel());
+  });
+  sel_('p_triggerType', v => {
+    obj.triggerType = v;
+    if (v === 'area' && !obj.triggerZone) {
+      const z = TR_TILE * 2;
+      obj.triggerZone = { x: Math.round(obj.triggerX - z / 2), y: Math.round(obj.y + obj.h / 2 - z / 2), w: z, h: z };
+    }
+    if (sel.cat === 'arrows') repositionArrow(obj, curLevel());
+  });
+  const zoneW = document.getElementById('p_zoneW');
+  const zoneH = document.getElementById('p_zoneH');
+  const syncZone = () => {
+    const w = Math.max(TR_TILE, parseFloat(zoneW.value) || TR_TILE * 2);
+    const h = Math.max(TR_TILE, parseFloat(zoneH.value) || TR_TILE * 2);
+    const cx = obj.triggerZone ? obj.triggerZone.x + obj.triggerZone.w / 2 : obj.triggerX;
+    const cy = obj.triggerZone ? obj.triggerZone.y + obj.triggerZone.h / 2 : obj.y + obj.h / 2;
+    obj.triggerZone = { x: Math.round(cx - w / 2), y: Math.round(cy - h / 2), w, h };
+    render();
+  };
+  if (zoneW) zoneW.addEventListener('input', () => { pushHistory(); syncZone(); repositionArrow(obj, curLevel()); render(); });
+  if (zoneH) zoneH.addEventListener('input', () => { pushHistory(); syncZone(); repositionArrow(obj, curLevel()); render(); });
+
+  // ── Decoración ──
+  sel_('p_dtype', v => { obj.type = v; });
+}
+
+// ══════════════════════════════════════
+//  LISTA DE OBJETOS
+// ══════════════════════════════════════
+function labelFor(cat, obj) {
+  if (cat === 'platforms') return `▭ ${obj.type} (${obj.x},${obj.y}) ${obj.w}×${obj.h}`;
+  if (cat === 'hazards') return `${obj.type} (${obj.x},${obj.y})`;
+  if (cat === 'arrows') return `Trigger ${obj.triggerX} · Y ${obj.y}`;
+  if (cat === 'decor') return `${obj.type} (${obj.x},${obj.y})`;
+  return cat;
+}
+
+function refreshList() {
+  const box = document.getElementById('objList');
+  const lvl = curLevel();
+  let html = '';
+  ['platforms','hazards','arrows','decor'].forEach(cat => {
+    const arr = lvl[cat] || [];
+    if (!arr.length) return;
+    html += `<div style="font-size:10.5px;color:var(--gold);font-weight:700;margin-top:6px;">${cat.toUpperCase()} (${arr.length})</div>`;
+    arr.forEach((obj, i) => {
+      const isSel = state.selected && state.selected.cat === cat && state.selected.idx === i;
+      html += `<div class="list-item ${isSel?'sel':''}" data-cat="${cat}" data-idx="${i}">
+        <span>${labelFor(cat, obj)}</span><button data-del="${cat}:${i}" title="Eliminar"></button></div>`;
+    });
+  });
+  if (!html) html = '<div class="empty-hint">No hay plataformas ni trampas en este nivel.</div>';
+  box.innerHTML = html;
+
+  box.querySelectorAll('.list-item').forEach(el => {
+    el.addEventListener('click', ev => {
+      if (ev.target.tagName === 'BUTTON') return;
+      state.selected = { cat: el.dataset.cat, idx: parseInt(el.dataset.idx, 10) };
+      refreshAll();
+    });
+  });
+
+  box.querySelectorAll('button[data-del]').forEach(btn => {
+    btn.addEventListener('click', ev => {
+      ev.stopPropagation();
+      pushHistory();
+      const [cat, idx] = btn.dataset.del.split(':');
+      curLevel()[cat].splice(parseInt(idx, 10), 1);
+      if (state.selected && state.selected.cat === cat) state.selected = null;
+      refreshAll();
+      showToast('Eliminado');
+    });
+  });
+}
+
+// ══════════════════════════════════════
+//  INFO DEL NIVEL ACTUAL (el detalle de todos los niveles vive en el
+//  modal "Gestionar Niveles" — ver openLevelsModal / renderLevelsModal)
+// ══════════════════════════════════════
+function refreshLevelTabs() {
+  document.getElementById('levelsCountBadge').textContent = state.levels.length;
+  document.getElementById('levelsSideCount').textContent = state.levels.length;
+  document.getElementById('lvlNombre').value = curLevel() ? (curLevel().nombre || '') : '';
+  document.getElementById('lvlHint').value = curLevel() ? (curLevel().hint || '') : '';
+  document.getElementById('lvlWidth').value = curLevel() ? lvlW(curLevel()) : TR_W;
+  document.getElementById('lvlHeight').value = curLevel() ? lvlH(curLevel()) : TR_H;
+  document.getElementById('lvlFov').value = curLevel() ? lvlFov(curLevel()) : 1;
+  // Si el modal está abierto, lo mantenemos sincronizado con cualquier
+  // cambio (ej: se editó el nombre del nivel mientras estaba abierto).
+  if (document.getElementById('levelsModalBackdrop').classList.contains('show')) {
+    renderLevelsModal();
+  }
+}
+
+document.getElementById('lvlNombre').addEventListener('input', e => { curLevel().nombre = e.target.value; save(); });
+document.getElementById('lvlHint').addEventListener('input', e => { curLevel().hint = e.target.value; save(); });
+// El tamaño del nivel crece de a un bloque (múltiplos de TR_TILE).
+document.getElementById('lvlWidth').addEventListener('change', e => {
+  const v = Math.max(TR_W, Math.round((parseInt(e.target.value, 10) || TR_W) / TR_TILE) * TR_TILE);
+  curLevel().width = v;
+  e.target.value = v;
+  resizeCanvas(); render(); save();
+});
+document.getElementById('lvlHeight').addEventListener('change', e => {
+  const v = Math.max(TR_H, Math.round((parseInt(e.target.value, 10) || TR_H) / TR_TILE) * TR_TILE);
+  curLevel().height = v;
+  e.target.value = v;
+  resizeCanvas(); render(); save();
+});
+document.getElementById('lvlFov').addEventListener('input', e => {
+  let v = parseFloat(e.target.value);
+  if (!isFinite(v) || v <= 0) v = 1;
+  v = Math.max(0.4, Math.min(3, v));
+  curLevel().fov = v;
+  render(); save();
+});
+document.getElementById('btnFovReset').addEventListener('click', () => {
+  curLevel().fov = 1;
+  document.getElementById('lvlFov').value = 1;
+  render(); save();
+});
+
+// ══════════════════════════════════════
+//  EXPORTAR / IMPORTAR
+// ══════════════════════════════════════
+function fmtNum(n) { return Number.isInteger(n) ? n : Math.round(n * 100) / 100; }
+
+function formatLevel(lvl, indent) {
+  const ind = indent || '  ';
+  const i2 = ind + '  ';
+  const lines = [];
+  lines.push(`${ind}nombre: ${JSON.stringify(lvl.nombre || '')},`);
+  lines.push(`${ind}hint: ${JSON.stringify(lvl.hint || '')},`);
+  if (lvl.width && lvl.width !== TR_W) lines.push(`${ind}width: ${lvl.width},`);
+  if (lvl.height && lvl.height !== TR_H) lines.push(`${ind}height: ${lvl.height},`);
+  if (lvl.fov && lvl.fov !== 1) lines.push(`${ind}fov: ${fmtNum(lvl.fov)},`);
+  const st = lvl.start || { x: 20, y: 200 };
+  lines.push(`${ind}start: { x: ${fmtNum(st.x)}, y: ${fmtNum(st.y)} },`);
+
+  lines.push(`${ind}platforms: [`);
+  (lvl.platforms || []).forEach(p => {
+    let s = `${i2}{ x: ${fmtNum(p.x)}, y: ${fmtNum(p.y)}, w: ${fmtNum(p.w)}, h: ${fmtNum(p.h)}, type: '${p.type}'`;
+    if (p.tile) s += `, tile: '${p.tile}'`;
+    if (p.piece) s += `, piece: '${p.piece}'`;
+    if (p.vertical) s += `, vertical: true`;
+    if (p.decor) s += `, decor: '${p.decor}'`;
+    if (p.fake) s += `, fake: true`;
+    if (p.move) s += `, move: { axis: '${p.move.axis}', from: ${fmtNum(p.move.from)}, to: ${fmtNum(p.move.to)}, speed: ${fmtNum(p.move.speed)} }`;
+    s += ' },';
+    lines.push(s);
+  });
+  lines.push(`${ind}],`);
+
+  lines.push(`${ind}hazards: [`);
+  (lvl.hazards || []).forEach(h => {
+    let s = `${i2}{ x: ${fmtNum(h.x)}, y: ${fmtNum(h.y)}, w: ${fmtNum(h.w)}, h: ${fmtNum(h.h)}, type: '${h.type}'`;
+    if (h.type === 'spike') {
+      if (h.size) s += `, size: '${h.size}'`;
+      if (h.fake) s += `, fake: true`;
+      if (h.rot45) s += `, rot45: true`;
+    }
+    if (h.move) s += `, move: { axis: '${h.move.axis}', from: ${fmtNum(h.move.from)}, to: ${fmtNum(h.move.to)}, speed: ${fmtNum(h.move.speed)} }`;
+    s += ' },';
+    lines.push(s);
+  });
+  lines.push(`${ind}],`);
+
+  lines.push(`${ind}arrows: [`);
+  (lvl.arrows || []).forEach(a => {
+    const dirTxt = (typeof a.dir === 'number') ? a.dir : `'${a.dir}'`;
+    let s = `${i2}{ triggerX: ${fmtNum(a.triggerX)}, x: ${fmtNum(a.x)}, y: ${fmtNum(a.y)}, w: ${fmtNum(a.w)}, h: ${fmtNum(a.h)}, dir: ${dirTxt}, speed: ${fmtNum(a.speed)}`;
+    if (a.triggerType === 'area' && a.triggerZone) {
+      s += `, triggerType: 'area', triggerZone: { x: ${fmtNum(a.triggerZone.x)}, y: ${fmtNum(a.triggerZone.y)}, w: ${fmtNum(a.triggerZone.w)}, h: ${fmtNum(a.triggerZone.h)} }`;
+    }
+    if (a.repeat && a.repeat > 1) s += `, repeat: ${Math.round(a.repeat)}`;
+    s += `, active: false, fired: false },`;
+    lines.push(s);
+  });
+  lines.push(`${ind}],`);
+
+  const ex = lvl.exit || { x: lvlW(lvl) - 50, y: 200, w: TR_TILE, h: TR_TILE * 2 };
+  lines.push(`${ind}exit: { x: ${fmtNum(ex.x)}, y: ${fmtNum(ex.y)}, w: ${fmtNum(ex.w)}, h: ${fmtNum(ex.h)} },`);
+
+  lines.push(`${ind}decor: [`);
+  (lvl.decor || []).forEach(d => {
+    lines.push(`${i2}{ type: '${d.type}', x: ${fmtNum(d.x)}, y: ${fmtNum(d.y)}, h: ${fmtNum(d.h)} },`);
+  });
+  lines.push(`${ind}],`);
+
+  return lines.join('\n');
+}
+
+document.getElementById('btnExportOne').addEventListener('click', () => {
+  const txt = `{\n${formatLevel(curLevel())}\n}`;
+  document.getElementById('exportBox').value = txt;
+  navigator.clipboard && navigator.clipboard.writeText(txt).catch(() => {});
+  showToast('¡Nivel copiado al portapapeles!');
+});
+
+document.getElementById('btnExportAll').addEventListener('click', () => {
+  const body = state.levels.map(l => `  {\n${formatLevel(l, '    ')}\n  },`).join('\n');
+  const txt = `const CASTLE_ESCAPE_CUSTOM_LEVELS = [\n${body}\n];`;
+  document.getElementById('exportBox').value = txt;
+  navigator.clipboard && navigator.clipboard.writeText(txt).catch(() => {});
+  showToast('¡Array de niveles copiado!');
+});
+
+document.getElementById('btnDownloadJs').addEventListener('click', () => {
+  const body = state.levels.map(l => `  {\n${formatLevel(l, '    ')}\n  },`).join('\n');
+  const txt = `// Exportado desde Castle Escape Level Editor\n// Guardá este archivo como src/games/castle_escape_levels.js (reemplazando\n// el que ya esté ahí) e incluilo con un <script> ANTES de castle_escape.js\n// en index.html — así el juego usa estos niveles siempre, en cualquier\n// navegador, sin depender del localStorage del editor.\nconst CASTLE_ESCAPE_CUSTOM_LEVELS = [\n${body}\n];\n`;
+  const blob = new Blob([txt], { type: 'application/javascript' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'castle_escape_levels.js';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Descargado: castle_escape_levels.js — reemplazalo en src/games/');
+});
+
+// Acepta tres formas de código pegado/importado:
+//  1) Un objeto de nivel suelto: { nombre: '...', platforms: [...], ... }
+//  2) Un array de niveles suelto: [ {...}, {...} ]
+//  3) Un archivo completo como el que descarga "Descargar .js":
+//     const CASTLE_ESCAPE_CUSTOM_LEVELS = [ ... ];  (o el viejo TR_LEVELS)
+function parseLevelInput(raw) {
+  // Primero probamos como expresión suelta (array u objeto literal).
+  try {
+    const val = new Function('return (' + raw + ')')();
+    if (val) return val;
+  } catch (e) {}
+  // Si no, probamos como un archivo/sentencia completa: lo ejecutamos y
+  // devolvemos la variable que haya quedado definida.
+  try {
+    const fn = new Function(raw + '\n' +
+      'if (typeof CASTLE_ESCAPE_CUSTOM_LEVELS !== "undefined") return CASTLE_ESCAPE_CUSTOM_LEVELS;\n' +
+      'if (typeof TR_LEVELS !== "undefined") return TR_LEVELS;\n' +
+      'return null;');
+    const val = fn();
+    if (val) return val;
+  } catch (e) {}
+  throw new Error('No se pudo interpretar el código pegado.');
+}
+
+function importLevelCode(raw) {
+  raw = (raw || '').trim();
+  if (!raw) return;
+  try {
+    const parsed = parseLevelInput(raw);
+    pushHistory();
+    if (Array.isArray(parsed)) {
+      state.levels = parsed.map(normalizeLevel);
+      state.currentLevel = 0;
+    } else if (parsed && typeof parsed === 'object') {
+      state.levels.splice(state.currentLevel, 1, normalizeLevel(parsed));
+    } else {
+      throw new Error('No es un nivel válido ni un array de niveles.');
+    }
+    state.selected = null;
+    refreshAll();
+    showToast('¡Niveles importados con éxito!');
+  } catch (err) {
+    alert('Error al interpretar el código: ' + err.message);
+  }
+}
+
+document.getElementById('btnImport').addEventListener('click', () => {
+  importLevelCode(document.getElementById('importBox').value);
+});
+
+document.getElementById('btnImportFile').addEventListener('click', () => {
+  document.getElementById('importFileInput').click();
+});
+document.getElementById('importFileInput').addEventListener('change', (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    document.getElementById('importBox').value = reader.result;
+    importLevelCode(reader.result);
+  };
+  reader.onerror = () => alert('No se pudo leer el archivo.');
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+document.getElementById('btnClearImport').addEventListener('click', () => {
+  document.getElementById('importBox').value = '';
+});
+
+function normalizeLevel(l) {
+  return {
+    nombre: l.nombre || 'Sin nombre',
+    hint: l.hint || '',
+    width: l.width || TR_W,
+    height: l.height || TR_H,
+    fov: l.fov || 1,
+    start: l.start || { x: 20, y: 200 },
+    platforms: (l.platforms || []).map(p => ({ ...p })),
+    hazards: (l.hazards || []).map(h => ({ ...h })),
+    arrows: (l.arrows || []).map(a => ({ ...a, active: false, fired: false })),
+    exit: l.exit || { x: 430, y: 200, w: 26, h: 40 },
+    decor: (l.decor || []).map(d => ({ ...d })),
+  };
+}
+
+// ─── PERSISTENCIA (localStorage) ───
+const LS_KEY = 'castleEscapeLevelEditorData_v3';
+let saveTimer = null;
+function save() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        levels: state.levels,
+        currentLevel: state.currentLevel
+      }));
+    } catch (e) {}
+  }, 300);
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data && Array.isArray(data.levels) && data.levels.length) {
+        state.levels = data.levels.map(normalizeLevel);
+        state.currentLevel = Math.max(0, Math.min(data.currentLevel || 0, state.levels.length - 1));
+        return;
+      }
+    }
+  } catch (e) {}
+  // Primera vez que se abre el editor (o localStorage vacío/corrupto):
+  // arrancamos con un único nivel en blanco para editar, no con niveles
+  // oficiales — el juego solo debe mostrar lo que se crea acá.
+  state.levels = [defaultLevel(1)];
+}
+
+// ─── LOOP PRINCIPAL DE RENDER & PLAYTEST ───
+function refreshAll() {
+  resizeCanvas();
+  render();
+  refreshProps();
+  refreshList();
+  refreshLevelTabs();
+  save();
+}
+
+let lastTick = performance.now();
+function tick(now) {
+  const dt = Math.min(100, now - lastTick);
+  const step = dt / (1000 / 60);
+  lastTick = now;
+
+  if (state.playtest) {
+    updatePlaytest(step);
+  }
+  render();
+  requestAnimationFrame(tick);
+}
+
+load();
+resizeCanvas();
+buildPalette();
+pickPalette(PALETTE.paletteBlocks[0]); // arranca con el bloque sólido elegido
+setTool('select');
+refreshAll();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>

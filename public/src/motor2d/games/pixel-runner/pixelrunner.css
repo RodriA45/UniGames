@@ -827,3 +827,187 @@
       font-size: 0.68rem;
     }
 }
+
+/* ══════════════════════════════════════
+   AGREGADO — fixes y HUD nuevo
+   ══════════════════════════════════════ */
+
+/* "← Volver" de los carteles (Mejoras/Ajustes/Cómo jugar/Pausa). Estaba
+   sin estilo: la clase se usa en el HTML pero nunca se definió acá — solo
+   existía en castle_escape.css (con la paleta violeta de ESE juego), y si
+   esa hoja no está cargada en esta sección, quedaba como un <button> de
+   navegador de fábrica. Paleta propia de Pixel Runner (--yellow), self-
+   contained, no depende de que otro archivo esté cargado. */
+.trampas-back-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--yellow, #f5c518);
+  border: 2px solid var(--yellow, #f5c518);
+  padding: 0.45rem 0.9rem;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+  flex-shrink: 0;
+}
+.trampas-back-btn:hover {
+  background: rgba(245, 197, 24, 0.15);
+  transform: scale(1.05);
+}
+
+/* Filas de "Cómo jugar" — mismo problema: la clase no estaba definida acá,
+   así que el texto de la tecla y la descripción corrían pegados sin
+   separación ni jerarquía visual. */
+.trampas-howto-row {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.55rem 0.2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.85rem;
+  color: #cbd5e1;
+  text-align: left;
+}
+.trampas-howto-row:last-of-type {
+  border-bottom: none;
+}
+.trampas-howto-keys {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  min-width: 2.2rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #e8e6ef;
+}
+.trampas-howto-tip {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.55;
+  margin-top: 0.7rem;
+  text-align: left;
+}
+.trampas-howto-content {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  max-height: min(60vh, 420px);
+  overflow-y: auto;
+}
+.runner-howto-powerup {
+  margin-top: 0.3rem;
+}
+
+/* ─── Botón de pausa del HUD (reemplaza al de pantalla completa) ─── */
+.runner-hud-pause-btn {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  z-index: 40;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(15, 30, 61, 0.55);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.18s, transform 0.18s;
+}
+.runner-hud-pause-btn:hover {
+  background: rgba(15, 30, 61, 0.8);
+  transform: scale(1.06);
+}
+@media (max-width: 480px) {
+  .runner-hud-pause-btn {
+    top: 0.4rem;
+    right: 0.4rem;
+    width: 28px;
+    height: 28px;
+  }
+  .runner-hud-pause-btn svg {
+    width: 15px;
+    height: 15px;
+  }
+}
+
+/* Contenido del cartel de Pausa: 3 botones apilados, como Mejoras/Modo. */
+.runner-pause-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  width: 100%;
+}
+
+/* ─── HUD: fila de "Puntos" + multiplicador ───
+   El badge de x2/x3 vive AFUERA de .runner-score-display (era hijo suyo
+   antes) — así queda como un elemento hermano bien separado, en vez de
+   depender del texto/spacing de adentro de ese div. */
+.runner-score-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+.runner-multiplier-badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 6px;
+  background: rgba(249, 115, 22, 0.18);
+  color: #f97316;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+.runner-multiplier-badge.hidden {
+  display: none;
+}
+
+/* ─── HUD: power-up activo (debajo de "Monedas") ───
+   Íconos reales recortados de item.webp (mismo sheet que usa el canvas),
+   no texto — un pedacito de hoja de sprites vía background-position, a la
+   escala exacta de esa hoja para que las proporciones no se distorsionen. */
+.runner-active-powerup {
+  display: flex;
+  flex-direction: row;
+  gap: 0.3rem;
+  align-items: center;
+}
+.runner-active-powerup.hidden {
+  display: none;
+}
+.runner-hud-icon {
+  display: inline-block;
+  height: 20px;
+  background-image: url('/src/motor2d/games/pixel-runner/models/item.webp');
+  background-repeat: no-repeat;
+  background-size: 248.64px 20px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+.runner-hud-icon-shield {
+  width: 18.14px;
+  background-position: -95.76px -0.68px;
+}
+.runner-hud-icon-x2 {
+  width: 18.31px;
+  background-position: -114.58px -0.68px;
+}
+.runner-hud-icon-x3 {
+  width: 17.8px;
+  background-position: -133.56px -0.68px;
+}
+.runner-hud-icon-slowfall {
+  width: 17.63px;
+  background-position: -152.03px -0.68px;
+}
+.runner-hud-icon-slowspeed {
+  width: 17.8px;
+  background-position: -170.34px -0.68px;
+}

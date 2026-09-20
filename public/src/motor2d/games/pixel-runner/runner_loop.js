@@ -7,24 +7,76 @@
 import {
   RUNNER, RUNNER_EL, RUNNER_ASSETS, RUNNER_ASSET_BASE, RUN_FRAMES, GRAVITY,
   BIOME_SEGMENT, HISTORIA_GOAL, POWERUP_CHANCE, runnerScoreText,
-  COIN_SPIN_FRAMES
+  COIN_SPIN_FRAMES, VIEW_W, VIEW_H,
+  SLOWFALL_GRAVITY_MULT, SLOWSPEED_RECOVER_STEP,
+  RAIN_CHECK_INTERVAL, RAIN_CHANCE, RAIN_DURATION, RAIN_JUMP_MULT,
+  RAIN_BASE_COUNT, RAIN_DENSITY, RAIN_DROP_SPEED, RAIN_DROP_WIND, RAIN_SPLASH_LIFE,
+  runnerSyncPauseBtn
 } from './runner_config.js';
-import { loadTotalCoins, refreshRunnerUpgrades, runnerScoreMultiplier } from './runner_economy.js';
+import { loadTotalCoins, refreshRunnerUpgrades, runnerScoreMultiplier, slowSpeedFactor } from './runner_economy.js';
 import { spawnObstacle, spawnPickupGroup, spawnPowerup, collectPickup } from './runner_spawn.js';
 import { startHistoriaWinApproach, updateWinApproach, playerDie } from './runner_sequence.js';
 import { drawRunner } from './runner_render.js';
+
+// ─── Calidad gráfica y el canvas de Pixel Runner ───────────────────────
+// El juego se sigue programando SIEMPRE en el espacio lógico de 480x270
+// (VIEW_W/VIEW_H): player.w/h, corridorMinX/MaxX, groundH, skyH y las
+// posiciones de spawn son píxeles absolutos de ese espacio, no
+// porcentajes. Lo único que cambia con la calidad es la resolución REAL
+// del canvas:
+//
+//   Alto  → 480x270   (escala 1)
+//   Medio → 408x230   (0.85)
+//   Bajo  → 288x162   (0.6)
+//
+// y un ctx.scale(s, s) hace que todo lo dibujado en coordenadas lógicas
+// caiga donde corresponde. El CSS estira el canvas al mismo tamaño en
+// pantalla (width/height: 100% en pixelrunner.css), así que en Bajo se
+// ven las texturas más gordas — que es justamente lo que se pide — pero
+// el personaje y los obstáculos conservan su tamaño y sus proporciones.
+// Menos píxeles para rellenar = bastante menos trabajo por frame, que es
+// de donde sale el rendimiento en gama baja.
+//
+// IMPORTANTE: nada fuera de acá debe leer RUNNER.canvas.width/height para
+// posicionar cosas — para eso está RUNNER.view (ver runner_config.js),
+// que siempre mide 480x270 pase lo que pase con la calidad.
+export function applyRunnerCanvasScale() {
+  const C = RUNNER.canvas;
+  if (!C) return;
+  const s = (typeof Engine2D !== 'undefined' && Engine2D.Quality)
+    ? Engine2D.Quality.renderScale : 1;
+  RUNNER._renderScale = s;
+  const w = Math.max(1, Math.round(VIEW_W * s));
+  const h = Math.max(1, Math.round(VIEW_H * s));
+  if (C.width !== w || C.height !== h) { C.width = w; C.height = h; }
+  // Tocar width/height resetea el contexto, así que el suavizado y la
+  // transformación se vuelven a aplicar acá (drawRunner también la fija
+  // en cada frame, por las dudas).
+  if (RUNNER.ctx) {
+    RUNNER.ctx.imageSmoothingEnabled = false;
+    RUNNER.ctx.setTransform(s, 0, 0, s, 0, 0);
+  }
+}
 
 export function initRunner() {
   RUNNER.canvas = document.getElementById('runnerCanvas');
 
   requestAnimationFrame(() => {
     const C = RUNNER.canvas;
-    const W = 480, H = 270;
-    C.width = W;
-    C.height = H;
-    RUNNER.ctx = C.getContext('2d');
+    // Engine2D.getContext (en vez de C.getContext('2d') a secas) marca el
+    // canvas como pixel-art (canvas._e2dPixelArt = true) y apaga el
+    // suavizado.
+    RUNNER.ctx = Engine2D.getContext(C);
+    applyRunnerCanvasScale();
+    // Cambiar la calidad desde Ajustes mientras se juega re-escala el
+    // canvas al toque (una sola suscripción, aunque se entre y salga
+    // varias veces de la sección).
+    if (!RUNNER._qualityHooked && typeof Engine2D !== 'undefined' && Engine2D.Quality) {
+      Engine2D.Quality.onChange(applyRunnerCanvasScale);
+      RUNNER._qualityHooked = true;
+    }
 
-    RUNNER.player.groundY = C.height - RUNNER.groundH - RUNNER.player.h;
+    RUNNER.player.groundY = VIEW_H - RUNNER.groundH - RUNNER.player.h;
     RUNNER.player.y = RUNNER.player.groundY;
     RUNNER.totalCoins = loadTotalCoins();
     refreshRunnerUpgrades(); // trae las mejoras compradas antes de que arranque la partida
@@ -56,6 +108,10 @@ export function initRunner() {
       { type: 'atlas', src: RUNNER_ASSETS.mapaAt },
       { type: 'image', src: RUNNER_ASSETS.item },
       { type: 'atlas', src: RUNNER_ASSETS.itemAt },
+      // A diferencia de castillo.webp, esta sí va acá: llueve bastante
+      // seguido (25% de chance cada 250 puntos) así que conviene tenerla
+      // lista desde el arranque, no cargarla a mitad de partida.
+      { type: 'image', src: RUNNER_ASSETS.rainSplash },
       // castillo.webp NO va acá: solo se ve al ganar Modo Historia, así
       // que se carga bajo demanda en startHistoriaWinApproach() (ver
       // runner_sequence.js) en vez de pesar en el arranque de TODAS las
@@ -123,7 +179,14 @@ export function setupRunnerTouch() {
   // se controla con teclado, así que acá no deben aparecer ni ser clickeables.
   const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
     || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-  RUNNER.touch = new Engine2D.TouchControls(C, { visible: isTouchDevice });
+  // logicalWidth/Height: los botones están puestos en coordenadas de
+  // 480x270; sin esto, con la calidad en Bajo el canvas real mide 288x162
+  // y ningún toque caería adentro de los botones.
+  RUNNER.touch = new Engine2D.TouchControls(C, {
+    visible: isTouchDevice,
+    logicalWidth: VIEW_W,
+    logicalHeight: VIEW_H
+  });
   RUNNER.touch.addButton({ id: 'left', x: 34, y: 232, radius: 26, label: '◀' });
   RUNNER.touch.addButton({ id: 'right', x: 94, y: 232, radius: 26, label: '▶' });
   RUNNER.touch.addButton({ id: 'jump', x: 450, y: 182, radius: 26, label: '▲' });
@@ -169,7 +232,7 @@ export function runnerFastDrop() {
   RUNNER.started = true; // agacharse/caída rápida también cuenta como el primer input
   const p = RUNNER.player;
   if (p.dead || p.y >= p.groundY) return;
-  p.vy = Math.abs(p.vy) * 0.5 + RUNNER.canvas.height * 0.04;
+  p.vy = Math.abs(p.vy) * 0.5 + VIEW_H * 0.04;
 }
 
 export function runnerJumpOrStart() {
@@ -180,7 +243,7 @@ export function runnerJumpOrStart() {
   const p = RUNNER.player;
   if (p.dead) return;
   if (p.jumps < p.maxJumps) {
-    p.vy = -RUNNER.canvas.height * 0.018;
+    p.vy = -VIEW_H * 0.018 * (RUNNER.rainActive ? RAIN_JUMP_MULT : 1);
     p.jumps++;
   }
 }
@@ -191,7 +254,15 @@ export function startRunner() {
 
   RUNNER.score = 0;
   RUNNER.speed = RUNNER.baseSpeed;
+  RUNNER.naturalSpeed = RUNNER.baseSpeed;
+  RUNNER.slowSpeedFrames = 0;
   RUNNER.frameCount = 0;
+  RUNNER.rainActive = false;
+  RUNNER.rainTimer = 0;
+  RUNNER.rainNextCheck = RAIN_CHECK_INTERVAL;
+  RUNNER.rainDrops = [];
+  RUNNER.rainSplashes = [];
+  runnerUpdateHudBadges(); // limpia los badges de una corrida anterior
   RUNNER._frameAcc = 0;
   RUNNER.obstacleTimer = 0;
   RUNNER.obstacleInterval = 90;
@@ -218,6 +289,7 @@ export function startRunner() {
   p.shield = false;
   p.shieldFrames = 0;
   p.shieldHitsLeft = 0;
+  p.slowFallFrames = 0;
 
   // Arranca siempre en el bioma de pasto y de día (frame 0 = fase 0 del
   // ciclo día/noche, que cae dentro del tramo de día).
@@ -237,6 +309,7 @@ export function startRunner() {
     draw: () => drawRunner(),
   });
   RUNNER.loop.start();
+  runnerSyncPauseBtn();
 }
 
 export function stopRunner() {
@@ -245,6 +318,7 @@ export function stopRunner() {
   if (RUNNER.loop) RUNNER.loop.stop();
   if (RUNNER.input) RUNNER.input.detach();
   if (RUNNER.touch) RUNNER.touch.detach();
+  runnerSyncPauseBtn();
 }
 
 export function pauseRunner() {
@@ -259,8 +333,67 @@ export function resumeRunner() {
   if (RUNNER.loop) RUNNER.loop.start();
 }
 
+// ─── Lluvia: "motor" propio, sin sprite de gota — unas pocas líneas por
+// drop, nada de texturas tileadas (ver charla sobre costuras de piso: acá
+// ni se plantea el problema). Solo el splash contra el piso usa sprite,
+// y únicamente en calidad Alta.
+function makeRainDrop(midFall) {
+  const groundY = VIEW_H - RUNNER.groundH;
+  return {
+    x: Math.random() * VIEW_W,
+    y: midFall ? Math.random() * groundY : -10 - Math.random() * 30,
+    len: 6 + Math.random() * 6,
+  };
+}
+
+function ensureRainPool() {
+  const tier = (typeof Engine2D !== 'undefined' && Engine2D.Quality) ? Engine2D.Quality.level : 'high';
+  const target = Math.round(RAIN_BASE_COUNT * (RAIN_DENSITY[tier] ?? 1));
+  const drops = RUNNER.rainDrops;
+  while (drops.length < target) drops.push(makeRainDrop(true));
+  if (drops.length > target) drops.length = target;
+}
+
+export function updateRain(step) {
+  if (RUNNER.rainActive) {
+    ensureRainPool();
+    const groundY = VIEW_H - RUNNER.groundH;
+    // El splash contra el piso (sprite) solo en calidad Alta — en
+    // medio/bajo la gota simplemente desaparece al tocar el suelo.
+    const spawnSplash = !Engine2D.Quality || Engine2D.Quality.level === 'high';
+    for (const d of RUNNER.rainDrops) {
+      d.x += RAIN_DROP_WIND * step;
+      d.y += RAIN_DROP_SPEED * step;
+      if (d.y >= groundY) {
+        if (spawnSplash) RUNNER.rainSplashes.push({ x: d.x, y: groundY, life: RAIN_SPLASH_LIFE });
+        Object.assign(d, makeRainDrop(false));
+      }
+      if (d.x < -10) d.x = VIEW_W + 10;
+      else if (d.x > VIEW_W + 10) d.x = -10;
+    }
+  } else if (RUNNER.rainDrops.length) {
+    // Corte simple al terminar: no quedan gotas a mitad de caída. Es una
+    // simplificación a propósito — 20s es predecible, no hace falta un
+    // apagado gradual para que se sienta bien.
+    RUNNER.rainDrops.length = 0;
+  }
+
+  // Los splashes se apagan solos aunque la lluvia ya haya parado justo
+  // este frame (así el último impacto no se corta de golpe a mitad del
+  // fundido).
+  const splashes = RUNNER.rainSplashes;
+  for (let i = splashes.length - 1; i >= 0; i--) {
+    splashes[i].life -= step;
+    if (splashes[i].life <= 0) { splashes[i] = splashes[splashes.length - 1]; splashes.pop(); }
+  }
+}
+
 export function updateRunner(step) {
-  const C = RUNNER.canvas;
+  // Espacio lógico (480x270), NO el canvas real: spawnObstacle/
+  // spawnPickupGroup/updateWinApproach lo reciben como `C` y solo leen
+  // .width/.height para posicionar, así que siguen andando igual con
+  // cualquier calidad.
+  const C = RUNNER.view;
   const p = RUNNER.player;
   syncRunnerTouch();
   if (p.dead) return;
@@ -305,7 +438,11 @@ export function updateRunner(step) {
       return;
     }
     if (RUNNER.score % 250 === 0) {
-      RUNNER.speed += 0.8;
+      // naturalSpeed (no RUNNER.speed directo): si en ese momento está
+      // activo el power-up de velocidad reducida, el aumento se nota
+      // recién cuando el efecto termine y empiece a recuperar — no rompe
+      // el power-up a mitad de camino.
+      RUNNER.naturalSpeed += 0.8;
       RUNNER.obstacleInterval = Math.max(45, RUNNER.obstacleInterval - 5);
     }
   }
@@ -315,10 +452,40 @@ export function updateRunner(step) {
     p.shieldFrames = Math.max(0, p.shieldFrames - step);
     p.shield = p.shieldFrames > 0;
   }
+  if (p.slowFallFrames > 0) p.slowFallFrames = Math.max(0, p.slowFallFrames - step);
+
+  // Velocidad efectiva: mientras dura "velocidad reducida" queda fija en
+  // un % de naturalSpeed; al acabarse, sube de a poco (no de golpe) hasta
+  // volver a empatar con naturalSpeed.
+  if (RUNNER.slowSpeedFrames > 0) {
+    RUNNER.slowSpeedFrames = Math.max(0, RUNNER.slowSpeedFrames - step);
+    RUNNER.speed = RUNNER.naturalSpeed * slowSpeedFactor();
+  } else if (RUNNER.speed < RUNNER.naturalSpeed) {
+    RUNNER.speed = Math.min(RUNNER.naturalSpeed, RUNNER.speed + SLOWSPEED_RECOVER_STEP * RUNNER.naturalSpeed * step);
+  } else {
+    RUNNER.speed = RUNNER.naturalSpeed;
+  }
 
   // Bioma: alterna pasto/desierto cada BIOME_SEGMENT (500) puntos.
   const segmentIndex = Math.floor(RUNNER.score / BIOME_SEGMENT);
   RUNNER.biome = (segmentIndex % 2 === 0) ? 'grass' : 'desert';
+
+  // Lluvia: se tira el dado cada RAIN_CHECK_INTERVAL puntos, pero solo si
+  // no está lloviendo ya (si no llueve esta vez, se reintenta en el
+  // próximo checkpoint — no hay un segundo intento a mitad de camino).
+  while (RUNNER.score >= RUNNER.rainNextCheck) {
+    RUNNER.rainNextCheck += RAIN_CHECK_INTERVAL;
+    if (!RUNNER.rainActive && Math.random() < RAIN_CHANCE) {
+      RUNNER.rainActive = true;
+      RUNNER.rainTimer = RAIN_DURATION;
+    }
+  }
+  if (RUNNER.rainActive) {
+    RUNNER.rainTimer -= step;
+    if (RUNNER.rainTimer <= 0) { RUNNER.rainActive = false; RUNNER.rainTimer = 0; }
+  }
+  updateRain(step);
+
 
   // Movimiento lateral (acotado al corredor). Junior siempre corre mirando
   // a la derecha — ir hacia la izquierda no lo hace "correr para atrás",
@@ -330,8 +497,11 @@ export function updateRunner(step) {
   if (input.right) vx += RUNNER.moveSpeed;
   p.x = Math.min(RUNNER.corridorMaxX, Math.max(RUNNER.corridorMinX, p.x + vx * step));
 
-  // Física vertical (salto/gravedad) — sin cambios respecto a antes
-  p.vy += GRAVITY * (C.height / 200) * step;
+  // Física vertical (salto/gravedad). Con "caída lenta" activa, la
+  // gravedad se reduce (afecta subida y bajada del salto por igual — lo
+  // que se nota es que tarda más en volver al piso).
+  const gravMult = p.slowFallFrames > 0 ? SLOWFALL_GRAVITY_MULT : 1;
+  p.vy += GRAVITY * gravMult * (C.height / 200) * step;
   p.y += p.vy * step;
   if (p.y >= p.groundY) {
     p.y = p.groundY;
@@ -432,6 +602,42 @@ export function updateRunner(step) {
     ) {
       collectPickup(o);
       RUNNER.pickups.splice(i, 1);
+    }
+  }
+
+  runnerUpdateHudBadges();
+}
+
+// HUD en HTML (no en el canvas): multiplicador de puntos al lado de
+// "Puntos", y qué power-ups están activos debajo de "Monedas". Se
+// recalcula entero cada frame — es liviano (unos pocos elementos) y así
+// no hay que enganchar el cambio en cada lugar donde un timer puede
+// vencerse.
+export function runnerUpdateHudBadges() {
+  const p = RUNNER.player;
+
+  const mEl = RUNNER_EL.multiplierDisplay;
+  if (mEl) {
+    if (RUNNER.doublePointsFrames > 0) {
+      mEl.textContent = 'x' + runnerScoreMultiplier();
+      mEl.classList.remove('hidden');
+    } else {
+      mEl.classList.add('hidden');
+    }
+  }
+
+  const pEl = RUNNER_EL.activePowerupDisplay;
+  if (pEl) {
+    const badges = [];
+    if (p.shield) badges.push('<span class="runner-hud-icon runner-hud-icon-shield" title="Escudo"></span>');
+    if (p.slowFallFrames > 0) badges.push('<span class="runner-hud-icon runner-hud-icon-slowfall" title="Caída lenta"></span>');
+    if (RUNNER.slowSpeedFrames > 0) badges.push('<span class="runner-hud-icon runner-hud-icon-slowspeed" title="Velocidad reducida"></span>');
+    if (badges.length) {
+      pEl.innerHTML = badges.join('');
+      pEl.classList.remove('hidden');
+    } else {
+      pEl.classList.add('hidden');
+      pEl.innerHTML = '';
     }
   }
 }

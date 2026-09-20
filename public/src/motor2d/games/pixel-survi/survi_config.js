@@ -370,3 +370,167 @@ export const HIT_SHAKE_MS = 180;
 export const CAMERA_DEADZONE_W = 24;
 export const CAMERA_DEADZONE_H = 110;
 export const CAMERA_SMOOTHING = 0.85;
+
+// ══════════════════════════════════════════════════════════════
+//  Inventario general (el de la pantalla de Inventario, aparte de los
+//  8 huecos de la hotbar que ya se ven abajo en el HUD).
+// ══════════════════════════════════════════════════════════════
+export const GENERAL_INV_SLOTS = 10;
+
+// ══════════════════════════════════════════════════════════════
+//  Equipamiento — 6 huecos:
+//    head/chest/legs/boots → armadura (suman `defense`, reduce el daño
+//      de los golpes cuerpo a cuerpo; NO el de caída ni el de hambre).
+//    bag                   → agranda el inventario general (`bonusSlots`).
+//    special               → reservado para objetos especiales que se
+//      van a agregar más adelante — el slot ya está listo, por ahora no
+//      hay ningún ítem con equip:'special'.
+//
+//  Sin arte propio todavía (no hay sprites de armadura), así que cada
+//  slot tiene un ícono de emoji de placeholder — mismo criterio que la
+//  portada (survi-cover-fallback), que muestra un logo de texto hasta
+//  que exista el PNG real.
+// ══════════════════════════════════════════════════════════════
+export const EQUIP_SLOTS = [
+  { key: 'head',    label: 'Casco',    icon: '🪖' },
+  { key: 'chest',   label: 'Pecho',    icon: '🥋' },
+  { key: 'legs',    label: 'Pantalón', icon: '👖' },
+  { key: 'boots',   label: 'Botas',    icon: '👢' },
+  { key: 'bag',     label: 'Mochila',  icon: '🎒' },
+  { key: 'special', label: 'Especial', icon: '✨' }
+];
+export const EQUIP_SLOT_ICON = Object.fromEntries(EQUIP_SLOTS.map(s => [s.key, s.icon]));
+export const EQUIP_SLOT_KEYS = EQUIP_SLOTS.map(s => s.key);
+
+// Ids de equipo: 3000+ (bloques van por id de tile, comida 2000+,
+// herramientas 1000+ — ver arriba). Este es el primer set de armadura
+// (piedra, barata, se junta picando desde el arranque); agregar más
+// tiers más adelante es solo sumar entradas acá con el mismo patrón.
+export const EQUIP = {
+  helmetStone: 3001, chestStone: 3002, legsStone: 3003, bootsStone: 3004,
+  bag: 3010
+};
+ITEM_INFO[EQUIP.helmetStone] = { name: 'Casco de piedra',    equip: 'head',  defense: 1 };
+ITEM_INFO[EQUIP.chestStone]  = { name: 'Pechera de piedra',  equip: 'chest', defense: 2 };
+ITEM_INFO[EQUIP.legsStone]   = { name: 'Pantalón de piedra', equip: 'legs',  defense: 2 };
+ITEM_INFO[EQUIP.bootsStone]  = { name: 'Botas de piedra',    equip: 'boots', defense: 1 };
+ITEM_INFO[EQUIP.bag]         = { name: 'Mochila',            equip: 'bag',   bonusSlots: 4 };
+
+// Objeto de equipo vacío (los 6 slots en null) — lo usa una partida
+// nueva y también sirve para completar los slots que falten en un save
+// viejo (de antes de que existiera este sistema), igual que
+// `new Array(HOTBAR_SIZE).fill(null)` hace con la hotbar.
+export function emptyEquipment() {
+  const eq = {};
+  for (const s of EQUIP_SLOTS) eq[s.key] = null;
+  return eq;
+}
+
+// Cuánto suma la defensa de la armadura puesta (head/chest/legs/boots —
+// bag y special no defienden). Se resta del daño de golpes cuerpo a
+// cuerpo en survi_game.js `_damage()`.
+export function totalDefense(equipment) {
+  if (!equipment) return 0;
+  let def = 0;
+  for (const slot of ['head', 'chest', 'legs', 'boots']) {
+    const id = equipment[slot];
+    if (id && ITEM_INFO[id]) def += ITEM_INFO[id].defense || 0;
+  }
+  return def;
+}
+
+// Cupo del inventario general: la base + el bonus de la mochila puesta
+// (si hay una). Sin mochila, GENERAL_INV_SLOTS a secas.
+export function totalGeneralSlots(equipment) {
+  const bagId = equipment && equipment.bag;
+  const bonus = bagId && ITEM_INFO[bagId] ? (ITEM_INFO[bagId].bonusSlots || 0) : 0;
+  return GENERAL_INV_SLOTS + bonus;
+}
+
+// Cupo total: hotbar (8, fijo) + general (10 + mochila).
+export function totalInvSlots(equipment) {
+  return HOTBAR_SIZE + totalGeneralSlots(equipment);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  Crafteo
+//
+//  Cada receta: { id, result, resultQty, inputs }. `inputs` es una lista
+//  de ingredientes, cada uno { id, qty } o { anyOf: [ids], qty } —
+//  anyOf sirve para "cualquiera de estos" (la madera, por ejemplo: no
+//  tiene sentido pedir el tronco de un árbol puntual si el jugador
+//  junta indistintamente de los 3 biomas con árbol).
+// ══════════════════════════════════════════════════════════════
+const WOOD_IDS = [T.WOOD, TID.pradera_TRUNK, TID.jungle_TRUNK];
+
+export const RECIPES = [];
+{
+  // Herramientas de plata / oro / diamante — de cobre ya arrancás con
+  // ellas (STARTER_TOOLS); esta es la progresión para conseguir el resto
+  // de los tiers que ya existían en ITEM_INFO pero antes no se podían
+  // conseguir de ninguna forma.
+  const tiers = [
+    { mat: 'silver',  inputs: [{ id: T.IRON, qty: 3 }, { anyOf: WOOD_IDS, qty: 2 }] },
+    { mat: 'gold',    inputs: [{ id: T.GOLD, qty: 2 }, { id: T.IRON, qty: 2 }, { anyOf: WOOD_IDS, qty: 2 }] },
+    { mat: 'diamond', inputs: [{ id: T.GOLD, qty: 4 }, { id: T.IRON, qty: 4 }, { anyOf: WOOD_IDS, qty: 3 }] }
+  ];
+  for (const { mat, inputs } of tiers) {
+    for (const tool of ['pickaxe', 'axe', 'shovel', 'sword']) {
+      RECIPES.push({ id: `${tool}_${mat}`, result: TOOLS[`${tool}_${mat}`], resultQty: 1, inputs });
+    }
+  }
+  // Armadura de piedra + mochila.
+  RECIPES.push(
+    { id: 'helmet_stone', result: EQUIP.helmetStone, resultQty: 1, inputs: [{ id: T.STONE, qty: 5 }] },
+    { id: 'chest_stone',  result: EQUIP.chestStone,  resultQty: 1, inputs: [{ id: T.STONE, qty: 8 }] },
+    { id: 'legs_stone',   result: EQUIP.legsStone,   resultQty: 1, inputs: [{ id: T.STONE, qty: 6 }] },
+    { id: 'boots_stone',  result: EQUIP.bootsStone,  resultQty: 1, inputs: [{ id: T.STONE, qty: 4 }] },
+    { id: 'bag',          result: EQUIP.bag,         resultQty: 1, inputs: [{ anyOf: WOOD_IDS, qty: 8 }, { id: T.STONE, qty: 2 }] }
+  );
+}
+
+// Cuánto tenés de un ingrediente (suma las alternativas de anyOf).
+export function ingredientHave(inventory, ingredient) {
+  if (ingredient.anyOf) return ingredient.anyOf.reduce((s, id) => s + (inventory[id] || 0), 0);
+  return inventory[ingredient.id] || 0;
+}
+
+function hasIngredient(inventory, ingredient) {
+  return ingredientHave(inventory, ingredient) >= ingredient.qty;
+}
+
+// ¿Alcanzan los materiales para esta receta?
+export function canCraft(inventory, recipe) {
+  return recipe.inputs.every(ing => hasIngredient(inventory, ing));
+}
+
+// Descuenta los materiales de `inventory` (lo muta). Asume que ya se
+// llamó canCraft() antes — no vuelve a validar. Con anyOf, gasta de la
+// primera alternativa que tenga stock antes de pasar a la siguiente.
+export function consumeRecipe(inventory, recipe) {
+  for (const ing of recipe.inputs) {
+    let left = ing.qty;
+    const ids = ing.anyOf || [ing.id];
+    for (const id of ids) {
+      if (left <= 0) break;
+      const have = inventory[id] || 0;
+      const take = Math.min(have, left);
+      if (take <= 0) continue;
+      const remain = have - take;
+      if (remain > 0) inventory[id] = remain; else delete inventory[id];
+      left -= take;
+    }
+  }
+}
+
+// ¿El resultado va a entrar en el inventario una vez descontados los
+// materiales? Simula el consumo sobre una COPIA (no toca `inventory`):
+// si el resultado es un ítem que ya tenías, siempre entra (no ocupa un
+// slot nuevo, solo suma al stack); si es nuevo, depende de si consumir
+// los materiales liberó algún slot y de cuánto cupo total hay.
+export function craftWouldFit(inventory, recipe, totalSlots) {
+  const sim = { ...inventory };
+  consumeRecipe(sim, recipe);
+  if (recipe.result in sim) return true;
+  return Object.keys(sim).length < totalSlots;
+}

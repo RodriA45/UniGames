@@ -22,7 +22,7 @@ export function trPlayerDie() {
   TRAMPAS.totalDeaths++;
   TRAMPAS.levelDeaths++;
   const deathsEl = TR_EL.hudDeaths;
-  if (deathsEl) deathsEl.textContent = '💀 ' + TRAMPAS.totalDeaths;
+  if (deathsEl) deathsEl.textContent = 'Muertes: ' + TRAMPAS.totalDeaths;
   spawnExplosion(p.x + p.w / 2, p.y + p.h / 2);
 
   // Recorre fall_0..3 (junior.png) mientras dura el respawn, en vez de
@@ -61,7 +61,7 @@ export function trLevelComplete() {
   const deathLimit = TR_DEATH_LIMITS[TRAMPAS.levelIndex] || 5;
   const condiciones = '★ Completar el nivel\n★★ En ' + timeLimit + 's o menos\n★★★ Con ' + deathLimit + ' muerte' + (deathLimit === 1 ? '' : 's') + ' o menos';
 
-  TR_EL.hudDeaths.textContent = '💀 0';
+  TR_EL.hudDeaths.textContent = 'Muertes: 0';
 
   // Reiniciar contadores para que el próximo nivel empiece en 0
   TRAMPAS.totalDeaths = 0;
@@ -70,12 +70,12 @@ export function trLevelComplete() {
   const esUltimo = TRAMPAS.levelIndex >= TR_LEVELS.length - 1;
   if (esUltimo) {
     if (typeof guardarPuntaje === 'function') guardarPuntaje(8, TRAMPAS.totalScore, null);
-    showTrampasOverlay('🏆 ¡Completaste todo!', starsText + '  +' + levelScore + ' pts — Total: ' + TRAMPAS.totalScore + '\n\n' + condiciones, true);
+    showTrampasOverlay('¡Completaste todo!', starsText + '  +' + levelScore + ' pts — Total: ' + TRAMPAS.totalScore + '\n\n' + condiciones, true);
   } else {
     TRAMPAS.levelIndex++;
     TRAMPAS.levelStartTime = performance.now();
     trLoadLevel(TRAMPAS.levelIndex);
-    showTrampasOverlay('✅ ¡Nivel superado!', starsText + '  +' + levelScore + ' pts\n\n' + condiciones, false, '▶ Continuar');
+    showTrampasOverlay('¡Nivel superado!', starsText + '  +' + levelScore + ' pts\n\n' + condiciones, false, '▶ Continuar');
   }
 }
 
@@ -84,7 +84,7 @@ export function showTrampasOverlay(title, sub, isEnd, btnLabel) {
   overlay.classList.remove('hidden');
   TR_EL.overlayTitle.textContent = title;
   TR_EL.overlaySub.textContent = sub;
-  TR_EL.startBtn.textContent = isEnd ? '🔄 Jugar de nuevo' : (btnLabel || '▶ Empezar');
+  TR_EL.startBtn.textContent = isEnd ? 'Jugar de nuevo' : (btnLabel || '▶ Empezar');
   TR_EL.startBtn.onclick = isEnd ? restartTrampas : startTrampas;
 }
 

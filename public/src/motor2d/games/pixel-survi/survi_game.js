@@ -19,7 +19,9 @@ import {
   LEAF_FOOD_DROP, leafPalette,
   WEAPON_STATS, BARE_HAND_ATTACK,
   HIT_FLASH_MS, HIT_SHAKE_INTENSITY, HIT_SHAKE_MS,
-  CAMERA_DEADZONE_W, CAMERA_DEADZONE_H, CAMERA_SMOOTHING
+  CAMERA_DEADZONE_W, CAMERA_DEADZONE_H, CAMERA_SMOOTHING,
+  RECIPES, emptyEquipment, totalDefense, totalGeneralSlots, totalInvSlots,
+  canCraft, consumeRecipe, craftWouldFit
 } from './survi_config.js';
 import { generateWorld, pickSpawn, autotileId } from './survi_world.js';
 import { saveWorld, deleteWorld, fmtTime } from './survi_save.js';
@@ -162,6 +164,11 @@ export class SurviGame {
     this.hotbarSlots = save ? (save.hotbarSlots || new Array(HOTBAR_SIZE).fill(null))
                             : new Array(HOTBAR_SIZE).fill(null);
     this.selectedSlot = save ? (save.selectedSlot || 0) : 0;
+    // { ...emptyEquipment(), ...save.equipment }: si el save es de antes de
+    // que existiera este sistema (o le falta algún slot nuevo que se
+    // agregue más adelante), se completa con null en vez de romper.
+    this.equipment = emptyEquipment();
+    if (save && save.equipment) Object.assign(this.equipment, save.equipment);
     if (!save) this._giveStarterTools();
 
     this.enemies = [];
@@ -262,7 +269,8 @@ export class SurviGame {
       hunger: this.hunger,
       inventory: this.inventory,
       hotbarSlots: this.hotbarSlots,
-      selectedSlot: this.selectedSlot
+      selectedSlot: this.selectedSlot,
+      equipment: this.equipment
     });
   }
 
@@ -429,8 +437,17 @@ export class SurviGame {
     this._attackAnim = Math.max(this._attackAnim, 60);
 
     if (this._mine.progress >= 1) {
+      // Con el inventario lleno de tipos distintos, _addItem devuelve false
+      // y el drop se perdía: el bloque quedaba roto y no te llevabas nada.
+      // Mejor no romperlo y avisar.
+      const dropId = DROPS[id] || 0;
+      if (!this._hasRoomFor(dropId)) {
+        this._resetMine();
+        if (this.ui.showToast) this.ui.showToast('Inventario lleno');
+        return;
+      }
       const broken = this.tilemap.breakTile(col, row);
-      this._addItem(DROPS[broken] || 0);
+      this._addItem(dropId);
       const pal = leafPalette(broken);
       const foodDrop = pal ? LEAF_FOOD_DROP[pal] : null;
       if (foodDrop && Math.random() < foodDrop.chance) this._addItem(foodDrop.id);
@@ -533,20 +550,47 @@ export class SurviGame {
     }
   }
 
-  // ═══════════ Inventario / hotbar ═══════════
-  _addItem(id) {
-    if (!id || !ITEM_INFO[id]) return;
-    this.inventory[id] = (this.inventory[id] || 0) + 1;
-    if (!this.hotbarSlots.includes(id)) {
+  // ═══════════ Inventario / hotbar / equipamiento / crafteo ═══════════
+
+  // Cupo total de ítems distintos: 8 de hotbar + 10 generales (14 con
+  // mochila puesta). Cada TIPO de ítem ocupa un solo "hueco" acá adentro
+  // sin importar cuánto stock tenga — lo mismo que ya hacía la hotbar
+  // (`hotbarSlots.indexOf(null)`), solo que ahora también se aplica al
+  // inventario general en vez de dejarlo sin límite.
+  get invSlotCap() { return totalInvSlots(this.equipment); }
+  // Cupo del inventario GENERAL solo (sin contar los 8 de la hotbar) —
+  // lo usa la UI para el contador "X/10" (o "X/14" con mochila puesta).
+  get generalSlotCap() { return totalGeneralSlots(this.equipment); }
+  // Defensa total de la armadura puesta — se aplica en _damage().
+  get armorDefense() { return totalDefense(this.equipment); }
+
+  // qty por defecto 1 (picar/comida sueltan de a uno); craftItem() puede
+  // pedir más de una unidad de una sola vez si algún día una receta da
+  // resultQty > 1. Devuelve true/false: false = no entró (inventario
+  // lleno de tipos distintos) y el drop/resultado se pierde.
+  _addItem(id, qty = 1) {
+    if (!id || !ITEM_INFO[id] || qty <= 0) return false;
+    const isNew = !(id in this.inventory);
+    if (isNew && Object.keys(this.inventory).length >= this.invSlotCap) {
+      if (this.ui.showToast) this.ui.showToast('Inventario lleno');
+      return false;
+    }
+    this.inventory[id] = (this.inventory[id] || 0) + qty;
+    const info = ITEM_INFO[id];
+    // Los ítems de equipo (armadura, mochila…) no tienen sentido en la
+    // hotbar — se equipan desde la pantalla de Equipamiento, no
+    // clickeando 1-8, así que no les reservamos un slot ahí.
+    if (!info.equip && !this.hotbarSlots.includes(id)) {
       const free = this.hotbarSlots.indexOf(null);
       if (free !== -1) this.hotbarSlots[free] = id;
     }
     this._renderHotbar();
     if (this.invOpen) this._renderInventory();
+    return true;
   }
 
-  _removeItem(id) {
-    const left = Math.max(0, (this.inventory[id] || 0) - 1);
+  _removeItem(id, qty = 1) {
+    const left = Math.max(0, (this.inventory[id] || 0) - qty);
     if (left === 0) {
       delete this.inventory[id];
       const i = this.hotbarSlots.indexOf(id);
@@ -556,8 +600,67 @@ export class SurviGame {
     if (this.invOpen) this._renderInventory();
   }
 
+  // ¿Entra este ítem? (true si no ocupa hueco nuevo o si todavía hay cupo)
+  _hasRoomFor(id) {
+    if (!id || !ITEM_INFO[id]) return true; // nada que guardar
+    if (id in this.inventory) return true;  // ya tenés de ese tipo: solo suma stock
+    return Object.keys(this.inventory).length < this.invSlotCap;
+  }
+
   _renderHotbar() { this.ui.renderHotbar(this); }
   _renderInventory() { this.ui.renderInventory(this); }
+
+  // ── Equipar / desequipar ──
+  // Devuelve true/false (para que la UI sepa si hizo falta avisar algo).
+  equipItem(id) {
+    const info = ITEM_INFO[id];
+    if (!info || !info.equip || (this.inventory[id] || 0) <= 0) return false;
+    const slotType = info.equip;
+    const prev = this.equipment[slotType];
+    if (prev === id) return true; // ya está puesto, no hay nada que hacer
+
+    // Sacamos el nuevo del inventario primero: así, si había algo puesto
+    // en ese slot, el hueco que libera este item es justo el que
+    // necesita el que vuelve.
+    this._removeItem(id, 1);
+    if (prev) {
+      if (!this._addItem(prev, 1)) {
+        // No entró de vuelta (caso límite: inventario lleno con 18 tipos
+        // distintos Y el que tenías puesto era, para colmo, un tipo que
+        // ya no está en tu inventario). Revertimos todo — nadie se queda
+        // sin su equipo puesto por un slot que no alcanzó.
+        this._addItem(id, 1); // esto sí entra seguro: acabamos de liberarlo
+        return false;
+      }
+    }
+    this.equipment[slotType] = id;
+    if (this.invOpen) this._renderInventory();
+    return true;
+  }
+
+  unequipItem(slotType) {
+    const id = this.equipment[slotType];
+    if (!id) return false;
+    if (!this._addItem(id, 1)) return false; // inventario lleno, no se puede sacar
+    this.equipment[slotType] = null;
+    if (this.invOpen) this._renderInventory();
+    return true;
+  }
+
+  // ── Crafteo ──
+  // Devuelve { ok, reason } en vez de solo boolean, así la UI puede
+  // mostrar un mensaje distinto según por qué no se pudo craftear.
+  craftItem(recipeId) {
+    const recipe = RECIPES.find(r => r.id === recipeId);
+    if (!recipe) return { ok: false, reason: 'not_found' };
+    if (!canCraft(this.inventory, recipe)) return { ok: false, reason: 'missing' };
+    // Chequeamos el cupo ANTES de descontar nada: así, si el resultado no
+    // va a entrar, no perdés los materiales de arriba.
+    if (!craftWouldFit(this.inventory, recipe, this.invSlotCap)) return { ok: false, reason: 'full' };
+    consumeRecipe(this.inventory, recipe);
+    this._addItem(recipe.result, recipe.resultQty || 1); // ahora sí entra seguro
+    return { ok: true };
+  }
 
   // ═══════════ Vida / muerte ═══════════
   _renderHealth() {
@@ -577,6 +680,14 @@ export class SurviGame {
   _damage(amount, { ignoreInvuln = false } = {}) {
     if (this.dead || amount <= 0) return;
     if (!ignoreInvuln && this.invulnMs > 0) return;
+    // La armadura amortigua los golpes cuerpo a cuerpo — ignoreInvuln=false
+    // es justo la marca que ya usan esos golpes (ver _updateEnemies) — pero
+    // NO el daño de caída ni el de hambre (ignoreInvuln=true): la
+    // armadura no evita romperte una pierna cayendo ni evita pasar hambre.
+    if (!ignoreInvuln) {
+      amount = Math.max(0, amount - this.armorDefense);
+      if (amount <= 0) return; // la armadura absorbió todo el golpe
+    }
     this.hp -= amount;
     this.invulnMs = INVULN_MS;
     // Feedback aparte del parpadeo largo de invulnerabilidad: un flash

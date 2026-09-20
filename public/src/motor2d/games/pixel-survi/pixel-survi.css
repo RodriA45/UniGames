@@ -400,6 +400,192 @@
   margin: 0;
 }
 
+.survi-inv-count { font-size: 0.7rem; opacity: 0.7; font-weight: 400; }
+
+.survi-inv-actions {
+  display: flex;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 300px;
+}
+.survi-inv-actions button { flex: 1; }
+
+/* Hueco vacío del inventario general: mismo tamaño que uno ocupado, sin
+   contenido, para que "10 huecos" se vea de un vistazo y no solo en el
+   contador de arriba. */
+.survi-inv-cell-empty {
+  min-height: 3.6rem;
+  border-style: dashed;
+  border-color: var(--game-row-border, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  cursor: default;
+}
+
+/* Ítems de equipo sin sprite propio todavía: un emoji hace de ícono. */
+.survi-emoji-icon { display: block; line-height: 1; }
+
+/* Aviso corto tipo "Inventario lleno". */
+.survi-toast {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  padding: 0.4rem 0.9rem;
+  font-size: 0.72rem;
+  color: #fff;
+  white-space: nowrap;
+  z-index: 30;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.survi-toast.hidden { display: none; }
+
+/* ─── Equipamiento ─────────────────────────────────────────────── */
+.survi-equip-box { max-width: 520px; }
+
+.survi-equip-layout {
+  display: flex;
+  gap: 0.8rem;
+  width: 100%;
+  align-items: flex-start;
+}
+
+.survi-equip-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+}
+
+.survi-equip-char {
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.4));
+}
+
+.survi-equip-slots {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.35rem;
+  width: 9rem;
+}
+
+.survi-equip-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  height: 3.4rem;
+  background: var(--game-row-bg, rgba(255, 255, 255, 0.06));
+  border: 2px solid var(--game-row-border, rgba(255, 255, 255, 0.15));
+  border-radius: var(--game-radius-sm, 8px);
+  color: #fff;
+  cursor: pointer;
+  transition: border-color var(--game-transition, 0.2s ease), transform var(--game-transition, 0.2s ease);
+}
+.survi-equip-slot:hover { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.45); }
+.survi-equip-slot.filled { border-color: rgba(245, 197, 24, 0.45); }
+.survi-equip-slot-icon-empty { opacity: 0.35; font-size: 1.1rem; }
+.survi-equip-slot-label { font-size: 0.55rem; opacity: 0.8; }
+
+.survi-equip-right {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.survi-equip-hint,
+.survi-equip-empty {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.75);
+  margin: 0;
+}
+
+.survi-equip-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(4.6rem, 1fr));
+  gap: 0.35rem;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+/* ─── Craftear ─────────────────────────────────────────────────── */
+.survi-craft-box { max-width: 560px; }
+
+.survi-craft-layout {
+  display: flex;
+  gap: 0.6rem;
+  width: 100%;
+  align-items: stretch;
+}
+
+.survi-craft-list {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.survi-craft-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--game-row-bg, rgba(255, 255, 255, 0.06));
+  border: 2px solid var(--game-row-border, rgba(255, 255, 255, 0.15));
+  border-radius: var(--game-radius-sm, 8px);
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  opacity: 0.55; /* recetas sin materiales suficientes se ven apagadas */
+  transition: border-color var(--game-transition, 0.2s ease), opacity var(--game-transition, 0.2s ease);
+}
+.survi-craft-row.can-craft { opacity: 1; }
+.survi-craft-row.selected { border-color: var(--yellow, #f5c518); }
+.survi-craft-row-info { display: flex; flex-direction: column; min-width: 0; }
+.survi-craft-row-name { font-size: 0.72rem; font-weight: 700; }
+.survi-craft-row-cost { font-size: 0.6rem; opacity: 0.75; }
+
+.survi-craft-detail {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--game-row-bg, rgba(255, 255, 255, 0.04));
+  border: 2px solid var(--game-row-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--game-radius-sm, 8px);
+}
+
+.survi-craft-empty { font-size: 0.72rem; color: rgba(255, 255, 255, 0.6); margin: auto; text-align: center; }
+
+.survi-craft-detail-head { display: flex; align-items: center; gap: 0.5rem; }
+.survi-craft-detail-name { font-size: 0.85rem; font-weight: 700; }
+
+.survi-craft-ings { display: flex; flex-direction: column; gap: 0.25rem; }
+.survi-craft-ing {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  padding: 0.15rem 0.3rem;
+  border-radius: 4px;
+}
+.survi-craft-ing.have { color: #7ee08a; }
+.survi-craft-ing.missing { color: #e0563a; }
+
+.survi-craft-btn { margin-top: auto; }
+.survi-craft-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+
 /* ─── Muerte: rojo transparente sobre el mundo ─────────────────── */
 .survi-death {
   background: rgba(150, 20, 20, 0.45);
@@ -460,4 +646,12 @@
   .survi-inv-grid { grid-template-columns: repeat(auto-fill, minmax(4.2rem, 1fr)); max-height: 34vh; }
   .survi-inv-name { font-size: 0.55rem; }
   .survi-howto-list { font-size: 0.65rem; max-height: 40vh; }
+
+  /* Equipamiento y Craftear: en pantalla chica, la columna izquierda y
+     derecha se apilan en vez de ir lado a lado (si no, no entran). */
+  .survi-equip-layout { flex-direction: column; align-items: center; }
+  .survi-equip-slots { width: 100%; max-width: 14rem; }
+  .survi-equip-list { grid-template-columns: repeat(auto-fill, minmax(3.8rem, 1fr)); max-height: 22vh; }
+  .survi-craft-layout { flex-direction: column; }
+  .survi-craft-list { max-height: 26vh; }
 }

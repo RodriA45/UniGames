@@ -7,7 +7,7 @@ import {
   RUNNER, RUNNER_EL, RUNNER_ASSETS, RUNNER_COMICS, RUN_FRAMES, FALL_FRAMES,
   CASTLE_TARGET_H, CASTLE_REST_MARGIN, CASTLE_GROUND_OFFSET, CASTLE_DOOR_WALK_GAP,
   CASTLE_WALK_SPEED_MULT, WIN_APPROACH_PAUSE_MS, FALL_FRAME_DELAY, FALL_HOLD_BEFORE_OVERLAY,
-  showRunnerComic
+  showRunnerComic, runnerSyncPauseBtn
 } from './runner_config.js';
 import { loadHistoriaCompleta, saveHistoriaCompleta } from './runner_economy.js';
 import { drawRunner } from './runner_render.js';
@@ -93,6 +93,7 @@ export function playerDie() {
   const p = RUNNER.player;
   p.dead = true;
   RUNNER.running = false;
+  runnerSyncPauseBtn();
   bgMusic.pause();
   if (typeof playDeathSound === 'function') playDeathSound();
   if (RUNNER.loop) RUNNER.loop.stop();
@@ -111,6 +112,7 @@ export function playerDie() {
 export function finishHistoriaWin() {
   const p = RUNNER.player;
   RUNNER.running = false;
+  runnerSyncPauseBtn();
   if (RUNNER.loop) RUNNER.loop.stop();
   bgMusic.pause();
 
@@ -173,7 +175,9 @@ export function drawRunnerCharPreview(victory) {
     // sprite de "festejo" en el atlas, así que reusamos una de correr).
     const frameName = victory ? RUN_FRAMES[0] : FALL_FRAMES[FALL_FRAMES.length - 1];
     const targetH = canvas.height - 4; // margen chico para que no se recorte contra los bordes
+    ctx.imageSmoothingEnabled = true;
     Engine2D.drawAtlasFrame(ctx, juniorImg, juniorAtlas, frameName, canvas.width / 2, canvas.height - 2, targetH, false, false);
+    ctx.imageSmoothingEnabled = false;
   }
 }
 

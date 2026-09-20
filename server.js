@@ -75,6 +75,14 @@ function calcBuildId() {
 
 const BUILD_ID = calcBuildId();
 
+// En dev no queremos "immutable" en nada: es lo que obliga a limpiar caché
+// a mano cada vez que se reemplaza un sprite/atlas (el dolor de cabeza de
+// recién). En prod sí sirve — assets que no cambian entre deploys, cache
+// larga sin drama. Por defecto asumimos dev (no todos los setups locales
+// exportan NODE_ENV): hay que setearlo explícito en el hosting para pasar
+// a la rama de cache fuerte.
+const IS_PROD = process.env.NODE_ENV === 'production';
+
 // index.html con ?v= inyectado. Se arma una sola vez y queda en memoria: el
 // archivo no cambia mientras el proceso vive, y si cambia hay que
 // reiniciar igual para recalcular el BUILD_ID.
@@ -112,20 +120,31 @@ app.use(express.static(PUBLIC_DIR, {
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
         } 
-        // 2. Multimedia pesada (imágenes, audios, fuentes, JSON de atlas): 7 días en disco
+        // 2. Multimedia pesada (imágenes, audios, fuentes, JSON de atlas)
         else if (/\.(webp|png|jpg|jpeg|gif|svg|mp3|ogg|wav|json|woff2?)$/i.test(filePath)) {
-            res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+            res.setHeader(
+                'Cache-Control',
+                IS_PROD
+                    ? 'public, max-age=604800, immutable' // 7 días — no cambian entre deploys
+                    : 'no-cache' // dev: siempre revalida (ETag de express.static ya puesto), sin tocar nada del navegador
+            );
         } 
         // 3. Scripts y estilos (JS y CSS)
         else if (/\.(js|css)$/i.test(filePath)) {
-            // Con ?v= la URL es única por build → se puede cachear fuerte.
-            // Sin ?v= (imports dinámicos de los juegos), 5 min y revalidar.
+            // Con ?v= la URL es única por build → se puede cachear fuerte
+            // incluso en dev (cambiar el archivo y reiniciar ya cambia el
+            // BUILD_ID, así que la URL vieja simplemente deja de pedirse).
+            // Sin ?v= (imports dinámicos de los juegos: runner_*.js,
+            // castle_*.js, etc.) en prod se tolera una ventana corta de 5
+            // min sin revalidar; en dev eso es 5 minutos de "por qué no
+            // cambia nada" cada vez que se edita un juego, así que ahí
+            // revalida siempre.
             const versioned = res.req && res.req.query && res.req.query.v;
             res.setHeader(
                 'Cache-Control',
                 versioned
                     ? 'public, max-age=31536000, immutable'
-                    : 'public, max-age=300, must-revalidate'
+                    : (IS_PROD ? 'public, max-age=300, must-revalidate' : 'no-cache')
             );
         }
     }

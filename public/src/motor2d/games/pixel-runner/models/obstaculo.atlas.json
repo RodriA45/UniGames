@@ -1,59 +1,58 @@
 {
-  "note": "Coordenadas escaladas x0.38 para usar con el obstaculo.png ya redimensionado (no el original). [REPACKED: canvas achicado, mismos frames/aspect, solo se reordenó el packing]",
   "frames": {
     "cactus_large": {
-      "x": 2,
-      "y": 2,
-      "w": 141,
-      "h": 198
+      "x": 4,
+      "y": 3,
+      "w": 250,
+      "h": 348
     },
     "tree_large": {
-      "x": 145,
-      "y": 2,
-      "w": 152,
-      "h": 193
+      "x": 256,
+      "y": 3,
+      "w": 268,
+      "h": 339
     },
     "rock_large": {
-      "x": 2,
-      "y": 202,
-      "w": 192,
-      "h": 152
+      "x": 4,
+      "y": 358,
+      "w": 337,
+      "h": 266
     },
     "cactus_medium": {
-      "x": 196,
-      "y": 202,
-      "w": 116,
-      "h": 147
+      "x": 346,
+      "y": 358,
+      "w": 206,
+      "h": 258
     },
     "tree_medium": {
-      "x": 314,
-      "y": 202,
-      "w": 92,
-      "h": 143
+      "x": 554,
+      "y": 357,
+      "w": 162,
+      "h": 250
     },
     "rock_medium": {
-      "x": 2,
-      "y": 356,
-      "w": 132,
-      "h": 107
+      "x": 4,
+      "y": 632,
+      "w": 232,
+      "h": 187
     },
     "tree_small": {
-      "x": 136,
-      "y": 356,
-      "w": 62,
-      "h": 93
+      "x": 238,
+      "y": 631,
+      "w": 110,
+      "h": 190
     },
     "cactus_small": {
-      "x": 200,
-      "y": 356,
-      "w": 52,
-      "h": 87
+      "x": 354,
+      "y": 631,
+      "w": 92,
+      "h": 152
     },
     "rock_small": {
-      "x": 254,
-      "y": 356,
-      "w": 82,
-      "h": 72
+      "x": 448,
+      "y": 632,
+      "w": 144,
+      "h": 124
     }
   }
 }

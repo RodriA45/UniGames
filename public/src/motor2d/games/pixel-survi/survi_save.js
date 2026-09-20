@@ -70,7 +70,8 @@ export function saveWorld(slot, payload) {
       hunger: payload.hunger,
       inventory: payload.inventory,
       hotbarSlots: payload.hotbarSlots,
-      selectedSlot: payload.selectedSlot
+      selectedSlot: payload.selectedSlot,
+      equipment: payload.equipment
     }));
     return true;
   } catch (e) {

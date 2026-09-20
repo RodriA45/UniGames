@@ -42,6 +42,12 @@ export const TR_ASSET_BASE = 'src/motor2d/games/castle-escape/';
 
 // Resolución lógica fija (el canvas se escala por CSS al ancho del contenedor)
 export const TR_W = 480, TR_H = 270;
+// Grilla fija del editor y del juego: TODO se coloca en cuadrados de 30px.
+// 480/30 = 16 columnas y 270/30 = 9 filas exactas en pantalla (los niveles
+// más grandes sumán filas/columnas). Es el tamaño de una celda del
+// autotile de mapa.png y queda un poco más grande que Junior (24x27),
+// igual que un bloque de Geometry Dash.
+export const TR_TILE = 30;
 export const TR_GRAVITY = 0.42;
 export const TR_JUMP_VY = -7.4;
 export const TR_MOVE_SPEED = 2.7;
@@ -237,6 +243,12 @@ export const TR_MENU_VIEWS = [TR_EL.mainMenu, TR_EL.levelSelect, TR_EL.settings,
 export const TR_ASSETS = [
   { type: 'image', src: TR_ASSET_BASE + 'models/mapa.webp' },
   { type: 'atlas', src: TR_ASSET_BASE + 'models/mapa_atlas.json' },
+  // Texturas nuevas: bloques (autotile 3x3 + plataformas de madera) y
+  // obstáculos (flechas + sierra animada). Ver trDrawBlockRect/trDrawSaw.
+  { type: 'image', src: TR_ASSET_BASE + 'models/mapa_tiles.png' },
+  { type: 'atlas', src: TR_ASSET_BASE + 'models/mapa_tiles_atlas.json' },
+  { type: 'image', src: TR_ASSET_BASE + 'models/obstaculo.webp' },
+  { type: 'atlas', src: TR_ASSET_BASE + 'models/obstaculo_atlas.json' },
   { type: 'image', src: TR_ASSET_BASE + 'models/deco.webp' },
   { type: 'atlas', src: TR_ASSET_BASE + 'models/deco_atlas.json' },
   { type: 'image', src: TR_ASSET_BASE + 'models/junior.webp' },

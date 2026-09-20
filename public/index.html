@@ -626,11 +626,15 @@
 
     <div class="runner-container">
       <div class="runner-hud">
-        <div class="runner-score-display">Puntos: <span id="runner-score-display">0</span></div>
+        <div class="runner-score-row">
+          <div class="runner-score-display">Puntos: <span id="runner-score-display">0</span></div>
+          <span class="runner-multiplier-badge hidden" id="runner-multiplier-display">x2</span>
+        </div>
         <div class="runner-coins-display">🪙 <span id="runner-coins-run-display">0</span></div>
+        <div class="runner-active-powerup hidden" id="runner-active-powerup-display"></div>
       </div>
-      <button type="button" class="runner-hud-fullscreen-btn" id="runnerHudFullscreenBtn" onclick="runnerToggleFullscreen()" aria-label="Pantalla completa" title="Pantalla completa">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path></svg>
+      <button type="button" class="runner-hud-pause-btn hidden" id="runnerHudPauseBtn" onclick="runnerOpenPause()" aria-label="Pausa" title="Pausa">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>
       </button>
       <canvas id="runnerCanvas"></canvas>
       <!-- Pantalla de menú del juego (Pixel Runner) -->
@@ -696,6 +700,20 @@
         </div>
       </div>
 
+      <!-- Cartel: Pausa (durante la partida) -->
+      <div class="runner-panel hidden" id="runnerPausePanel">
+        <div class="runner-panel-box">
+          <div class="runner-panel-header">
+            <div class="runner-panel-title">Pausa</div>
+          </div>
+          <div class="runner-panel-content runner-pause-content">
+            <button class="btn-play" onclick="runnerResumeFromPause()">▶ Continuar</button>
+            <button class="btn-play runner-btn-secondary" onclick="runnerPauseToAjustes()">Ajustes</button>
+            <button class="btn-play runner-btn-secondary" onclick="runnerPauseToMenu()">Volver al menú</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Cartel: Mejoras -->
       <div class="runner-panel hidden" id="runnerMejorasPanel">
         <div class="runner-panel-box">
@@ -714,22 +732,22 @@
       <div class="runner-panel hidden" id="runnerAjustesPanel">
         <div class="runner-panel-box">
           <div class="runner-panel-header">
-            <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
-            <div class="runner-panel-title">⚙️ Ajustes</div>
+            <button class="trampas-back-btn" onclick="cerrarAjustesRunner()">← Volver</button>
+            <div class="runner-panel-title">Ajustes</div>
           </div>
           <div class="runner-panel-content trampas-settings-content">
             <div class="trampas-slider-row">
-              <label for="runnerMusicVolume">🎵 Música</label>
+              <label for="runnerMusicVolume">Música</label>
               <input type="range" id="runnerMusicVolume" min="0" max="100" value="50" oninput="runnerOnMusicVolumeChange(this.value)">
               <span class="trampas-slider-value" id="runnerMusicVolumeValue">50%</span>
             </div>
             <div class="trampas-slider-row">
-              <label for="runnerSfxVolume">🔊 Efectos</label>
+              <label for="runnerSfxVolume">Efectos</label>
               <input type="range" id="runnerSfxVolume" min="0" max="100" value="80" oninput="runnerOnSfxVolumeChange(this.value)">
               <span class="trampas-slider-value" id="runnerSfxVolumeValue">80%</span>
             </div>
             <div class="trampas-slider-row runner-fullscreen-row" id="runnerFullscreenRow">
-              <label>🖥️ Pantalla completa</label>
+              <label>Pantalla completa</label>
               <button type="button" class="runner-fullscreen-btn" id="runnerFullscreenBtn" onclick="runnerToggleFullscreen()">Activar</button>
             </div>
             <!-- Selector de calidad gráfica: lo inserta ensureQualityRows()

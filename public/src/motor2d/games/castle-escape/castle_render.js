@@ -5,22 +5,31 @@
 // pinchos, el jugador y las explosiones (spawn/update/draw juntos porque
 // son puramente un efecto visual).
 import {
-  TRAMPAS, TR_ASSET_BASE, TR_W, TR_H, TR_LEVELS, TR_STONE_MORTAR,
+  TRAMPAS, TR_ASSET_BASE, TR_TILE, TR_W, TR_H, TR_LEVELS, TR_STONE_MORTAR,
   TR_FALL_FRAMES, TR_JUMP_FRAME, TR_RUN_FRAMES
 } from './castle_config.js';
 
 // Se llaman varias veces por frame: antes armaban 2 strings y un objeto
 // nuevo en cada llamada. Ahora las rutas son constantes y el par
 // {img, atlas} se cachea apenas los dos están listos.
-const TR_ASSET_KEYS = {
-  mapa:   [TR_ASSET_BASE + 'models/mapa.webp',   TR_ASSET_BASE + 'models/mapa_atlas.json'],
-  deco:   [TR_ASSET_BASE + 'models/deco.webp',   TR_ASSET_BASE + 'models/deco_atlas.json'],
-  junior: [TR_ASSET_BASE + 'models/junior.webp', TR_ASSET_BASE + 'models/junior.atlas.json'],
+// OJO: las rutas se arman DENTRO de la función, no en una constante de
+// módulo. castle_config.js ↔ castle_loop.js ↔ castle_render.js se importan
+// en círculo, así que este archivo se evalúa ANTES de que config termine
+// de definir TR_ASSET_BASE: tocarlo a nivel de módulo tira
+// "Cannot access 'TR_ASSET_BASE' before initialization" y se cae la carga
+// de todo Castle Escape (el juego quedaba sin arrancar).
+const TR_ASSET_FILES = {
+  mapa:   ['models/mapa.webp',   'models/mapa_atlas.json'],
+  deco:   ['models/deco.webp',   'models/deco_atlas.json'],
+  junior: ['models/junior.webp', 'models/junior.atlas.json'],
 };
 const trAssetCache = {};
 function trGetAssets(key) {
+  const files = TR_ASSET_FILES[key];
+  if (!files) return null; // 'tiles'/'obst': ver trGetResolvedAssets más abajo
   const cached = trAssetCache[key];
-  const [imgSrc, atlasSrc] = TR_ASSET_KEYS[key];
+  const imgSrc = TR_ASSET_BASE + files[0];
+  const atlasSrc = TR_ASSET_BASE + files[1];
   const img = Engine2D.getImage(imgSrc);
   // Si alguien liberó la imagen del cache del motor, se vuelve a buscar.
   if (cached && cached.img === img) return cached;
@@ -33,6 +42,70 @@ function trGetAssets(key) {
 export function trGetMapaAssets() { return trGetAssets('mapa'); }
 export function trGetDecoAssets() { return trGetAssets('deco'); }
 export function trGetJuniorAssets() { return trGetAssets('junior'); }
+
+// ── Texturas nuevas (bloques y obstáculos): con nombre de archivo
+// tolerante ──
+// El juego (a diferencia del editor, que probaba una lista larga de
+// rutas) solo intentaba UN nombre fijo. Si en el servidor el archivo
+// había quedado con el nombre viejo (mapa.png / obstaculo.png en vez de
+// mapa_tiles.png / obstaculo.webp), la carga fallaba en silencio y el
+// juego dibujaba la piedra a mano para siempre — aunque el editor sí lo
+// encontraba, porque ahí probábamos varias rutas. Ahora el juego prueba
+// las mismas alternativas, una sola vez, al arrancar (ver
+// trResolveNewTextures, llamada desde initTrampas).
+const TR_TEX_CANDIDATES = {
+  tiles: { img: ['models/mapa_tiles.png', 'models/mapa.png'], atlas: ['models/mapa_tiles_atlas.json'] },
+  obst:  { img: ['models/obstaculo.webp', 'models/obstaculo.png'], atlas: ['models/obstaculo_atlas.json'] },
+};
+// undefined = todavía no se intentó cargar; null = se intentó y no se
+// encontró ninguna variante; {imgSrc, atlasSrc} = la que funcionó.
+const trResolvedTex = { tiles: undefined, obst: undefined };
+
+async function trTryPaths(paths, loader) {
+  for (const rel of paths) {
+    try { await loader(TR_ASSET_BASE + rel); return TR_ASSET_BASE + rel; }
+    catch (e) { /* probar la siguiente */ }
+  }
+  return null;
+}
+
+// Se llama una vez desde initTrampas, en paralelo con la carga principal.
+// No hace falta esperar su resultado para mostrar el menú: mientras tanto
+// trGetAssets('tiles'/'obst') devuelve null y se ve la piedra a mano, y en
+// cuanto resuelve empieza a devolver la textura real.
+export async function trResolveNewTextures() {
+  for (const key of Object.keys(TR_TEX_CANDIDATES)) {
+    const cand = TR_TEX_CANDIDATES[key];
+    const imgSrc = await trTryPaths(cand.img, Engine2D.loadImage);
+    if (!imgSrc) {
+      console.warn('[Castle Escape] no se encontró la textura de ' + key + ' en ninguna ruta:', cand.img);
+      trResolvedTex[key] = null;
+      continue;
+    }
+    const atlasSrc = await trTryPaths(cand.atlas, Engine2D.loadAtlas);
+    if (!atlasSrc) {
+      console.warn('[Castle Escape] no se encontró el atlas de ' + key + ':', cand.atlas);
+      trResolvedTex[key] = null;
+      continue;
+    }
+    trResolvedTex[key] = { imgSrc, atlasSrc };
+  }
+}
+
+function trGetResolvedAssets(key) {
+  const r = trResolvedTex[key];
+  if (!r) return null; // undefined (aún cargando) o null (no se encontró)
+  const cached = trAssetCache[key];
+  const img = Engine2D.getImage(r.imgSrc);
+  if (cached && cached.img === img) return cached;
+  const atlas = Engine2D.getAtlas(r.atlasSrc);
+  if (img && img.complete && img.naturalWidth > 0 && atlas) {
+    return (trAssetCache[key] = { img, atlas });
+  }
+  return null;
+}
+export function trGetTilesAssets() { return trGetResolvedAssets('tiles'); }
+export function trGetObstAssets() { return trGetResolvedAssets('obst'); }
 
 // Plataformas que se mueven o se rompen ('moving'/'crumble') no pueden ir
 // en la capa estática, pero su TEXTURA no cambia: antes se re-dibujaba la
@@ -50,7 +123,7 @@ function trPlatformSprite(plat) {
   canvas.width = w;
   canvas.height = h;
   const c = canvas.getContext('2d');
-  trDrawStoneFloorAt(c, plat.x, plat.y, 0, top, plat.w, plat.h);
+  trDrawPlatformAt(c, plat, 0, top);
   if (top) trDrawSpikeRow(c, 0, 0, plat.w, 20);
   plat._sprite = { canvas, top };
   return plat._sprite;
@@ -69,16 +142,29 @@ export function trIsFloatingPlatform(plat) {
 }
 
 export function trDrawPlatform(ctx, plat) {
-  // Todas las plataformas (piso normal/fake y también islas flotantes,
-  // crumble y moving) usan la piedra dibujada a mano — mapa.png ya no se
-  // usa acá, solo queda para flechas y la puerta de salida.
-  trDrawStoneFloor(ctx, plat);
+  // Bloques con la textura nueva (autotile) para lo fijo, y las piezas de
+  // madera para lo que se mueve o se rompe. Si la textura todavía no
+  // cargó, cae en la piedra dibujada a mano de siempre.
+  trDrawPlatformAt(ctx, plat, plat.x, plat.y);
   // Tinte por encima para distinguir estado — el de 'moving' se sacó
   // (tapaba la textura de la plataforma flotante con un rectángulo azul).
   if (plat.type === 'crumble' && plat.touchedAt !== null) {
     ctx.fillStyle = 'rgba(232,84,63,0.45)';
     ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
   }
+}
+
+// Igual que trDrawPlatform pero pintando en (drawX, drawY) — lo usa
+// trPlatformSprite para hornear la plataforma en su propio canvas.
+export function trDrawPlatformAt(ctx, plat, drawX, drawY) {
+  // plat.piece = una de las 3 plataformas de madera; plat.tile = uno de los
+  // 9 bloques. Los niveles viejos no traen ninguno de los dos y se decide
+  // por tipo, como antes.
+  const wood = plat.piece || (!plat.tile && (plat.type === 'moving' || plat.type === 'crumble'));
+  const ok = wood
+    ? trDrawWoodPlatform(ctx, drawX, drawY, plat.w, plat.h, plat.piece)
+    : trDrawBlockRect(ctx, drawX, drawY, plat.w, plat.h, plat.tile);
+  if (!ok) trDrawStoneFloorAt(ctx, plat.x, plat.y, drawX, drawY, plat.w, plat.h, trIsWall(plat));
 }
 
 // Piso de piedra gris oscuro dibujado a mano (reemplaza al sprite "wall"
@@ -99,7 +185,11 @@ export function trStoneShade(bx, by) {
 // eso. La separación sirve para poder hornear esta misma textura en un
 // canvas chico propio (StaticLayer / TRAMPAS.staticLayer, ver más abajo)
 // dibujando en (0,0) mientras el hash sigue usando la posición real.
-export function trDrawStoneFloorAt(ctx, worldX, worldY, drawX, drawY, w, h) {
+// isWall: plataforma marcada como "pared vertical" en el editor
+// (plat.vertical). Se dibuja con las hiladas rotadas 90° — columnas de
+// bloques apilados — y la luz en el borde izquierdo en vez del de arriba,
+// igual que la vista previa del editor.
+export function trDrawStoneFloorAt(ctx, worldX, worldY, drawX, drawY, w, h, isWall = false) {
   // Argamasa de fondo — se ve en las líneas finas entre bloques.
   ctx.fillStyle = TR_STONE_MORTAR;
   ctx.fillRect(drawX, drawY, w, h);
@@ -109,33 +199,135 @@ export function trDrawStoneFloorAt(ctx, worldX, worldY, drawX, drawY, w, h) {
   ctx.rect(drawX, drawY, w, h);
   ctx.clip();
 
-  // Bloques tipo mampostería, filas al tresbolillo (offset alternado).
-  const blockH = Math.max(9, Math.round(h / 2));
-  const blockW = blockH * 1.7;
-  let row = 0;
-  for (let wy = worldY; wy < worldY + h; wy += blockH) {
-    const offset = (row % 2 === 0) ? 0 : -blockW / 2;
-    for (let wx = worldX + offset; wx < worldX + w; wx += blockW) {
-      const t = trStoneShade(Math.round(wx), Math.round(wy)); // 0..1, según posición real
-      const g = Math.round(46 + t * 26); // gris oscuro, variación ~46-72
-      ctx.fillStyle = `rgb(${g},${g - 2},${g + 3})`; // toque frío, no gris puro
-      const dbx = wx - worldX + drawX, dby = wy - worldY + drawY;
-      ctx.fillRect(dbx + 1, dby + 1, blockW - 2, blockH - 2);
+  // Bloques tipo mampostería, hiladas al tresbolillo (offset alternado).
+  if (isWall) {
+    const blockW = Math.max(9, Math.round(w / 2));
+    const blockH = blockW * 1.7;
+    let col = 0;
+    for (let wx = worldX; wx < worldX + w; wx += blockW) {
+      const offset = (col % 2 === 0) ? 0 : -blockH / 2;
+      for (let wy = worldY + offset; wy < worldY + h; wy += blockH) {
+        const t = trStoneShade(Math.round(wx), Math.round(wy));
+        const g = Math.round(46 + t * 26);
+        ctx.fillStyle = `rgb(${g},${g - 2},${g + 3})`;
+        const dbx = wx - worldX + drawX, dby = wy - worldY + drawY;
+        ctx.fillRect(dbx + 1, dby + 1, blockW - 2, blockH - 2);
+      }
+      col++;
     }
-    row++;
+  } else {
+    const blockH = Math.max(9, Math.round(h / 2));
+    const blockW = blockH * 1.7;
+    let row = 0;
+    for (let wy = worldY; wy < worldY + h; wy += blockH) {
+      const offset = (row % 2 === 0) ? 0 : -blockW / 2;
+      for (let wx = worldX + offset; wx < worldX + w; wx += blockW) {
+        const t = trStoneShade(Math.round(wx), Math.round(wy)); // 0..1, según posición real
+        const g = Math.round(46 + t * 26); // gris oscuro, variación ~46-72
+        ctx.fillStyle = `rgb(${g},${g - 2},${g + 3})`; // toque frío, no gris puro
+        const dbx = wx - worldX + drawX, dby = wy - worldY + drawY;
+        ctx.fillRect(dbx + 1, dby + 1, blockW - 2, blockH - 2);
+      }
+      row++;
+    }
   }
   ctx.restore();
 
-  // Borde superior más claro (da sensación de piso sólido/luz de arriba)
-  // y sombra fina abajo — mismo criterio visual que tenía el morado plano.
-  ctx.fillStyle = 'rgba(255,255,255,0.10)';
-  ctx.fillRect(drawX, drawY, w, 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.30)';
-  ctx.fillRect(drawX, drawY + h - 2, w, 2);
+  // Luz y sombra en los bordes: arriba/abajo para un piso, izquierda/
+  // derecha para una pared.
+  if (isWall) {
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.fillRect(drawX, drawY, 2, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(drawX + w - 2, drawY, 2, h);
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.10)';
+    ctx.fillRect(drawX, drawY, w, 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.30)';
+    ctx.fillRect(drawX, drawY + h - 2, w, 2);
+  }
+}
+
+// ¿Esta plataforma es una pared vertical? (checkbox "Pared vertical" del
+// editor — bloquea el paso lateral, ver updateTrampas.)
+// ¿Este bloque frena? Todo lo que no sea traspasable ni esté derrumbado.
+export function trIsSolidPlatform(plat) {
+  return !plat.gone && plat.type !== 'fake' && !plat.fake;
+}
+
+export function trIsWall(plat) {
+  return plat.type === 'normal' && !!plat.vertical;
+}
+
+// ─── Bloques con textura (mapa_tiles.png) ───────────────────────────
+// Los 9 recortes del autotile: cada uno tiene su función según dónde cae
+// la celda dentro del rectángulo (esquinas, bordes, relleno). Un bloque
+// de 1 celda usa la fila de arriba (el borde con luz queda arriba, que es
+// lo que se ve en un piso).
+const TR_WALL_FRAMES = [
+  ['wall_tl', 'wall_t', 'wall_tr'],
+  ['wall_l',  'wall_c', 'wall_r'],
+  ['wall_bl', 'wall_b', 'wall_br'],
+];
+
+// Dibuja un rectángulo de nivel como una grilla de bloques de TR_TILE.
+// worldX/worldY es la posición real (solo se usa para el fallback dibujado
+// a mano); drawX/drawY es dónde se pinta. Devuelve false si la textura
+// todavía no cargó, para que el caller use la piedra de siempre.
+export function trDrawBlockRect(ctx, drawX, drawY, w, h, tileName) {
+  const tiles = trGetTilesAssets();
+  if (!tiles) return false;
+  const F = tiles.atlas.frames;
+  // El editor guarda QUÉ pieza es cada bloque (plat.tile): se dibuja esa y
+  // punto, no se recalcula por vecinos. El autotile de abajo queda solo
+  // para los niveles viejos, que no tienen ese dato.
+  if (tileName && F[tileName]) {
+    const f = F[tileName];
+    const cols = Math.max(1, Math.round(w / TR_TILE));
+    const rows = Math.max(1, Math.round(h / TR_TILE));
+    const cw = w / cols, ch = h / rows;
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        ctx.drawImage(tiles.img, f.x, f.y, f.w, f.h,
+          drawX + c * cw, drawY + r * ch, Math.ceil(cw), Math.ceil(ch));
+      }
+    }
+    return true;
+  }
+  // Celdas: se reparte el rectángulo en partes lo más cercanas a TR_TILE
+  // posible, así los niveles viejos (alturas de 20px, por ejemplo) también
+  // quedan prolijos en vez de cortados por la mitad.
+  const cols = Math.max(1, Math.round(w / TR_TILE));
+  const rows = Math.max(1, Math.round(h / TR_TILE));
+  const cw = w / cols, ch = h / rows;
+  for (let r = 0; r < rows; r++) {
+    const fr = rows === 1 ? 0 : (r === 0 ? 0 : (r === rows - 1 ? 2 : 1));
+    for (let c = 0; c < cols; c++) {
+      const fc = cols === 1 ? 1 : (c === 0 ? 0 : (c === cols - 1 ? 2 : 1));
+      const f = F[TR_WALL_FRAMES[fr][fc]];
+      if (!f) continue;
+      ctx.drawImage(tiles.img, f.x, f.y, f.w, f.h,
+        drawX + c * cw, drawY + r * ch, Math.ceil(cw), Math.ceil(ch));
+    }
+  }
+  return true;
+}
+
+// Plataforma de madera (las 3 piezas de mapa_tiles.png). Se elige la pieza
+// por ancho en celdas: 1 = chica, 2 = mediana, 3+ = grande estirada.
+export function trDrawWoodPlatform(ctx, drawX, drawY, w, h, piece) {
+  const tiles = trGetTilesAssets();
+  if (!tiles) return false;
+  const cells = Math.max(1, Math.round(w / TR_TILE));
+  const name = piece || (cells <= 1 ? 'plat_small' : (cells === 2 ? 'plat_medium' : 'plat_large'));
+  const f = tiles.atlas.frames[name];
+  if (!f) return false;
+  ctx.drawImage(tiles.img, f.x, f.y, f.w, f.h, drawX, drawY, Math.ceil(w), Math.ceil(h));
+  return true;
 }
 
 export function trDrawStoneFloor(ctx, plat) {
-  trDrawStoneFloorAt(ctx, plat.x, plat.y, plat.x, plat.y, plat.w, plat.h);
+  trDrawStoneFloorAt(ctx, plat.x, plat.y, plat.x, plat.y, plat.w, plat.h, trIsWall(plat));
 }
 // Puramente visual — no colisiona, no importa el orden, se dibuja detrás
 // de todo lo jugable. 'torch' anima sola (parpadeo, 4 frames de deco.png)
@@ -144,7 +336,7 @@ export function trDrawDecor(ctx) {
   const assets = trGetDecoAssets();
   if (!assets) return;
   const lvl = TR_LEVELS[TRAMPAS.levelIndex];
-  const decor = lvl.decor;
+  const decor = lvl.decor || [];
   if (!decor || !decor.length) return;
   const F = assets.atlas.frames;
   // Un solo cálculo por frame (antes: performance.now() + string por antorcha).
@@ -186,7 +378,85 @@ const TR_TORCH_FRAMES = ['torch_1', 'torch_2', 'torch_3', 'torch_4'];
 // como para la decoración decor:'spike' arriba de una plataforma.
 // Pinchos dibujados a mano (triángulos) — ya no usa el sprite spike_1a/b/c
 // de mapa.png, ese atlas ahora solo se usa para flechas y puerta.
-export function trDrawSpikeRow(ctx, x, y, w, h) {
+// ─── Obstáculos con textura (obstaculo.webp) ────────────────────────
+// La sierra son 13 frames (saw_0..saw_12) que se recorren por tiempo: la
+// hoja gira sola aunque la sierra esté quieta.
+const TR_SAW_FRAMES = 13;
+const TR_SAW_FPS = 20;
+export function trDrawSaw(ctx, hz) {
+  const obst = trGetObstAssets();
+  if (!obst) return false;
+  const idx = Math.floor(performance.now() / (1000 / TR_SAW_FPS)) % TR_SAW_FRAMES;
+  const f = obst.atlas.frames['saw_' + idx];
+  if (!f) return false;
+  // Un poco más grande que el hitbox: los dientes sobresalen, se ve mejor
+  // y sigue siendo el hitbox el que decide si te mata.
+  const pad = Math.max(2, hz.w * 0.12);
+  ctx.drawImage(obst.img, f.x, f.y, f.w, f.h,
+    hz.x - pad, hz.y - pad, hz.w + pad * 2, hz.h + pad * 2);
+  return true;
+}
+
+// Flecha con sprite (arrow_right/arrow_up/arrow_down del atlas nuevo).
+export function trDrawArrowSprite(ctx, a) {
+  const obst = trGetObstAssets();
+  if (!obst) return false;
+  const F = obst.atlas.frames;
+  let f = null, flip = false;
+  if (a.dir === 'up') f = F.arrow_up_a;
+  else if (a.dir === 'down') f = F.arrow_down;
+  else { f = F.arrow_right_a; flip = a.dir < 0; }
+  if (!f) return false;
+  if (flip) {
+    ctx.translate(a.x + a.w / 2, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(obst.img, f.x, f.y, f.w, f.h, -a.w / 2, a.y, a.w, a.h);
+    ctx.scale(-1, 1);
+    ctx.translate(-(a.x + a.w / 2), 0);
+  } else {
+    ctx.drawImage(obst.img, f.x, f.y, f.w, f.h, a.x, a.y, a.w, a.h);
+  }
+  return true;
+}
+
+// Cuántos pinchos entran por celda según el tamaño elegido en el editor.
+export const TR_SPIKES_PER_CELL = { small: 4, medium: 2, large: 1 };
+
+// hz (opcional): el peligro entero, para leer size y rot45. Los pinchos
+// siempre se apoyan en el BORDE INFERIOR del rectángulo — antes los
+// medianos quedaban centrados y parecían flotar dentro del cuadrado.
+export function trDrawSpikeRow(ctx, x, y, w, h, hz) {
+  const size = (hz && hz.size) || 'medium';
+  const perCell = TR_SPIKES_PER_CELL[size] || 2;
+  const n = Math.max(1, Math.round((w / TR_TILE) * perCell));
+  const step = w / n;
+  const sh = Math.min(h, step);      // pincho cuadrado: 4 chiquitos, 2 medianos, 1 grande
+  const top = y + h - sh;            // apoyado abajo
+
+  const rot = hz && hz.rot45;
+  if (rot) {
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.rotate(Math.PI / 4);
+    ctx.translate(-(x + w / 2), -(y + h / 2));
+  }
+  const obst = trGetObstAssets();
+  if (obst && obst.atlas.frames.spike_a) {
+    for (let i = 0; i < n; i++) {
+      const f = obst.atlas.frames[i % 2 === 0 ? 'spike_a' : 'spike_b'] || obst.atlas.frames.spike_a;
+      ctx.drawImage(obst.img, f.x, f.y, f.w, f.h, x + i * step, top, Math.ceil(step), sh);
+    }
+  } else {
+    trDrawSpikeRowVector(ctx, x, top, w, sh);
+  }
+  if (rot) {
+    ctx.translate(x + w / 2, y + h / 2);
+    ctx.rotate(-Math.PI / 4);
+    ctx.translate(-(x + w / 2), -(y + h / 2));
+  }
+}
+
+// Pinchos dibujados a mano — fallback de siempre.
+export function trDrawSpikeRowVector(ctx, x, y, w, h) {
   const n = Math.max(1, Math.floor(w / 14));
   const step = w / n;
   for (let i = 0; i < n; i++) {
@@ -223,10 +493,16 @@ export function drawTrampasPlayer(ctx, p) {
       ? (p.animFrameName || TR_FALL_FRAMES[0])
       : (!p.onGround ? TR_JUMP_FRAME : TR_RUN_FRAMES[p.animFrame]);
     if (p.dead) ctx.globalAlpha = 0.85;
+    // Mismo sprite que Pixel Runner, mismo problema: es arte "pintado",
+    // no pixel art de bloques — con vecino-más-cercano se ve dentado al
+    // achicarlo. Suavizado solo acá, se apaga enseguida para no afectar
+    // el resto (piedra, pinchos, etc., que sí son pixel art de verdad).
+    ctx.imageSmoothingEnabled = true;
     // Ancla: centro-x del hitbox, borde inferior — mismo criterio que ya
     // usa Pixel Runner con este mismo sprite (targetH = altura del hitbox,
     // drawAtlasFrame centra el ancho solo y sube desde `y`).
     Engine2D.drawAtlasFrame(ctx, junior.img, junior.atlas, frameName, p.x + p.w / 2, p.y + p.h, p.h, p.facing === -1, false);
+    ctx.imageSmoothingEnabled = false;
     if (p.dead) ctx.globalAlpha = 1;
     return;
   }
@@ -428,11 +704,12 @@ export function drawTrampas() {
       ctx.closePath();
       ctx.fill();
     } else if (hz.type === 'saw') {
-      // Sierra circular con dientes — el ángulo gira en función de la
-      // posición (obj[axis]) así que la rotación va acorde a cómo se mueve,
-      // no es una animación aparte que haya que actualizar por su cuenta.
+      if (trDrawSaw(ctx, hz)) continue;
+      // Fallback (textura sin cargar): sierra dibujada a mano — el ángulo
+      // gira en función de la posición (obj[axis]), así la rotación va
+      // acorde a cómo se mueve.
       const cx = hz.x + hz.w / 2, cy = hz.y + hz.h / 2, r = hz.w / 2;
-      const angle = (hz[hz.move.axis] || 0) * 0.15;
+      const angle = (hz.move ? (hz[hz.move.axis] || 0) : 0) * 0.15;
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(angle);
@@ -460,6 +737,9 @@ export function drawTrampas() {
     const assets = trGetMapaAssets();
     TRAMPAS.arrows.forEach(a => {
       if (!a.active) return;
+      // Sprites nuevos (obstaculo.webp) primero; si no cargaron, el atlas
+      // viejo de mapa.webp, y último el triángulo dibujado a mano.
+      if (trDrawArrowSprite(ctx, a)) return;
       if (assets) {
         let f, rot = 0;
         if (a.dir === 'up')        { f = assets.atlas.frames.arrow_right; rot = -Math.PI / 2; }
@@ -487,18 +767,19 @@ export function drawTrampas() {
   }
 
   // Salida
+  // Salida: el mismo rectángulo verde que muestra el editor (ya no usa el
+  // sprite 'door' del atlas — el set de texturas nuevo no trae puerta).
   const lvl = TR_LEVELS[TRAMPAS.levelIndex];
   {
-    const assets = trGetMapaAssets();
-    const f = assets && assets.atlas.frames.door;
-    if (f) {
-      ctx.drawImage(assets.img, f.x, f.y, f.w, f.h, lvl.exit.x, lvl.exit.y, lvl.exit.w, lvl.exit.h);
-    } else {
-      ctx.fillStyle = '#22c55e';
-      ctx.fillRect(lvl.exit.x, lvl.exit.y, lvl.exit.w, lvl.exit.h);
-      ctx.fillStyle = 'rgba(255,255,255,0.25)';
-      ctx.fillRect(lvl.exit.x, lvl.exit.y, lvl.exit.w, 5);
-    }
+    const e = lvl.exit;
+    ctx.fillStyle = '#15803d';
+    ctx.fillRect(e.x, e.y, e.w, e.h);
+    ctx.fillStyle = '#22c55e';
+    ctx.fillRect(e.x + 2, e.y + 2, e.w - 4, e.h - 4);
+    ctx.fillStyle = '#facc15'; // picaporte
+    ctx.beginPath();
+    ctx.arc(e.x + 6, e.y + e.h / 2, 2.5, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // Jugador — sprite dibujado a mano

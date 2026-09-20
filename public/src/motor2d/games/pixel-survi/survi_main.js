@@ -96,6 +96,22 @@ function wireActions() {
       case 'close-inv':
         game.toggleInventory(false);
         break;
+      case 'open-equip':
+        ui.renderEquip(game);
+        showScreen(ui, 'equip');
+        break;
+      case 'equip-back':
+        showScreen(ui, 'inv');
+        ui.renderInventory(game); // el cupo pudo cambiar (equipaste/desequipaste una mochila)
+        break;
+      case 'open-craft':
+        ui.renderCraft(game);
+        showScreen(ui, 'craft');
+        break;
+      case 'craft-back':
+        showScreen(ui, 'inv');
+        ui.renderInventory(game);
+        break;
       case 'respawn':
         game.respawn();
         break;

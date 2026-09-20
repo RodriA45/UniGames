@@ -9,7 +9,10 @@ import {
   PICKUP_GROUP_MIN, PICKUP_GROUP_MAX, POWERUP_STACK_CAP, COIN_VALUE,
   groundVariantsForBiome
 } from './runner_config.js';
-import { saveTotalCoins, shieldDurationFrames, doublePointsDurationFrames, shieldMaxHits } from './runner_economy.js';
+import {
+  saveTotalCoins, shieldDurationFrames, doublePointsDurationFrames, shieldMaxHits,
+  slowFallDurationFrames, slowSpeedDurationFrames,
+} from './runner_economy.js';
 
 export function spawnObstacle(C) {
   const groundVariants = groundVariantsForBiome(RUNNER.biome);
@@ -190,7 +193,9 @@ export function spawnPowerup(C) {
   }
   if (!clear) return;
 
-  const type = Math.random() < 0.5 ? 'shield' : 'x2';
+  // 4 power-ups en partes iguales (25% cada uno).
+  const roll = Math.random();
+  const type = roll < 0.25 ? 'shield' : roll < 0.5 ? 'x2' : roll < 0.75 ? 'slowfall' : 'slowspeed';
   RUNNER.pickups.push({
     x, y, w: size, h: size,
     kind: 'powerup', type,
@@ -222,6 +227,14 @@ export function collectPickup(o) {
       p.shieldHitsLeft = shieldMaxHits(); // agarrar el pickup también "recarga" los golpes que aguanta
     } else if (o.type === 'x2') {
       RUNNER.doublePointsFrames = Math.min(POWERUP_STACK_CAP, RUNNER.doublePointsFrames + doublePointsDurationFrames());
+    } else if (o.type === 'slowfall') {
+      // Caída lenta: gravedad reducida mientras dura (ver updateRunner).
+      const p = RUNNER.player;
+      p.slowFallFrames = Math.min(POWERUP_STACK_CAP, p.slowFallFrames + slowFallDurationFrames());
+    } else if (o.type === 'slowspeed') {
+      // Velocidad reducida: RUNNER.speed baja mientras dura y al acabarse
+      // sube solita de nuevo (ver updateRunner) — no se toca acá.
+      RUNNER.slowSpeedFrames = Math.min(POWERUP_STACK_CAP, RUNNER.slowSpeedFrames + slowSpeedDurationFrames());
     }
   }
 }

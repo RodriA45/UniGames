@@ -553,9 +553,11 @@ const Engine2D = (function () {
           shadows: false, particles: true, screenShake: false, smoothCamera: false,
           roundParticles: false
         },
-        // fpsCap: tope de FPS del GameLoop (0 = sin tope). En bajo, 30 fijos
-        // se sienten mejor que 35-50 saltando y liberan la mitad de CPU.
-        scale: { particles: 0.35, maxParticles: 250, render: 0.6, fpsCap: 30 }
+        // fpsCap: tope de FPS del GameLoop (0 = sin tope). En bajo lo que
+        // más rinde es la resolución (render: 0.6), no capar a 30: 30 fijos
+        // se ven entrecortados. Si una máquina muy justa igual no llega,
+        // poner 30 acá es la palanca más fuerte que queda.
+        scale: { particles: 0.35, maxParticles: 250, render: 0.6, fpsCap: 60 }
       },
       medium: {
         fx: {

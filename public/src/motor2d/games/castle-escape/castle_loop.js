@@ -10,7 +10,7 @@ import {
   trLoop, trInput, trRectsOverlap, trOscillate
 } from './castle_config.js';
 import { trShowGameScreen, trAttachEnterHandler, trShowMainMenu, trShowLevelSelect, trUpdateLevelCard } from './castle_menu_flow.js';
-import { trDrawSpikeRow, trDrawPlatform, drawTrampas } from './castle_render.js';
+import { trDrawSpikeRow, trDrawPlatform, drawTrampas, trIsSolidPlatform, trResolveNewTextures } from './castle_render.js';
 // Circular con castle_sequence.js (sequence importa trCalculateStars/
 // trLoadLevel de acá) — igual que los otros, seguro porque no se llaman
 // durante la carga del módulo.
@@ -29,7 +29,7 @@ export function trStartLevel(i) {
   TR_EL.pauseMenu.classList.add('hidden');
   TR_EL.controlsSign.classList.add('hidden');
   showTrampasOverlay(TR_LEVELS[i].nombre, TR_LEVELS[i].hint, false);
-  TR_EL.hudDeaths.textContent = '💀 0';
+  TR_EL.hudDeaths.textContent = 'Muertes: 0';
   setupTrampasEvents();
   drawTrampas();
 }
@@ -65,9 +65,19 @@ export function trExitToLevels() {
 
 export function trLoadLevel(index) {
   const lvl = TR_LEVELS[index];
+  if (!lvl) return;
+  // Todo opcional menos las plataformas: un nivel recién creado en el
+  // editor puede venir sin hazards/arrows/decor y antes eso reventaba
+  // (lvl.hazards.map de undefined) dejando el juego en negro.
+  if (!lvl.platforms) lvl.platforms = [];
+  if (!lvl.hazards) lvl.hazards = [];
+  if (!lvl.arrows) lvl.arrows = [];
+  if (!lvl.decor) lvl.decor = [];
+  if (!lvl.exit) lvl.exit = { x: (lvl.width || TR_W) - 50, y: 200, w: 26, h: 40 };
+  if (!lvl.start) lvl.start = { x: 20, y: 200 };
   TRAMPAS.platforms = lvl.platforms.map(p => ({ ...p, touchedAt: null, gone: false }));
   TRAMPAS.hazards    = lvl.hazards.map(h => ({ ...h }));
-  TRAMPAS.arrows     = lvl.arrows.map(a => ({ ...a, active: false, fired: false }));
+  TRAMPAS.arrows     = lvl.arrows.map(a => ({ ...a, active: false, fired: false, fires: 0 }));
   TRAMPAS.deathsThisLevel = 0;
 
   // Tamaño del nivel en world-space
@@ -77,8 +87,11 @@ export function trLoadLevel(index) {
   TRAMPAS.camera.x = 0;
   TRAMPAS.camera.y = 0;
 
-  const floorCandidates = lvl.platforms.filter(p => p.type === 'normal' || p.type === 'fake');
-  TRAMPAS.floorY = Math.max(...(floorCandidates.length ? floorCandidates : lvl.platforms).map(p => p.y));
+  // Las paredes verticales no cuentan como "piso" para decidir la altura
+  // del suelo del nivel.
+  const floorCandidates = lvl.platforms.filter(p => (p.type === 'normal' && !p.vertical) || p.type === 'fake');
+  const floorSet = floorCandidates.length ? floorCandidates : lvl.platforms;
+  TRAMPAS.floorY = floorSet.length ? Math.max(...floorSet.map(p => p.y)) : TRAMPAS.levelH;
 
   // Capa estática del nivel: piso/paredes (plataformas 'normal'/'fake', que
   // NUNCA cambian mientras dura el nivel) + los pinchos de pozo fijos
@@ -91,7 +104,7 @@ export function trLoadLevel(index) {
   TRAMPAS.staticLayer = new Engine2D.StaticLayer(TRAMPAS.levelW, TRAMPAS.levelH);
   TRAMPAS.staticLayer.bake(bctx => {
     for (const hz of TRAMPAS.hazards) {
-      if (hz.type === 'spike') trDrawSpikeRow(bctx, hz.x, hz.y, hz.w, hz.h);
+      if (hz.type === 'spike') trDrawSpikeRow(bctx, hz.x, hz.y, hz.w, hz.h, hz);
     }
     for (const plat of TRAMPAS.platforms) {
       if (plat.type !== 'normal' && plat.type !== 'fake') continue;
@@ -159,9 +172,17 @@ export function initTrampas() {
     container: document.querySelector('.trampas-container') || document.body,
     label: 'Cargando Castle Escape…'
   });
-  Engine2D.loadAllWithProgress(TR_ASSETS, (loaded, total) => {
-    trLoadingBar.update(loaded / total);
-  }).then(() => {
+  // Las texturas nuevas (bloques/obstáculos) se resuelven aparte, probando
+  // nombres de archivo alternativos (ver trResolveNewTextures) — se espera
+  // a que terminen ANTES de dejar jugar, porque trLoadLevel hornea la capa
+  // estática una sola vez: si todavía no resolvieron en ese momento, ese
+  // nivel queda con la piedra a mano para siempre.
+  Promise.all([
+    Engine2D.loadAllWithProgress(TR_ASSETS, (loaded, total) => {
+      trLoadingBar.update(loaded / total);
+    }),
+    trResolveNewTextures(),
+  ]).then(() => {
     TRAMPAS.assetsReady = true;
     trLoadingBar.destroy();
   }).catch(err => {
@@ -251,6 +272,27 @@ export function updateTrampas(step) {
   p.x += p.vx * step;
   p.x = Math.max(0, Math.min(p.x, TRAMPAS.levelW - p.w));
 
+  // Colisión horizontal: todo bloque sólido frena de costado (antes solo
+  // los marcados como "pared" — un bloque suelto se cruzaba caminando).
+  // Los traspasables ('fake' o flag fake) siguen sin frenar nada.
+  //
+  // Las plataformas 'moving' quedan AFUERA de este chequeo a propósito:
+  // el jugador que va arriba de una que sube ya viene sincronizado con
+  // ella (ver el "p[axis] += delta" de más arriba), pero por redondeo de
+  // floats el techo del jugador roza el borde de la plataforma en algún
+  // frame — sin esta exclusión, esa rozadura se leía como "chocaste de
+  // costado" y te tiraba fuera de la plataforma (y de ahí caías: el
+  // "empuja de golpe para abajo" que se reportó). Una 'moving' sigue
+  // bloqueando igual desde ARRIBA (colisión vertical, más abajo).
+  for (const plat of TRAMPAS.platforms) {
+    if (!trIsSolidPlatform(plat) || plat.type === 'moving') continue;
+    if (!trRectsOverlap(p, plat)) continue;
+    if (p.vx > 0) p.x = plat.x - p.w;
+    else if (p.vx < 0) p.x = plat.x + plat.w;
+    else if (p.x + p.w / 2 < plat.x + plat.w / 2) p.x = plat.x - p.w;
+    else p.x = plat.x + plat.w;
+  }
+
   // Animación / dirección del sprite (junior.png) — se actualiza acá,
   // drawTrampasPlayer solo lee p.animFrame/p.facing, no los calcula.
   if (p.vx > 0) p.facing = 1;
@@ -268,23 +310,24 @@ export function updateTrampas(step) {
   p.onGround = false;
   p.ridingPlatform = null;
 
-  // Colisión con plataformas (todo menos 'fake' —y 'fake' como flag de
-  // plataforma móvil falsa— que nunca colisionan). Sigue siendo código
-  // propio: son rectángulos sueltos, no una grilla de tiles pareja, así que
-  // Engine2D.Physics (pensado para TileMap) no aplica acá.
+  // Colisión vertical: piso arriba del bloque y techo abajo. Con la
+  // colisión horizontal de más arriba, un bloque frena por los 4 lados.
   for (const plat of TRAMPAS.platforms) {
-    if (plat.type === 'fake' || plat.gone || plat.fake) continue;
-    const feetPrev = p.y + p.h - p.vy * step;
-    const withinX = p.x + p.w > plat.x && p.x < plat.x + plat.w;
-    if (withinX && p.vy >= 0 && feetPrev <= plat.y + 1 && p.y + p.h >= plat.y) {
-      p.y = plat.y - p.h;
+    if (!trIsSolidPlatform(plat)) continue;
+    if (!trRectsOverlap(p, plat)) continue;
+    if (p.vy < 0) {
+      // Golpe de cabeza contra la parte de abajo del bloque.
+      p.y = plat.y + plat.h;
       p.vy = 0;
-      p.onGround = true;
-      if (plat.type === 'crumble' && plat.touchedAt === null) {
-        plat.touchedAt = performance.now();
-      }
-      if (plat.type === 'moving') p.ridingPlatform = plat;
+      continue;
     }
+    p.y = plat.y - p.h;
+    p.vy = 0;
+    p.onGround = true;
+    if (plat.type === 'crumble' && plat.touchedAt === null) {
+      plat.touchedAt = performance.now();
+    }
+    if (plat.type === 'moving') p.ridingPlatform = plat;
   }
 
   // Derrumbe de plataformas 'crumble' 400ms después de pisarlas
@@ -308,12 +351,23 @@ export function updateTrampas(step) {
   const lvl = TR_LEVELS[TRAMPAS.levelIndex];
   lvl.arrows.forEach((def, i) => {
     const a = TRAMPAS.arrows[i];
-    if (!a.fired && p.x >= def.triggerX) {
-      a.fired = true;
-      a.active = true;
-      a.x = def.x;
-      a.y = def.y;
-    }
+    // repeat = cuántas veces puede dispararse (1 por defecto). Vuelve a
+    // salir en cuanto la anterior se fue de pantalla, mientras el jugador
+    // siga dentro de la zona.
+    const maxDisparos = Math.max(1, def.repeat || 1);
+    if (a.active || (a.fires || 0) >= maxDisparos) return;
+    // Dos tipos de disparo (los dos los arma el editor):
+    //   'line' (default) → el jugador cruza la línea vertical triggerX.
+    //   'area'           → el jugador entra en el rectángulo triggerZone.
+    const shouldFire = (def.triggerType === 'area' && def.triggerZone)
+      ? trRectsOverlap(p, def.triggerZone)
+      : p.x >= def.triggerX;
+    if (!shouldFire) return;
+    a.fired = true;
+    a.active = true;
+    a.fires = (a.fires || 0) + 1;
+    a.x = def.x;
+    a.y = def.y;
   });
   TRAMPAS.arrows.forEach(a => {
     if (a.active) {
