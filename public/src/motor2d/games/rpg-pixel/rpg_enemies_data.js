@@ -1,4 +1,4 @@
-import { RPG_ASSET_BASE, RPG_DK_EXPRESSIONS, RPG_DK_EXPRESSIONS_SHEET, RPG_EXPRESSIONS, RPG_EXPRESSION_SHEET, RPG_FLOOR_BOTTOM_MARGIN, RPG_FLOOR_TOP_RATIO, RPG_LOGICAL_H, RPG_PLAYER_MAX_AMMO, RPG_PLAYER_SPEED, RPG_ROOM_ZOOM_STRENGTH } from './rpg_config.js';
+import { RPG_ASSET_BASE, RPG_DK_EXPRESSIONS, RPG_DK_EXPRESSIONS_SHEET, RPG_EXPRESSIONS, RPG_EXPRESSION_SHEET, RPG_FLOOR_BOTTOM_MARGIN, RPG_FLOOR_TOP_RATIO, RPG_GK_EXPRESSIONS, RPG_GK_EXPRESSIONS_SHEET, RPG_LOGICAL_H, RPG_PLAYER_MAX_AMMO, RPG_PLAYER_SPEED, RPG_ROOM_ZOOM_STRENGTH } from './rpg_config.js';
 import { rpgAddMetaGold } from './rpg_meta.js';
 
 // ═══════════════════════════════════════════════
@@ -161,6 +161,51 @@ export const RPG_ENEMY_TYPES = {
       hurt:   ['idle_2', 'idle_1'],
       death:  ['death_1', 'death_2', 'death_3', 'death_4', 'death_5', 'death_6', 'death_7']
     }
+  },
+  // ── Jefe del Cap. 2 ("El Guardián" en la historia, dark_ghostking por
+  // dentro) — mismo patrón 'boss' que dark_knight (rpgUpdateBoss), pero
+  // con su propio golpe cuerpo a cuerpo MÁS corto (2 frames de carga + 2
+  // de golpe, no 4+3) y un ataque a distancia separado (rangedWindup1/2 +
+  // rangedAttack) en vez de reusar las poses del melee. Ver
+  // meleeWindupPoseKeys/meleeAttackPoseKeys/meleeHitFrame en rpgUpdateBoss
+  // y rpgDraw (rpg_render.js) — sin esos overrides, el motor asume el
+  // largo de 4+3 de dark_knight.
+  dark_ghostking: {
+    sheet: RPG_ASSET_BASE + 'models/capitulo2/dark_ghostking.webp',
+    atlas: RPG_ASSET_BASE + 'models/capitulo2/dark_ghostking.json',
+    drawH: 78,
+    behavior: 'boss',
+    floatBob: true,      // es un fantasma sin piernas: en vez de ciclar frames de
+    floatBobAmount: 3,   // idle, flota con un seno (puramente visual, ver rpgDraw)
+    // Al morir no deja un cadáver: se disuelve del todo apenas termina su
+    // diálogo de derrota (ver dissolveOnDeath en rpgStartBossDeathSequence).
+    dissolveOnDeath: true,
+    poses: {
+      idle: 'idle',
+      windup1: 'melee_windup1', windup2: 'melee_windup2',
+      attack1: 'melee_attack1', attack2: 'melee_attack2',
+      rangedWindup1: 'ranged_windup1', rangedWindup2: 'ranged_windup2', rangedAttack: 'ranged_attack',
+      vanish1: 'vanish_1', vanish2: 'vanish_2',
+      // summon/death son sprites de CUERPO ENTERO que viven en la hoja de
+      // expresiones (mucha más resolución nativa que dark_ghostking.webp),
+      // no en el atlas principal — ver altSheet/altAtlas/altScale abajo.
+      // rpgDraw prueba el atlas principal primero y cae a este si el
+      // nombre de frame no está ahí.
+      summon: 'summon_full',
+      death2: 'death_full' // única pose de derrota disponible — death1/3/4 caen acá por el fallback de siempre
+    },
+    meleeWindupPoseKeys: ['windup1', 'windup2'],
+    meleeAttackPoseKeys: ['attack1', 'attack2'],
+    meleeHitFrame: 0, // el arañazo conecta YA en attack1, no en el 2do frame como dark_knight
+    // altScale se calculó comparando 'idle' (144px de alto en
+    // dark_ghostking.webp) contra 'normal_full' (805px de alto en
+    // ghostking_expre.png, versión sin fondo/carteles) — la misma pose de
+    // reposo en las dos hojas, así summon/death quedan del mismo tamaño
+    // relativo que el resto del personaje. Si se re-recorta
+    // ghostking_expre.png, recalcular.
+    altSheet: RPG_ASSET_BASE + 'models/capitulo2/ghostking_expre.png',
+    altAtlas: RPG_ASSET_BASE + 'models/capitulo2/ghostking_expre_body.json',
+    altScale: 78 / 805
   }
 };
 
@@ -442,13 +487,40 @@ export const RPG_CHAPTERS = {
           ]
         ],
         dialogueBefore: [
-          // TODO: diálogo de entrada al capítulo 2
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.feliz, text: 'Bien, logré entrar a la zona de arriba del castillo.' },
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.nervioso, text: 'En esta zona siento malas vibras... qué raro.' },
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.receloso, text: 'Vaya, al fondo veo más enemigos. Con que todavía tendré problemas.' },
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.decidido, text: 'Ni modo, como soy el protagonista, tendré que llegar hasta el final.' },
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.triste, text: 'Espero poder salir de este mundo... extraño mi casa.' }
         ]
       },
       2: {
         type: 'combat',
         name: 'Habitación 2',
         zoneImage: RPG_ASSET_BASE + 'models/capitulo2/piso2c.webp',
+        // Zona caminable: contorno calcado a mano sobre piso2c.webp (mismo
+        // fondo que la sala 4, así que comparten este mismo polígono).
+        zonePolygon: (marginX, rightLimit, floorTop, floorBottom) => [
+          { x: 0.0, y: 268.6 },
+          { x: 0.9, y: 55.3 },
+          { x: 8.0, y: 55.3 },
+          { x: 7.1, y: 65.0 },
+          { x: 28.3, y: 75.6 },
+          { x: 57.5, y: 75.6 },
+          { x: 85.9, y: 72.1 },
+          { x: 100.0, y: 60.6 },
+          { x: 291.2, y: 58.8 },
+          { x: 294.8, y: 50.8 },
+          { x: 555.0, y: 49.1 },
+          { x: 563.9, y: 58.8 },
+          { x: 793.2, y: 55.3 },
+          { x: 795.0, y: 73.9 },
+          { x: 822.4, y: 74.7 },
+          { x: 851.6, y: 60.6 },
+          { x: 863.1, y: 60.6 },
+          { x: 863.1, y: 268.6 },
+          { x: 862.2, y: 268.6 }
+        ],
         forceRoomZoom: 1, // el fondo .webp zoomeaba de más de lo normal (ver forceRoomZoom en rpgStartRoom) — se fuerza sin zoom, igual que el resto de las salas
         music: RPG_ASSET_BASE + 'sound/terror_boss.mp3',
         // Misma mecánica de horda que la sala 1 (ver waveTriggerRemaining /
@@ -472,6 +544,42 @@ export const RPG_CHAPTERS = {
         type: 'combat',
         name: 'Habitación 3',
         zoneImage: RPG_ASSET_BASE + 'models/capitulo2/piso2b.webp',
+        // Zona caminable: contorno calcado a mano sobre piso2b.webp.
+        zonePolygon: (marginX, rightLimit, floorTop, floorBottom) => [
+          { x: 0.0, y: 269.5 },
+          { x: 0.9, y: 53.5 },
+          { x: 8.9, y: 65.0 },
+          { x: 27.4, y: 72.1 },
+          { x: 53.1, y: 73.0 },
+          { x: 85.9, y: 69.4 },
+          { x: 93.8, y: 58.8 },
+          { x: 181.5, y: 57.0 },
+          { x: 182.4, y: 63.2 },
+          { x: 254.1, y: 64.1 },
+          { x: 258.5, y: 61.5 },
+          { x: 292.1, y: 59.7 },
+          { x: 305.4, y: 47.3 },
+          { x: 338.2, y: 48.2 },
+          { x: 335.5, y: 73.9 },
+          { x: 370.0, y: 80.9 },
+          { x: 497.5, y: 80.1 },
+          { x: 526.7, y: 78.3 },
+          { x: 525.0, y: 49.1 },
+          { x: 540.9, y: 50.0 },
+          { x: 556.8, y: 61.5 },
+          { x: 593.1, y: 61.5 },
+          { x: 603.7, y: 65.0 },
+          { x: 673.7, y: 65.9 },
+          { x: 677.2, y: 59.7 },
+          { x: 789.6, y: 56.2 },
+          { x: 794.1, y: 66.8 },
+          { x: 819.7, y: 73.0 },
+          { x: 847.2, y: 67.7 },
+          { x: 849.0, y: 56.2 },
+          { x: 862.2, y: 55.3 },
+          { x: 863.1, y: 269.5 },
+          { x: 863.1, y: 268.6 }
+        ],
         forceRoomZoom: 1, // el fondo .webp zoomeaba de más de lo normal (ver forceRoomZoom en rpgStartRoom) — se fuerza sin zoom, igual que el resto de las salas
         music: RPG_ASSET_BASE + 'sound/vampire_boss.mp3',
         waveTriggerRemaining: 1,
@@ -493,6 +601,28 @@ export const RPG_CHAPTERS = {
         type: 'combat',
         name: 'Habitación 4',
         zoneImage: RPG_ASSET_BASE + 'models/capitulo2/piso2c.webp',
+        // Mismo fondo que la sala 2 → mismo polígono calcado.
+        zonePolygon: (marginX, rightLimit, floorTop, floorBottom) => [
+          { x: 0.0, y: 268.6 },
+          { x: 0.9, y: 55.3 },
+          { x: 8.0, y: 55.3 },
+          { x: 7.1, y: 65.0 },
+          { x: 28.3, y: 75.6 },
+          { x: 57.5, y: 75.6 },
+          { x: 85.9, y: 72.1 },
+          { x: 100.0, y: 60.6 },
+          { x: 291.2, y: 58.8 },
+          { x: 294.8, y: 50.8 },
+          { x: 555.0, y: 49.1 },
+          { x: 563.9, y: 58.8 },
+          { x: 793.2, y: 55.3 },
+          { x: 795.0, y: 73.9 },
+          { x: 822.4, y: 74.7 },
+          { x: 851.6, y: 60.6 },
+          { x: 863.1, y: 60.6 },
+          { x: 863.1, y: 268.6 },
+          { x: 862.2, y: 268.6 }
+        ],
         forceRoomZoom: 1, // el fondo .webp zoomeaba de más de lo normal (ver forceRoomZoom en rpgStartRoom) — se fuerza sin zoom, igual que el resto de las salas
         music: RPG_ASSET_BASE + 'sound/vampire_boss.mp3',
         waveTriggerRemaining: 1,
@@ -517,33 +647,88 @@ export const RPG_CHAPTERS = {
         type: 'boss',
         name: 'Habitación 5 · Jefe final',
         zoneImage: RPG_ASSET_BASE + 'models/capitulo2/piso2d.webp',
-        forceRoomZoom: 1, // el fondo .webp zoomeaba de más de lo normal (ver forceRoomZoom en rpgStartRoom) — se fuerza sin zoom, igual que el resto de las salas
-        // ── PLACEHOLDER de testeo ──
-        // Todavía no está integrado el sprite real del jefe (el "guardián"
-        // que menciona el diálogo final del cap. 1 — Reybug ya tiene el
-        // sprite, falta subirlo/recortarlo). Mientras tanto, un kn_warror
-        // bien reforzado ocupa su lugar para poder jugar el capítulo
-        // completo de punta a punta: usa la misma IA simple de siempre
-        // (rpgUpdateSimpleChase), sin fases ni ataques especiales.
-        //
-        // type:'boss' se deja intacto a propósito: la barra de vida única
-        // (rpgUpdateHudBars), el cofre de oro y rpgCompleteChapter dependen
-        // de roomCfg.type, NO de species.behavior === 'boss' — así que todo
-        // ese flujo funciona igual con este placeholder. La cinemática de
-        // muerte especial (rpgStartBossDeathSequence) sí es exclusiva de
-        // species.behavior === 'boss', así que con kn_warror se saltea
-        // solita y va directo a rpgVictory() — nada roto, solo no hay
-        // cinemática todavía.
-        //
-        // TODO: cuando esté el sprite real, reemplazar por la especie de
-        // jefe posta (con su propio behavior:'boss', dashAbility,
-        // bossProjectileSheet, deathDialogue, etc. — ver dark_knight en el
-        // capítulo 1 como referencia).
-        enemySpawns: [
-          { species: 'kn_warror', hp: 180, speed: 1.0, contactDamage: 16 }
+        // Zona caminable: piso2d.webp es un salón abierto, sin obstáculos —
+        // el polígono es prácticamente todo el rectángulo del piso.
+        zonePolygon: (marginX, rightLimit, floorTop, floorBottom) => [
+          { x: 0.0, y: 57.5 },
+          { x: 0.0, y: 269.1 },
+          { x: 863.1, y: 269.1 },
+          { x: 862.2, y: 57.5 }
         ],
-        enemyName: 'el Guardián (placeholder)',
-        music: RPG_ASSET_BASE + 'sound/vampire_boss.mp3' // TODO: música propia cuando esté
+        forceRoomZoom: 1, // el fondo .webp zoomeaba de más de lo normal (ver forceRoomZoom en rpgStartRoom) — se fuerza sin zoom, igual que el resto de las salas
+        music: RPG_ASSET_BASE + 'sound/vampire_boss.mp3', // TODO: música propia cuando esté
+        attackPattern: 'boss',
+        sideMarginRatio: 0.14,
+        enemySpeed: 0.75, // velocidad base de persecución (fase 3 la multiplica, ver phaseSpeedMult)
+
+        enemySpawns: [
+          { species: 'dark_ghostking', hp: 400, speed: 0.6 }
+        ],
+        enemyName: 'El Guardián', // el nombre lo pone el diálogo final del cap. 1 — la especie interna sigue siendo dark_ghostking
+        bossHpBarFrame: RPG_ASSET_BASE + 'models/hud/lifeboss2.webp',
+        bossHpBarWindow: { left: '20.5%', top: '13%', width: '56%', height: '50%' },
+
+        // ── Fase 1 (100%-50% HP): cuerpo a cuerpo (arañazo) + proyectil a
+        // distancia. Fase 2 (<=50%): suma el teletransporte detrás tuyo
+        // (skill1) y puede invocar UN esbirro fantasma (skill2), y el
+        // proyectil sale más seguido. Fase 3 (<=25%): más daño, se mueve
+        // más rápido y ataca más rápido (ver phase*Mult abajo). ──
+        meleeRange: 46, meleeDamage: 14, meleeCooldownMs: [1300, 1800],
+        meleeWindupFrameMs: 140, meleeAttackFrameMs: 130,
+
+        farRange: 190, rangedWindupMs: 500, rangedAttackFrameMs: 150,
+        fireCooldownPhase1: [2600, 3200],
+        fireCooldownPhase2: [1700, 2200], // fase 2: proyectiles más seguido
+        fireCooldownPhase3: [1300, 1700],
+        bossBoltProjectile: {
+          dmg: 12, speed: 3.4, w: 14, h: 12, frameFly: 'projectile_fly',
+          sheet: RPG_ASSET_BASE + 'models/capitulo2/dark_ghostking.webp',
+          atlas: RPG_ASSET_BASE + 'models/capitulo2/dark_ghostking.json',
+          explodeFrames: ['explode_1', 'explode_2', 'explode_3'], explodeFrameMs: 90
+        },
+
+        // Skill1 (teletransporte atrás + arañazo): solo desde fase 2, gate
+        // ya incluido en rpgUpdateBoss (mismo phase >= 2 que el dash de
+        // dark_knight — acá se reinterpreta como teleport por teleportBehind).
+        teleportBehind: true, teleportVanishMs: 300, teleportAppearMs: 300,
+        dashCooldownMs: [6500, 9000],
+
+        // Skill2 (invocar): solo desde fase 2 (summonMinPhase), 2 esbirros ghost.
+        summonMinPhase: 2,
+        summonCooldownMs: 16000, summonTelegraphMs: 700,
+        summonSpecies: [
+          { species: 'ghost', hp: 30, speed: 0.9, arrowDamage: 6, fireCooldownMs: [1500, 2100] },
+          { species: 'ghost', hp: 30, speed: 0.9, arrowDamage: 6, fireCooldownMs: [1500, 2100] }
+        ],
+
+        // Fase 3: +30% daño, +25% velocidad de movimiento, +35% velocidad de golpe.
+        phaseDamageMult: [1, 1, 1.3],
+        phaseSpeedMult: [1, 1, 1.25],
+        phaseAttackSpeedMult: [1, 1, 1.35],
+
+        playerBulletDamage: 5,
+        dialogueBefore: [
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.decidido, text: 'Llegué al final. Ahí está la subida para llegar al rey.' },
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.receloso, text: 'Un momento... ese cuadro es de un mago. Al menos sé que existen, o existieron, humanos en este mundo.' },
+          { speaker: '???', portraitSrc: RPG_GK_EXPRESSIONS_SHEET, portraitRect: RPG_GK_EXPRESSIONS.normal, text: 'Vaya, con que un intruso llegó hasta aquí...' },
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.asombrado, text: '¡¿Quién dijo eso?!' },
+          { speaker: 'Rey Fantasma', portraitSrc: RPG_GK_EXPRESSIONS_SHEET, portraitRect: RPG_GK_EXPRESSIONS.normal, text: '¡YO, EL REY FANTASMA Y GUARDIÁN DEL REY VAMPIRO!' },
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.sorprendido, text: '¡Aaah, un fantasma enorme!' },
+          { speaker: 'Rey Fantasma', portraitSrc: RPG_GK_EXPRESSIONS_SHEET, portraitRect: RPG_GK_EXPRESSIONS.normal, text: 'Con que tú derrotaste a Dark Knight... pues yo no seré un oponente fácil.' },
+          { speaker: 'Rey Fantasma', portraitSrc: RPG_GK_EXPRESSIONS_SHEET, portraitRect: RPG_GK_EXPRESSIONS.normal, text: 'Yo solía ser un gran mago, pero me estaba haciendo viejo...' },
+          { speaker: 'Rey Fantasma', portraitSrc: RPG_GK_EXPRESSIONS_SHEET, portraitRect: RPG_GK_EXPRESSIONS.normal, text: 'Así que, para no morir de vejez, busqué una forma de evitarlo... y me convertí en fantasma.' },
+          { speaker: 'Rey Fantasma', portraitSrc: RPG_GK_EXPRESSIONS_SHEET, portraitRect: RPG_GK_EXPRESSIONS.normal, text: '¡AHORA SOY PODEROSOOO!' },
+          { speaker: 'Rey Fantasma', portraitSrc: RPG_GK_EXPRESSIONS_SHEET, portraitRect: RPG_GK_EXPRESSIONS.angry, text: '¡POR TODOS LOS ALIADOS QUE DERROTASTE, Y POR DARK KNIGHT, TE VOY A DERROTAR!' },
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.sorprendido, text: '¡AAAAAH!' }
+        ],
+        deathDialogue: [
+          { speaker: 'Rey Fantasma', portraitSrc: RPG_GK_EXPRESSIONS_SHEET, portraitRect: RPG_GK_EXPRESSIONS.defeated, text: 'Vaya... no me esperaba este final para mí...' },
+          { speaker: 'Rey Fantasma', portraitSrc: RPG_GK_EXPRESSIONS_SHEET, portraitRect: RPG_GK_EXPRESSIONS.defeated, text: 'Le fallé a mi amigo Dark Knight... y a mi rey...' },
+          { speaker: 'Rey Fantasma', portraitSrc: RPG_GK_EXPRESSIONS_SHEET, portraitRect: RPG_GK_EXPRESSIONS.defeated, text: 'Perdón...' },
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.nervioso, text: 'Lo que costó derrotarlo... no pensé que mis balas pudieran afectarlo. Definitivamente soy el prota.' },
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.triste, text: 'Espero ya estar cerca del final, ya quiero volver a casa.' },
+          { speaker: 'Junior', portraitSrc: RPG_EXPRESSION_SHEET, portraitRect: RPG_EXPRESSIONS.decidido, text: 'Toca subir por la escalera e ir a donde está el rey vampiro, a derrotarlo... y ver si así vuelvo a mi mundo.' }
+        ]
       }
     }
   }

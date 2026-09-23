@@ -133,7 +133,12 @@ function flashBtn(btn, text) {
 // ═══════════ Mundos ═══════════
 function openWorlds() {
   renderWorlds(ui, listSlots(), {
-    onPick: (s) => openMode(s),
+    // Mundo ya creado: se continúa directo en su modo (ya lo elegiste al
+    // crearlo). Solo un espacio vacío pregunta normal / hardcore.
+    onPick: (s) => {
+      if (s.exists) { pickedSlot = s; startWorld(s.mode === 'hardcore' ? 'hardcore' : 'normal'); }
+      else openMode(s);
+    },
     onDelete: (s) => {
       if (confirm(`¿Borrar el Mundo ${s.slot}? No se puede recuperar.`)) {
         deleteWorld(s.slot);

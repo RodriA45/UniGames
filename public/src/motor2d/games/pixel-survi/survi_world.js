@@ -5,13 +5,15 @@
 //   mismo seed = mismo mundo, así el guardado no necesita guardar
 //   biomas ni alturas.
 //
-//   Los gráficos no se dibujan a mano: el tileset es assets/tiles.png,
-//   armado desde las texturas de assert/world con build_assets.py.
+//   Tierra/pasto/arena/grava se dibujan por código al cargar el juego
+//   (ver survi_proc_tiles.js) — el resto (piedra, piedra oscura,
+//   minerales, árboles) sigue siendo textura real dentro de
+//   assets/tiles.png.
 // ══════════════════════════════════════════════════════════════
 
 import {
   COLS, ROWS, TILE, TID, FAMILIES, FAMILY_OF, MASK_PIECE, LEAF_ALT,
-  BIOMES, BIOME_NAMES, SPAWN_TOP_IDS
+  BIOMES, BIOME_NAMES, SPAWN_TOP_IDS, STONE_VARIANT_KEYS, DARK_STONE_VARIANT_KEYS, DEEP_STONE_ROW
 } from './survi_config.js';
 
 // PRNG determinístico (mulberry32)
@@ -130,14 +132,114 @@ function plantTree(set, get, col, surfaceRow, pal, rnd) {
   }
 }
 
+// ─── Ruido 2D con semilla (value noise + fBm) para las cuevas ───
+// Reemplaza al viejo sin()*sin(), que por ser periódico repetía el mismo
+// dibujo de túneles cada pocas filas al ir bajando.
+function hash2(ix, iy, seed) {
+  let h = (Math.imul(ix, 374761393) + Math.imul(iy, 668265263) + Math.imul(seed, 144664597)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+function valueNoise(x, y, seed) {
+  const ix = Math.floor(x), iy = Math.floor(y);
+  const fx = x - ix, fy = y - iy;
+  const sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+  const a = hash2(ix, iy, seed), b = hash2(ix + 1, iy, seed);
+  const c = hash2(ix, iy + 1, seed), d = hash2(ix + 1, iy + 1, seed);
+  return (a + (b - a) * sx) * (1 - sy) + (c + (d - c) * sx) * sy;
+}
+// 3 octavas → 0..1, con detalle grande (cavernas) y chico (bordes irregulares).
+function fbm(x, y, seed) {
+  let sum = 0, amp = 0.5, freq = 1, norm = 0;
+  for (let o = 0; o < 3; o++) {
+    sum += valueNoise(x * freq, y * freq, seed + o * 1013) * amp;
+    norm += amp; amp *= 0.5; freq *= 2;
+  }
+  return sum / norm;
+}
+
+// ¿Se talla aire en (col,row)? Mezcla dos capas:
+//  - cavernas: manchas grandes de fBm (más frecuentes cuanto más hondo)
+//  - túneles: ruido "ridged" (1-|2n-1|) → vetas largas y finas que conectan
+function isCaveAir(col, row, seedA, seedB) {
+  const depth = row / ROWS;
+  const cavern = fbm(col / 16, row / 11, seedA);
+  if (cavern > 0.71 - depth * 0.05) return true;
+  const ridge = 1 - Math.abs(2 * fbm(col / 26, row / 20, seedB) - 1);
+  return ridge > 0.955;
+}
+
+// Gusanos: túneles serpenteantes que se tallan DESPUÉS, cruzando las
+// cavernas. Rompen cualquier patrón que pudiera quedar y conectan zonas.
+function carveWorms(data, surfaceByCol, rnd) {
+  const count = 10 + Math.floor(rnd() * 6);
+  for (let w = 0; w < count; w++) {
+    let x = 5 + rnd() * (COLS - 10);
+    const minRow = surfaceByCol[Math.floor(x)] + 14;
+    let y = minRow + rnd() * (ROWS - 4 - minRow);
+    let ang = rnd() * Math.PI * 2;
+    const steps = 40 + Math.floor(rnd() * 90);
+    for (let i = 0; i < steps; i++) {
+      const r = rnd() < 0.3 ? 2 : 1;
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (dx * dx + dy * dy > r * r + 1) continue;
+        const c = Math.round(x) + dx, rr = Math.round(y) + dy;
+        if (c < 1 || c >= COLS - 1 || rr >= ROWS - 3) continue;
+        if (rr < surfaceByCol[c] + 12) continue; // nunca rompe la superficie
+        data[rr * COLS + c] = 0;
+      }
+      ang += (rnd() - 0.5) * 0.7;
+      // tendencia leve a ir en horizontal (más jugables que los pozos verticales)
+      x += Math.cos(ang) * 1.2;
+      y += Math.sin(ang) * 0.7;
+      if (x < 2 || x > COLS - 3 || y > ROWS - 5) break;
+    }
+  }
+}
+
+// Vetas: cada bloque de mineral que dejó la pasada 1 "crece" unos pasos
+// al azar, pisando solo piedra (normal, oscura o roca de cueva). Así
+// aparecen grupitos en vez de bloques sueltos aislados.
+const VEIN_ORES = new Set([TID.coal, TID.copper_ore, TID.iron, TID.gold, TID.diamond_ore, TID.emerald_ore]);
+function growOreVeins(data, rnd) {
+  const host = new Set([TID.stone, TID[STONE_VARIANT_KEYS[0]], TID[STONE_VARIANT_KEYS[1]],
+    TID[STONE_VARIANT_KEYS[2]], TID[STONE_VARIANT_KEYS[3]], ...DARK_STONE_VARIANT_KEYS.map(k => TID[k]),
+    FAMILIES.cave.pieces.C]);
+  const seeds = [];
+  for (let i = 0; i < data.length; i++) if (VEIN_ORES.has(data[i])) seeds.push(i);
+  for (const i0 of seeds) {
+    const ore = data[i0];
+    // las gemas quedan en grupos más chicos (son las más raras)
+    const steps = (ore === TID.diamond_ore || ore === TID.emerald_ore) ? 1 + Math.floor(rnd() * 2) : 1 + Math.floor(rnd() * 4);
+    let c = i0 % COLS, r = Math.floor(i0 / COLS);
+    for (let k = 0; k < steps; k++) {
+      const d = Math.floor(rnd() * 4);
+      c += d === 0 ? 1 : d === 1 ? -1 : 0;
+      r += d === 2 ? 1 : d === 3 ? -1 : 0;
+      if (c < 1 || c >= COLS - 1 || r < 1 || r >= ROWS - 3) break;
+      const j = r * COLS + c;
+      if (host.has(data[j])) data[j] = ore;
+    }
+  }
+}
+
+// Elige una variante de piedra al azar (sin autotile, puro ruido visual):
+// la oscura a partir de DEEP_STONE_ROW (los últimos 100 bloques del
+// mapa), la normal arriba de esa fila.
+function pickStoneVariant(rnd, row) {
+  const keys = row >= DEEP_STONE_ROW ? DARK_STONE_VARIANT_KEYS : STONE_VARIANT_KEYS;
+  return TID[keys[Math.floor(rnd() * keys.length)]];
+}
+
 export function generateWorld(seed) {
   const rnd = mulberry32(seed);
   const data = new Uint16Array(COLS * ROWS);
   const surfaceByCol = new Int16Array(COLS);
   const biomeByCol = buildBiomeMap(rnd);
   const phaseX = rnd() * 1000;
-  const caveSeedA = rnd() * 1000;
-  const caveSeedB = rnd() * 1000;
+  const caveSeedA = Math.floor(rnd() * 1e9);
+  const caveSeedB = Math.floor(rnd() * 1e9);
 
   const idx = (col, row) => row * COLS + col;
   // get/set con los bordes pegados: afuera del mapa devuelve el tile del
@@ -187,18 +289,28 @@ export function generateWorld(seed) {
       else if (row < caveStart) {
         const r = rnd();
         if (name === 'nieve' && row < stoneStart + 6 && r < 0.18) id = TID.ice;
-        else if (r < 0.02) id = TID.coal;
-        else id = TID.stone;
+        else if (r < 0.018) id = TID.coal;
+        else if (r < 0.042) id = TID.copper_ore;   // el cobre aparece cerca de la superficie
+        else if (r < 0.085) id = TID.gravel;       // bolsones de grava
+        else id = pickStoneVariant(rnd, row);
       } else {
         // zona de cuevas: ruido 2D simple para tallar túneles + vetas
-        const n = Math.sin((col + caveSeedA) * 0.35 + row * 0.5) *
-                  Math.sin((row + caveSeedB) * 0.28 - col * 0.2);
-        if (n > 0.3) id = 0;
+        if (isCaveAir(col, row, caveSeedA, caveSeedB)) id = 0;
         else {
           const r = rnd();
-          if (r < 0.025) id = TID.coal;
-          else if (r < 0.045) id = TID.iron;
-          else if (r < 0.055 && row > ROWS * 0.6) id = TID.gold;
+          // Cuanto más hondo, mejores minerales (cada uno se agranda en
+          // una veta de 2-5 bloques más abajo, en growOreVeins).
+          if (r < 0.020) id = TID.coal;
+          else if (r < 0.044 && row < DEEP_STONE_ROW) id = TID.copper_ore;
+          else if (r < 0.056) id = TID.iron;
+          else if (r < 0.064 && row > ROWS * 0.6) id = TID.gold;
+          else if (r < 0.067 && row >= DEEP_STONE_ROW) id = TID.diamond_ore;
+          else if (r < 0.0685 && row >= ROWS - 40) id = TID.emerald_ore;
+          else if (r < 0.11) id = TID.gravel;
+          // Últimos 100 bloques: piedra oscura al azar, sin el autotile de
+          // bordes de túnel de acá arriba (pickStoneVariant ya elige del
+          // set oscuro solo por el row, ver DEEP_STONE_ROW).
+          else if (row >= DEEP_STONE_ROW) id = pickStoneVariant(rnd, row);
           else id = caveId;
         }
       }
@@ -228,6 +340,12 @@ export function generateWorld(seed) {
   // ─── Pasada 3: autotile ───
   // Recién acá el pasto queda arriba, la tierra expuesta a los costados y
   // las copas de los árboles redondeadas.
+  // ─── Pasada 2a: vetas (cada mineral suelto crece a 2-5 bloques) ───
+  growOreVeins(data, rnd);
+
+  // ─── Pasada 2b: gusanos (túneles serpenteantes) ───
+  carveWorms(data, surfaceByCol, rnd);
+
   const out = new Uint16Array(data);
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col < COLS; col++) {

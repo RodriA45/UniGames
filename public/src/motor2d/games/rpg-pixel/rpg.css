@@ -301,6 +301,10 @@
   border-radius: 2px;
 }
 .rpg-hud-fill-track-player { left: 31.9%; top: 34.3%; width: 65.3%; height: 31.5%; }
+/* Estos 4 valores son la ventana de lifeboss1.webp (marco genérico). Un
+   jefe con su propio marco (cfg.bossHpBarFrame, ver rpgStartRoom en
+   rpg_menu_flow.js) puede pisarlos por inline style vía cfg.bossHpBarWindow
+   — si no lo define, se queda con estos de acá. */
 .rpg-hud-fill-track-boss   { left: 20.7%; top: 36.1%; width: 71.8%; height: 23.6%; }
 
 .rpg-hud-fill-bar {

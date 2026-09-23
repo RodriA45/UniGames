@@ -215,6 +215,24 @@ export function rpgStartRoom(roomIndex) {
   const enemyHudWrap = RPG_EL.enemyHudWrap;
   if (enemyHudWrap) enemyHudWrap.classList.toggle('hidden', cfg.type !== 'boss');
 
+  // Marco de la barra de vida del jefe: cada jefe puede traer su propio
+  // arte (ver cfg.bossHpBarFrame/bossHpBarWindow — p.ej. dark_ghostking usa
+  // lifeboss2.webp con su ventana de relleno propia, distinta a la del
+  // marco genérico). Si la sala no lo define (dark_knight, hoy), vuelve al
+  // marco de siempre (lifeboss1.webp) y a la ventana fija de la clase CSS
+  // .rpg-hud-fill-track-boss (se limpia el estilo inline).
+  if (cfg.type === 'boss' && RPG_EL.enemyHudFrameImg) {
+    RPG_EL.enemyHudFrameImg.src = cfg.bossHpBarFrame || (RPG_ASSET_BASE + 'models/hud/lifeboss1.webp');
+    const track = RPG_EL.enemyHpTrack;
+    if (track) {
+      const w = cfg.bossHpBarWindow;
+      track.style.left = w ? w.left : '';
+      track.style.top = w ? w.top : '';
+      track.style.width = w ? w.width : '';
+      track.style.height = w ? w.height : '';
+    }
+  }
+
   const timeEl = RPG_EL.timeLeft;
   if (timeEl) { timeEl.textContent = ''; timeEl.classList.remove('rpg-timer-warn'); }
 

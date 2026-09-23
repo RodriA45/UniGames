@@ -38,7 +38,7 @@
     </div>
 
     <!-- Perfil / Cuenta -->
-    <button class="account-toggle" id="accountToggle" onclick="toggleAccountDrawer()" aria-label="Mi cuenta" title="Mi cuenta">
+    <button class="account-toggle" id="accountToggle" onclick="handleAccountToggle()" aria-label="Mi cuenta" title="Mi cuenta">
       <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.34 0-10 1.68-10 5v1c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-1c0-3.32-6.66-5-10-5z"/></svg>
     </button>
 
@@ -54,10 +54,10 @@
     <span class="nav-menu-logo">UniGames</span>
   </div>
   <ul>
-    <li><a href="#" class="active" onclick="goTo('inicio')">     <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span> Inicio      </a></li>
-    <li><a href="#"               onclick="goTo('juegos')">      <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg></span> Juegos      </a></li>
-    <li><a href="#"               onclick="goTo('puntuacion')">  <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg></span> Puntuación  </a></li>
-    <li><a href="#"               onclick="closeNav(); openInfoModal();"> <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></span> Sobre nosotros </a></li>
+    <li><a href="#" class="active" onclick="goTo('inicio')">     <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span><span class="account-drawer-btn-label">Inicio</span></a></li>
+    <li><a href="#"               onclick="goTo('juegos')">      <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg></span><span class="account-drawer-btn-label">Juegos</span></a></li>
+    <li><a href="#"               onclick="goTo('puntuacion')">  <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg></span><span class="account-drawer-btn-label">Puntuación</span></a></li>
+    <li><a href="#"               onclick="closeNav(); openInfoModal();"> <span class="nav-icon"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg></span><span class="account-drawer-btn-label">Sobre nosotros</span></a></li>
   </ul>
 </nav>
 
@@ -79,7 +79,7 @@
 
     <div class="hero">
       <span class="hero-badge"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:4px;"><rect x="2" y="6" width="20" height="12" rx="2" ry="2"></rect><path d="M6 12h4"></path><path d="M8 10v4"></path><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg>Mini Juegos Gratis</span>
-      <h1>Bienvenido a <span>UniGames</span></h1>
+      <h1 id="heroTitle">Bienvenido a <span>UniGames</span></h1>
       <p>Tu plataforma de mini juegos de palabras, cultura pop y entretenimiento.
          Desafíate con trivias, sopas de letras, ahorcado y más.
          ¡Elegí tu temática favorita y a jugar!</p>
@@ -121,135 +121,20 @@
       </div>
     </div>
 
-    <div class="games-grid">
-
-      <!-- Sopa de letras -->
-      <div class="game-card-full" id="card-sopa">
-        <div class="card-header-band">
-          <span class="card-emoji"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg></span>
-          <span class="card-title">Sopa de Letras</span>
-        </div>
-        <div class="card-body">
-          <p class="card-desc">Encontrá palabras ocultas en la grilla. Mientras más rápido, más puntos ganás.</p>
-          <span class="card-tag">Velocidad</span>
-          <button class="btn-play" onclick="launchGame('sopa', this)" style="margin-top:auto;">▶ Jugar</button>
-        </div>
-      </div>
-
-      <!-- Preguntados -->
-      <div class="game-card-full" id="card-preguntados">
-        <div class="card-header-band">
-          <span class="card-emoji"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></span>
-          <span class="card-title">Preguntados</span>
-        </div>
-        <div class="card-body">
-          <p class="card-desc">Trivia de múltiple opción. Respondé preguntas sobre tu temática favorita.</p>
-          <span class="card-tag">Trivia</span>
-          <button class="btn-play" onclick="launchGame('preguntados', this)" style="margin-top:auto;">▶ Jugar</button>
-        </div>
-      </div>
-
-      <!-- Termina la Palabra -->
-      <div class="game-card-full" id="card-termina">
-        <div class="card-header-band">
-          <span class="card-emoji"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg></span>
-          <span class="card-title">Termina la Palabra</span>
-        </div>
-        <div class="card-body">
-          <p class="card-desc">Adiviná la palabra incompleta. Tenés solo 5 intentos. ¡Pensá bien!</p>
-          <span class="card-tag">5 intentos</span>
-          <button class="btn-play" onclick="launchGame('termina', this)" style="margin-top:auto;">▶ Jugar</button>
-        </div>
-      </div>
-
-      <!-- Ahorcado -->
-      <div class="game-card-full" id="card-ahorcado">
-        <div class="card-header-band">
-          <span class="card-emoji"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="16" y2="21"></line><line x1="7" y1="21" x2="7" y2="3"></line><line x1="7" y1="3" x2="17" y2="3"></line><line x1="17" y1="3" x2="17" y2="7"></line><circle cx="17" cy="10" r="3"></circle></svg></span>
-          <span class="card-title">Ahorcado</span>
-        </div>
-        <div class="card-body">
-          <p class="card-desc">El clásico de siempre, ahora con temáticas. Letra por letra antes de que se complete el dibujo.</p>
-          <span class="card-tag">Clásico</span>
-          <button class="btn-play" onclick="launchGame('ahorcado', this)" style="margin-top:auto;">▶ Jugar</button>
-        </div>
-      </div>
-
-      <!-- Adivina la Palabra (estilo Wordle) -->
-      <div class="game-card-full" id="card-wordle">
-        <div class="card-header-band" style="background: linear-gradient(135deg, #15803d, #166534);">
-          <span class="card-emoji"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="6" height="8" rx="1.5"></rect><rect x="9" y="8" width="6" height="8" rx="1.5"></rect><rect x="16" y="8" width="6" height="8" rx="1.5"></rect></svg></span>
-          <span class="card-title">Adivina la Palabra</span>
-        </div>
-        <div class="card-body">
-          <p class="card-desc">Te decimos cuántas letras tiene la palabra.</p>
-          <span class="card-tag">Hard</span>
-          <button class="btn-play" onclick="launchGame('wordle', this)" style="background:#15803d;margin-top:auto;">▶ Jugar</button>
-        </div>
-      </div>
-
-      <!-- Adivina la Cosa -->
-      <div class="game-card-full" id="card-adivina">
-        <div class="card-header-band">
-          <span class="card-emoji"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span>
-          <span class="card-title">Adivina la Cosa</span>
-        </div>
-        <div class="card-body">
-          <p class="card-desc">Pistas progresivas para adivinar un juego, película, actor o anime.</p>
-          <span class="card-tag">Pistas</span>
-          <button class="btn-play" onclick="launchGame('adivina', this)" style="margin-top:auto;">▶ Jugar</button>
-        </div>
-      </div>
-
-      <!-- Pixel Runner -->
-      <div class="game-card-full" id="card-runner">
-        <div class="card-header-band" style="background: linear-gradient(135deg, #1a1a2e, #16213e);">
-          <span class="card-emoji"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></span>
-          <span class="card-title" style="color:#f5c518;">Pixel Runner</span>
-        </div>
-        <div class="card-body">
-          <p class="card-desc">¡Corrés sin parar! Esquivá obstáculos que vienen del suelo y del cielo. Doble salto disponible. La velocidad aumenta cada 500 puntos. ¿Hasta dónde llegás?</p>
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
-            <span class="card-tag">Doble salto</span>
-            <span class="card-tag">Velocidad creciente</span>
-          </div>
-          <button class="btn-play" onclick="launchGame('runner', this)" style="background:#f5c518;color:#0f1e3d;font-weight:900;">▶ Jugar</button>
-        </div>
-      </div>
-
-      <!-- Castle Escape -->
-      <div class="game-card-full" id="card-castle_escape">
-        <div class="card-header-band" style="background: linear-gradient(135deg, #2a0e37, #4c1d95);">
-          <span class="card-emoji"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11"></rect><rect x="4" y="6" width="3" height="4"></rect><rect x="10.5" y="4" width="3" height="6"></rect><rect x="17" y="6" width="3" height="4"></rect><path d="M10 21v-5a2 2 0 0 1 4 0v5"></path></svg></span>
-          <span class="card-title" style="color:#facc15;">Castle Escape</span>
-        </div>
-        <div class="card-body">
-          <p class="card-desc">Aventuras en el castillo: saltá plataformas, esquivá trampas y llegá a la salida de cada nivel. 20 niveles con 2 ambientaciones distintas y música propia.</p>
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
-            <span class="card-tag">20 niveles</span>
-            <span class="card-tag">Música propia</span>
-          </div>
-          <button class="btn-play" onclick="launchGame('castle_escape', this)" style="background:#facc15;color:#2a0e37;font-weight:900;">▶ Jugar</button>
-        </div>
-      </div>
-
-      <!-- RPG Pixel -->
-      <div class="game-card-full" id="card-rpg_pixel">
-        <div class="card-header-band" style="background: linear-gradient(135deg, #14532d, #166534);">
-          <span class="card-emoji"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></span>
-          <span class="card-title" style="color:#4ade80;">RPG Pixel</span>
-        </div>
-        <div class="card-body">
-          <p class="card-desc">Combatí contra jefes pixel art en arenas fijas. Moveté, disparás en la dirección que caminaste y usá el escudo para bloquear golpes.</p>
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
-            <span class="card-tag">Combate</span>
-            <span class="card-tag">Bloqueo</span>
-          </div>
-          <button class="btn-play" onclick="launchGame('rpg_pixel', this)" style="background:#166534;color:#fff;font-weight:900;">▶ Jugar</button>
-        </div>
-      </div>
-
+    <div style="text-align:center; margin-bottom:1.5rem;">
+      <span class="section-title">Juegos Clásicos</span>
     </div>
+
+    <!-- Se llena dinámicamente desde app2.js (renderClassicGames) -->
+    <div class="games-grid" id="classicGrid"></div>
+
+    <div style="text-align:center; margin:2.5rem 0 1.5rem;">
+      <span class="section-title">Juegos del Motor</span>
+    </div>
+
+    <!-- Se llena dinámicamente desde app2.js (renderMotorGames) -->
+    <div class="games-grid" id="motorGrid"></div>
+
   </section>
 
   <!-- ── SECCIÓN: PUNTUACIÓN ── -->
@@ -265,19 +150,6 @@
       </div>
     </div>
 
-    <!-- Tabs de juegos -->
-    <div class="lb-tabs" id="lbTabs">
-      <button class="lb-tab active" data-juego="all" onclick="switchLeaderboardTab(this, 'all')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg> Global</button>
-      <button class="lb-tab" data-juego="1"   onclick="switchLeaderboardTab(this, 1)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg> Sopa</button>
-      <button class="lb-tab" data-juego="2"   onclick="switchLeaderboardTab(this, 2)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Preguntas</button>
-      <button class="lb-tab" data-juego="3"   onclick="switchLeaderboardTab(this, 3)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg> Termina</button>
-      <button class="lb-tab" data-juego="4"   onclick="switchLeaderboardTab(this, 4)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="16" y2="21"></line><line x1="7" y1="21" x2="7" y2="3"></line><line x1="7" y1="3" x2="17" y2="3"></line><line x1="17" y1="3" x2="17" y2="7"></line><circle cx="17" cy="10" r="3"></circle></svg> Ahorcado</button>
-      <button class="lb-tab" data-juego="5"   onclick="switchLeaderboardTab(this, 5)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Adivina</button>
-      <button class="lb-tab" data-juego="6"   onclick="switchLeaderboardTab(this, 6)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="6" height="8" rx="1.5"></rect><rect x="9" y="8" width="6" height="8" rx="1.5"></rect><rect x="16" y="8" width="6" height="8" rx="1.5"></rect></svg> Wordle</button>
-      <button class="lb-tab" data-juego="runner" onclick="switchLeaderboardTab(this, 'runner')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg> Runner</button>
-      <button class="lb-tab" data-juego="8"   onclick="switchLeaderboardTab(this, 8)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11"></rect><rect x="4" y="6" width="3" height="4"></rect><rect x="10.5" y="4" width="3" height="6"></rect><rect x="17" y="6" width="3" height="4"></rect><path d="M10 21v-5a2 2 0 0 1 4 0v5"></path></svg> Trampas</button>
-    </div>
-
     <!-- Tabla global (por juego) -->
     <div id="lb-panel-all" class="lb-panel active">
       <div id="lb-global-grids" class="lb-global-grids">
@@ -287,6 +159,9 @@
 
     <!-- Panel filtrado por juego -->
     <div id="lb-panel-single" class="lb-panel" style="display:none;">
+      <button class="btn-back" onclick="volverAPuntuacionGlobal()">← Volver</button>
+      <h3 class="lb-single-title" id="lbSingleTitle"></h3>
+      <div class="lb-your-rank hidden" id="lbYourRank"></div>
       <div class="scores-table-wrap">
         <table>
           <thead>
@@ -1234,11 +1109,71 @@
 
   </section>
 
+  <!-- ── SECCIÓN: CONDICIONES DE USO ── -->
+  <section class="section" id="sec-terminos">
+    <button class="btn-back" onclick="goTo('inicio')">← Volver a Inicio</button>
+
+    <div class="terms-wrap">
+      <h1>Condiciones de Uso</h1>
+      <p class="terms-updated">Última actualización: 2026</p>
+
+      <div class="terms-section">
+        <h3>1. Sobre UniGames</h3>
+        <p>UniGames es un Proyecto Integrador Final desarrollado por estudiantes de la Tecnicatura Universitaria en Programación (UTN - Facultad Regional Tucumán), con fines académicos y educativos. No es un producto comercial y se ofrece "tal cual", sin garantías de disponibilidad continua ni de conservación permanente de los datos.</p>
+      </div>
+
+      <div class="terms-section">
+        <h3>2. Tu cuenta</h3>
+        <p>Para guardar puntajes, competir en las tablas de posiciones y usar funciones como Amigos o Logros, necesitás crear una cuenta con usuario, email y contraseña. Sos responsable de mantener tu contraseña en un lugar seguro y de todo lo que ocurra usando tu sesión. Elegí un nombre de usuario apropiado: no se permiten nombres ofensivos, discriminatorios o que suplanten a otra persona.</p>
+      </div>
+
+      <div class="terms-section">
+        <h3>3. Contenido de tu perfil</h3>
+        <p>Tu nombre de usuario, la descripción de tu perfil y el ícono que elijas son visibles para otros jugadores (por ejemplo, tus amigos o quien vea la tabla de posiciones). No subas contenido ofensivo, ilegal o que infrinja derechos de terceros. Nos reservamos el derecho de editar o eliminar contenido de perfil que incumpla esto.</p>
+      </div>
+
+      <div class="terms-section">
+        <h3>4. Puntuaciones y juego limpio</h3>
+        <p>Las tablas de posiciones reflejan el mejor puntaje registrado por cada jugador en cada juego. No está permitido usar bots, scripts, múltiples cuentas o cualquier otro método para falsear puntajes. Puntuaciones que se detecten como manipuladas pueden ser eliminadas de las tablas.</p>
+      </div>
+
+      <div class="terms-section">
+        <h3>5. Datos que guardamos</h3>
+        <p>Guardamos lo necesario para que la plataforma funcione: tu usuario y email, tus puntajes por juego, tu lista de amigos, notificaciones y logros. El navegador también guarda localmente (localStorage) tu sesión y algunas preferencias, como el volumen de música o la calidad gráfica elegida en los juegos. No compartimos tus datos con terceros ni los usamos con fines publicitarios.</p>
+      </div>
+
+      <div class="terms-section">
+        <h3>6. Propiedad intelectual</h3>
+        <p>El código, los diseños y los assets propios de UniGames pertenecen a sus autores y se comparten con fines educativos. Algunos juegos hacen referencia a videojuegos, películas o anime existentes solo a modo de temática de trivia/preguntas; esas marcas pertenecen a sus respectivos dueños y UniGames no está afiliado a ellas.</p>
+      </div>
+
+      <div class="terms-section">
+        <h3>7. Cambios en estas condiciones</h3>
+        <p>Al ser un proyecto en desarrollo activo (como parte de una materia universitaria), estas condiciones pueden actualizarse a medida que se agregan funciones nuevas. Los cambios importantes se reflejarán en la fecha de "última actualización" de esta página.</p>
+      </div>
+
+      <div class="terms-section">
+        <h3>8. Contacto</h3>
+        <p>Ante cualquier duda sobre estas condiciones o sobre tu cuenta, podés contactar al equipo de desarrollo a través de los canales indicados en "Sobre nosotros".</p>
+      </div>
+    </div>
+  </section>
+
 </main>
 
 <!-- ════════════════ FOOTER ════════════════ -->
 <footer>
-  <p>© <span id="year"></span> <span>UniGames</span> · Todos los derechos reservados</p>
+  <div class="footer-inner">
+    <a href="#" class="footer-logo" onclick="goTo('inicio'); return false;">UniGames</a>
+    <div class="footer-center">
+      <nav class="footer-nav">
+        <a href="#" onclick="goTo('inicio'); return false;">Inicio</a>
+        <a href="#" onclick="openInfoModal(); return false;">Sobre nosotros</a>
+        <a href="#" onclick="goTo('terminos'); return false;">Condiciones de uso</a>
+      </nav>
+      <p class="footer-copy">© <span id="year"></span> <span>UniGames</span> · Todos los derechos reservados</p>
+    </div>
+  </div>
 </footer>
 
 <!-- ════════════════ MODAL AUTH (diseño nuevo) ════════════════ -->
@@ -1563,9 +1498,10 @@
   <div class="info-modal">
     <button class="info-close" onclick="closeInfoModal()" aria-label="Cerrar modal">✕</button>
     
+    <div class="info-pages-wrap">
     <!-- PÁGINA 1: ACERCA DEL PROYECTO -->
     <div class="info-page active" id="infoPage1">
-      <h2>🎓 Acerca del Proyecto</h2>
+      <h2>Acerca del Proyecto</h2>
       <p class="info-subtitle">Proyecto Integrador Final - <b>UniGames</b></p>
       <div class="info-content-box">
         <p><b>Universidad Tecnológica Nacional (UTN) - Facultad Regional Tucumán</b></p>
@@ -1577,32 +1513,32 @@
 
     <!-- PÁGINA 2: TECNOLOGÍAS CLAVE -->
     <div class="info-page" id="infoPage2">
-      <h2>💻 Tecnologías Clave</h2>
+      <h2>Tecnologías Clave</h2>
       <p class="info-subtitle">Arquitectura y Herramientas</p>
       <div class="info-content-box info-grid">
-        <div class="info-tech-item"><span>🎨</span> <b>Frontend:</b> SPA construida con HTML5, CSS3, JavaScript ES6+ e interfaz Glassmorphism.</div>
-        <div class="info-tech-item"><span>⚙️</span> <b>Backend:</b> API REST robusta en Node.js con Express.</div>
-        <div class="info-tech-item"><span>🔒</span> <b>Seguridad:</b> Autenticación JWT y encriptación Bcrypt.</div>
-        <div class="info-tech-item"><span>🗄️</span> <b>Base de Datos:</b> SQLite (Modelo normalizado 3FN) con integridad referencial.</div>
-        <div class="info-tech-item"><span>🏗️</span> <b>Patrones:</b> Arquitectura POO (herencia/polimorfismo) y metodología ágil Scrum.</div>
+        <div class="info-tech-item"><b>Frontend:</b> SPA construida con HTML5, CSS3, JavaScript ES6+ e interfaz Glassmorphism.</div>
+        <div class="info-tech-item"><b>Backend:</b> API REST robusta en Node.js con Express.</div>
+        <div class="info-tech-item"><b>Seguridad:</b> Autenticación JWT y encriptación Bcrypt.</div>
+        <div class="info-tech-item"><b>Base de Datos:</b> SQLite (Modelo normalizado 3FN) con integridad referencial.</div>
+        <div class="info-tech-item"><b>Patrones:</b> Arquitectura POO (herencia/polimorfismo) y metodología ágil Scrum.</div>
       </div>
     </div>
 
     <!-- PÁGINA 3: EQUIPO -->
     <div class="info-page" id="infoPage3">
-      <h2>👨‍💻 Equipo de Desarrollo</h2>
+      <h2>Equipo de Desarrollo</h2>
       <p class="info-subtitle">Estudiantes a cargo del proyecto</p>
       <div class="info-content-box team-list">
         <div class="team-member">
-          <div class="team-avatar">👨‍💻</div>
+          <div class="team-avatar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
           <div><b>Rodrigo Antunez</b><br><span>Backend / Scrum Master</span></div>
         </div>
         <div class="team-member">
-          <div class="team-avatar">👨‍💻</div>
+          <div class="team-avatar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
           <div><b>Veliz Santiago</b><br><span>QA Testing / Product Owner</span></div>
         </div>
         <div class="team-member">
-          <div class="team-avatar">👨‍💻</div>
+          <div class="team-avatar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></div>
           <div><b>Juarez Kevin</b><br><span>Frontend / UI·UX</span></div>
         </div>
       </div>
@@ -1610,7 +1546,7 @@
 
     <!-- PÁGINA 4: TUTORIAL -->
     <div class="info-page" id="infoPage4">
-      <h2>🎮 Tutorial Rápido</h2>
+      <h2>Tutorial Rápido</h2>
       <p class="info-subtitle">¿Cómo usar UniGames?</p>
       <div class="info-content-box">
         <ul class="info-tutorial-list">
@@ -1621,17 +1557,18 @@
         </ul>
       </div>
     </div>
+    </div>
 
     <!-- CONTROLES DE PAGINACIÓN -->
     <div class="info-nav">
-      <button class="info-btn-nav" onclick="changeInfoPage(-1)">◀ Atrás</button>
+      <button class="info-btn-nav" id="infoBtnAtras" onclick="changeInfoPage(-1)">◀ Atrás</button>
       <div class="info-dots" id="infoDots">
         <span class="dot active" onclick="goToInfoPage(1)"></span>
         <span class="dot" onclick="goToInfoPage(2)"></span>
         <span class="dot" onclick="goToInfoPage(3)"></span>
         <span class="dot" onclick="goToInfoPage(4)"></span>
       </div>
-      <button class="info-btn-nav" onclick="changeInfoPage(1)">Siguiente ▶</button>
+      <button class="info-btn-nav" id="infoBtnSiguiente" onclick="changeInfoPage(1)">Siguiente ▶</button>
     </div>
   </div>
 </div>

@@ -1,6 +1,6 @@
 // ══════════════════════════════════════════════════════════════
 //   Pixel Survi — survi_game.js
-//   El juego en sí: loop, jugador (sprite de Junior), vida + daño de
+//   El juego en sí: loop, jugador (sprite del personaje), vida + daño de
 //   caída, picado progresivo con herramientas, colocar bloques,
 //   inventario, enemigos y muerte.
 //   Se apoya en Engine2D (script clásico global) y en los módulos de
@@ -16,21 +16,55 @@ import {
   MOVE_SPEED, JUMP_VEL, REACH_TILES,
   MAX_HUNGER, HUNGER_DRAIN_PER_MS, HUNGER_REGEN_THRESHOLD,
   STARVE_DAMAGE, STARVE_INTERVAL_MS, HP_REGEN_INTERVAL_MS, HP_REGEN_AMOUNT,
-  LEAF_FOOD_DROP, leafPalette,
+  LEAF_FOOD_DROP, leafPalette, ORE_DROPS, armorReduction,
   WEAPON_STATS, BARE_HAND_ATTACK,
   HIT_FLASH_MS, HIT_SHAKE_INTENSITY, HIT_SHAKE_MS,
   CAMERA_DEADZONE_W, CAMERA_DEADZONE_H, CAMERA_SMOOTHING,
   RECIPES, emptyEquipment, totalDefense, totalGeneralSlots, totalInvSlots,
-  canCraft, consumeRecipe, craftWouldFit
+  canCraft, consumeRecipe, craftWouldFit,
+  DAY_CYCLE_MS, NIGHT_SUN, NIGHT_SKY, START_TIME_OF_DAY, PLAYER_VISION, STARTER_TORCHES
 } from './survi_config.js';
+import { LightMap, sunAt, mixHex } from './survi_light.js';
+import { icon } from './survi_icons.js';
 import { generateWorld, pickSpawn, autotileId } from './survi_world.js';
+import { buildProceduralTileset } from './survi_proc_tiles.js';
 import { saveWorld, deleteWorld, fmtTime } from './survi_save.js';
 import { showScreen } from './survi_ui.js';
 import {
-  ASSETS, PRELOAD, TILESET, JUNIOR, TOOLS_HELD, CRACKS, toolCell, drawSprite
+  ASSETS, PRELOAD, TILESET, PLAYER, CRACKS, drawSprite, setTilesetUrl, itemCell, itemHold
 } from './models/sprites.js';
 
 const E2D = () => (typeof Engine2D !== 'undefined' ? Engine2D : undefined);
+
+// ─── Zoom con la rueda del mouse ───
+// Niveles fijos (no continuo) para que el pixel art no quede con escalas
+// raras. <1 = alejar (ves más mundo), >1 = acercar. Se recuerda entre
+// partidas en localStorage.
+const ZOOM_LEVELS = [0.75, 1, 1.25, 1.5, 2];
+const ZOOM_DEFAULT_IDX = 1;
+const ZOOM_KEY = 'juefriv.survi.zoom';
+const ZOOM_WHEEL_COOLDOWN_MS = 120; // los trackpads mandan decenas de eventos por gesto
+
+// El canvas se dibuja a RENDER_SCALE veces la resolución lógica (480x288).
+// Con 4, todos los niveles de ZOOM_LEVELS dan un tamaño de pixel ENTERO
+// en pantalla (0.75→3, 1→4, 1.25→5, 1.5→6, 2→8): el pixel art queda
+// parejo y el scroll se mueve en pasos chicos (suave), no de a 1 pixel
+// de mundo. Si se cambian los niveles, RENDER_SCALE * zoom tiene que
+// seguir dando entero.
+const RENDER_SCALE = 4;
+
+// Cámara: sigue al personaje en X siempre. En Y se "ancla" a la altura
+// del piso donde está parado, así saltar no la mueve; si cae por debajo
+// del ancla la sigue al toque, y si sube muy alto (más de esta fracción
+// de la vista) también, para que nunca se salga de pantalla.
+const CAM_MAX_ABOVE_ANCHOR = 0.32;
+
+// Golpe estilo Terraria: el brazo (sprite aparte) gira ~180° desde arriba
+// hacia adelante, hacia el lado que mira el personaje, con el ítem en la mano.
+const SWING_MINE_MS = 260;    // cada golpe de picado (se repite mientras mantenés el clic)
+const SWING_ATTACK_MS = 200;  // golpe de ataque
+const SWING_FROM = -Math.PI - 0.25;  // brazo apuntando arriba (un poco para atrás)
+const SWING_TO = -0.15;              // brazo abajo, un poco adelante
 
 export class SurviGame {
   constructor(ui) {
@@ -38,6 +72,15 @@ export class SurviGame {
     this.canvas = ui.canvas;
     this.ctx = this.canvas.getContext('2d');
     this.ctx.imageSmoothingEnabled = false;   // pixel art: nada de blur
+
+    let zi = ZOOM_DEFAULT_IDX;
+    try {
+      const saved = Number(localStorage.getItem(ZOOM_KEY));
+      if (Number.isInteger(saved) && saved >= 0 && saved < ZOOM_LEVELS.length) zi = saved;
+    } catch {}
+    this._zoomIdx = zi;
+    this._zoom = ZOOM_LEVELS[zi];
+    this._lastWheelAt = 0;
 
     this.running = false;
     this.paused = false;
@@ -64,6 +107,7 @@ export class SurviGame {
     this._hoverTile = null;
     this._fallFromY = null;
     this._attackCd = 0; this._placeCd = 0; this._attackAnim = 0;
+    this._swing = { t: 0, dur: 0 }; // activo mientras t < dur
     this.invulnMs = 0;
     this._anim = { t: 0, i: 0 };
 
@@ -107,7 +151,7 @@ export class SurviGame {
     this.seed = seed;
     this.spawn = pickSpawn(this.world, Math.random);
 
-    // Todos los PNG de una: tileset, Junior, herramientas y grietas.
+    // Todos los PNG de una: personaje, herramientas y grietas.
     // Si alguno falla igual se arranca: mejor el juego sin una textura que
     // la pantalla trabada esperando un PNG que no está.
     //
@@ -132,14 +176,24 @@ export class SurviGame {
       return (img && img.complete && img.naturalWidth > 0) ? img : null;
     };
     this.img = {
-      tiles: readyImg(ASSETS.tiles),
-      junior: readyImg(ASSETS.junior),
-      held: readyImg(ASSETS.toolsHeld),
-      cracks: readyImg(ASSETS.cracks)
+      tiles: null, // se completa abajo con el tileset generado por código
+      player: readyImg(ASSETS.player),
+      cracks: readyImg(ASSETS.cracks),
+      items: readyImg(ASSETS.items)
     };
-    if (!this.img.tiles || !this.img.junior) {
-      console.warn('[pixel-survi] tileset y/o Junior no cargaron — revisá las rutas de ASSETS/BASE en models/sprites.js');
+    if (!this.img.player) {
+      console.warn('[pixel-survi] el sprite del personaje no cargó — revisá las rutas de ASSETS/BASE en models/sprites.js');
     }
+    // Tileset 100% por código (ver survi_proc_tiles.js) — ya no existe
+    // tiles.png. Se registra bajo TILESET.src para que el TileMap lo
+    // dibuje con drawImage como siempre, y como data URL para los íconos
+    // DOM del hotbar/inventario (tileIconStyle usa background-image).
+    if (!this._tilesetCanvas) {
+      this._tilesetCanvas = buildProceduralTileset(TILESET_COLS, TILE);
+      setTilesetUrl(this._tilesetCanvas.toDataURL());
+    }
+    this.img.tiles = this._tilesetCanvas;
+    E2D().setImage(TILESET.src, this._tilesetCanvas);
 
     this.tilemap = new (E2D().TileMap)({
       cols: COLS, rows: ROWS, tileSize: TILE,
@@ -156,6 +210,9 @@ export class SurviGame {
     };
     this.hp = save && save.hp ? Math.min(MAX_HP, save.hp) : MAX_HP;
     this.hunger = save && save.hunger != null ? Math.min(MAX_HUNGER, save.hunger) : MAX_HUNGER;
+    this.timeOfDay = save && save.timeOfDay != null ? save.timeOfDay : START_TIME_OF_DAY;
+    this.light = new LightMap();
+    this.light.rebuildSky((c, r) => this.tilemap.get(c, r));
     this._starveTimer = 0;
     this._regenTimer = 0;
     this._lastHungerShown = -1;
@@ -185,7 +242,10 @@ export class SurviGame {
     // para arrancar ya centrado, sin que se vea la cámara "viajando" desde
     // el (0,0) inicial.
     this.camera.smoothing = CAMERA_SMOOTHING;
-    this.camera.deadzone = { width: CAMERA_DEADZONE_W, height: CAMERA_DEADZONE_H };
+    // Sin deadzone del motor: el seguimiento lo decide _cameraTarget().
+    this.camera.deadzone = null;
+    this._camAnchorY = this.player.y + this.player.h / 2;
+    this._applyZoom(0, true);
     this.camera.follow(this.player.x, this.player.y);
 
     this._fit();
@@ -221,6 +281,9 @@ export class SurviGame {
       this.inventory[id] = 1;
       if (i < HOTBAR_SIZE) this.hotbarSlots[i] = id;
     });
+    // unas antorchas para la primera cueva / primera noche
+    this.inventory[T.TORCH] = STARTER_TORCHES;
+    if (STARTER_TOOLS.length < HOTBAR_SIZE) this.hotbarSlots[STARTER_TOOLS.length] = T.TORCH;
   }
 
   stop({ save = true } = {}) {
@@ -250,8 +313,10 @@ export class SurviGame {
       requestAnimationFrame(() => this._fit());
       return;
     }
-    E2D().fitCanvas(this.canvas, VIEW_W, VIEW_H);
-    this.ctx.imageSmoothingEnabled = false;
+    E2D().fitCanvas(this.canvas, VIEW_W, VIEW_H);   // tamaño CSS (encaja en el contenedor)
+    this.canvas.width = VIEW_W * RENDER_SCALE;       // backing store en alta resolución
+    this.canvas.height = VIEW_H * RENDER_SCALE;
+    this.ctx.imageSmoothingEnabled = false;         // (cambiar width resetea el contexto)
   }
 
   // ═══════════ Guardado ═══════════
@@ -267,6 +332,7 @@ export class SurviGame {
       px: this.player.x, py: this.player.y,
       hp: this.hp,
       hunger: this.hunger,
+      timeOfDay: this.timeOfDay,
       inventory: this.inventory,
       hotbarSlots: this.hotbarSlots,
       selectedSlot: this.selectedSlot,
@@ -309,12 +375,15 @@ export class SurviGame {
       ArrowLeft: 'left', KeyA: 'left',
       ArrowRight: 'right', KeyD: 'right',
       ArrowUp: 'jump', KeyW: 'jump', Space: 'jump',
+      // Por ahora no hace nada en el juego: está mapeada para que el
+      // navegador no scrollee la página hacia abajo al apretarla.
+      ArrowDown: 'down', KeyS: 'down',
       Digit1: 'slot0', Digit2: 'slot1', Digit3: 'slot2', Digit4: 'slot3',
       Digit5: 'slot4', Digit6: 'slot5', Digit7: 'slot6', Digit8: 'slot7',
       KeyI: 'inv', Escape: 'pause'
     }, {
       activeCheck: () => this.running && !this.dead,
-      preventDefaultFor: new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'Space']),
+      preventDefaultFor: new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space']),
       onDown: (action) => {
         if (action === 'inv') { if (!this.paused) this.toggleInventory(); return; }
         if (action === 'pause') {
@@ -336,6 +405,17 @@ export class SurviGame {
     // Clic derecho = colocar, así que el menú contextual del navegador se
     // anula en todo el contenedor del juego.
     this.ui.root.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // Rueda = zoom. passive:false para poder cortar el scroll de la página.
+    this.canvas.addEventListener('wheel', (e) => {
+      if (!this.running || this.dead) return;
+      e.preventDefault();
+      if (this.paused || this.invOpen || e.deltaY === 0) return;
+      const now = performance.now();
+      if (now - this._lastWheelAt < ZOOM_WHEEL_COOLDOWN_MS) return;
+      this._lastWheelAt = now;
+      this.setZoomLevel(this._zoomIdx + (e.deltaY < 0 ? 1 : -1));
+    }, { passive: false });
 
     this.canvas.addEventListener('pointerdown', (e) => {
       if (this._blocked()) return;
@@ -380,8 +460,48 @@ export class SurviGame {
     });
     this.ui.touchMode.addEventListener('click', () => {
       this.touchMode = this.touchMode === 'break' ? 'place' : 'break';
-      this.ui.touchMode.textContent = this.touchMode === 'break' ? '⛏' : '🧱';
+      this.ui.touchMode.innerHTML = icon(this.touchMode === 'break' ? 'pickaxe' : 'box');
     });
+  }
+
+  // ═══════════ Zoom ═══════════
+  setZoomLevel(idx) {
+    const next = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, idx));
+    if (next === this._zoomIdx) return;
+    this._zoomIdx = next;
+    try { localStorage.setItem(ZOOM_KEY, String(next)); } catch {}
+  }
+
+  // El zoom se implementa achicando/agrandando la "ventana" de la cámara
+  // (camera.width/height en px de mundo) y escalando el dibujo en _draw:
+  // con zoom 2 la cámara ve la mitad de mundo y se dibuja al doble. Así
+  // TileMap, follow, deadzone y clamp siguen funcionando sin tocarlos.
+  // El cambio es animado (se acerca al nivel pedido cuadro a cuadro) y
+  // mantiene centrado el mismo punto del mundo.
+  _applyZoom(dt, instant = false) {
+    if (!this.camera) return;
+    const target = ZOOM_LEVELS[this._zoomIdx];
+    if (instant) this._zoom = target;
+    else if (this._zoom !== target) {
+      this._zoom += (target - this._zoom) * Math.min(1, dt / 90);
+      if (Math.abs(target - this._zoom) < 0.002) this._zoom = target;
+    }
+    const cam = this.camera;
+    const w = VIEW_W / this._zoom, h = VIEW_H / this._zoom;
+    if (cam.width === w && cam.height === h) return;
+    const cx = cam.x + cam.width / 2, cy = cam.y + cam.height / 2;
+    cam.width = w; cam.height = h;
+    cam.x = cx - w / 2; cam.y = cy - h / 2;
+    cam._clamp();
+  }
+
+  _cameraTarget() {
+    const px = this.player.x + this.player.w / 2;
+    const py = this.player.y + this.player.h / 2;
+    const maxAbove = (VIEW_H / this._zoom) * CAM_MAX_ABOVE_ANCHOR;
+    if (this.player.grounded || py > this._camAnchorY) this._camAnchorY = py;
+    else if (py < this._camAnchorY - maxAbove) this._camAnchorY = py + maxAbove;
+    return { x: px, y: this._camAnchorY };
   }
 
   _blocked() {
@@ -395,7 +515,8 @@ export class SurviGame {
     const rect = this._canvasRect;
     const sx = (e.clientX - rect.left) * (this.canvas.width / rect.width);
     const sy = (e.clientY - rect.top) * (this.canvas.height / rect.height);
-    const w = this.camera.screenToWorld(sx, sy);
+    const k = RENDER_SCALE * this._zoom;
+    const w = this.camera.screenToWorld(sx / k, sy / k);
     return this.tilemap.worldToTile(w.x, w.y);
   }
 
@@ -435,19 +556,28 @@ export class SurviGame {
     const speed = (tool && tool.tool === TOOL_FOR[id]) ? (1 + tool.power) : 1;
     this._mine.progress += ((dt / 1000) / hard) * speed;
     this._attackAnim = Math.max(this._attackAnim, 60);
+    // mira hacia el bloque que pica (como en Terraria) y encadena golpes
+    this.player.facing = (col * TILE + TILE / 2) >= (this.player.x + this.player.w / 2) ? 1 : -1;
+    this._startSwing(SWING_MINE_MS);
 
     if (this._mine.progress >= 1) {
       // Con el inventario lleno de tipos distintos, _addItem devuelve false
       // y el drop se perdía: el bloque quedaba roto y no te llevabas nada.
       // Mejor no romperlo y avisar.
-      const dropId = DROPS[id] || 0;
-      if (!this._hasRoomFor(dropId)) {
+      let dropId = DROPS[id] || 0;
+      // Minerales: si el pico no alcanza el tier, se rompe igual pero no suelta nada.
+      const ore = ORE_DROPS[id];
+      if (ore && !(tool && tool.tool === 'pickaxe' && tool.tier >= ore.tier)) {
+        dropId = 0;
+        if (this.ui.showToast) this.ui.showToast('Necesitás un pico mejor para sacar este mineral');
+      }
+      if (dropId && !this._hasRoomFor(dropId)) {
         this._resetMine();
         if (this.ui.showToast) this.ui.showToast('Inventario lleno');
         return;
       }
       const broken = this.tilemap.breakTile(col, row);
-      this._addItem(dropId);
+      if (dropId) this._addItem(dropId);
       const pal = leafPalette(broken);
       const foodDrop = pal ? LEAF_FOOD_DROP[pal] : null;
       if (foodDrop && Math.random() < foodDrop.chance) this._addItem(foodDrop.id);
@@ -475,8 +605,9 @@ export class SurviGame {
     const info = id ? ITEM_INFO[id] : null;
     if (!info || !info.place || (this.inventory[id] || 0) <= 0) return; // las herramientas no se colocan
 
+    if (info.place === T.TORCH && !this._torchSupported(col, row)) return;
     const bx = col * TILE, by = row * TILE;
-    const overlapsPlayer = bx < this.player.x + this.player.w && bx + TILE > this.player.x &&
+    const overlapsPlayer = SOLID_IDS.has(info.place) && bx < this.player.x + this.player.w && bx + TILE > this.player.x &&
                            by < this.player.y + this.player.h && by + TILE > this.player.y;
     if (overlapsPlayer) return;
 
@@ -504,7 +635,27 @@ export class SurviGame {
   //
   // Solo el propio tile y los 4 vecinos: las diagonales no entran en la
   // máscara, así que recalcularlas sería trabajo al aire.
+  // Antorcha: se apoya en un sólido de abajo o de los costados (en la pared).
+  _torchSupported(col, row) {
+    const tm = this.tilemap;
+    const solid = (c, r) => c >= 0 && c < COLS && r >= 0 && r < ROWS && SOLID_IDS.has(tm.get(c, r));
+    return solid(col, row + 1) || solid(col - 1, row) || solid(col + 1, row);
+  }
+
+  // Si se rompió el bloque que sostenía una antorcha vecina, se cae (vuelve al inventario).
+  _dropUnsupportedTorches(col, row) {
+    for (const [c, r] of [[col, row - 1], [col - 1, row], [col + 1, row]]) {
+      if (c < 0 || c >= COLS || r < 0 || r >= ROWS) continue;
+      if (this.tilemap.get(c, r) === T.TORCH && !this._torchSupported(c, r)) {
+        this.tilemap.breakTile(c, r);
+        if (this._hasRoomFor(T.TORCH)) this._addItem(T.TORCH);
+      }
+    }
+  }
+
   _retileAround(col, row) {
+    if (this.light) this.light.updateColumn((c, r) => this.tilemap.get(c, r), col);
+    this._dropUnsupportedTorches(col, row);
     const tm = this.tilemap;
     // Afuera del mapa se devuelve el tile del borde (y aire arriba del
     // cielo), igual que en el generador: si no, los laterales del mundo
@@ -534,6 +685,7 @@ export class SurviGame {
     const stats = (tool && WEAPON_STATS[tool.tool]) || BARE_HAND_ATTACK;
     this._attackCd = stats.cooldown;
     this._attackAnim = 160;
+    this._startSwing(SWING_ATTACK_MS, true);
     const dmg = ATTACK_DMG * stats.dmgMult + (tool && tool.tool === 'sword' ? tool.power * 2 : 0);
     const reach = stats.reach;
     const box = {
@@ -685,8 +837,8 @@ export class SurviGame {
     // NO el daño de caída ni el de hambre (ignoreInvuln=true): la
     // armadura no evita romperte una pierna cayendo ni evita pasar hambre.
     if (!ignoreInvuln) {
-      amount = Math.max(0, amount - this.armorDefense);
-      if (amount <= 0) return; // la armadura absorbió todo el golpe
+      // la defensa reduce un % del golpe (con tope), nunca lo anula del todo
+      amount = Math.max(1, Math.round(amount * (1 - armorReduction(this.armorDefense))));
     }
     this.hp -= amount;
     this.invulnMs = INVULN_MS;
@@ -744,6 +896,8 @@ export class SurviGame {
     this.enemies.length = 0;
     this._renderHealth();
     this._renderHunger();
+    this._camAnchorY = this.player.y + this.player.h / 2;
+    this._applyZoom(0, true);
     this.camera.follow(this.player.x, this.player.y);
     showScreen(this.ui, null);
   }
@@ -800,6 +954,8 @@ export class SurviGame {
     if (this._attackCd > 0) this._attackCd -= dt;
     if (this._placeCd > 0) this._placeCd -= dt;
     if (this._attackAnim > 0) this._attackAnim -= dt;
+    if (this._swing.t < this._swing.dur) this._swing.t += dt;
+    this.timeOfDay = (this.timeOfDay + dt / DAY_CYCLE_MS) % 1;
     if (this.invulnMs > 0) this.invulnMs -= dt;
     if (this._hitFlashMs > 0) this._hitFlashMs -= dt;
 
@@ -868,14 +1024,13 @@ export class SurviGame {
       this.player.vy = 0; this._fallFromY = null;
     }
 
-    // animación de Junior
+    // animación del personaje: 2 frames de caminar o 2 de idle, cada uno
+    // con su propia velocidad; saltar/morir son 1 frame fijo.
     this._anim.t += dt;
-    if (Math.abs(this.player.vx) > 0.1 && this.player.grounded) {
-      const period = 1000 / JUNIOR.walkFps;
-      if (this._anim.t >= period) { this._anim.t = 0; this._anim.i = (this._anim.i + 1) % JUNIOR.frames.walk.length; }
-    } else {
-      this._anim.i = 0;
-    }
+    const walking = Math.abs(this.player.vx) > 0.1 && this.player.grounded;
+    if (walking !== this._anim.walking) { this._anim.walking = walking; this._anim.t = 0; this._anim.i = 0; }
+    const period = 1000 / (walking ? PLAYER.walkFps : PLAYER.idleFps);
+    if (this._anim.t >= period) { this._anim.t = 0; this._anim.i = (this._anim.i + 1) % 2; }
 
     if (this.pointer.down) {
       if (this.pointer.button === 0) this._mineTick(dt);
@@ -884,20 +1039,73 @@ export class SurviGame {
 
     this._updateEnemies(dt, step);
 
-    this.camera.followSmooth(this.player.x + this.player.w / 2, this.player.y + this.player.h / 2);
+    this._applyZoom(dt);
+    const t = this._cameraTarget();
+    this.camera.followSmooth(t.x, t.y);
     this.camera.update(dt);
   }
 
+  // Devuelve el índice de celda y si hay que espejarlo. Caminar y saltar
+  // tienen frames propios para cada lado; idle y muerte miran a la derecha
+  // y se espejan para la izquierda.
   _playerFrame() {
-    if (this._attackAnim > 0) return JUNIOR.frames.swing;
-    if (!this.player.grounded) return JUNIOR.frames.jump;
-    if (Math.abs(this.player.vx) > 0.1) return JUNIOR.frames.walk[this._anim.i];
-    return JUNIOR.frames.idle;
+    const F = PLAYER.frames, right = this.player.facing >= 0;
+    if (this.dead) return { f: F.death, flip: false };
+    if (!this.player.grounded) return { f: right ? F.jumpR : F.jumpL, flip: false };
+    if (Math.abs(this.player.vx) > 0.1) return { f: (right ? F.walkR : F.walkL)[this._anim.i], flip: false };
+    return { f: F.idle[this._anim.i % F.idle.length], flip: !right };
+  }
+
+  _startSwing(dur, restart = false) {
+    if (!restart && this._swing.t < this._swing.dur) return; // deja terminar el golpe en curso
+    this._swing.t = 0; this._swing.dur = dur;
+  }
+
+  // Brazo + ítem girando alrededor del hombro. Se dibuja en coordenadas
+  // lógicas de pantalla (ya dentro del ctx escalado por el zoom).
+  _drawSwingArm(ctx, cellX, cellY) {
+    const sw = this._swing;
+    if (sw.t >= sw.dur) return;
+    const right = this.player.facing >= 0;
+    const u = Math.min(1, sw.t / sw.dur);
+    const e = 1 - (1 - u) * (1 - u);                // arranca rápido, frena al final
+    const ang = SWING_FROM + (SWING_TO - SWING_FROM) * e;
+    const A = PLAYER.arm, S = PLAYER.shoulder, cs = PLAYER.fw;
+    const shx = cellX + (right ? S.x : cs - S.x);
+    const shy = cellY + S.y;
+    ctx.save();
+    ctx.translate(shx, shy);
+    if (!right) ctx.scale(-1, 1);                 // mismo giro, espejado
+    ctx.rotate(ang);
+    // ítem en la mano: se dibuja ANTES del brazo, así la mano lo tapa
+    const tool = this.heldTool;
+    if (tool && tool.sprite && this.img.items) {
+      // atlas de ítems: tamaño real del dibujo (1 px del dibujo = 1 px del mundo)
+      const cell = itemCell(tool.sprite), hold = itemHold(tool.sprite);
+      if (cell && hold) {
+        ctx.save();
+        ctx.translate(0, A.handY - A.pivotY);
+        ctx.rotate(hold.rot);
+        if (hold.scale !== 1) ctx.scale(hold.scale, hold.scale);
+        ctx.imageSmoothingEnabled = hold.scale !== 1;   // tamaño exacto: sin suavizar
+        ctx.drawImage(this.img.items, cell.sx, cell.sy, cell.w, cell.h, -hold.ax, -hold.ay, cell.w, cell.h);
+        ctx.imageSmoothingEnabled = true;
+        ctx.restore();
+      }
+    }
+    const c = PLAYER.cell;
+    ctx.drawImage(this.img.player, PLAYER.frames.arm * c, 0, c, c,
+                  -A.pivotX, -A.pivotY, cs, cs);
+    ctx.restore();
   }
 
   // ═══════════ Draw ═══════════
   _draw() {
     const ctx = this.ctx;
+    // Todo el dibujo trabaja en unidades lógicas (480x288); esto lo lleva
+    // al backing store de alta resolución.
+    ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
+    ctx.imageSmoothingEnabled = false;
     if (!this.tilemap) { ctx.clearRect(0, 0, VIEW_W, VIEW_H); return; }
 
     // El shake de la cámara (camera.shake()) solo se ve solo si se dibuja
@@ -910,15 +1118,78 @@ export class SurviGame {
     const shakeY = this.camera._shakeOffsetY || 0;
     this.camera.x -= shakeX;
     this.camera.y -= shakeY;
+    // Alinear la cámara a pixeles REALES de pantalla (no de mundo): sin
+    // esto cada frame caía en posiciones fraccionarias distintas y el
+    // mapa "temblaba". Se deshace al final junto con el shake.
+    const snapStep = 1 / (RENDER_SCALE * this._zoom);
+    const snapDX = this.camera.x - Math.round(this.camera.x / snapStep) * snapStep;
+    const snapDY = this.camera.y - Math.round(this.camera.y / snapStep) * snapStep;
+    this.camera.x -= snapDX;
+    this.camera.y -= snapDY;
 
     const pcol = Math.max(0, Math.min(COLS - 1, Math.floor((this.player.x + this.player.w / 2) / TILE)));
     const prow = Math.floor((this.player.y + this.player.h / 2) / TILE);
     const underground = prow > this.world.surfaceByCol[pcol] + 6;
-    ctx.fillStyle = underground ? '#0c0e14' : BIOMES[this.world.biomeByCol[pcol]].sky;
+    const sun = sunAt(this.timeOfDay, NIGHT_SUN);
+    const nightK = (1 - sun) / (1 - NIGHT_SUN);   // 0 = día, 1 = noche cerrada
+    ctx.fillStyle = underground ? '#0c0e14' : mixHex(BIOMES[this.world.biomeByCol[pcol]].sky, NIGHT_SKY, nightK);
     ctx.fillRect(0, 0, VIEW_W, VIEW_H);
 
+    ctx.save();
+    ctx.scale(this._zoom, this._zoom);
     this.tilemap.draw(ctx, this.camera);
 
+    for (const en of this.enemies) {
+      const s = this.camera.worldToScreen(en.x, en.y);
+      ctx.fillStyle = en.hitMs > 0 ? '#ffffff' : '#5aa469';
+      ctx.fillRect(s.x, s.y, en.w, en.h);
+      ctx.fillStyle = '#12301b';
+      ctx.fillRect(s.x + 2, s.y + 4, 2, 2);
+      ctx.fillRect(s.x + en.w - 4, s.y + 4, 2, 2);
+    }
+
+    // ── Personaje + herramienta en mano ──
+    const blink = this.invulnMs > 0 && Math.floor(this.invulnMs / 80) % 2 === 0;
+    if (!blink) {
+      const p = this.camera.worldToScreen(this.player.x, this.player.y);
+      const { f, flip } = this._playerFrame();
+      const c = PLAYER.cell;
+      const swinging = !this.dead && this._swing.t < this._swing.dur;
+      const row = swinging ? PLAYER.armlessRow : 0;
+      const cellX = p.x + PLAYER_SPRITE.offX, cellY = p.y + PLAYER_SPRITE.offY;
+      // El sprite está en su resolución original (más grande que en
+      // pantalla): se achica con suavizado de alta calidad para no perder
+      // detalle ni dejar pixeles desparejos. Los bloques siguen sin suavizar.
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      drawSprite(ctx, this.img.player, f * c, row * c, c, c,
+                 cellX, cellY, PLAYER_SPRITE.w, PLAYER_SPRITE.h, flip);
+      if (swinging) this._drawSwingArm(ctx, cellX, cellY);
+      ctx.imageSmoothingEnabled = false;
+    }
+
+    // Flash corto sobre el propio personaje al recibir un golpe — aparte
+    // del parpadeo largo de invulnerabilidad, para que el impacto se
+    // sienta también cuando ese parpadeo no se dispara (daño de hambre,
+    // de caída).
+    if (this._hitFlashMs > 0) {
+      const p = this.camera.worldToScreen(this.player.x, this.player.y);
+      ctx.fillStyle = `rgba(255,60,60,${0.5 * (this._hitFlashMs / HIT_FLASH_MS)})`;
+      ctx.fillRect(p.x - 2, p.y - 2, this.player.w + 4, this.player.h + 4);
+    }
+
+    // ── Iluminación: oscuridad sobre todo el mundo (bloques, minerales,
+    // enemigos, personaje). Luz = sol a cielo abierto + antorchas +
+    // círculo de visión propio. Ver survi_light.js. ──
+    this.light.compute((c, r) => this.tilemap.get(c, r), this.camera, sun, [{
+      x: this.player.x + this.player.w / 2,
+      y: this.player.y + this.player.h / 2,
+      power: PLAYER_VISION
+    }]);
+    this.light.draw(ctx, this.camera);
+
+    // el recuadro del bloque apuntado va arriba de la oscuridad: si no, en
+    // una cueva oscura no sabrías qué estás picando
     // tile apuntado + grietas de picado (textura de particle/broken.png)
     if (this._hoverTile && !this._blocked()) {
       const { col, row } = this._hoverTile;
@@ -934,49 +1205,7 @@ export class SurviGame {
       }
     }
 
-    for (const en of this.enemies) {
-      const s = this.camera.worldToScreen(en.x, en.y);
-      ctx.fillStyle = en.hitMs > 0 ? '#ffffff' : '#5aa469';
-      ctx.fillRect(s.x, s.y, en.w, en.h);
-      ctx.fillStyle = '#12301b';
-      ctx.fillRect(s.x + 2, s.y + 4, 2, 2);
-      ctx.fillRect(s.x + en.w - 4, s.y + 4, 2, 2);
-    }
-
-    // ── Junior + herramienta en mano ──
-    const blink = this.invulnMs > 0 && Math.floor(this.invulnMs / 80) % 2 === 0;
-    if (!blink) {
-      const p = this.camera.worldToScreen(this.player.x, this.player.y);
-      const flip = this.player.facing < 0;   // los sprites originales miran a la derecha
-      const f = this._playerFrame();
-      const sx = (f % JUNIOR.cols) * JUNIOR.fw;
-      const sy = Math.floor(f / JUNIOR.cols) * JUNIOR.fh;
-
-      drawSprite(ctx, this.img.junior, sx, sy, JUNIOR.fw, JUNIOR.fh,
-                 p.x + PLAYER_SPRITE.offX, p.y + PLAYER_SPRITE.offY,
-                 PLAYER_SPRITE.w, PLAYER_SPRITE.h, flip);
-
-      const tool = this.heldTool;
-      if (tool && this.img.held) {
-        const cell = toolCell(TOOLS_HELD, tool.tool, tool.mat);
-        if (cell) {
-          const swing = this._attackAnim > 0 ? -3 : 0;
-          const hx = flip ? p.x - 11 : p.x + this.player.w - 5;
-          drawSprite(ctx, this.img.held, cell.sx, cell.sy, cell.w, cell.h,
-                     hx, p.y + 4 + swing, 16, 16, flip);
-        }
-      }
-    }
-
-    // Flash corto sobre el propio personaje al recibir un golpe — aparte
-    // del parpadeo largo de invulnerabilidad, para que el impacto se
-    // sienta también cuando ese parpadeo no se dispara (daño de hambre,
-    // de caída).
-    if (this._hitFlashMs > 0) {
-      const p = this.camera.worldToScreen(this.player.x, this.player.y);
-      ctx.fillStyle = `rgba(255,60,60,${0.5 * (this._hitFlashMs / HIT_FLASH_MS)})`;
-      ctx.fillRect(p.x - 2, p.y - 2, this.player.w + 4, this.player.h + 4);
-    }
+    ctx.restore(); // fin del mundo escalado: lo de abajo cubre toda la pantalla
 
     if (this.invulnMs > 0) {
       ctx.fillStyle = `rgba(200,30,30,${0.25 * (this.invulnMs / INVULN_MS)})`;
@@ -986,7 +1215,7 @@ export class SurviGame {
     // Deshacer el corrimiento de shake del principio de _draw(): camera.x/y
     // tienen que quedar como los dejó camera.update() para el próximo
     // frame (clamp, deadzone, etc).
-    this.camera.x += shakeX;
-    this.camera.y += shakeY;
+    this.camera.x += shakeX + snapDX;
+    this.camera.y += shakeY + snapDY;
   }
 }

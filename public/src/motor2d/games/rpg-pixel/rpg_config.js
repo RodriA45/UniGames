@@ -55,6 +55,8 @@ export const RPG_EL = {
   mainMenuView: document.getElementById('rpgMainMenuView'),
   enemyName: document.getElementById('rpgEnemyName'),
   enemyHudWrap: document.getElementById('rpgEnemyHudWrap'),
+  enemyHudFrameImg: document.getElementById('rpgEnemyHudFrameImg'),
+  enemyHpTrack: document.getElementById('rpgEnemyHpTrack'),
   enemyHpFill: document.getElementById('rpgEnemyHpFill'),
   difficultyView: document.getElementById('rpgDifficultyView'),
   comoJugarView: document.getElementById('rpgComoJugarView'),
@@ -269,6 +271,21 @@ export const RPG_DK_EXPRESSIONS = {
   angry:   { x: 70,   y: 15, w: 611, h: 835 },
   normal:  { x: 835,  y: 15, w: 659, h: 844 },
   wounded: { x: 1670, y: 10, w: 633, h: 851 }
+};
+
+// ─── Expresiones del Guardián / Dark Ghost King (models/capitulo2/ghostking_expre.png) ─────
+// Mismo mecanismo que RPG_DK_EXPRESSIONS de arriba, para el jefe del Cap. 2.
+// PNG con transparencia real (sin fondo ni carteles de texto) — coordenadas
+// recalculadas sobre esta versión, reemplaza a la hoja .webp anterior.
+// Estos 3 recortes son solo los BUSTOS (para portraitRect en diálogo); las
+// poses de cuerpo entero "enojado"/"derrotado" de esa misma hoja se usan
+// aparte, como atlas de sprite normal (ver RPG_ENEMY_TYPES.dark_ghostking.
+// altSheet/altAtlas en rpg_enemies_data.js).
+export const RPG_GK_EXPRESSIONS_SHEET = RPG_ASSET_BASE + 'models/capitulo2/ghostking_expre.png';
+export const RPG_GK_EXPRESSIONS = {
+  normal:   { x: 40,   y: 19, w: 489, h: 551 },
+  angry:    { x: 674,  y: 19, w: 506, h: 552 },
+  defeated: { x: 1314, y: 46, w: 495, h: 525 }
 };
 
 export const RPG_SAVE_SLOTS = 3;

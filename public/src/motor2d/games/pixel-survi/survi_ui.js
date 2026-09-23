@@ -10,10 +10,11 @@
 
 import {
   MAX_HP, MAX_HUNGER, COVER_SRC, MODES, ITEM_INFO, HOTBAR_SIZE,
-  EQUIP_SLOTS, EQUIP_SLOT_ICON, RECIPES, ingredientHave, canCraft
+  EQUIP_SLOTS, EQUIP_SLOT_ICON, RECIPES, CRAFT_CATS, ingredientHave, canCraft, BIOMES
 } from './survi_config.js';
 import { fmtTime } from './survi_save.js';
-import { tileIconStyle, toolIconStyle, JUNIOR } from './models/sprites.js';
+import { icon, BIOME_ICON } from './survi_icons.js';
+import { tileIconStyle, itemSpriteStyle, PLAYER } from './models/sprites.js';
 
 // Nombres de pantalla válidos para showScreen()
 export const SCREENS = ['cover', 'worlds', 'mode', 'settings', 'howto', 'pause', 'death', 'inv', 'equip', 'craft'];
@@ -34,12 +35,12 @@ export function buildLayout(root) {
       </div>
       <div class="survi-hud-bottom">
         <div class="survi-health" title="Vida">
-          <span class="survi-health-heart">♥</span>
+          <span class="survi-health-heart">${icon('heart', { fill: true })}</span>
           <div class="survi-health-bar"><i></i></div>
           <span class="survi-health-text">${MAX_HP}/${MAX_HP}</span>
         </div>
         <div class="survi-hunger" title="Hambre">
-          <span class="survi-hunger-icon">🍖</span>
+          <span class="survi-hunger-icon">${icon('drumstick')}</span>
           <div class="survi-hunger-bar"><i></i></div>
           <span class="survi-hunger-text">${MAX_HUNGER}/${MAX_HUNGER}</span>
         </div>
@@ -50,12 +51,12 @@ export function buildLayout(root) {
     <!-- ── Controles táctiles ── -->
     <div class="survi-touch hidden">
       <div class="survi-touch-move">
-        <button class="game-icon-btn" data-touch="left">◀</button>
-        <button class="game-icon-btn" data-touch="right">▶</button>
+        <button class="game-icon-btn" data-touch="left">${icon('chevronLeft', { stroke: 3 })}</button>
+        <button class="game-icon-btn" data-touch="right">${icon('chevronRight', { stroke: 3 })}</button>
       </div>
       <div class="survi-touch-right">
-        <button class="game-icon-btn survi-touch-mode" title="Romper / Colocar">⛏</button>
-        <button class="game-icon-btn survi-touch-jump" data-touch="jump">⤒</button>
+        <button class="game-icon-btn survi-touch-mode" title="Romper / Colocar">${icon('pickaxe')}</button>
+        <button class="game-icon-btn survi-touch-jump" data-touch="jump">${icon('arrowUp', { stroke: 3 })}</button>
       </div>
     </div>
 
@@ -107,17 +108,17 @@ export function buildLayout(root) {
         <h2 class="modal-game-title">Ajustes</h2>
         <div class="game-settings-content survi-settings-content">
           <div class="game-slider-row">
-            <label for="surviMusicVol">🎵 Música</label>
+            <label for="surviMusicVol">${icon('music')} Música</label>
             <input id="surviMusicVol" type="range" min="0" max="100" step="1">
             <span class="game-slider-value survi-music-val">70%</span>
           </div>
           <div class="game-slider-row">
-            <label for="surviSfxVol">🔊 Efectos</label>
+            <label for="surviSfxVol">${icon('volume')} Efectos</label>
             <input id="surviSfxVol" type="range" min="0" max="100" step="1">
             <span class="game-slider-value survi-sfx-val">70%</span>
           </div>
           <div class="game-fullscreen-row survi-fullscreen-row">
-            <button class="game-fullscreen-btn survi-fullscreen-btn" data-act="fullscreen">⛶ Pantalla completa</button>
+            <button class="game-fullscreen-btn survi-fullscreen-btn" data-act="fullscreen">${icon('maximize')} Pantalla completa</button>
           </div>
           <div class="survi-quality-slot"></div>
         </div>
@@ -139,7 +140,9 @@ export function buildLayout(root) {
           <div class="game-info-row"><b>Esc</b> — pausa</div>
           <div class="game-info-row">Caer de más de 4 bloques te saca vida. En <b>hardcore</b> la muerte borra el mundo.</div>
           <div class="game-info-row">Cualquier herramienta pega, pero la <b>espada</b> es la que más daño hace y más rápido pega.</div>
-          <div class="game-info-row">🍖 El hambre baja solo. Rompé hojas para conseguir comida y comela con <b>clic derecho</b>. En 0 empieza a sacarte vida; bien alimentado, la regenerás de a poco.</div>
+          <div class="game-info-row">Cada material es mejor que el anterior: <b>madera → piedra → cobre → hierro → oro → diamante → esmeralda</b>. Los minerales piden un pico del nivel de abajo o mejor: cobre (piedra), hierro (cobre), oro (hierro), diamante (oro), esmeralda (diamante). Con un pico peor se rompen pero no sueltan nada.</div>
+          <div class="game-info-row">Los <b>palos</b> salen de la madera y el <b>flint</b> de 6 de grava. Los minerales crudos se funden a lingote con carbón.</div>
+          <div class="game-info-row">${icon('drumstick')} El hambre baja solo. Rompé hojas para conseguir comida y comela con <b>clic derecho</b>. En 0 empieza a sacarte vida; bien alimentado, la regenerás de a poco.</div>
         </div>
         <button class="btn-game-secondary" data-act="back-cover">Volver</button>
       </div>
@@ -152,8 +155,8 @@ export function buildLayout(root) {
         <div class="survi-inv-grid"></div>
         <p class="survi-inv-hint">Tocá un ítem para ponerlo en el slot #<span class="survi-inv-slot">1</span>.</p>
         <div class="survi-inv-actions">
-          <button class="btn-game-secondary" data-act="open-equip">🪖 Equipamiento</button>
-          <button class="btn-game-secondary" data-act="open-craft">🔨 Craftear</button>
+          <button class="btn-game-secondary" data-act="open-equip">${icon('shield')} Equipamiento</button>
+          <button class="btn-game-secondary" data-act="open-craft">${icon('hammer')} Craftear</button>
         </div>
         <button class="btn-game-primary" data-act="close-inv">Cerrar (I)</button>
       </div>
@@ -182,7 +185,10 @@ export function buildLayout(root) {
       <div class="modal-game-box survi-craft-box">
         <h2 class="modal-game-title">Craftear</h2>
         <div class="survi-craft-layout">
-          <div class="survi-craft-list"></div>
+          <div class="survi-craft-side">
+            <div class="survi-craft-tabs"></div>
+            <div class="survi-craft-list"></div>
+          </div>
           <div class="survi-craft-detail">
             <p class="survi-craft-empty">Elegí algo de la lista para ver qué pide.</p>
           </div>
@@ -248,6 +254,7 @@ export function buildLayout(root) {
     equipChar: q('.survi-equip-char'),
     equipSlots: q('.survi-equip-slots'),
     equipList: q('.survi-equip-list'),
+    craftTabs: q('.survi-craft-tabs'),
     craftList: q('.survi-craft-list'),
     craftDetail: q('.survi-craft-detail'),
     toast: q('.survi-toast'),
@@ -304,18 +311,52 @@ export function showScreen(ui, name) {
 }
 
 // Tarjetas de los 3 puntos de guardado.
+// "hace 5 min" / "hace 3 h" / "hace 2 días"
+function timeAgo(ts) {
+  if (!ts) return '';
+  const min = Math.max(0, Math.round((Date.now() - ts) / 60000));
+  if (min < 1) return 'recién';
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return `hace ${d} ${d === 1 ? 'día' : 'días'}`;
+}
+
 export function renderWorlds(ui, slots, { onPick, onDelete }) {
   ui.worldsList.innerHTML = '';
   for (const s of slots) {
     const card = document.createElement('div');
-    card.className = 'survi-world-card' + (s.exists ? ' used' : '');
-    const modeLabel = s.mode === 'hardcore' ? '☠ Hardcore' : '🌱 Normal';
+    const hard = s.mode === 'hardcore';
+    card.className = 'survi-world-card' + (s.exists ? ' used' : ' empty') + (hard ? ' hardcore' : '');
+    if (s.exists && s.biome) card.dataset.biome = s.biome;
+
+    let info;
+    if (s.exists) {
+      const biome = BIOMES[s.biome];
+      info = `
+        <b class="survi-world-name">Mundo ${s.slot}</b>
+        <span class="survi-world-tags">
+          <span class="survi-tag ${hard ? 'tag-hard' : 'tag-normal'}">${icon(hard ? 'skull' : 'leaf')}${hard ? 'Hardcore' : 'Normal'}</span>
+          ${biome ? `<span class="survi-tag tag-biome">${icon(BIOME_ICON[s.biome] || 'globe')}${biome.label}</span>` : ''}
+        </span>
+        <span class="survi-world-stats">
+          <span>${icon('clock')}${fmtTime(s.playedMs)}</span>
+          ${s.savedAt ? `<span>${icon('history')}${timeAgo(s.savedAt)}</span>` : ''}
+        </span>`;
+    } else {
+      info = `
+        <b class="survi-world-name">Mundo ${s.slot}</b>
+        <span class="survi-world-empty-text">Espacio libre · creá un mundo nuevo</span>`;
+    }
+
     card.innerHTML = `
-      <div class="survi-world-main">
-        <b>Mundo ${s.slot}</b>
-        <span>${s.exists ? `${modeLabel} · ${fmtTime(s.playedMs)} jugado` : 'Vacío — mundo nuevo'}</span>
-      </div>
-      ${s.exists ? '<button class="survi-world-del" title="Borrar mundo">🗑</button>' : ''}
+      <button type="button" class="survi-world-main">
+        <span class="survi-world-num">${s.exists ? s.slot : icon('plus', { stroke: 3 })}</span>
+        <span class="survi-world-info">${info}</span>
+        <span class="survi-world-go">${icon(s.exists ? 'play' : 'chevronRight', { fill: s.exists })}</span>
+      </button>
+      ${s.exists ? `<button type="button" class="survi-world-del" title="Borrar mundo" aria-label="Borrar Mundo ${s.slot}">${icon('trash')}</button>` : ''}
     `;
     card.querySelector('.survi-world-main').addEventListener('click', () => onPick(s));
     const del = card.querySelector('.survi-world-del');
@@ -331,25 +372,25 @@ export function renderWorlds(ui, slots, { onPick, onDelete }) {
 export function itemIconStyle(itemId, px) {
   const info = ITEM_INFO[itemId];
   if (!info) return '';
-  if (info.tool) return toolIconStyle(info.tool, info.mat, px);
+  if (info.sprite) return itemSpriteStyle(info.sprite, px);
   return tileIconStyle(info.place || itemId, px);
 }
 
-// Recorte del sprite de Junior (el "idle") para la pantalla de
-// Equipamiento. JUNIOR.fw/fh NO son cuadrados (24x36), así que esto es
-// aparte de itemIconStyle/tileIconStyle/toolIconStyle (esas sí asumen
+// Recorte del sprite del personaje (el "idle") para la pantalla de
+// Equipamiento. PLAYER.fw/fh NO son cuadrados (24x36), así que esto es
+// aparte de itemIconStyle/tileIconStyle (esas sí asumen
 // celdas cuadradas) — se fija el ancho en `px` y el alto sale
 // proporcional al sprite real, para no deformarlo.
 function charSpriteStyle(px) {
-  const frame = JUNIOR.frames.idle;
-  const col = frame % JUNIOR.cols, row = Math.floor(frame / JUNIOR.cols);
-  const k = px / JUNIOR.fw;
-  const w = JUNIOR.cols * JUNIOR.fw * k, h = JUNIOR.rows * JUNIOR.fh * k;
-  return `background-image:url('${JUNIOR.src}');` +
+  const frame = Array.isArray(PLAYER.frames.idle) ? PLAYER.frames.idle[0] : PLAYER.frames.idle;
+  const col = frame % PLAYER.cols, row = Math.floor(frame / PLAYER.cols);
+  const k = px / PLAYER.fw;
+  const w = PLAYER.cols * PLAYER.fw * k, h = PLAYER.rows * PLAYER.fh * k;
+  return `background-image:url('${PLAYER.src}');` +
          `background-size:${w}px ${h}px;` +
-         `background-position:${-col * JUNIOR.fw * k}px ${-row * JUNIOR.fh * k}px;` +
+         `background-position:${-col * PLAYER.fw * k}px ${-row * PLAYER.fh * k}px;` +
          `background-repeat:no-repeat;image-rendering:pixelated;` +
-         `width:${px}px;height:${px * (JUNIOR.fh / JUNIOR.fw)}px;`;
+         `width:${px}px;height:${px * (PLAYER.fh / PLAYER.fw)}px;`;
 }
 
 // Ícono de un ítem para un cell/slot, como HTML (no solo el estilo):
@@ -360,8 +401,8 @@ function charSpriteStyle(px) {
 function iconMarkup(id, px) {
   const info = ITEM_INFO[id];
   if (!info) return '';
-  if (info.equip) {
-    return `<span class="survi-emoji-icon" style="font-size:${Math.round(px * 0.75)}px">${EQUIP_SLOT_ICON[info.equip]}</span>`;
+  if (info.equip && !info.sprite) {
+    return `<span class="survi-equip-icon" style="font-size:${Math.round(px * 0.75)}px">${icon(EQUIP_SLOT_ICON[info.equip])}</span>`;
   }
   return `<span class="survi-slot-icon" style="${itemIconStyle(id, px)}"></span>`;
 }
@@ -453,7 +494,7 @@ function renderEquip(ui, game) {
     btn.title = info ? `${info.name} (tocar para desequipar)` : s.label;
     btn.innerHTML = info
       ? `${iconMarkup(id, 28)}<span class="survi-equip-slot-label">${s.label}</span>`
-      : `<span class="survi-equip-slot-icon survi-equip-slot-icon-empty">${s.icon}</span><span class="survi-equip-slot-label">${s.label}</span>`;
+      : `<span class="survi-equip-slot-icon survi-equip-slot-icon-empty">${icon(s.icon)}</span><span class="survi-equip-slot-label">${s.label}</span>`;
     btn.addEventListener('click', () => {
       if (game.equipment[s.key]) game.unequipItem(s.key);
       renderEquip(ui, game);
@@ -496,21 +537,36 @@ function recipeResultName(recipe) {
 }
 
 function ingredientLabel(ing) {
+  if (ing.label) return `${ing.qty}× ${ing.label}`;
   const ids = ing.anyOf || [ing.id];
   const names = ids.map(id => (ITEM_INFO[id] ? ITEM_INFO[id].name : `#${id}`));
   return `${ing.qty}× ${names.join(' / ')}`;
 }
 
+// Pestañas por categoría (Básicos, Herramientas, Armas…). En cada una,
+// primero lo que ya podés craftear.
+let craftCat = CRAFT_CATS[0].key;
 function renderCraft(ui, game) {
+  ui.craftTabs.innerHTML = '';
+  for (const c of CRAFT_CATS) {
+    const tab = document.createElement('button');
+    const n = RECIPES.filter(r => r.cat === c.key && canCraft(game.inventory, r)).length;
+    tab.className = 'survi-craft-tab' + (c.key === craftCat ? ' active' : '');
+    tab.innerHTML = `${c.label}${n ? `<span class="survi-craft-tab-n">${n}</span>` : ''}`;
+    tab.addEventListener('click', () => { craftCat = c.key; ui.craftDetail.innerHTML = '<p class="survi-craft-empty">Elegí algo de la lista para ver qué pide.</p>'; renderCraft(ui, game); });
+    ui.craftTabs.appendChild(tab);
+  }
   ui.craftList.innerHTML = '';
-  for (const recipe of RECIPES) {
+  const list = RECIPES.filter(r => r.cat === craftCat)
+    .map(r => ({ r, ok: canCraft(game.inventory, r) }))
+    .sort((a, b) => (b.ok - a.ok));
+  for (const { r: recipe, ok } of list) {
     const row = document.createElement('button');
-    const ok = canCraft(game.inventory, recipe);
     row.className = 'survi-craft-row' + (ok ? ' can-craft' : '');
     row.innerHTML = `
       ${iconMarkup(recipe.result, 26)}
       <span class="survi-craft-row-info">
-        <span class="survi-craft-row-name">${recipeResultName(recipe)}</span>
+        <span class="survi-craft-row-name">${recipeResultName(recipe)}${recipe.resultQty > 1 ? ` ×${recipe.resultQty}` : ''}</span>
         <span class="survi-craft-row-cost">${recipe.inputs.map(ingredientLabel).join(', ')}</span>
       </span>
     `;
@@ -528,7 +584,7 @@ function renderCraftDetail(ui, game, recipe) {
     const have = ingredientHave(game.inventory, ing);
     const enough = have >= ing.qty;
     const ids = ing.anyOf || [ing.id];
-    const names = ids.map(id => (ITEM_INFO[id] ? ITEM_INFO[id].name : `#${id}`)).join(' / ');
+    const names = ing.label || ids.map(id => (ITEM_INFO[id] ? ITEM_INFO[id].name : `#${id}`)).join(' / ');
     return `
       <div class="survi-craft-ing ${enough ? 'have' : 'missing'}">
         <span class="survi-craft-ing-name">${names}</span>

@@ -151,16 +151,28 @@ header {
   white-space: nowrap;
 }
 
-/* Área de autenticación / perfil */
+/* Área de autenticación / perfil — redondo, mismo look esté o no logueado.
+   Logueado muestra un avatar (inicial del nombre) en vez del ícono
+   genérico; ver updateAuthUI() en app2.js, que arma este contenido. */
 .account-toggle {
   display: flex;
   align-items: center;
+  justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
+  position: relative;
+  background: rgba(255, 255, 255, 0.08);
+  border: 2px solid transparent;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
-.account-toggle:hover svg {
-  transform: scale(1.08);
+.account-toggle:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: scale(1.06);
 }
 
 .account-toggle svg {
@@ -168,10 +180,53 @@ header {
   fill: var(--white);
 }
 
-.account-toggle {
-  background: none;
-  border: none;
-  padding: 6px;
+/* Avatar de inicial cuando hay sesión iniciada pero no eligió imagen */
+.account-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--yellow), #d99a00);
+  color: var(--blue-dark);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+/* Avatar real (el que se elige en Perfil) */
+.account-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Notificaciones sin leer: borde rojo alrededor del botón + numerito
+   asomando en la esquina (ver actualizarBadgeNotificaciones en app2.js). */
+.account-toggle.has-notif {
+  border-color: #ef4444;
+}
+
+.account-notif-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  border: 2px solid var(--blue-dark);
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 13px;
+  text-align: center;
+  pointer-events: none;
 }
 
 /* ─── FONDO OSCURO DE LOS MENÚS LATERALES ─── */
@@ -229,36 +284,52 @@ header {
   letter-spacing: 1px;
 }
 
+/* Mismo diseño que los botones del menú de cuenta (.account-drawer-btn):
+   caja con fondo y borde sutil, esquinas de 10px, mismo espaciado entre
+   opciones y mismo hover (fondo azul + borde amarillo + corrimiento de
+   2px). Antes eran filas planas sin borde que se corrían más al hover. */
 .nav-menu ul {
   list-style: none;
-  padding: 0.75rem 1rem 1rem;
+  padding: 1.25rem;
+  margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: 0.6rem;
 }
 
 .nav-menu ul li a {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
   padding: 0.75rem 1rem;
-  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--white);
   text-decoration: none;
   font-weight: 700;
   font-size: 0.95rem;
-  border-radius: 8px;
-  transition: background 0.2s, color 0.2s, padding-left 0.2s;
+  border-radius: 10px;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
 }
 
-.nav-menu ul li a:hover,
+.nav-menu ul li a:hover {
+  background: rgba(37, 99, 235, 0.4);
+  border-color: var(--yellow);
+  transform: translateX(2px);
+}
+
+/* La sección actual queda marcada con el borde amarillo fijo (sin el
+   corrimiento del hover), para que se sepa dónde estás parado. */
 .nav-menu ul li a.active {
-  background: rgba(37, 99, 235, 0.5);
-  color: var(--yellow);
-  padding-left: 1.4rem;
+  background: rgba(37, 99, 235, 0.4);
+  border-color: var(--yellow);
 }
 
 .nav-icon {
   font-size: 1.1rem;
+  line-height: 0;
 }
 
 /* ─── MENÚ LATERAL DERECHO: CUENTA ─── */
@@ -319,6 +390,28 @@ header {
   background: rgba(37, 99, 235, 0.4);
   border-color: var(--yellow);
   transform: translateX(2px);
+}
+
+/* Texto + ícono de cada opción flotan (misma animación gentleFloat que
+   las tarjetas, 3px de recorrido) SOLO mientras el mouse está encima de
+   esa opción. Aplica a los dos menús laterales: cuenta y navegación.
+   El texto arranca 0.15s después que el ícono, como en las tarjetas,
+   para que no se muevan exactamente en sincro. */
+.account-drawer-btn-label,
+.nav-icon {
+  display: inline-block;
+}
+
+.account-drawer-btn:hover > svg,
+.account-drawer-btn:hover > span > svg,
+.nav-menu ul li a:hover .nav-icon {
+  animation: gentleFloat 2.4s ease-in-out infinite;
+}
+
+.account-drawer-btn:hover .account-drawer-btn-label,
+.nav-menu ul li a:hover .account-drawer-btn-label {
+  animation: gentleFloat 2.4s ease-in-out infinite;
+  animation-delay: 0.15s;
 }
 
 .account-drawer-btn.btn-logout {
@@ -402,6 +495,14 @@ main {
 
 .hero h1 span {
   color: var(--blue-accent);
+}
+
+/* Cada letra del título flota con un pequeño desfasaje entre una y la
+   siguiente (ver animateHeroLetters en app2.js) — hace un efecto de ola
+   suave en vez de mover el título entero de una. */
+.wave-letter {
+  display: inline-block;
+  animation: gentleFloat 2.2s ease-in-out infinite;
 }
 
 .hero p {
@@ -527,7 +628,7 @@ main {
   border-radius: 16px;
   padding: 1.5rem;
   box-shadow: var(--card-shadow);
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  transition: transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.28s ease, border-color 0.28s ease;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -535,14 +636,39 @@ main {
 }
 
 .game-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.22);
+  transform: translateY(-6px) scale(1.035);
+  box-shadow: 0 14px 36px rgba(37, 99, 235, 0.28);
   border-color: var(--blue-accent);
+}
+
+.game-card:active {
+  transform: translateY(-2px) scale(1.01);
+}
+
+/* Flotado sutil y compartido — logos, letras del hero, título/ícono de
+   las tarjetas. Poco recorrido a propósito (3px), nada exagerado. */
+@keyframes gentleFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 
 .card-emoji {
   color: var(--blue-accent);
   display: inline-flex;
+  transition: transform 0.28s ease;
+}
+
+.game-card:hover .card-emoji {
+  transform: scale(1.15) rotate(-4deg);
+}
+
+/* El flotado va en un span ADENTRO de .card-emoji, no en .card-emoji
+   mismo — si los dos animaran el mismo "transform", el hover (que
+   también usa transform, para el scale+rotate) y el flotado continuo se
+   pisarían entre sí. Así cada uno tiene su propia propiedad para animar. */
+.card-emoji-float {
+  display: inline-flex;
+  animation: gentleFloat 2.4s ease-in-out infinite;
 }
 
 .card-title {
@@ -550,6 +676,9 @@ main {
   font-size: 10px;
   color: var(--blue-dark);
   line-height: 1.6;
+  display: inline-block;
+  animation: gentleFloat 2.4s ease-in-out infinite;
+  animation-delay: 0.15s;
 }
 
 .card-desc {
@@ -587,6 +716,23 @@ main {
 .btn-play:hover {
   background: var(--blue-dark);
   transform: scale(1.05);
+}
+
+/* Botón "Jugar" de las tarjetas: en vez de agrandar el botón entero (eso
+   ya lo hace .btn-play:hover de arriba, para el resto del sitio), acá
+   crece SOLO la palabra + el ícono, y poco — "se agrande muy poco y
+   después vuelva a su tamaño normal". */
+.game-card-full .btn-play:hover {
+  transform: none;
+}
+
+.btn-play-label {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.game-card-full .btn-play:hover .btn-play-label {
+  transform: scale(1.08);
 }
 
 .btn-play:active {
@@ -630,15 +776,19 @@ main {
   border-radius: 16px;
   overflow: hidden;
   box-shadow: var(--card-shadow);
-  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  transition: transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.28s ease, border-color 0.28s ease;
   display: flex;
   flex-direction: column;
 }
 
 .game-card-full:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 32px rgba(37, 99, 235, 0.22);
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 14px 36px rgba(37, 99, 235, 0.28);
   border-color: var(--blue-accent);
+}
+
+.game-card-full:active {
+  transform: translateY(-2px) scale(1.005);
 }
 
 .card-header-band {
@@ -647,6 +797,14 @@ main {
   display: flex;
   align-items: center;
   gap: 1rem;
+}
+
+.game-card-full .card-emoji {
+  transition: transform 0.28s ease;
+}
+
+.game-card-full:hover .card-emoji {
+  transform: scale(1.15) rotate(-4deg);
 }
 
 .card-header-band .card-emoji {
@@ -837,7 +995,7 @@ footer {
   background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
   color: rgba(255, 255, 255, 0.65);
   text-align: center;
-  padding: 1.25rem;
+  padding: 1.4rem 1.5rem;
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: 0.5px;
@@ -846,6 +1004,144 @@ footer {
 
 footer span {
   color: var(--yellow);
+}
+
+/* Antes tenía max-width:1100px + margin:0 auto, igual que .main — pero
+   el header (donde vive el OTRO logo) no tiene ese límite y va de borde
+   a borde. Con los dos anchos distintos, el logo del footer quedaba más
+   metido hacia adentro que el del header, encima de él. Sacando el
+   límite acá, los dos logos quedan sobre la misma línea vertical. */
+.footer-inner {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  /* align-items:center centra el logo contra la ALTURA TOTAL de la
+     columna del medio (links + copyright). Antes el copyright estaba
+     afuera de esta grilla, así que el logo solo se centraba contra la
+     fila de los links y quedaba pegado arriba. */
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+}
+
+.footer-center {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.footer-logo {
+  justify-self: start;
+  font-family: 'Press Start 2P', monospace;
+  /* Mismo tamaño y sombra que .logo del header — antes era más chico y
+     sin el brillo, así que no se veían "iguales" como se pidió. */
+  font-size: clamp(14px, 2.5vw, 22px);
+  color: var(--yellow);
+  text-shadow:
+    0 0 8px var(--yellow-glow),
+    0 0 20px rgba(245, 197, 24, 0.5),
+    2px 2px 0 #7a5f00;
+  letter-spacing: 2px;
+  line-height: 1; /* la fuente pixel trae mucho aire arriba con el line-height por defecto */
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s ease;
+}
+
+.footer-logo:hover {
+  opacity: 0.8;
+}
+
+/* Flotado sutil, siempre activo (no solo en gama baja/mobile como el
+   brillo) — poco recorrido, nada exagerado. */
+.logo,
+.footer-logo {
+  display: inline-block;
+  animation: gentleFloat 2.6s ease-in-out infinite;
+}
+
+.footer-nav {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.footer-nav a {
+  color: rgba(255, 255, 255, 0.75);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.footer-nav a:hover {
+  color: var(--yellow);
+}
+
+.footer-copy {
+  font-size: 0.78rem;
+  opacity: 0.85;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .footer-inner {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 0.5rem;
+  }
+  .footer-logo {
+    justify-self: center;
+  }
+  .footer-center {
+    grid-column: 1;
+  }
+  .footer-nav {
+    gap: 1rem;
+  }
+}
+
+/* ─── CONDICIONES DE USO ─── */
+#sec-terminos .terms-wrap {
+  max-width: 780px;
+  margin: 1.5rem auto 0;
+  padding-bottom: 2rem;
+}
+
+.terms-wrap h1 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(15px, 2.6vw, 20px);
+  color: var(--blue-dark);
+  margin-bottom: 0.4rem;
+}
+
+.terms-updated {
+  color: #64748b;
+  font-size: 0.8rem;
+  margin-bottom: 1.75rem;
+}
+
+.terms-section {
+  margin-bottom: 1.4rem;
+}
+
+.terms-section h3 {
+  font-family: 'Nunito', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  color: var(--blue-dark);
+  margin-bottom: 0.4rem;
+}
+
+.terms-section p {
+  color: #334155;
+  font-size: 0.9rem;
+  line-height: 1.7;
+  margin: 0;
 }
 
 /* ─── PANTALLAS DE JUEGO ─── */
@@ -1565,7 +1861,8 @@ footer span {
   /* ═══════════════════════════════════
    ANIMACIÓN LOGO HEADER
    ═══════════════════════════════════ */
-  .logo {
+  .logo,
+  .footer-logo {
     animation: logoGlow 3s ease-in-out infinite;
   }
 
@@ -2112,11 +2409,116 @@ footer span {
     animation: fadeIn 0.25s ease;
   }
 
-  /* Grid global: tarjetas por juego */
+  /* Grid global: ahora son .game-card-full (mismo look que las tarjetas
+     de juego) con un cuerpo propio para el podio top-3. */
   .lb-global-grids {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.25rem;
+  }
+
+  /* Alto fijo — antes crecía según la cantidad de entradas y una tarjeta
+     con 1 jugador vs otra con muchos quedaban de tamaños bien distintos.
+     Lista vertical numerada; si hay más filas de las que entran en el
+     alto fijo, se scrollea para abajo adentro de la tarjeta (no estira
+     la tarjeta ni scrollea de costado). */
+  .lb-game-card-body {
+    height: 304px;
+    padding: 0.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+  }
+
+  .lb-game-card-body::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .lb-game-card-body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 999px;
+  }
+
+  .lb-rank-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    flex-shrink: 0;
+  }
+
+  .lb-rank-row:last-child {
+    border-bottom: none;
+  }
+
+  .lb-rank-num {
+    min-width: 1.3rem;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #64748b;
+  }
+
+  .lb-rank-row .lb-player-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lb-empty-mini {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    width: 100%;
+    gap: 0.15rem;
+    text-align: center;
+  }
+
+  .lb-empty-title {
+    color: #64748b;
+    font-weight: 800;
+    font-size: 0.85rem;
+    margin: 0;
+  }
+
+  .lb-empty-sub {
+    color: #94a3b8;
+    font-size: 0.75rem;
+    margin: 0;
+  }
+
+  /* Renglón "Tu posición" arriba de la tabla filtrada por juego */
+  .lb-single-title {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.95rem;
+    color: var(--blue-dark);
+    margin: 0.9rem 0 0.75rem;
+  }
+  .lb-your-rank {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, var(--blue-dark), var(--blue-mid));
+    color: var(--yellow);
+    border-radius: 12px;
+    padding: 0.75rem 1.1rem;
+    margin-bottom: 1rem;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 0.9rem;
+  }
+
+  .lb-your-rank.hidden {
+    display: none;
+  }
+
+  .lb-your-rank .score-badge {
+    margin-left: auto;
   }
 
   .lb-game-card {
@@ -2371,8 +2773,13 @@ footer span {
   border-radius: 20px;
   width: 100%;
   max-width: 600px;
+  /* Alto fijo — antes cada página tenía su propio contenido/alto y el
+     modal se agrandaba o achicaba entero al cambiar de página. Ahora el
+     modal mide siempre lo mismo; si el contenido de una página no entra
+     (pantallas chicas), scrollea SOLO esa zona (.info-pages-wrap), nunca
+     el modal entero. */
+  height: 520px;
   max-height: 85vh;
-  overflow-y: auto;
   padding: 2rem;
   position: relative;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.15);
@@ -2381,6 +2788,12 @@ footer span {
   color: #fff;
   transform: translateY(16px);
   transition: transform 0.3s ease;
+}
+
+.info-pages-wrap {
+  flex: 1;
+  min-height: 0; /* imprescindible: sin esto, flex:1 + overflow no funciona bien en Safari/Firefox */
+  overflow-y: auto;
 }
 
 .info-overlay.show .info-modal {
@@ -2457,6 +2870,12 @@ footer span {
   font-size: 0.92rem;
   line-height: 1.6;
   color: #e2e8f0;
+  /* Mismo criterio que el modal entero: alto fijo para que las 4 páginas
+     se vean iguales, con scroll propio si el contenido de alguna no entra
+     (la de Tecnologías, con 5 ítems, es la que más lo necesita). */
+  height: 300px;
+  overflow-y: auto;
+  box-sizing: border-box;
 }
 
 
@@ -2692,6 +3111,7 @@ body.theme-light .nav-menu-logo {
 }
 body.theme-light .nav-menu ul li a {
     color: var(--text-dark);
+    border-color: rgba(0, 0, 0, 0.15);
 }
 body.theme-light .nav-menu ul li a:hover,
 body.theme-light .nav-menu ul li a.active {

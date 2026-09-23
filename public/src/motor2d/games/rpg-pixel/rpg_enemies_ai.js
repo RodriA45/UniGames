@@ -410,6 +410,7 @@ export const RPG_BOSS_MELEE_HIT_FRAME = 1; // attack2 — el frame en el que "co
 
 export function rpgUpdateBoss(e, p, cfg, C, dt, step) {
   const atk = e.attack;
+  const species = RPG_ENEMY_TYPES[e.species];
   const phase = rpgGetBossPhase(e);
   if (phase !== e.phase) {
     e.phase = phase;
@@ -448,7 +449,8 @@ export function rpgUpdateBoss(e, p, cfg, C, dt, step) {
   // ── Invocar guerreros: prioridad máxima, pero no interrumpe un golpe o
   // dash ya en marcha (solo el roam / la espera antes de un corte). ──
   const interruptible = atk.state === 'roam' || atk.state === 'rangedWindup';
-  if (atk.summonCd <= 0 && interruptible) {
+  const summonMinPhase = cfg.summonMinPhase || 1; // ver dark_ghostking: solo desde fase 2
+  if (atk.summonCd <= 0 && phase >= summonMinPhase && interruptible) {
     atk.state = 'summonTelegraph';
     atk.timer = cfg.summonTelegraphMs || 700;
     atk.summonCd = cfg.summonCooldownMs || 20000;
@@ -470,9 +472,37 @@ export function rpgUpdateBoss(e, p, cfg, C, dt, step) {
   // media (más cerca ya lo resuelve el cuerpo a cuerpo). Tampoco
   // interrumpe un golpe ya arrancado. ──
   if (phase >= 2 && dist > meleeRange && dist <= farRange && atk.dashCd <= 0 && interruptible) {
-    atk.state = 'dashTelegraph';
-    atk.timer = cfg.dashTelegraphMs || 1000;
+    // cfg.teleportBehind (ver dark_ghostking): en vez del embiste clásico,
+    // desaparece y reaparece detrás tuyo para un arañazo — ver los 2
+    // estados nuevos más abajo (teleportVanish/teleportAppear).
+    atk.state = cfg.teleportBehind ? 'teleportVanish' : 'dashTelegraph';
+    atk.timer = cfg.teleportBehind ? (cfg.teleportVanishMs || 300) : (cfg.dashTelegraphMs || 1000);
     atk.dashCd = rpgRandRange(cfg.dashCooldownMs);
+  }
+
+  if (atk.state === 'teleportVanish') {
+    atk.timer -= dt;
+    if (atk.timer <= 0) {
+      // Aparece del lado OPUESTO al que estaba antes de desaparecer, así
+      // se siente como que rodeó a Junior por la espalda.
+      const appearDir = e.x > p.x ? -1 : 1;
+      e.x = Math.max(xMin, Math.min(xMax, p.x + appearDir * (meleeRange * 0.75)));
+      e.y = Math.max(yMin, Math.min(yMax, p.y + (Math.random() - 0.5) * 20));
+      atk.state = 'teleportAppear';
+      atk.timer = cfg.teleportAppearMs || 300;
+    }
+    return;
+  }
+
+  if (atk.state === 'teleportAppear') {
+    atk.timer -= dt;
+    if (atk.timer <= 0) {
+      // Encadena directo al arañazo (attack1) sin volver a pasar por roam.
+      atk.state = 'meleeWindup';
+      atk.poseFrame = 0;
+      atk.poseTick = 0;
+    }
+    return;
   }
 
   if (atk.state === 'dashTelegraph') {
@@ -518,13 +548,19 @@ export function rpgUpdateBoss(e, p, cfg, C, dt, step) {
     return;
   }
 
+  // phaseAttackSpeedMult/phaseDamageMult (ver dark_ghostking): opcionales,
+  // dark_knight no los define y quedan en 1 (sin cambio de comportamiento).
+  const atkSpeedMult = cfg.phaseAttackSpeedMult ? (cfg.phaseAttackSpeedMult[phase - 1] || 1) : 1;
+  const dmgMult = cfg.phaseDamageMult ? (cfg.phaseDamageMult[phase - 1] || 1) : 1;
+
   if (atk.state === 'meleeWindup') {
     atk.poseTick += dt;
-    const frameMs = cfg.meleeWindupFrameMs || 90;
+    const frameMs = (cfg.meleeWindupFrameMs || 90) / atkSpeedMult;
+    const windupLen = (species.meleeWindupPoseKeys || RPG_BOSS_WINDUP_POSES).length;
     if (atk.poseTick >= frameMs) {
       atk.poseTick -= frameMs;
       atk.poseFrame++;
-      if (atk.poseFrame >= RPG_BOSS_WINDUP_POSES.length) {
+      if (atk.poseFrame >= windupLen) {
         atk.state = 'meleeAttack';
         atk.poseFrame = 0;
         atk.poseTick = 0;
@@ -536,17 +572,19 @@ export function rpgUpdateBoss(e, p, cfg, C, dt, step) {
 
   if (atk.state === 'meleeAttack') {
     atk.poseTick += dt;
-    const frameMs = cfg.meleeAttackFrameMs || 90;
-    if (!atk.hit && atk.poseFrame === RPG_BOSS_MELEE_HIT_FRAME) {
+    const frameMs = (cfg.meleeAttackFrameMs || 90) / atkSpeedMult;
+    const attackLen = (species.meleeAttackPoseKeys || RPG_BOSS_ATTACK_POSES).length;
+    const hitFrame = species.meleeHitFrame != null ? species.meleeHitFrame : RPG_BOSS_MELEE_HIT_FRAME;
+    if (!atk.hit && atk.poseFrame === hitFrame) {
       if (dist <= meleeRange + 12) {
-        rpgPlayerHit(cfg.meleeDamage * (rpgEliteActive() ? RPG_ELITE_STAT_MULT : 1));
+        rpgPlayerHit(cfg.meleeDamage * dmgMult * (rpgEliteActive() ? RPG_ELITE_STAT_MULT : 1));
       }
       atk.hit = true;
     }
     if (atk.poseTick >= frameMs) {
       atk.poseTick -= frameMs;
       atk.poseFrame++;
-      if (atk.poseFrame >= RPG_BOSS_ATTACK_POSES.length) {
+      if (atk.poseFrame >= attackLen) {
         atk.meleeCd = rpgRandRange(cfg.meleeCooldownMs);
         // Mismo criterio que el dash: solo hay pausa de recuperación si
         // el golpe conectó de verdad.
@@ -560,10 +598,21 @@ export function rpgUpdateBoss(e, p, cfg, C, dt, step) {
   if (atk.state === 'rangedWindup') {
     atk.poseTick += dt;
     if (atk.poseTick >= (cfg.rangedWindupMs || 260)) {
-      rpgFireBossProjectile(e, p, cfg, phase);
+      if (cfg.bossBoltProjectile) rpgFireBossBolt(e, p, cfg, phase);
+      else rpgFireBossProjectile(e, p, cfg, phase);
       atk.rangedCd = rpgRandRange(rpgFireRangeForPhase(cfg, phase));
-      atk.state = 'roam';
+      // Pose de lanzamiento breve (ver dark_ghostking.poses.rangedAttack) —
+      // si la especie no la define (dark_knight), va directo a roam como
+      // siempre.
+      atk.state = species.poses.rangedAttack ? 'rangedAttack' : 'roam';
+      atk.timer = cfg.rangedAttackFrameMs || 150;
     }
+    return;
+  }
+
+  if (atk.state === 'rangedAttack') {
+    atk.timer -= dt;
+    if (atk.timer <= 0) atk.state = 'roam';
     return;
   }
 
@@ -581,7 +630,8 @@ export function rpgUpdateBoss(e, p, cfg, C, dt, step) {
   }
   if (dist > 4) {
     const eliteSpeedMult = rpgEliteActive() ? RPG_ELITE_SPEED_MULT : 1;
-    const move = Math.min(dist, cfg.enemySpeed * eliteSpeedMult * step * 2.2);
+    const phaseSpeedMult = cfg.phaseSpeedMult ? (cfg.phaseSpeedMult[phase - 1] || 1) : 1;
+    const move = Math.min(dist, cfg.enemySpeed * eliteSpeedMult * phaseSpeedMult * step * 2.2);
     e.x = Math.max(xMin, Math.min(xMax, e.x + (distX / dist) * move));
     e.y = Math.max(yMin, Math.min(yMax, e.y + (distY / dist) * move));
     e.moving = true;
@@ -626,6 +676,32 @@ export function rpgFireBossProjectile(e, p, cfg, phase) {
     h: size === 'small' ? 16 : 24,
     animFrame: 1, // dark_slash tiene frames "_1" y "_2" por variante
     animTick: 0
+  });
+}
+
+// Proyectil a distancia del Guardián (dark_ghostking): a diferencia del
+// corte del dark_knight (kind 'slash', horizontal, con tamaño chico/
+// grande), este es un solo proyectil que viaja en línea recta hacia
+// Junior y EXPLOTA al chocar (ver explodeFrames/rpgUpdateEnemyProjectiles)
+// en vez de desaparecer solo. Reutiliza kind 'arrow' (rotación según
+// velocidad real, ver rpgDraw) porque encaja mejor con un cometa girando
+// hacia el objetivo que con el corte horizontal espejado del otro jefe.
+export function rpgFireBossBolt(e, p, cfg, phase) {
+  const spec = cfg.bossBoltProjectile;
+  const dmgMult = cfg.phaseDamageMult ? (cfg.phaseDamageMult[phase - 1] || 1) : 1;
+  const dx = p.x - e.x, dy = (p.y - 30) - (e.y - 45);
+  const dist = Math.hypot(dx, dy) || 1;
+  const speed = (spec.speed || 3) * (RPG.worldWidth / RPG_LOGICAL_W);
+  RPG.enemyProjectiles.push({
+    kind: 'arrow',
+    x: e.x, y: e.y - 45,
+    vx: (dx / dist) * speed, vy: (dy / dist) * speed,
+    dmg: spec.dmg * dmgMult * (rpgEliteActive() ? RPG_ELITE_STAT_MULT : 1),
+    w: spec.w || 14, h: spec.h || 14,
+    drawH: spec.drawH || 16, // más grande que una flecha común (ver targetH en rpgDraw)
+    frameFly: spec.frameFly, sheet: spec.sheet, atlas: spec.atlas,
+    explodeFrames: spec.explodeFrames, explodeFrameMs: spec.explodeFrameMs,
+    explodeSheet: spec.explodeSheet || spec.sheet, explodeAtlas: spec.explodeAtlas || spec.atlas
   });
 }
 
@@ -766,25 +842,33 @@ export function rpgSpawnNextWave(cfg) {
 }
 
 // ─── Habilidad del jefe: invocar guerreros ─────
-// Aparece un kn_warror pegado a cada costado del arena (uno a la
-// izquierda y otro a la derecha, siempre los dos juntos) reutilizando el
-// mismo tipo de enemigo y stats que las habitaciones normales — apenas
-// aparecen, rpgUpdate ya los rutea por especie a rpgUpdateSimpleChase, así
-// que persiguen y golpean a Junior con su IA de siempre, sin tocar en
-// nada el patrón "sides" del jefe.
+// Por defecto aparecen 2 kn_warror, uno pegado a cada costado del arena
+// (comportamiento de siempre de dark_knight). cfg.summonSpecies (ver
+// dark_ghostking) permite elegir OTRA(S) especie(s) y sus stats por sala —
+// con un solo elemento aparece UN esbirro centrado en vez de 2 a los
+// costados. Soporta tanto especies 'melee' (kn_warror/dk_ghost) como
+// 'ghost' (agrega hidden/ghostState/teleportTimer, ver más abajo); no
+// sirve tal cual para 'boss'.
 export function rpgSummonWarriors(e, cfg, C) {
   const floor = rpgFloorBounds(C);
   const midY = (floor.top + floor.bottom) / 2;
-  ['left', 'right'].forEach(side => {
-    RPG.enemies.push({
-      species: 'kn_warror',
-      x: rpgSideX(side, cfg, C),
+  const specs = cfg.summonSpecies || [
+    { species: 'kn_warror', hp: 50, speed: 1.0, contactDamage: 10 },
+    { species: 'kn_warror', hp: 50, speed: 1.0, contactDamage: 10 }
+  ];
+  const sides = specs.length === 1 ? ['center'] : ['left', 'right'];
+  specs.forEach((s, i) => {
+    const side = sides[i] || 'left';
+    const sSpecies = RPG_ENEMY_TYPES[s.species];
+    const enemy = {
+      species: s.species,
+      x: side === 'center' ? RPG.worldWidth / 2 : rpgSideX(side, cfg, C),
       y: midY + (Math.random() - 0.5) * (floor.bottom - floor.top) * 0.3,
-      hp: 50, maxHp: 50,
-      speed: 1.0, // mismo empujón de velocidad que kn_warror en las salas normales
-      contactDamage: 10,
-      arrowDamage: 0,
-      fireCooldownMs: [1500, 2200],
+      hp: s.hp, maxHp: s.hp,
+      speed: s.speed != null ? s.speed : 1.0,
+      contactDamage: s.contactDamage || 0,
+      arrowDamage: s.arrowDamage || 0,
+      fireCooldownMs: s.fireCooldownMs || [1500, 2200],
       fireTimer: 0,
       animFrame: 0, animTick: 0,
       animKind: 'idle',
@@ -798,7 +882,17 @@ export function rpgSummonWarriors(e, cfg, C) {
       side,
       phase: 1,
       attack: { state: 'idle', timer: 1200, vx: 0, vy: 0, hit: false }
-    });
+    };
+    // Especie 'ghost' (teletransportador, ver rpgUpdateGhost): necesita
+    // estos 3 campos propios además de lo de arriba — sin esto arrancaría
+    // "vivo" pero nunca se desvanecería/reaparecería (rpgUpdateGhost los
+    // da por puestos, ver rpgCreateEnemies).
+    if (sSpecies && sSpecies.behavior === 'ghost') {
+      enemy.hidden = false;
+      enemy.ghostState = 'active';
+      enemy.teleportTimer = rpgRandRange(sSpecies.teleportCooldownMs || [3500, 5500]);
+    }
+    RPG.enemies.push(enemy);
   });
   rpgUpdateHudBars(); // el jefe sigue teniendo su propia barra (ver rpgUpdateHudBars) — esto solo refresca el label
   rpgUpdateEnemyLabel();
@@ -809,6 +903,20 @@ export function rpgUpdateEnemyProjectiles(dt, step) {
   const p = RPG.player;
   for (let i = RPG.enemyProjectiles.length - 1; i >= 0; i--) {
     const pr = RPG.enemyProjectiles[i];
+
+    // Proyectil que ya chocó y está en su animación de explosión (ver
+    // pr.explodeFrames más abajo, y rpgFireBossBolt) — se queda quieto en
+    // el punto de impacto ciclando esos frames y recién ahí desaparece; no
+    // vuelve a chocar de nuevo (el daño ya se aplicó una sola vez, al
+    // momento del impacto).
+    if (pr.exploding) {
+      pr.explodeTick += dt;
+      const frameMs = pr.explodeFrameMs || 90;
+      pr.explodeFrameIdx = Math.min(pr.explodeFrames.length - 1, Math.floor(pr.explodeTick / frameMs));
+      if (pr.explodeTick >= frameMs * pr.explodeFrames.length) RPG.enemyProjectiles.splice(i, 1);
+      continue;
+    }
+
     pr.x += pr.vx * step;
     pr.y += pr.vy * step;
     if (pr.kind === 'slash') {
@@ -825,7 +933,14 @@ export function rpgUpdateEnemyProjectiles(dt, step) {
       p.x, p.y + RPG_PLAYER_HITBOX.yOff, RPG_PLAYER_HITBOX.w, RPG_PLAYER_HITBOX.h
     )) {
       rpgPlayerHit(pr.dmg, { fullyBlockable: true });
-      RPG.enemyProjectiles.splice(i, 1);
+      if (pr.explodeFrames) {
+        // No se borra todavía: pasa a explotar en el lugar (ver arriba).
+        pr.exploding = true;
+        pr.explodeTick = 0;
+        pr.explodeFrameIdx = 0;
+      } else {
+        RPG.enemyProjectiles.splice(i, 1);
+      }
     }
   }
 }
@@ -935,10 +1050,18 @@ export function rpgEnemyHit(e, dmg) {
 // aparece el cofre de oro — ver rpgPlayBossDeathFall.
 export function rpgStartBossDeathSequence(e, cfg) {
   rpgStopLoop(); // corta el loop de juego — de acá en más es todo cinemática
+  const species = RPG_ENEMY_TYPES[e.species];
   rpgPlayBossDeathFall(e, [1, 2], () => {
     const lines = (cfg && cfg.deathDialogue) || [];
-    if (!lines.length) { rpgPlayBossDeathFall(e, [3, 4], () => rpgFinishBossDeath()); return; }
-    rpgStartDialogue(lines, () => rpgPlayBossDeathFall(e, [3, 4], () => rpgFinishBossDeath()));
+    // dissolveOnDeath (ver dark_ghostking): en vez de una 2da caída — que
+    // para este jefe repetiría el mismo frame, no tiene death3/4 — el
+    // cuerpo se disuelve DEL TODO apenas termina el diálogo (e.vanished,
+    // ver el chequeo en rpgDraw): es un fantasma, no deja un cadáver.
+    const finishAfterDialogue = species && species.dissolveOnDeath
+      ? () => { e.vanished = true; rpgFinishBossDeath(); }
+      : () => rpgPlayBossDeathFall(e, [3, 4], () => rpgFinishBossDeath());
+    if (!lines.length) { finishAfterDialogue(); return; }
+    rpgStartDialogue(lines, finishAfterDialogue);
   });
 }
 

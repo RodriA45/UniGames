@@ -138,6 +138,13 @@ const Engine2D = (function () {
 
   function getImage(src) { return images[src]; }
   function getAtlas(src) { return atlases[src]; }
+  // Reemplaza lo que hay cacheado bajo `src` (una <img> real cargada con
+  // loadImage) por otra cosa que también sirva para drawImage — típicamente
+  // un <canvas> con esa misma imagen re-dibujada + retoques por código
+  // encima (ver bakeProceduralTiles en pixel-survi). Todo lo que ya
+  // guardó ese `src` (p.ej. TileMap.tilesetSrc) sigue funcionando igual:
+  // drawImage no distingue <img> de <canvas>.
+  function setImage(src, imgOrCanvas) { images[src] = imgOrCanvas; }
 
   // ── Liberar assets ──
   // Un webp de 1920px pesa 200KB en disco pero ~7MB decodificado en RAM, y
@@ -2089,7 +2096,10 @@ const Engine2D = (function () {
     draw(ctx, camera) {
       const img = getImage(this.tilesetSrc);
       // Puede estar a mitad de cargar o rota: dibujarla tira InvalidStateError.
-      if (!img || !img.complete || !img.naturalWidth) return;
+      // Acepta <img> ya cargada o <canvas> (tileset generado por código,
+      // ver Engine2D.setImage): un canvas no tiene complete/naturalWidth.
+      const isCanvas = typeof HTMLCanvasElement !== 'undefined' && img instanceof HTMLCanvasElement;
+      if (!img || (isCanvas ? !img.width : (!img.complete || !img.naturalWidth))) return;
       if (this.data !== this._dataRef) this.invalidate();
 
       const mapW = this.cols * this.tileSize;
@@ -3099,7 +3109,7 @@ const Engine2D = (function () {
 
   return {
     // assets
-    loadImage, loadAtlas, loadAll, loadAllWithProgress, getImage, getAtlas,
+    loadImage, loadAtlas, loadAll, loadAllWithProgress, getImage, setImage, getAtlas,
     getContext,
     // liberar assets pesados de un solo uso (fondos por sala/nivel)
     clearImage, clearAtlas, clearImages,

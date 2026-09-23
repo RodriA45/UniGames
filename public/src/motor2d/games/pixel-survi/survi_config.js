@@ -19,13 +19,15 @@ export const COVER_SRC = 'src/motor2d/games/pixel-survi/models/portada.png';
 //  IDs de tile
 //
 //  OJO: id-1 es el índice dentro de assets/tiles.png. El orden de abajo
-//  es EXACTAMENTE el que usa tools/build_assets.py para armar el PNG: si
-//  se agrega, saca o reordena algo hay que volver a correr el script.
+//  es EXACTAMENTE el orden de las celdas dentro de ese PNG: si se agrega,
+//  saca o reordena algo acá, hay que actualizar tiles.png a mano para que
+//  las celdas sigan coincidiendo con estos ids.
 //
 //  Estructura:
 //    1) 5 familias de terreno x 10 piezas de autotile  (50)
-//    2) 8 tiles simples (relleno, piedra, vetas, cactus) (8)
-//    3) 3 paletas de árbol x 27 piezas                  (81)
+//    2) 9 tiles simples (relleno, piedra, vetas, cactus, grava) (9)
+//    3) 4 variantes de piedra + 4 de piedra oscura, sin autotile (8)
+//    4) 3 paletas de árbol x 27 piezas                  (81)
 // ══════════════════════════════════════════════════════════════
 
 // Las 10 piezas del "blob" 3x3 de cada hoja de assert/world:
@@ -34,7 +36,17 @@ export const COVER_SRC = 'src/motor2d/games/pixel-survi/models/portada.png';
 export const FAM_PIECES = ['C', 'T', 'B', 'L', 'R', 'TL', 'TR', 'BL', 'BR', 'S'];
 export const FAM_KEYS = ['grass', 'sand', 'snow', 'jgrass', 'cave'];
 
-export const SIMPLE_KEYS = ['dirt', 'stone', 'ice', 'bedrock', 'coal', 'iron', 'gold', 'cactus'];
+export const SIMPLE_KEYS = ['dirt', 'stone', 'ice', 'bedrock', 'coal', 'iron', 'gold', 'cactus', 'gravel'];
+
+// Variantes de piedra: NO son autotile (no conectan con vecinos, es puro
+// ruido visual) — las 4 comparten drop/dureza/herramienta con TID.stone
+// (ver DROPS/HARDNESS/TOOL_FOR más abajo), así que minar cualquiera te da
+// el mismo ítem "Piedra" de siempre. A partir de DEEP_STONE_ROW (los
+// últimos 100 bloques de profundidad, de las 200 filas del mapa) se usa
+// la paleta oscura en vez de la normal — ver generateWorld.
+export const STONE_VARIANT_KEYS = ['stone_1', 'stone_2', 'stone_3', 'stone_4'];
+export const DARK_STONE_VARIANT_KEYS = ['darkstone_1', 'darkstone_2', 'darkstone_3', 'darkstone_4'];
+export const DEEP_STONE_ROW = ROWS - 100;
 
 // Piezas de hoja: el blob 4x3 (dos variantes de fila media), la columna
 // angosta, la mata suelta, la copa por donde entra el tronco y las dos
@@ -62,7 +74,15 @@ export const TID = {};
   let n = 0;
   for (const f of FAM_KEYS) for (const p of FAM_PIECES) TID[`${f}_${p}`] = ++n;
   for (const s of SIMPLE_KEYS) TID[s] = ++n;
+  for (const s of STONE_VARIANT_KEYS) TID[s] = ++n;
+  for (const s of DARK_STONE_VARIANT_KEYS) TID[s] = ++n;
   for (const t of TREE_KEYS) for (const p of TREE_PIECES) TID[`${t}_${p}`] = ++n;
+  // Agregados después: SIEMPRE al final, así no se corren los ids de los
+  // bloques que ya están guardados en los mundos.
+  TID.torch = ++n;
+  TID.copper_ore = ++n;
+  TID.diamond_ore = ++n;
+  TID.emerald_ore = ++n;
 }
 export const TILE_COUNT = Object.keys(TID).length;   // 139
 export const TILESET_COLS = 8;
@@ -113,12 +133,15 @@ for (const k of TREE_KEYS) {
 }
 
 // Todo lo que "conecta" para el autotile de terreno: las 5 familias + los
-// rellenos simples (tierra, piedra, vetas, hielo, bedrock).
+// rellenos simples (tierra, piedra, vetas, hielo, bedrock) + las variantes
+// de piedra (normal y oscura) — así el pasto/tierra de arriba las trata
+// como piso sólido de siempre y no les dibuja un borde expuesto de más.
 export const TERRAIN_IDS = new Set();
 for (const k of FAM_KEYS) for (const id of FAMILIES[k].ids) TERRAIN_IDS.add(id);
-for (const k of ['dirt', 'stone', 'ice', 'bedrock', 'coal', 'iron', 'gold']) {
+for (const k of ['dirt', 'stone', 'ice', 'bedrock', 'coal', 'iron', 'gold', 'gravel', 'copper_ore', 'diamond_ore', 'emerald_ore']) {
   TERRAIN_IDS.add(TID[k]);
 }
+for (const k of [...STONE_VARIANT_KEYS, ...DARK_STONE_VARIANT_KEYS]) TERRAIN_IDS.add(TID[k]);
 for (const k of FAM_KEYS) FAMILIES[k].connect = TERRAIN_IDS;
 for (const k of TREE_KEYS) FAMILIES[`${k}Leaf`].connect = FAMILIES[`${k}Leaf`].ids;
 
@@ -145,6 +168,11 @@ export const T = {
   IRON: TID.iron,
   GOLD: TID.gold,
   CACTUS: TID.cactus,
+  GRAVEL: TID.gravel,
+  COPPER_ORE: TID.copper_ore,
+  DIAMOND_ORE: TID.diamond_ore,
+  EMERALD_ORE: TID.emerald_ore,
+  TORCH: TID.torch,
   WOOD: TID.forest_TRUNK,
   LEAVES: TID.forest_LC,
   JLEAVES: TID.jungle_LC
@@ -168,8 +196,14 @@ export const DROPS = {};
     for (const id of FAMILIES[k].ids) DROPS[id] = drop;
   }
   for (const k of SIMPLE_KEYS) DROPS[TID[k]] = TID[k];
+  // Las 8 variantes de piedra (normal + oscura) son puro dibujo — al
+  // picarlas dan la misma "Piedra" de siempre (TID.stone), no un ítem
+  // por variante.
+  for (const k of [...STONE_VARIANT_KEYS, ...DARK_STONE_VARIANT_KEYS]) DROPS[TID[k]] = TID.stone;
+  DROPS[TID.torch] = TID.torch;
   for (const pal of TREE_KEYS) {
     for (const p of WOOD_PIECES) DROPS[TID[`${pal}_${p}`]] = TID[`${pal}_TRUNK`];
+    // las hojas sueltan el ítem "Hojas" (MAT.leaves): ver más abajo, en Materiales
     for (const p of LEAF_PIECES) DROPS[TID[`${pal}_${p}`]] = TID[`${pal}_LC`];
   }
 }
@@ -190,11 +224,19 @@ export const TOOL_FOR = {};
   const simple = {
     dirt: [0.35, 'shovel'], stone: [0.85, 'pickaxe'], ice: [0.55, 'pickaxe'],
     bedrock: [999, 'pickaxe'], coal: [1.10, 'pickaxe'], iron: [1.40, 'pickaxe'],
-    gold: [1.60, 'pickaxe'], cactus: [0.40, 'axe']
+    gold: [1.60, 'pickaxe'], cactus: [0.40, 'axe'], gravel: [0.50, 'shovel']
   };
   for (const [k, [h, tool]] of Object.entries(simple)) {
     HARDNESS[TID[k]] = h; TOOL_FOR[TID[k]] = tool;
   }
+  // Mismo pico/dureza que la piedra normal para las 8 variantes.
+  for (const k of [...STONE_VARIANT_KEYS, ...DARK_STONE_VARIANT_KEYS]) {
+    HARDNESS[TID[k]] = HARDNESS[TID.stone]; TOOL_FOR[TID[k]] = 'pickaxe';
+  }
+  HARDNESS[TID.torch] = 0.05; TOOL_FOR[TID.torch] = 'axe'; // sale al toque con cualquier cosa
+  HARDNESS[TID.copper_ore] = 1.20; TOOL_FOR[TID.copper_ore] = 'pickaxe';
+  HARDNESS[TID.diamond_ore] = 2.20; TOOL_FOR[TID.diamond_ore] = 'pickaxe';
+  HARDNESS[TID.emerald_ore] = 2.60; TOOL_FOR[TID.emerald_ore] = 'pickaxe';
   for (const pal of TREE_KEYS) {
     for (const p of WOOD_PIECES) { HARDNESS[TID[`${pal}_${p}`]] = 0.55; TOOL_FOR[TID[`${pal}_${p}`]] = 'axe'; }
     for (const p of LEAF_PIECES) { HARDNESS[TID[`${pal}_${p}`]] = 0.15; }
@@ -214,18 +256,20 @@ export const ITEM_INFO = {};
     [TID.snow_C]:   'Nieve',
     [TID.jgrass_C]: 'Tierra de selva',
     [TID.cave_C]:   'Roca de cueva',
+    [TID.gravel]:   'Grava',
     [TID.stone]:    'Piedra',
     [TID.ice]:      'Hielo',
-    [TID.coal]:     'Carbón',
-    [TID.iron]:     'Hierro',
-    [TID.gold]:     'Oro',
+    [TID.coal]:     'Mineral de carbón',
+    [TID.iron]:     'Mineral de hierro',
+    [TID.gold]:     'Mineral de oro',
     [TID.cactus]:   'Cactus',
     [TID.forest_TRUNK]:  'Tronco de roble',
     [TID.pradera_TRUNK]: 'Tronco claro',
     [TID.jungle_TRUNK]:  'Tronco de selva',
     [TID.forest_LC]:  'Hojas',
     [TID.pradera_LC]: 'Hojas de pradera',
-    [TID.jungle_LC]:  'Follaje de selva'
+    [TID.jungle_LC]:  'Follaje de selva',
+    [TID.torch]:      'Antorcha'
   };
   for (const [id, name] of Object.entries(blocks)) {
     ITEM_INFO[id] = { name, place: Number(id) };
@@ -238,7 +282,7 @@ export const ITEM_INFO = {};
 // derecho estando seleccionadas en la hotbar (ver survi_game.js `_eat`).
 export const FOOD_IDS = { berry: 2001, apple: 2002 };
 ITEM_INFO[FOOD_IDS.berry] = { name: 'Bayas', food: 14 };
-ITEM_INFO[FOOD_IDS.apple] = { name: 'Manzana', food: 26 };
+ITEM_INFO[FOOD_IDS.apple] = { name: 'Manzana', food: 26, sprite: 'apple' };
 
 // Al romper hojas hay una chance de que además caiga comida — cada
 // paleta de árbol (forest/pradera/jungle) tiene la suya.
@@ -256,33 +300,103 @@ export function leafPalette(tileId) {
   return null;
 }
 
-export const MATERIALS = {
-  copper:  { label: 'cobre',    power: 1.0 },
-  silver:  { label: 'plata',    power: 1.6 },
-  gold:    { label: 'oro',      power: 2.2 },
-  diamond: { label: 'diamante', power: 3.0 }
+// ══════════ Materiales sueltos (no se colocan) ══════════
+// Ids 4000+. `sprite` = nombre en el atlas de ítems (models/sprites.js).
+export const MAT = {
+  string: 4001, leaves: 4002, sticks: 4003, flint: 4004, leather: 4005,
+  copperRaw: 4006, ironRaw: 4007, goldRaw: 4008, coal: 4009,
+  copperIngot: 4010, ironIngot: 4011, goldIngot: 4012, diamond: 4013, emerald: 4014
 };
+{
+  const m = [
+    ['string', 'Hilo', 'string'], ['leaves', 'Hojas', 'leaves'], ['sticks', 'Palo', 'sticks'],
+    ['flint', 'Flint', 'flint'], ['leather', 'Cuero', 'leather'],
+    ['copperRaw', 'Cobre crudo', 'copper_raw'], ['ironRaw', 'Hierro crudo', 'iron_raw'],
+    ['goldRaw', 'Oro crudo', 'gold_raw'], ['coal', 'Carbón', 'coal'],
+    ['copperIngot', 'Lingote de cobre', 'copper_ingot'], ['ironIngot', 'Lingote de hierro', 'iron_ingot'],
+    ['goldIngot', 'Lingote de oro', 'gold_ingot'], ['diamond', 'Diamante', 'diamond'], ['emerald', 'Esmeralda', 'emerald']
+  ];
+  for (const [k, name, sprite] of m) ITEM_INFO[MAT[k]] = { name, sprite };
+}
+
+// Drops de los minerales: sueltan su versión cruda (o la gema/carbón).
+// `tier` = pico mínimo para que suelte algo (ver MATERIALS.tier): con un
+// pico peor el bloque se rompe igual, pero no da nada (como en Minecraft).
+export const ORE_DROPS = {
+  [TID.coal]:        { drop: MAT.coal,      tier: 0 },
+  [TID.copper_ore]:  { drop: MAT.copperRaw, tier: 1 },
+  [TID.iron]:        { drop: MAT.ironRaw,   tier: 2 },
+  [TID.gold]:        { drop: MAT.goldRaw,   tier: 3 },
+  [TID.diamond_ore]: { drop: MAT.diamond,   tier: 4 },
+  [TID.emerald_ore]: { drop: MAT.emerald,   tier: 5 }
+};
+for (const [id, o] of Object.entries(ORE_DROPS)) DROPS[id] = o.drop;
+// Las hojas sueltan el ítem Hojas (ya no el bloque de hoja).
+for (const pal of TREE_KEYS) for (const p of LEAF_PIECES) DROPS[TID[`${pal}_${p}`]] = MAT.leaves;
+
+// ══════════ Materiales de herramienta ══════════
+// Cada uno mejor que el anterior. power = velocidad de picado extra y
+// daño de la espada; tier = qué minerales puede sacar el pico.
+// El orden de las 4 primeras claves NO se toca: los ids de herramienta
+// salen del índice, y así las partidas viejas (cobre/plata/oro/diamante)
+// siguen teniendo sus herramientas (la vieja "plata" pasa a ser hierro).
+export const MATERIALS = {
+  copper:  { label: 'cobre',    power: 1.0, tier: 2 },
+  iron:    { label: 'hierro',   power: 1.6, tier: 3 },
+  gold:    { label: 'oro',      power: 2.2, tier: 4 },
+  diamond: { label: 'diamante', power: 3.0, tier: 5 },
+  wood:    { label: 'madera',   power: 0.3, tier: 0 },
+  stone:   { label: 'piedra',   power: 0.6, tier: 1 },
+  emerald: { label: 'esmeralda', power: 3.8, tier: 6 }
+};
+// Orden de progresión (para listas y recetas)
+export const MATERIAL_ORDER = ['wood', 'stone', 'copper', 'iron', 'gold', 'diamond', 'emerald'];
 const TOOL_LABEL = { pickaxe: 'Pico', axe: 'Hacha', shovel: 'Pala', sword: 'Espada' };
+const TOOL_KINDS = ['pickaxe', 'axe', 'shovel', 'sword'];
 
 // Ids de herramienta: 1000 + índiceMaterial*10 + índiceTipo
 export const TOOLS = {};
 Object.keys(MATERIALS).forEach((mat, mi) => {
-  ['pickaxe', 'axe', 'shovel', 'sword'].forEach((tool, ti) => {
+  TOOL_KINDS.forEach((tool, ti) => {
     const id = 1000 + mi * 10 + ti;
     TOOLS[`${tool}_${mat}`] = id;
     ITEM_INFO[id] = {
       name: `${TOOL_LABEL[tool]} de ${MATERIALS[mat].label}`,
-      tool, mat, power: MATERIALS[mat].power
+      tool, mat, power: MATERIALS[mat].power, tier: MATERIALS[mat].tier,
+      sprite: `${tool}_${mat}`
     };
   });
 });
 
-// Con lo que arranca una partida nueva, así se puede jugar de entrada.
+// Con lo que arranca una partida nueva: herramientas de madera.
 export const STARTER_TOOLS = [
-  TOOLS.pickaxe_copper, TOOLS.axe_copper, TOOLS.shovel_copper, TOOLS.sword_copper
+  TOOLS.pickaxe_wood, TOOLS.axe_wood, TOOLS.shovel_wood, TOOLS.sword_wood
 ];
 
+// Antorchas con las que arranca una partida nueva (para la primera cueva).
+export const STARTER_TORCHES = 5;
+
 export const HOTBAR_SIZE = 8;
+
+// ══════════ Día / noche + iluminación ══════════
+// Un día completo dura DAY_CYCLE_MS. timeOfDay va de 0 a 1:
+//   0.00 – 0.50  día pleno
+//   0.50 – 0.60  atardecer (baja la luz)
+//   0.60 – 0.90  noche
+//   0.90 – 1.00  amanecer (sube la luz)
+export const DAY_CYCLE_MS = 10 * 60 * 1000;
+export const NIGHT_SUN = 0.12;          // luz del cielo de noche (0 = negro total)
+export const NIGHT_SKY = '#0b1030';      // color del cielo de noche
+export const START_TIME_OF_DAY = 0.05;  // mundo nuevo: arranca de mañana
+
+// Luz (0..1). Cada tile que atraviesa le resta *_DECAY; con 1 / DECAY se
+// saca el alcance en tiles. Los sólidos frenan mucho: iluminan su cara
+// pero la luz no los atraviesa (no se ve a través de las paredes).
+export const LIGHT_AIR_DECAY = 0.11;     // ~9 tiles de alcance
+export const LIGHT_SOLID_DECAY = 0.28;   // entra 2-3 tiles en la pared
+export const TORCH_LIGHT = 1.0;          // antorcha: círculo grande (~9 tiles)
+export const PLAYER_VISION = 0.6;        // visión propia: círculo chico (~5 tiles)
+export const DARK_COLOR = [4, 6, 14];    // color de la oscuridad
 
 // ══════════ Biomas de superficie ══════════
 // fam = familia de la capa de arriba, sub = la de abajo (el subsuelo).
@@ -317,7 +431,9 @@ export const REACH_TILES = 5;
 // La caja de colisión es más chica que el dibujo a propósito: el sprite
 // sobresale, el choque no.
 export const PLAYER_BOX = { w: 12, h: 22 };
-export const PLAYER_SPRITE = { w: 24, h: 36, offX: -6, offY: -14 };
+// Celda de 36x36 del sprite nuevo, centrada en la caja de colisión y con
+// los pies apoyados en su borde de abajo.
+export const PLAYER_SPRITE = { w: 36, h: 36, offX: -12, offY: -14 };
 
 export const MODES = {
   normal:   { label: 'Modo normal', desc: 'Si morís, reaparecés y conservás el mundo.' },
@@ -391,13 +507,14 @@ export const GENERAL_INV_SLOTS = 10;
 //  portada (survi-cover-fallback), que muestra un logo de texto hasta
 //  que exista el PNG real.
 // ══════════════════════════════════════════════════════════════
+// icon = nombre de ícono de survi_icons.js (no emoji)
 export const EQUIP_SLOTS = [
-  { key: 'head',    label: 'Casco',    icon: '🪖' },
-  { key: 'chest',   label: 'Pecho',    icon: '🥋' },
-  { key: 'legs',    label: 'Pantalón', icon: '👖' },
-  { key: 'boots',   label: 'Botas',    icon: '👢' },
-  { key: 'bag',     label: 'Mochila',  icon: '🎒' },
-  { key: 'special', label: 'Especial', icon: '✨' }
+  { key: 'head',    label: 'Casco',    icon: 'hardHat' },
+  { key: 'chest',   label: 'Pecho',    icon: 'shirt' },
+  { key: 'legs',    label: 'Pantalón', icon: 'pants' },
+  { key: 'boots',   label: 'Botas',    icon: 'footprints' },
+  { key: 'bag',     label: 'Mochila',  icon: 'backpack' },
+  { key: 'special', label: 'Especial', icon: 'sparkles' }
 ];
 export const EQUIP_SLOT_ICON = Object.fromEntries(EQUIP_SLOTS.map(s => [s.key, s.icon]));
 export const EQUIP_SLOT_KEYS = EQUIP_SLOTS.map(s => s.key);
@@ -407,14 +524,53 @@ export const EQUIP_SLOT_KEYS = EQUIP_SLOTS.map(s => s.key);
 // (piedra, barata, se junta picando desde el arranque); agregar más
 // tiers más adelante es solo sumar entradas acá con el mismo patrón.
 export const EQUIP = {
+  // armadura vieja de piedra: queda para no romper partidas guardadas
   helmetStone: 3001, chestStone: 3002, legsStone: 3003, bootsStone: 3004,
-  bag: 3010
+  bag: 3010,          // mochila (mediana) — mismo id que la de antes
+  bagSmall: 3011, bagLarge: 3012
 };
-ITEM_INFO[EQUIP.helmetStone] = { name: 'Casco de piedra',    equip: 'head',  defense: 1 };
-ITEM_INFO[EQUIP.chestStone]  = { name: 'Pechera de piedra',  equip: 'chest', defense: 2 };
-ITEM_INFO[EQUIP.legsStone]   = { name: 'Pantalón de piedra', equip: 'legs',  defense: 2 };
-ITEM_INFO[EQUIP.bootsStone]  = { name: 'Botas de piedra',    equip: 'boots', defense: 1 };
-ITEM_INFO[EQUIP.bag]         = { name: 'Mochila',            equip: 'bag',   bonusSlots: 4 };
+ITEM_INFO[EQUIP.helmetStone] = { name: 'Casco de piedra',    equip: 'head',  defense: 1, sprite: 'helmet_iron' };
+ITEM_INFO[EQUIP.chestStone]  = { name: 'Pechera de piedra',  equip: 'chest', defense: 2, sprite: 'chest_iron' };
+ITEM_INFO[EQUIP.legsStone]   = { name: 'Pantalón de piedra', equip: 'legs',  defense: 2, sprite: 'legs_iron' };
+ITEM_INFO[EQUIP.bootsStone]  = { name: 'Botas de piedra',    equip: 'boots', defense: 1, sprite: 'boots_iron' };
+ITEM_INFO[EQUIP.bagSmall] = { name: 'Bolsa',           equip: 'bag', bonusSlots: 2, sprite: 'bag_small' };
+ITEM_INFO[EQUIP.bag]      = { name: 'Mochila',         equip: 'bag', bonusSlots: 4, sprite: 'bag_medium' };
+ITEM_INFO[EQUIP.bagLarge] = { name: 'Mochila grande',  equip: 'bag', bonusSlots: 6, sprite: 'bag_large' };
+
+// Armaduras: cuero → esmeralda. Ids 3100 + material*10 + pieza.
+// Defensa de cada pieza = base de la pieza × multiplicador del material.
+export const ARMOR_MATS = {
+  leather: { label: 'cuero',     mult: 1.0 },
+  copper:  { label: 'cobre',     mult: 1.4 },
+  iron:    { label: 'hierro',    mult: 2.0 },
+  gold:    { label: 'oro',       mult: 2.6 },
+  diamond: { label: 'diamante',  mult: 3.3 },
+  emerald: { label: 'esmeralda', mult: 4.0 }
+};
+const ARMOR_PIECES = [
+  { key: 'helmet', slot: 'head',  label: 'Casco',    base: 1, cost: 5 },
+  { key: 'chest',  slot: 'chest', label: 'Pechera',  base: 3, cost: 8 },
+  { key: 'legs',   slot: 'legs',  label: 'Pantalón', base: 2, cost: 7 },
+  { key: 'boots',  slot: 'boots', label: 'Botas',    base: 1, cost: 4 }
+];
+export const ARMOR = {};
+Object.keys(ARMOR_MATS).forEach((mat, mi) => {
+  ARMOR_PIECES.forEach((pc, pi) => {
+    const id = 3100 + mi * 10 + pi;
+    ARMOR[`${pc.key}_${mat}`] = id;
+    ITEM_INFO[id] = {
+      name: `${pc.label} de ${ARMOR_MATS[mat].label}`,
+      equip: pc.slot, defense: Math.round(pc.base * ARMOR_MATS[mat].mult),
+      sprite: `${pc.key}_${mat}`
+    };
+  });
+});
+
+// La defensa ya no se resta entera: reduce un porcentaje del golpe, con
+// tope, para que ninguna armadura te deje inmune (ver survi_game.js _damage).
+export function armorReduction(defense) {
+  return Math.min(0.75, defense / (defense + 18));
+}
 
 // Objeto de equipo vacío (los 6 slots en null) — lo usa una partida
 // nueva y también sirve para completar los slots que falten en un save
@@ -457,6 +613,7 @@ export function totalInvSlots(equipment) {
 //
 //  Cada receta: { id, result, resultQty, inputs }. `inputs` es una lista
 //  de ingredientes, cada uno { id, qty } o { anyOf: [ids], qty } —
+//  `label` (opcional) = nombre corto a mostrar ("Madera" en vez de listar los 3 troncos).
 //  anyOf sirve para "cualquiera de estos" (la madera, por ejemplo: no
 //  tiene sentido pedir el tronco de un árbol puntual si el jugador
 //  junta indistintamente de los 3 biomas con árbol).
@@ -465,31 +622,63 @@ const WOOD_IDS = [T.WOOD, TID.pradera_TRUNK, TID.jungle_TRUNK];
 
 export const RECIPES = [];
 {
-  // Herramientas de plata / oro / diamante — de cobre ya arrancás con
-  // ellas (STARTER_TOOLS); esta es la progresión para conseguir el resto
-  // de los tiers que ya existían en ITEM_INFO pero antes no se podían
-  // conseguir de ninguna forma.
-  const tiers = [
-    { mat: 'silver',  inputs: [{ id: T.IRON, qty: 3 }, { anyOf: WOOD_IDS, qty: 2 }] },
-    { mat: 'gold',    inputs: [{ id: T.GOLD, qty: 2 }, { id: T.IRON, qty: 2 }, { anyOf: WOOD_IDS, qty: 2 }] },
-    { mat: 'diamond', inputs: [{ id: T.GOLD, qty: 4 }, { id: T.IRON, qty: 4 }, { anyOf: WOOD_IDS, qty: 3 }] }
-  ];
-  for (const { mat, inputs } of tiers) {
-    for (const tool of ['pickaxe', 'axe', 'shovel', 'sword']) {
-      RECIPES.push({ id: `${tool}_${mat}`, result: TOOLS[`${tool}_${mat}`], resultQty: 1, inputs });
+  // `cat` = pestaña de la pantalla de crafteo.
+  const add = (cat, id, result, resultQty, inputs) => RECIPES.push({ cat, id, result, resultQty, inputs });
+  const COAL = { anyOf: [MAT.coal, T.COAL], qty: 1, label: 'Carbón' };   // carbón (o el bloque viejo de carbón)
+  const STICKS = (qty) => ({ id: MAT.sticks, qty });
+
+  // ── Básicos ──
+  add('basicos', 'sticks', MAT.sticks, 4, [{ anyOf: WOOD_IDS, qty: 1, label: 'Madera' }]);
+  add('basicos', 'flint',  MAT.flint,  1, [{ id: T.GRAVEL, qty: 6 }]);
+  add('basicos', 'torch',  T.TORCH,    4, [STICKS(1), COAL]);
+
+  // ── Fundir (provisorio: pasa al horno en la próxima etapa) ──
+  add('fundir', 'copper_ingot', MAT.copperIngot, 1, [{ id: MAT.copperRaw, qty: 1 }, COAL]);
+  add('fundir', 'iron_ingot',   MAT.ironIngot,   1, [{ id: MAT.ironRaw, qty: 1 }, COAL]);
+  add('fundir', 'gold_ingot',   MAT.goldIngot,   1, [{ id: MAT.goldRaw, qty: 1 }, COAL]);
+
+  // ── Herramientas: material de cada tier ──
+  const toolMat = {
+    wood: { anyOf: WOOD_IDS, label: 'Madera' }, stone: { id: T.STONE }, copper: { id: MAT.copperIngot },
+    iron: { id: MAT.ironIngot }, gold: { id: MAT.goldIngot },
+    diamond: { id: MAT.diamond }, emerald: { id: MAT.emerald }
+  };
+  // [cantidad de material, cantidad de palos]
+  const toolCost = { pickaxe: [3, 2], axe: [3, 2], shovel: [1, 2], sword: [2, 1] };
+  for (const mat of MATERIAL_ORDER) {
+    for (const tool of TOOL_KINDS) {
+      const [qm, qs] = toolCost[tool];
+      add(tool === 'sword' ? 'armas' : 'herramientas', `${tool}_${mat}`, TOOLS[`${tool}_${mat}`], 1,
+          [{ ...toolMat[mat], qty: qm }, STICKS(qs)]);
     }
   }
-  // Armadura de piedra + mochila.
-  RECIPES.push(
-    { id: 'helmet_stone', result: EQUIP.helmetStone, resultQty: 1, inputs: [{ id: T.STONE, qty: 5 }] },
-    { id: 'chest_stone',  result: EQUIP.chestStone,  resultQty: 1, inputs: [{ id: T.STONE, qty: 8 }] },
-    { id: 'legs_stone',   result: EQUIP.legsStone,   resultQty: 1, inputs: [{ id: T.STONE, qty: 6 }] },
-    { id: 'boots_stone',  result: EQUIP.bootsStone,  resultQty: 1, inputs: [{ id: T.STONE, qty: 4 }] },
-    { id: 'bag',          result: EQUIP.bag,         resultQty: 1, inputs: [{ anyOf: WOOD_IDS, qty: 8 }, { id: T.STONE, qty: 2 }] }
-  );
+
+  // ── Armadura ──
+  const armorMat = {
+    leather: MAT.leather, copper: MAT.copperIngot, iron: MAT.ironIngot,
+    gold: MAT.goldIngot, diamond: MAT.diamond, emerald: MAT.emerald
+  };
+  for (const mat of Object.keys(ARMOR_MATS)) {
+    for (const pc of ARMOR_PIECES) {
+      add('armadura', `${pc.key}_${mat}`, ARMOR[`${pc.key}_${mat}`], 1, [{ id: armorMat[mat], qty: pc.cost }]);
+    }
+  }
+
+  // ── Mochilas ── (cuando haya animales, el cuero se puede sumar acá)
+  add('mochilas', 'bag_small', EQUIP.bagSmall, 1, [{ id: MAT.leaves, qty: 8 }, STICKS(2)]);
+  add('mochilas', 'bag',       EQUIP.bag,      1, [{ id: MAT.leaves, qty: 12 }, { id: MAT.copperIngot, qty: 3 }]);
+  add('mochilas', 'bag_large', EQUIP.bagLarge, 1, [{ id: MAT.leaves, qty: 20 }, { id: MAT.ironIngot, qty: 4 }, { id: MAT.goldIngot, qty: 1 }]);
 }
 
-// Cuánto tenés de un ingrediente (suma las alternativas de anyOf).
+export const CRAFT_CATS = [
+  { key: 'basicos',      label: 'Básicos' },
+  { key: 'herramientas', label: 'Herramientas' },
+  { key: 'armas',        label: 'Armas' },
+  { key: 'armadura',     label: 'Armadura' },
+  { key: 'mochilas',     label: 'Mochilas' },
+  { key: 'fundir',       label: 'Fundir' }
+];
+
 export function ingredientHave(inventory, ingredient) {
   if (ingredient.anyOf) return ingredient.anyOf.reduce((s, id) => s + (inventory[id] || 0), 0);
   return inventory[ingredient.id] || 0;

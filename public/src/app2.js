@@ -33,6 +33,7 @@ if (urlParams.has('dev_token') && urlParams.has('dev_user')) {
 const APP_EL = {
   accountDrawer: document.getElementById('accountDrawer'),
   accountDrawerBody: document.getElementById('accountDrawerBody'),
+  accountToggle: document.getElementById('accountToggle'),
   actionGrid: document.getElementById('actionGrid'),
   adivinaBtnPista: document.getElementById('adivinaBtnPista'),
   adivinaBtnRendirse: document.getElementById('adivinaBtnRendirse'),
@@ -58,6 +59,8 @@ const APP_EL = {
   authSectionRegister: document.getElementById('auth-section-register'),
   drawerBackdrop: document.getElementById('drawerBackdrop'),
   featuredGrid: document.getElementById('featuredGrid'),
+  classicGrid: document.getElementById('classicGrid'),
+  motorGrid: document.getElementById('motorGrid'),
   globalAudioBtn: document.getElementById('globalAudioBtn'),
   hamburger: document.getElementById('hamburger'),
   infoOverlay: document.getElementById('infoOverlay'),
@@ -65,6 +68,7 @@ const APP_EL = {
   lbPanelAll: document.getElementById('lb-panel-all'),
   lbPanelSingle: document.getElementById('lb-panel-single'),
   leaderboardBody: document.getElementById('leaderboardBody'),
+  lbYourRank: document.getElementById('lbYourRank'),
   loginIdentity: document.getElementById('loginIdentity'),
   loginPassword: document.getElementById('loginPassword'),
   modalOverlay: document.getElementById('modalOverlay'),
@@ -287,22 +291,34 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // ─── Datos de juegos ───────────────────
+// Colores por juego (header + botón de la tarjeta grande). undefined =
+// usa el navy/azul por defecto de .card-header-band/.btn-play — antes
+// esto estaba escrito a mano, repetido, dentro del HTML de la página
+// Juegos; ahora vive acá junto con el resto de los datos del juego, así
+// que Inicio y Juegos salen SIEMPRE iguales (una sola fuente) y agregar
+// un juego nuevo es sumar un objeto, no inventar un color a ojo en HTML.
 const allGames = [
-  { id: 'sopa', title: 'Sopa de Letras',    desc: 'Encontrá palabras ocultas en la grilla. Mientras más rápido, más puntos ganás.', tag: 'Velocidad' },
-  { id: 'preguntados', title: 'Preguntados',        desc: 'Trivia de múltiple opción. Respondé preguntas sobre tu temática favorita.',       tag: 'Trivia'    },
-  { id: 'termina', title: 'Termina la Palabra', desc: 'Adiviná la palabra incompleta. Tenés solo 5 intentos. ¡Pensá bien!',             tag: '5 intentos' },
-  { id: 'ahorcado', title: 'Ahorcado',           desc: 'El clásico de siempre, ahora con temáticas. Letra por letra antes de que se complete el dibujo.', tag: 'Clásico'   },
-  { id: 'adivina', title: 'Adivina la Cosa',   desc: 'Pistas progresivas para adivinar un juego, película, actor o anime.',           tag: 'Pistas'    },
-  { id: 'wordle', title: 'Adivina la Palabra', desc: 'Modo difícil estilo Wordle. 5 intentos, colores que te dan pistas letra por letra.', tag: 'Hard'     },
+  { id: 'sopa', title: 'Sopa de Letras',    desc: 'Encontrá palabras ocultas en la grilla. Mientras más rápido, más puntos ganás.', tags: ['Velocidad'] },
+  { id: 'preguntados', title: 'Preguntados',        desc: 'Trivia de múltiple opción. Respondé preguntas sobre tu temática favorita.',       tags: ['Trivia']    },
+  { id: 'termina', title: 'Termina la Palabra', desc: 'Adiviná la palabra incompleta. Tenés solo 5 intentos. ¡Pensá bien!',             tags: ['5 intentos'] },
+  { id: 'ahorcado', title: 'Ahorcado',           desc: 'El clásico de siempre, ahora con temáticas. Letra por letra antes de que se complete el dibujo.', tags: ['Clásico']   },
+  { id: 'adivina', title: 'Adivina la Cosa',   desc: 'Pistas progresivas para adivinar un juego, película, actor o anime.',           tags: ['Pistas']    },
+  { id: 'wordle', title: 'Adivina la Palabra', desc: 'Modo difícil estilo Wordle. 5 intentos, colores que te dan pistas letra por letra.', tags: ['Hard'],
+    bg: 'linear-gradient(135deg, #15803d, #166534)', btnBg: '#15803d', btnColor: '#fff' },
 ];
 
 // Los juegos de acción (jugables con el motor 2D): Pixel Runner, Castle
-// Escape y RPG Pixel. Se usan en "Juegos Destacados" y "Juegos de Acción".
+// Escape, RPG Pixel y Pixel Survi. Se usan en "Juegos Destacados" y
+// "Juegos de Acción" (Inicio) y en "Juegos del Motor" (Juegos).
 const actionGames = [
-  { id: 'runner', title: 'Pixel Runner',     desc: 'Corré sin parar, esquivá obstáculos del suelo y del cielo. Doble salto y velocidad creciente.', tag: 'Acción'   },
-  { id: 'castle_escape', title: 'Castle Escape',    desc: 'Saltá plataformas, esquivá trampas y llegá a la salida de los 20 niveles del castillo.',   tag: 'Aventura' },
-  { id: 'rpg_pixel', title: 'RPG Pixel',         desc: 'Combatí contra jefes pixel art: dispará y bloqueá con el escudo en arenas fijas.',         tag: 'Combate'  },
-  { id: 'pixel_survi', title: 'Pixel Survi', desc: 'Mundo abierto por biomas: rompé bloques, construí y sobreviví. Normal o hardcore.', tag: 'Sandbox' },
+  { id: 'runner', title: 'Pixel Runner',     desc: 'Corré sin parar, esquivá obstáculos del suelo y del cielo. Doble salto y velocidad creciente.', tags: ['Doble salto', 'Velocidad creciente'],
+    bg: 'linear-gradient(135deg, #1a1a2e, #16213e)', titleColor: '#f5c518', btnBg: '#f5c518', btnColor: '#0f1e3d' },
+  { id: 'castle_escape', title: 'Castle Escape',    desc: 'Saltá plataformas, esquivá trampas y llegá a la salida de los 20 niveles del castillo.',   tags: ['20 niveles', 'Música propia'],
+    bg: 'linear-gradient(135deg, #2a0e37, #4c1d95)', titleColor: '#facc15', btnBg: '#facc15', btnColor: '#2a0e37' },
+  { id: 'rpg_pixel', title: 'RPG Pixel',         desc: 'Combatí contra jefes pixel art: dispará y bloqueá con el escudo en arenas fijas.',         tags: ['Combate', 'Bloqueo'],
+    bg: 'linear-gradient(135deg, #14532d, #166534)', titleColor: '#4ade80', btnBg: '#166534', btnColor: '#fff' },
+  { id: 'pixel_survi', title: 'Pixel Survi', desc: 'Mundo abierto por biomas: rompé bloques, construí y sobreviví. Normal o hardcore.', tags: ['Sandbox', 'Biomas'],
+    bg: 'linear-gradient(135deg, #78350f, #92400e)', titleColor: '#fde68a', btnBg: '#92400e', btnColor: '#fff' },
 ];
 
 // Los 3 juegos sencillos fijos que se muestran siempre en el inicio.
@@ -365,35 +381,68 @@ function uiIconSVG(name, size = 14) {
 }
 
 
-// ─── Inicio: juegos destacados aleatorios ───
-function gameCardHTML(g) {
+// Tarjeta "completa" (header con color propio + cuerpo) — antes esto
+// vivía escrito a mano 9 veces en el HTML de la página Juegos, y en
+// Inicio se usaba una versión más simple y lisa (gameCardHTML). Ahora es
+// una sola función para los dos: se ven exactamente igual en todos lados.
+// opts.withId: solo las tarjetas de la página Juegos llevan id="card-X"
+// (lo usa scrollToGame para encontrarlas). Si Inicio y Recomendados
+// también lo llevaran, habría ids duplicados y getElementById devolvería
+// la primera copia del DOM — la de Inicio, que está oculta.
+// OJO: no pasar esta función directo a .map() — map le manda el índice
+// como segundo argumento. Usar siempre g => gameCardFullHTML(g).
+function gameCardFullHTML(g, opts = {}) {
+  const bandStyle = g.bg ? ` style="background: ${g.bg};"` : '';
+  const titleStyle = g.titleColor ? ` style="color:${g.titleColor};"` : '';
+  const btnStyle = (g.btnBg || g.btnColor)
+    ? ` style="${g.btnBg ? `background:${g.btnBg};` : ''}${g.btnColor ? `color:${g.btnColor};font-weight:900;` : ''}"`
+    : '';
+  const tags = g.tags || (g.tag ? [g.tag] : []);
   return `
-    <div class="game-card" onclick="launchGame('${g.id}', this)">
-      <div class="card-emoji">${gameIconSVG(g.id, 32)}</div>
-      <div class="card-title">${g.title}</div>
-      <p class="card-desc">${g.desc}</p>
-      <span class="card-tag">${g.tag}</span>
-      <button class="btn-play">▶ Jugar ahora</button>
+    <div class="game-card-full"${opts.withId ? ` id="card-${g.id}"` : ''} onclick="launchGame('${g.id}', this)">
+      <div class="card-header-band"${bandStyle}>
+        <span class="card-emoji"><span class="card-emoji-float">${gameIconSVG(g.id, 32)}</span></span>
+        <span class="card-title"${titleStyle}>${g.title}</span>
+      </div>
+      <div class="card-body">
+        <p class="card-desc">${g.desc}</p>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
+          ${tags.map(t => `<span class="card-tag">${t}</span>`).join('')}
+        </div>
+        <button class="btn-play"${btnStyle} onclick="event.stopPropagation(); launchGame('${g.id}', this)"><span class="btn-play-label">▶ Jugar</span></button>
+      </div>
     </div>
   `;
 }
 
-// Destacados: 3 al azar de TODOS los juegos (clásicos + de acción).
+// Destacados: 3 al azar, pero SIN los que ya están fijos en "Sencillos"
+// (antes el pool incluía todo, así que Sopa/Ahorcado/Preguntados podían
+// salir sorteados y aparecer duplicados a dos scrolls de distancia).
 function renderFeatured() {
-  const pool = [...allGames, ...actionGames];
+  const pool = [...allGames, ...actionGames].filter(g => !SIMPLE_GAME_IDS.includes(g.id));
   const three = shuffle(pool).slice(0, 3);
-  APP_EL.featuredGrid.innerHTML = three.map(gameCardHTML).join('');
+  APP_EL.featuredGrid.innerHTML = three.map(g => gameCardFullHTML(g)).join('');
 }
 
 // Juegos sencillos: 3 fijos (definidos en SIMPLE_GAME_IDS).
 function renderSimple() {
   const list = SIMPLE_GAME_IDS.map(id => allGames.find(g => g.id === id)).filter(Boolean);
-  APP_EL.simpleGrid.innerHTML = list.map(gameCardHTML).join('');
+  APP_EL.simpleGrid.innerHTML = list.map(g => gameCardFullHTML(g)).join('');
 }
 
 // Juegos de acción: los jugables con el motor 2D.
 function renderAction() {
-  APP_EL.actionGrid.innerHTML = actionGames.map(gameCardHTML).join('');
+  APP_EL.actionGrid.innerHTML = actionGames.map(g => gameCardFullHTML(g)).join('');
+}
+
+// Página "Juegos" (catálogo completo): separada en Clásicos (palabras/
+// trivia) y Del Motor (los 4 del motor 2D) — antes era una sola grilla
+// con las 9 tarjetas escritas a mano en el HTML.
+function renderClassicGames() {
+  if (APP_EL.classicGrid) APP_EL.classicGrid.innerHTML = allGames.map(g => gameCardFullHTML(g, { withId: true })).join('');
+}
+function renderMotorGames() {
+  if (APP_EL.motorGrid) APP_EL.motorGrid.innerHTML = actionGames.map(g => gameCardFullHTML(g, { withId: true })).join('');
 }
 
 // ══════════════════════════════════════
@@ -1828,7 +1877,7 @@ function renderRecommendedGames(currentGameId) {
   if (!container) return;
   const pool = [...allGames, ...actionGames].filter(g => g.id !== currentGameId);
   const three = shuffle(pool).slice(0, 3);
-  container.innerHTML = three.map(gameCardHTML).join('');
+  container.innerHTML = three.map(g => gameCardFullHTML(g)).join('');
 }
 
 function scrollToGame(gameId) {
@@ -2022,6 +2071,40 @@ if (typeof Engine2D !== 'undefined' && Engine2D.Quality) {
   Engine2D.Quality.onChange(syncQualityClass);
 }
 
+// Envuelve cada letra del título de bienvenida en su propio <span> con un
+// pequeño desfasaje (animation-delay), para el efecto de ola del CSS
+// (.wave-letter). Se corre una sola vez; respeta el <span> de "UniGames"
+// que ya estaba adentro (mantiene su color propio).
+function animateHeroLetters() {
+  const h1 = document.getElementById('heroTitle');
+  if (!h1 || h1.dataset.animated) return;
+  h1.dataset.animated = '1';
+
+  let i = 0;
+  const wrapTextNode = (node) => {
+    const frag = document.createDocumentFragment();
+    for (const ch of node.textContent) {
+      const span = document.createElement('span');
+      span.className = 'wave-letter';
+      span.style.animationDelay = (i * 0.045) + 's';
+      span.textContent = ch === ' ' ? '\u00A0' : ch;
+      frag.appendChild(span);
+      i++;
+    }
+    node.replaceWith(frag);
+  };
+
+  [...h1.childNodes].forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      wrapTextNode(node);
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      [...node.childNodes].forEach(inner => {
+        if (inner.nodeType === Node.TEXT_NODE) wrapTextNode(inner);
+      });
+    }
+  });
+}
+
 function goTo(section) {
   // Stop all 2D engine loops to prevent background lag when switching games
   if (typeof stopRunner === 'function') stopRunner();
@@ -2043,8 +2126,10 @@ function goTo(section) {
   const navIdx = map[section] !== undefined ? map[section] : map['juegos'];
   if (links[navIdx]) links[navIdx].classList.add('active');
 
-  // Refrescar leaderboard al navegar a la sección de puntuación
-  if (section === 'puntuacion') fetchLeaderboard();
+  // Al navegar a la sección de puntuación, siempre arranca en Global — ya
+  // no hay tabs para elegir, así que no tiene sentido "recordar" en qué
+  // juego te habías quedado la vez anterior.
+  if (section === 'puntuacion') volverAPuntuacionGlobal();
 
   // Refrescar amigos / logros / perfil al navegar a esas secciones
   if (section === 'amigos') initAmigosScreen();
@@ -2123,6 +2208,17 @@ function closeNav() {
   navMenu.classList.remove('open');
   const backdrop = APP_EL.drawerBackdrop;
   if (backdrop && !APP_EL.accountDrawer?.classList.contains('open')) backdrop.classList.remove('open');
+}
+
+// Click en el botón redondo del header: sin sesión va DIRECTO al login
+// (antes abría el cajón lateral solo para mostrar un botón que a su vez
+// abría el login — un paso de más). Con sesión, abre el menú de siempre.
+function handleAccountToggle() {
+  if (currentUser) {
+    toggleAccountDrawer();
+  } else {
+    openModal('login');
+  }
 }
 
 function toggleAccountDrawer() {
@@ -3222,6 +3318,8 @@ document.addEventListener('DOMContentLoaded', () => {
   renderFeatured();
   renderSimple();
   renderAction();
+  renderClassicGames();
+  renderMotorGames();
 
   // Evitar recarga en links del menú
   document.querySelectorAll('.nav-menu a').forEach(a => {
@@ -3230,6 +3328,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Inicializar audio al cargar la página
   initAudio();
+
+  // Animación letra por letra del título de bienvenida (una sola vez)
+  animateHeroLetters();
 
   // Cargar tabla de posiciones desde la API
   fetchLeaderboard();
@@ -3517,23 +3618,37 @@ async function submitRecoverPassword(e) {
 
   function updateAuthUI() {
     const drawerBody = APP_EL.accountDrawerBody;
+    const toggleBtn = APP_EL.accountToggle;
+    if (toggleBtn) {
+      if (currentUser) {
+        // Mismo campo y mismo default que ya usa Perfil/Amigos (PERFIL_ICONO_DEFAULT)
+        // — "avatar" no existe en el usuario, el campo real es "icono".
+        const icono = currentUser.icono || PERFIL_ICONO_DEFAULT;
+        toggleBtn.innerHTML = `<img class="account-avatar-img" src="${icono}" alt="${sanitizeHTML(currentUser.username)}">`;
+        toggleBtn.title = currentUser.username;
+      } else {
+        toggleBtn.innerHTML = '<svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.34 0-10 1.68-10 5v1c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-1c0-3.32-6.66-5-10-5z"/></svg>';
+        toggleBtn.title = 'Mi cuenta';
+        toggleBtn.classList.remove('has-notif'); // sin sesión no hay notificaciones que mostrar
+      }
+    }
     if (!drawerBody) return;
 
     if (currentUser) {
       drawerBody.innerHTML = `
         <div class="account-greeting">Hola, ${sanitizeHTML(currentUser.username)}</div>
-        ${currentUser.rol === 'admin' ? '<button class="account-drawer-btn" onclick="closeAccountDrawer(); openAdminModal();"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Panel Admin</button>' : ''}
-        <button class="account-drawer-btn" onclick="closeAccountDrawer(); abrirPerfilPropio();"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>Perfil</button>
-        <button class="account-drawer-btn" onclick="closeAccountDrawer(); openNotifModal();" style="justify-content: space-between;"><span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>Notificaciones</span><span id="notifDrawerBadge"></span></button>
-        <button class="account-drawer-btn" onclick="closeAccountDrawer(); goTo('puntuacion');"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>Puntuación</button>
-        <button class="account-drawer-btn" onclick="closeAccountDrawer(); goTo('amigos');"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>Amigos</button>
-        <button class="account-drawer-btn" onclick="closeAccountDrawer(); goTo('logros');"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>Logros</button>
-        <button class="account-drawer-btn btn-logout" onclick="logout()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>Cerrar sesión</button>
+        ${currentUser.rol === 'admin' ? '<button class="account-drawer-btn" onclick="closeAccountDrawer(); openAdminModal();"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span class="account-drawer-btn-label">Panel Admin</span></button>' : ''}
+        <button class="account-drawer-btn" onclick="closeAccountDrawer(); abrirPerfilPropio();"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="account-drawer-btn-label">Perfil</span></button>
+        <button class="account-drawer-btn" onclick="closeAccountDrawer(); openNotifModal();" style="justify-content: space-between;"><span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg><span class="account-drawer-btn-label">Notificaciones</span></span><span id="notifDrawerBadge"></span></button>
+        <button class="account-drawer-btn" onclick="closeAccountDrawer(); goTo('puntuacion');"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg><span class="account-drawer-btn-label">Puntuación</span></button>
+        <button class="account-drawer-btn" onclick="closeAccountDrawer(); goTo('amigos');"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg><span class="account-drawer-btn-label">Amigos</span></button>
+        <button class="account-drawer-btn" onclick="closeAccountDrawer(); goTo('logros');"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg><span class="account-drawer-btn-label">Logros</span></button>
+        <button class="account-drawer-btn btn-logout" onclick="logout()"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg><span class="account-drawer-btn-label">Cerrar sesión</span></button>
       `;
       actualizarBadgeNotificaciones();
     } else {
       drawerBody.innerHTML = `
-        <button class="account-drawer-btn btn-login-drawer" onclick="closeAccountDrawer(); openModal('login');">Iniciar sesión</button>
+        <button class="account-drawer-btn btn-login-drawer" onclick="closeAccountDrawer(); openModal('login');"><span class="account-drawer-btn-label">Iniciar sesión</span></button>
       `;
     }
   }
@@ -3560,23 +3675,40 @@ async function fetchLeaderboard() {
   }
 }
 
-function switchLeaderboardTab(btn, juegoId) {
-  document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  lbCurrentTab = juegoId;
+// La sección ya no tiene tabs para elegir juego — se entra a la
+// puntuación de un juego puntual haciendo click en su tarjeta desde
+// Global (ver fetchLeaderboardGlobal), y se vuelve con este botón.
+function volverAPuntuacionGlobal() {
+  lbCurrentTab = 'all';
+  APP_EL.lbPanelAll.classList.add('active');    APP_EL.lbPanelAll.style.display = '';
+  APP_EL.lbPanelSingle.classList.remove('active'); APP_EL.lbPanelSingle.style.display = 'none';
+  fetchLeaderboardGlobal();
+}
 
-  const panelAll    = APP_EL.lbPanelAll;
-  const panelSingle = APP_EL.lbPanelSingle;
+// Estado vacío — mismo texto en la tarjeta de Global y en la tabla de un
+// solo juego, para que sea consistente en toda la sección.
+function emptyRecordHTML() {
+  return '<div class="lb-empty-mini"><p class="lb-empty-title">Sin récord aún</p><p class="lb-empty-sub">Sé el primero en jugar</p></div>';
+}
 
-  if (juegoId === 'all') {
-    panelAll.classList.add('active');    panelAll.style.display = '';
-    panelSingle.classList.remove('active'); panelSingle.style.display = 'none';
-    fetchLeaderboardGlobal();
-  } else {
-    panelAll.classList.remove('active'); panelAll.style.display = 'none';
-    panelSingle.classList.add('active'); panelSingle.style.display = '';
-    fetchLeaderboardByGame(juegoId);
-  }
+// Busca los datos (color, ícono) de un juego por id, en cualquiera de las
+// dos listas — mismos datos que ya arman las tarjetas de Inicio/Juegos,
+// así que una tarjeta de "Sopa" acá se ve exactamente como en el resto
+// del sitio.
+function findGameMeta(id) {
+  return allGames.find(g => g.id === id) || actionGames.find(g => g.id === id) || null;
+}
+
+// Click en una tarjeta de "Global": entra al panel de ese juego (la tabla
+// completa) — antes esto le hacía click a un botón de tab que ya no
+// existe, ahora abre el panel directo y pone el título a mano.
+function irATabDePuntuacion(target, nombreJuego) {
+  lbCurrentTab = target;
+  APP_EL.lbPanelAll.classList.remove('active'); APP_EL.lbPanelAll.style.display = 'none';
+  APP_EL.lbPanelSingle.classList.add('active'); APP_EL.lbPanelSingle.style.display = '';
+  const titleEl = document.getElementById('lbSingleTitle');
+  if (titleEl) titleEl.textContent = nombreJuego;
+  fetchLeaderboardByGame(target);
 }
 
 async function fetchLeaderboardGlobal() {
@@ -3587,34 +3719,40 @@ async function fetchLeaderboardGlobal() {
     if (!res.ok) throw new Error();
     const data = await res.json(); // { juego_id: { juego, entries: [{jugador, puntos}] } }
 
+    // Los 8 juegos que de verdad guardan puntaje — en este orden fijo,
+    // SIEMPRE los 8, tengan datos o no. Antes solo se armaba una tarjeta
+    // por cada juego_id que el servidor incluía en la respuesta, así que
+    // un juego con cero partidas (todavía) directamente no aparecía acá.
     const GAME_ID_MAP = { 1:'sopa', 2:'preguntados', 3:'termina', 4:'ahorcado', 5:'adivina', 6:'wordle', 7:'runner', 8:'castle_escape' };
-    const keys = Object.keys(data);
 
-    if (keys.length === 0) {
-      container.innerHTML = '<p style="text-align:center;color:#64748b;padding:2rem;">Todavía no hay puntuaciones. ¡Jugá y aparecé acá!</p>';
-      return;
-    }
+    const medals = ['<svg style="width:1.05rem;height:1.05rem;fill:#ffd700;vertical-align:middle;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>','<svg style="width:1.05rem;height:1.05rem;fill:#c0c0c0;vertical-align:middle;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>','<svg style="width:1.05rem;height:1.05rem;fill:#cd7f32;vertical-align:middle;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>'];
 
-    container.innerHTML = keys.map(jid => {
-      const g = data[jid];
-      const rowsHTML = g.entries.map((e, i) => {
-        const medals = ['<svg style="width:1.2rem;height:1.2rem;fill:#ffd700;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>','<svg style="width:1.2rem;height:1.2rem;fill:#c0c0c0;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>','<svg style="width:1.2rem;height:1.2rem;fill:#cd7f32;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94A5.01 5.01 0 0 0 11 15.9V19H7v2h10v-2h-4v-3.1a5.01 5.01 0 0 0 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>'];
-        const medal  = medals[i] || (i + 1);
-        const cls    = i < 3 ? `rank-${i+1}` : '';
-        return `<tr>
-          <td class="${cls}">${medal} ${i >= 3 ? i+1 : ''}</td>
-          <td><span class="lb-player-name" onclick="verPerfilPorUsername('${sanitizeHTML(e.jugador)}')">${sanitizeHTML(e.jugador)}</span></td>
-          <td><span class="score-badge">${sanitizeHTML(String(e.puntos))}</span></td>
-        </tr>`;
-      }).join('');
+    container.innerHTML = Object.keys(GAME_ID_MAP).map(jid => {
+      const gameId = GAME_ID_MAP[jid];
+      const meta = findGameMeta(gameId);
+      const g = data[jid] || { juego: meta?.title || gameId, entries: [] };
+      const bandStyle = meta?.bg ? ` style="background: ${meta.bg};"` : '';
+      const titleStyle = meta?.titleColor ? ` style="color:${meta.titleColor};font-size:0.78rem;"` : ' style="font-size:0.78rem;"';
+
+      // Lista vertical numerada — SIN cortar a los primeros N: si hay más
+      // filas de las que entran en el alto fijo de la tarjeta, se
+      // scrollea para abajo adentro de ella (ver .lb-game-card-body).
+      const filasHTML = g.entries.map((e, i) => `
+        <div class="lb-rank-row">
+          <span class="lb-rank-num">${medals[i] || ('#' + (i + 1))}</span>
+          <span class="lb-player-name" onclick="event.stopPropagation(); verPerfilPorUsername('${sanitizeHTML(e.jugador)}')">${sanitizeHTML(e.jugador)}</span>
+          <span class="score-badge">${sanitizeHTML(String(e.puntos))}</span>
+        </div>`).join('');
 
       return `
-        <div class="lb-game-card">
-          <div class="lb-game-title">${gameIconSVG(GAME_ID_MAP[jid], 16)} ${sanitizeHTML(g.juego)}</div>
-          <table class="lb-mini-table">
-            <thead><tr><th>#</th><th>Jugador</th><th>Puntos</th></tr></thead>
-            <tbody>${rowsHTML || '<tr><td colspan="3" style="text-align:center;color:#94a3b8;font-size:.8rem;">Sin partidas aún</td></tr>'}</tbody>
-          </table>
+        <div class="game-card-full lb-game-card" onclick="irATabDePuntuacion('${gameId === 'runner' ? 'runner' : jid}', '${sanitizeHTML(g.juego)}')">
+          <div class="card-header-band"${bandStyle}>
+            <span class="card-emoji"><span class="card-emoji-float">${gameIconSVG(gameId, 26)}</span></span>
+            <span class="card-title"${titleStyle}>${sanitizeHTML(g.juego)}</span>
+          </div>
+          <div class="lb-game-card-body">
+            ${filasHTML || emptyRecordHTML()}
+          </div>
         </div>`;
     }).join('');
   } catch (err) {
@@ -3627,6 +3765,7 @@ async function fetchLeaderboardByGame(juegoId) {
   const tbody = APP_EL.leaderboardBody;
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;">Cargando...</td></tr>';
+  if (APP_EL.lbYourRank) APP_EL.lbYourRank.classList.add('hidden'); // se muestra de nuevo abajo si corresponde
   try {
     const url = juegoId === 'runner'
       ? '/api/leaderboard?juego_id=7'   // Pixel Runner = juego_id 7
@@ -3635,8 +3774,24 @@ async function fetchLeaderboardByGame(juegoId) {
     if (!res.ok) throw new Error();
     const scores = await res.json();
 
+    // "Tu posición": con sesión, SIEMPRE se muestra — si no jugaste este
+    // juego todavía, lo dice explícito en vez de desaparecer sin más.
+    // Sin sesión no hay "vos" que mostrar, ahí sigue oculto.
+    const rankEl = APP_EL.lbYourRank;
+    if (rankEl) {
+      if (!currentUser) {
+        rankEl.classList.add('hidden');
+      } else {
+        const idx = scores.findIndex(s => s.jugador === currentUser.username);
+        rankEl.innerHTML = idx >= 0
+          ? `Tu posición: <strong>#${idx + 1}</strong> <span class="score-badge">${sanitizeHTML(String(scores[idx].puntos))} pts</span>`
+          : 'Tu posición: no jugaste aún a este juego';
+        rankEl.classList.remove('hidden');
+      }
+    }
+
     if (scores.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#64748b;padding:1.5rem;">Nadie jugó esto todavía. ¡Sé el primero!</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="3" style="padding:1.5rem;">${emptyRecordHTML()}</td></tr>`;
       return;
     }
 
@@ -4952,6 +5107,14 @@ function updateInfoModal() {
     if (index === currentInfoPage - 1) dot.classList.add('active');
     else dot.classList.remove('active');
   });
+
+  // "Atrás" no tiene sentido en la primera página, ni "Siguiente" en la
+  // última — antes quedaban los dos siempre visibles, aunque no llevaran
+  // a ningún lado.
+  const btnAtras = document.getElementById('infoBtnAtras');
+  const btnSiguiente = document.getElementById('infoBtnSiguiente');
+  if (btnAtras) btnAtras.style.visibility = currentInfoPage === 1 ? 'hidden' : 'visible';
+  if (btnSiguiente) btnSiguiente.style.visibility = currentInfoPage === totalInfoPages ? 'hidden' : 'visible';
 }
 
 // ══════════════════════════════════════
@@ -5086,10 +5249,29 @@ async function eliminarNotificacion(id) {
 // mientras haya sesión iniciada (mismo criterio que actualizarBadgeSolicitudes).
 async function actualizarBadgeNotificaciones() {
   const badge = document.getElementById('notifDrawerBadge');
-  if (!badge || !localStorage.getItem('unigames_token')) return;
+  const toggleBtn = APP_EL.accountToggle;
+  if ((!badge && !toggleBtn) || !localStorage.getItem('unigames_token')) return;
   try {
     const data = await apiFetch('/api/notificaciones/no-leidas');
-    badge.innerHTML = data.count > 0 ? `<span class="lb-tab-badge">${data.count}</span>` : '';
+    const count = data.count || 0;
+    if (badge) badge.innerHTML = count > 0 ? `<span class="lb-tab-badge">${count}</span>` : '';
+
+    // Mismo contador en el botón redondo del header: borde rojo + numerito
+    // asomando en la esquina, para que se note sin tener que abrir el menú.
+    if (toggleBtn) {
+      toggleBtn.classList.toggle('has-notif', count > 0);
+      let dot = toggleBtn.querySelector('.account-notif-badge');
+      if (count > 0) {
+        if (!dot) {
+          dot = document.createElement('span');
+          dot.className = 'account-notif-badge';
+          toggleBtn.appendChild(dot);
+        }
+        dot.textContent = count > 99 ? '99+' : String(count);
+      } else if (dot) {
+        dot.remove();
+      }
+    }
   } catch (error) {
     // silencioso: es solo un indicador
   }

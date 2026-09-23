@@ -65,13 +65,14 @@ export function rpgDraw() {
     if (!species) return;
     if (!e.alive && e.animKind !== 'death') return;
     if (e.hidden) return; // fantasma invisible/intangible mientras se teletransporta (ver rpgUpdateGhost)
+    if (e.vanished) return; // el Guardián se disuelve del todo al terminar su diálogo de derrota (ver dark_ghostking.dissolveOnDeath)
 
     ctx.save();
 
     // Aviso visual de un ataque especial a punto de salir (telegraph):
     // círculo rojo pulsante mientras el jefe "carga" antes del dash o de
     // invocar guerreros.
-    if (e.alive && (e.attack.state === 'dashTelegraph' || e.attack.state === 'summonTelegraph')) {
+    if (e.alive && (e.attack.state === 'dashTelegraph' || e.attack.state === 'summonTelegraph' || e.attack.state === 'teleportAppear')) {
       const pulse = 0.5 + 0.5 * Math.sin(e.attack.timer * 0.03);
       ctx.globalAlpha = 0.35 + pulse * 0.3;
       ctx.fillStyle = '#ef4444';
@@ -85,7 +86,7 @@ export function rpgDraw() {
     // Parpadeo del propio sprite durante el aviso de dash (además del
     // círculo rojo de arriba) — alterna opacidad cada ~100ms mientras dura
     // el telegraph, la señal de "va a dashear" que pidió Reybug.
-    else if (e.alive && e.attack.state === 'dashTelegraph') {
+    else if (e.alive && (e.attack.state === 'dashTelegraph' || e.attack.state === 'teleportVanish')) {
       ctx.globalAlpha = Math.floor(e.attack.timer / 100) % 2 === 0 ? 1 : 0.3;
     }
     const flip = e.alive ? (e.x > RPG.player.x) : e.deathFlip;
@@ -110,25 +111,63 @@ export function rpgDraw() {
       // Jefe: poses nombradas elegidas por el estado de su ataque actual,
       // no por un ciclo de frames. Muerto, ignora el estado de ataque y usa
       // e.deathFrame (1-2) — ver rpgStartBossDeathSequence/rpgPlayBossDeathFall.
+      // windupKeys/attackKeys: por defecto el golpe cuerpo a cuerpo de 4+3
+      // frames de dark_knight — dark_ghostking define su propio largo más
+      // corto (ver meleeWindupPoseKeys/meleeAttackPoseKeys).
+      const windupKeys = species.meleeWindupPoseKeys || RPG_BOSS_WINDUP_POSES;
+      const attackKeys = species.meleeAttackPoseKeys || RPG_BOSS_ATTACK_POSES;
       let frameName = species.poses.idle;
       if (!e.alive) {
         frameName = species.poses['death' + (e.deathFrame || 1)] || species.poses.death2;
       } else if (e.attack.state === 'meleeWindup') {
-        frameName = species.poses[RPG_BOSS_WINDUP_POSES[e.attack.poseFrame]];
+        frameName = species.poses[windupKeys[e.attack.poseFrame]];
       } else if (e.attack.state === 'meleeAttack') {
-        frameName = species.poses[RPG_BOSS_ATTACK_POSES[e.attack.poseFrame]];
+        frameName = species.poses[attackKeys[e.attack.poseFrame]];
       } else if (e.attack.state === 'rangedWindup') {
-        frameName = species.poses.windup1;
+        // Con poses propias de a distancia (rangedWindup1/2, ver
+        // dark_ghostking) se parte la duración del windup en 2 mitades; si
+        // la especie no las define, cae al comportamiento de siempre
+        // (reusar windup1 del melee, como dark_knight).
+        if (species.poses.rangedWindup1) {
+          const half = (cfg.rangedWindupMs || 260) / 2;
+          frameName = species.poses[e.attack.poseTick < half ? 'rangedWindup1' : 'rangedWindup2'];
+        } else {
+          frameName = species.poses.windup1;
+        }
+      } else if (e.attack.state === 'rangedAttack') {
+        frameName = species.poses.rangedAttack;
       } else if (e.attack.state === 'dashTelegraph') {
         frameName = species.poses.windup2;
       } else if (e.attack.state === 'dashing') {
         frameName = species.poses.dash2;
+      } else if (e.attack.state === 'teleportVanish') {
+        frameName = species.poses.vanish1;
+      } else if (e.attack.state === 'teleportAppear') {
+        frameName = species.poses.vanish2;
       } else if (e.attack.state === 'summonTelegraph') {
         frameName = species.poses.summon;
       }
-      if (atlas && img) {
-        const scale = rpgSpeciesScale(e.species, species, atlas);
-        rpgDrawAtlasFrameScaled(ctx, img, atlas, frameName, e.x, e.y, scale, flip);
+
+      // Flotación de idle (ver dark_ghostking.floatBob): puramente visual,
+      // no mueve e.y real — así no afecta hitboxes/IA.
+      let bobOffset = 0;
+      if (species.floatBob && e.alive && e.attack.state === 'roam') {
+        bobOffset = Math.sin(performance.now() / 450) * (species.floatBobAmount || 3);
+      }
+
+      // El frame puede vivir en el atlas principal o, si no está ahí
+      // (summon/death de dark_ghostking, ver altSheet/altAtlas), en un
+      // atlas secundario con su propia escala (altScale).
+      let drawImg = img, drawAtlas = atlas, scale;
+      if (drawAtlas && drawAtlas.frames[frameName]) {
+        scale = rpgSpeciesScale(e.species, species, drawAtlas);
+      } else if (species.altSheet && species.altAtlas) {
+        drawAtlas = RPG.atlases[species.altAtlas];
+        drawImg = RPG.images[species.altSheet];
+        scale = species.altScale || 1;
+      }
+      if (drawAtlas && drawImg && drawAtlas.frames[frameName]) {
+        rpgDrawAtlasFrameScaled(ctx, drawImg, drawAtlas, frameName, e.x, e.y + bobOffset, scale, flip);
       }
     } else if (atlas && img) {
       const frames = species.anims[e.animKind] || species.anims.idle;
@@ -226,13 +265,25 @@ export function rpgDraw() {
   const slashImg = cfg.bossProjectileSheet ? RPG.images[cfg.bossProjectileSheet] : null;
   const slashAtlas = cfg.bossProjectileAtlas ? RPG.atlases[cfg.bossProjectileAtlas] : null;
   RPG.enemyProjectiles.forEach(pr => {
+    // Proyectil que ya impactó y está explotando (ver rpgUpdateEnemyProjectiles
+    // / rpgFireBossBolt): se queda quieto ciclando explodeFrames en el
+    // punto de impacto, sin importar de qué 'kind' venía.
+    if (pr.exploding) {
+      const eImg = RPG.images[pr.explodeSheet || pr.sheet];
+      const eAtlas = RPG.atlases[pr.explodeAtlas || pr.atlas];
+      const frameName = pr.explodeFrames[pr.explodeFrameIdx || 0];
+      if (eImg && eAtlas && eAtlas.frames[frameName]) {
+        rpgDrawAtlasFrame(ctx, eImg, eAtlas, frameName, pr.x, pr.y, 26, false, true);
+      }
+      return;
+    }
     if (pr.kind === 'arrow') {
       const img = RPG.images[pr.sheet];
       const atlas = RPG.atlases[pr.atlas];
       const f = atlas && atlas.frames[pr.frameFly];
       if (img && f) {
         const angle = Math.atan2(pr.vy, pr.vx);
-        const targetH = 8; // antes 12 — flecha más chica visualmente, acorde al hitbox reducido
+        const targetH = pr.drawH || 8; // antes 12 — flecha más chica visualmente, acorde al hitbox reducido (pr.drawH: override por proyectil, ver rpgFireBossBolt)
         const dw = targetH * (f.w / f.h);
         ctx.save();
         ctx.translate(pr.x, pr.y);
