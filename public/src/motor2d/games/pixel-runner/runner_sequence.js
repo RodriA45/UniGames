@@ -1,198 +1,184 @@
 // ══════════════════════════════════════
 //   Pixel Runner — runner_sequence.js  (módulo ES6)
 // ══════════════════════════════════════
-// Secuencias especiales de fin de partida: muerte, animación de caída y
-// la aproximación/entrada al castillo al ganar el Modo Historia.
-import {
-  RUNNER, RUNNER_EL, RUNNER_ASSETS, RUNNER_COMICS, RUN_FRAMES, FALL_FRAMES,
-  CASTLE_TARGET_H, CASTLE_REST_MARGIN, CASTLE_GROUND_OFFSET, CASTLE_DOOR_WALK_GAP,
-  CASTLE_WALK_SPEED_MULT, WIN_APPROACH_PAUSE_MS, FALL_FRAME_DELAY, FALL_HOLD_BEFORE_OVERLAY,
-  showRunnerComic, runnerSyncPauseBtn
-} from './runner_config.js';
-import { loadHistoriaCompleta, saveHistoriaCompleta } from './runner_economy.js';
-import { drawRunner } from './runner_render.js';
+// Clase Secuencias: fin de partida — muerte con animación de caída,
+// secuencia de victoria del Modo Historia (el castillo entra en cuadro y
+// Junior camina hasta la puerta) y el cartel de Game Over / victoria.
+import { RunnerConfig as RC } from './runner_config.js';
 
-export async function startHistoriaWinApproach(C) {
-  RUNNER.obstacles = [];
-  RUNNER.pickups = [];
+export class Secuencias {
+  static ID_JUEGO_PUNTAJE = 7; // id de Pixel Runner en la tabla de puntajes
 
-  // El castillo es una imagen pesada (2400×1792) que solo se ve acá, al
-  // ganar Modo Historia — no tiene sentido tenerla en el manifest inicial
-  // pagando esa VRAM durante toda la partida. Se carga recién ahora, bajo
-  // demanda; Engine2D.loadImage cachea en el mismo lugar que getImage(),
-  // así que el resto del código (drawRunner en runner_render.js) no
-  // necesita saber que la carga fue diferida.
-  const img = await Engine2D.loadImage(RUNNER_ASSETS.castillo).catch(() => null);
+  constructor(juego) {
+    this.juego = juego;
+    this.dom = juego.dom;
+  }
 
-  const p = RUNNER.player;
-  const h = CASTLE_TARGET_H;
-  const aspect = (img && img.width && img.height) ? (img.width / img.height) : 0.85;
-  const w = h * aspect;
-  const groundY = C.height - RUNNER.groundH;
-  const restX = C.width - w - CASTLE_REST_MARGIN;
+  // ─── Victoria (Modo Historia) ───
+  // Limpia la pantalla (que no choque justo al ganar) y prepara el castillo
+  // afuera del canvas. castillo.webp es pesada y solo se ve acá, por eso
+  // se carga recién ahora y no en el arranque.
+  async iniciarVictoria() {
+    const juego = this.juego, C = juego.view;
+    juego.obstacles = [];
+    juego.pickups = [];
 
-  RUNNER.winCastle = {
-    x: C.width + 30,
-    y: groundY - h + CASTLE_GROUND_OFFSET,
-    w, h,
-    restX,
-    settled: false, // true cuando termina de entrar en cuadro
-  };
-  RUNNER.winArrived = false;
-  p.walkTargetX = restX - CASTLE_DOOR_WALK_GAP; // hasta acá camina Junior antes de "tocar" la puerta
+    const img = await Engine2D.loadImage(RC.ASSETS.castillo).catch(() => null);
 
-  // Fuerza pasto para el final, sin importar en qué segmento (pasto/desierto)
-  // haya caído el score al tocar la meta.
-  RUNNER.biome = 'grass';
-}
+    const p = juego.jugador;
+    const h = RC.CASTLE_TARGET_H;
+    const aspect = (img && img.width && img.height) ? (img.width / img.height) : 0.85;
+    const w = h * aspect;
+    const groundY = C.height - juego.groundH;
+    const restX = C.width - w - RC.CASTLE_REST_MARGIN;
 
-// Update especial mientras dura la secuencia de victoria — reemplaza por
-// completo al updateRunner de siempre (sin spawns, sin colisiones, sin
-// más puntaje). Primero entra el castillo, recién cuando ya está asentado
-// Junior arranca a caminar hacia la puerta.
-export function updateWinApproach(step, C) {
-  const p = RUNNER.player;
-  const castle = RUNNER.winCastle;
-  if (!castle) return;
+    juego.winCastle = {
+      x: C.width + 30,
+      y: groundY - h + RC.CASTLE_GROUND_OFFSET,
+      w, h,
+      restX,
+      settled: false, // true cuando termina de entrar en cuadro
+    };
+    juego.winArrived = false;
+    p.walkTargetX = restX - RC.CASTLE_DOOR_WALK_GAP; // hasta acá camina Junior
 
-  // El cielo/nubes siguen su curso para que la escena no se sienta
-  // congelada mientras dura la secuencia.
-  RUNNER.sky.t = RUNNER.frameCount % RUNNER.sky.cycleLen;
-  RUNNER.sky.clouds.forEach(c => {
-    c.x -= c.speed * step;
-    if (c.x < -100) c.x = C.width + 40 + Math.random() * 60;
-  });
+    juego.biome = 'grass'; // el final siempre en pasto
+  }
 
-  if (!castle.settled) {
-    // Entra a la misma velocidad a la que venían viajando los obstáculos.
-    castle.x -= RUNNER.speed * step;
-    if (castle.x <= castle.restX) {
-      castle.x = castle.restX;
-      castle.settled = true;
+  // Reemplaza al update normal mientras dura la victoria (sin spawns,
+  // colisiones ni puntaje). Primero entra el castillo; ya asentado, Junior
+  // camina hasta la puerta.
+  actualizarVictoria(step) {
+    const juego = this.juego, C = juego.view;
+    const p = juego.jugador;
+    const castle = juego.winCastle;
+    if (!castle) return;
+
+    // El cielo sigue su curso para que la escena no se congele.
+    juego.cielo.sincronizar(juego.frameCount);
+    juego.cielo.moverNubes(step, C.width);
+
+    if (!castle.settled) {
+      castle.x -= juego.speed * step;
+      if (castle.x <= castle.restX) {
+        castle.x = castle.restX;
+        castle.settled = true;
+      }
+      p.animarCarrera(step); // trota en el lugar mientras tanto
+      return;
     }
-    // Junior sigue trotando en el lugar mientras tanto.
-    p.animTick += step;
-    if (p.animTick >= 6) { p.animTick = 0; p.animFrame = (p.animFrame + 1) % RUN_FRAMES.length; }
-    return;
-  }
 
-  if (RUNNER.winArrived) return; // ya llegó, está esperando el timeout de finishHistoriaWin
+    if (juego.winArrived) return; // esperando el timeout de terminarVictoria
 
-  if (p.x < p.walkTargetX) {
-    p.x = Math.min(p.walkTargetX, p.x + RUNNER.moveSpeed * CASTLE_WALK_SPEED_MULT * step);
-    p.animTick += step;
-    if (p.animTick >= 6) { p.animTick = 0; p.animFrame = (p.animFrame + 1) % RUN_FRAMES.length; }
-  } else {
-    RUNNER.winArrived = true;
-    setTimeout(finishHistoriaWin, WIN_APPROACH_PAUSE_MS);
-  }
-}
-
-
-export function playerDie() {
-  const p = RUNNER.player;
-  p.dead = true;
-  RUNNER.running = false;
-  runnerSyncPauseBtn();
-  bgMusic.pause();
-  if (typeof playDeathSound === 'function') playDeathSound();
-  if (RUNNER.loop) RUNNER.loop.stop();
-
-  if (RUNNER.score > RUNNER.bestScore) RUNNER.bestScore = RUNNER.score;
-  guardarPuntaje(7, RUNNER.score);
-
-  playDeathAnimation();
-}
-
-// Se llama al terminar la secuencia de acercamiento al castillo (ver
-// updateWinApproach). A diferencia de playerDie() no hay choque/animación
-// de caída: el personaje ya llegó caminando hasta la puerta, y de acá se
-// pasa directo al cómic final + cartel de victoria, y de paso se
-// desbloquea el Modo Infinito para siempre.
-export function finishHistoriaWin() {
-  const p = RUNNER.player;
-  RUNNER.running = false;
-  runnerSyncPauseBtn();
-  if (RUNNER.loop) RUNNER.loop.stop();
-  bgMusic.pause();
-
-  if (RUNNER.score > RUNNER.bestScore) RUNNER.bestScore = RUNNER.score;
-  guardarPuntaje(7, RUNNER.score);
-
-  const yaEstabaCompleto = loadHistoriaCompleta();
-  saveHistoriaCompleta();
-
-  const sub = yaEstabaCompleto
-    ? ('Puntos: ' + RUNNER.score + '  ·  Monedas totales: ' + RUNNER.totalCoins)
-    : ('¡Modo Infinito desbloqueado! 🔓  ·  Monedas totales: ' + RUNNER.totalCoins);
-
-  // Cómic final antes del cartel de victoria de siempre.
-  showRunnerComic(RUNNER_COMICS.final, () => {
-    showRunnerOverlay('🏆 ¡Historia completada!', sub, true, true);
-  });
-}
-
-// Recorre fall_0..fall_3 a mano (el loop ya está parado) y recién cuando
-// termina muestra el cartel de "Game Over" — así el choque se ve como un
-// golpe/caída en vez de saltar directo al cartel.
-export function playDeathAnimation() {
-  const p = RUNNER.player;
-  let frame = 0;
-  p.animFrameName = FALL_FRAMES[0];
-  drawRunner(true);
-
-  const step = () => {
-    frame++;
-    if (frame < FALL_FRAMES.length) {
-      p.animFrameName = FALL_FRAMES[frame];
-      drawRunner(true);
-      setTimeout(step, FALL_FRAME_DELAY);
+    if (p.x < p.walkTargetX) {
+      p.x = Math.min(p.walkTargetX, p.x + juego.moveSpeed * RC.CASTLE_WALK_SPEED_MULT * step);
+      p.animarCarrera(step);
     } else {
-      setTimeout(() => {
-        RUNNER_EL.best.textContent = 'Mejor: ' + RUNNER.bestScore + ' pts';
-        // Al perder recién ahí se muestra el total histórico de monedas
-        // (durante la partida el HUD solo mostraba las de esa corrida).
-        showRunnerOverlay('¡Game Over!', 'Puntos: ' + RUNNER.score + '  ·  Monedas totales: ' + RUNNER.totalCoins, true);
-      }, FALL_HOLD_BEFORE_OVERLAY);
+      juego.winArrived = true;
+      setTimeout(() => this.terminarVictoria(), RC.WIN_APPROACH_PAUSE_MS);
     }
-  };
-  setTimeout(step, FALL_FRAME_DELAY);
-}
+  }
 
-// Dibuja el sprite de derrota de Junior (último frame de la caída, ya
-// cargado en el atlas) en el mini-canvas del overlay de game over, en vez
-// del ícono genérico viejo que había ahí antes.
-export function drawRunnerCharPreview(victory) {
-  const canvas = RUNNER_EL.charPreviewCanvas;
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Junior llegó a la puerta: cómic final + cartel de victoria, y se
+  // desbloquea el Modo Infinito para siempre.
+  terminarVictoria() {
+    const juego = this.juego;
+    juego.running = false;
+    juego.sincronizarBotonPausa();
+    if (juego.loop) juego.loop.stop();
+    bgMusic.pause();
 
-  const juniorImg = Engine2D.getImage(RUNNER_ASSETS.junior);
-  const juniorAtlas = Engine2D.getAtlas(RUNNER_ASSETS.juniorAt);
-  if (juniorImg && juniorAtlas) {
-    // Derrota = último frame de la caída; victoria = pose corriendo (no hay
-    // sprite de "festejo" en el atlas, así que reusamos una de correr).
-    const frameName = victory ? RUN_FRAMES[0] : FALL_FRAMES[FALL_FRAMES.length - 1];
-    const targetH = canvas.height - 4; // margen chico para que no se recorte contra los bordes
-    ctx.imageSmoothingEnabled = true;
-    Engine2D.drawAtlasFrame(ctx, juniorImg, juniorAtlas, frameName, canvas.width / 2, canvas.height - 2, targetH, false, false);
-    ctx.imageSmoothingEnabled = false;
+    this.guardarRecord();
+
+    const yaEstabaCompleto = juego.economia.historiaCompleta();
+    juego.economia.guardarHistoriaCompleta();
+
+    const total = juego.economia.totalCoins;
+    const sub = yaEstabaCompleto
+      ? ('Puntos: ' + juego.score + '  ·  Monedas totales: ' + total)
+      : ('¡Modo Infinito desbloqueado! 🔓  ·  Monedas totales: ' + total);
+
+    juego.menu.mostrarComic(RC.COMICS.final, () => {
+      this.mostrarOverlay('🏆 ¡Historia completada!', sub, true, true);
+    });
+  }
+
+  // ─── Muerte ───
+  morir() {
+    const juego = this.juego;
+    juego.jugador.dead = true;
+    juego.running = false;
+    juego.sincronizarBotonPausa();
+    bgMusic.pause();
+    if (typeof playDeathSound === 'function') playDeathSound();
+    if (juego.loop) juego.loop.stop();
+
+    this.guardarRecord();
+    this.animacionMuerte();
+  }
+
+  guardarRecord() {
+    const juego = this.juego;
+    if (juego.score > juego.bestScore) juego.bestScore = juego.score;
+    guardarPuntaje(Secuencias.ID_JUEGO_PUNTAJE, juego.score);
+  }
+
+  // Recorre fall_0..fall_3 a mano (el loop ya está parado) y recién al
+  // terminar muestra el Game Over, así el choque se ve como una caída.
+  animacionMuerte() {
+    const juego = this.juego;
+    const p = juego.jugador;
+    let frame = 0;
+    p.animFrameName = RC.FALL_FRAMES[0];
+    juego.renderer.dibujar(true);
+
+    const step = () => {
+      frame++;
+      if (frame < RC.FALL_FRAMES.length) {
+        p.animFrameName = RC.FALL_FRAMES[frame];
+        juego.renderer.dibujar(true);
+        setTimeout(step, RC.FALL_FRAME_DELAY);
+      } else {
+        setTimeout(() => {
+          this.dom.best.textContent = 'Mejor: ' + juego.bestScore + ' pts';
+          // Recién al perder se muestra el total histórico de monedas.
+          this.mostrarOverlay('¡Game Over!', 'Puntos: ' + juego.score + '  ·  Monedas totales: ' + juego.economia.totalCoins, true);
+        }, RC.FALL_HOLD_BEFORE_OVERLAY);
+      }
+    };
+    setTimeout(step, RC.FALL_FRAME_DELAY);
+  }
+
+  // ─── Cartel de fin de partida ───
+  // Mini-canvas del cartel: derrota = último frame de la caída; victoria =
+  // pose corriendo (no hay sprite de festejo).
+  dibujarPreviewPersonaje(victory) {
+    const canvas = this.dom.charPreviewCanvas;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const juniorImg = Engine2D.getImage(RC.ASSETS.junior);
+    const juniorAtlas = Engine2D.getAtlas(RC.ASSETS.juniorAt);
+    if (juniorImg && juniorAtlas) {
+      const frameName = victory ? RC.RUN_FRAMES[0] : RC.FALL_FRAMES[RC.FALL_FRAMES.length - 1];
+      const targetH = canvas.height - 4;
+      ctx.imageSmoothingEnabled = true;
+      Engine2D.drawAtlasFrame(ctx, juniorImg, juniorAtlas, frameName, canvas.width / 2, canvas.height - 2, targetH, false, false);
+      ctx.imageSmoothingEnabled = false;
+    }
+  }
+
+  mostrarOverlay(title, sub, isGameover, victory) {
+    const dom = this.dom;
+    dom.overlay.classList.remove('hidden');
+    dom.overlayTitle.textContent = title;
+    dom.overlaySub.textContent = sub;
+    if (this.juego.bestScore > 0) {
+      dom.best.textContent = 'Mejor: ' + this.juego.bestScore + ' pts';
+    }
+    if (isGameover) this.dibujarPreviewPersonaje(victory);
+    if (dom.restartBtn) dom.restartBtn.style.display = isGameover ? 'inline-block' : 'none';
+    if (dom.menuBtn) dom.menuBtn.style.display = isGameover ? 'inline-block' : 'none';
   }
 }
-
-export function showRunnerOverlay(title, sub, isGameover, victory) {
-  const overlay = RUNNER_EL.overlay;
-  overlay.classList.remove('hidden');
-  RUNNER_EL.overlayTitle.textContent = title;
-  RUNNER_EL.overlaySub.textContent = sub;
-  if (RUNNER.bestScore > 0) {
-    RUNNER_EL.best.textContent = 'Mejor: ' + RUNNER.bestScore + ' pts';
-  }
-  if (isGameover) drawRunnerCharPreview(victory);
-  const goBtn = RUNNER_EL.restartBtn;
-  const menuBtn = RUNNER_EL.menuBtn;
-  if (goBtn) goBtn.style.display = isGameover ? 'inline-block' : 'none';
-  if (menuBtn) menuBtn.style.display = isGameover ? 'inline-block' : 'none';
-}
-

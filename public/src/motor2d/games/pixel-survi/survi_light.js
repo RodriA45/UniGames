@@ -21,6 +21,7 @@ import {
 } from './survi_config.js';
 
 const MARGIN = 12;            // tiles extra alrededor de la vista
+const FURNACE_LIGHT = 0.75;   // ~7 tiles
 const SQRT2 = Math.SQRT2;
 
 export class LightMap {
@@ -78,6 +79,7 @@ export class LightMap {
         const i = y * w + x;
         S[i] = SOLID_IDS.has(id) ? 1 : 0;
         if (id === T.TORCH) seed(i, TORCH_LIGHT);
+        else if (id === T.FURNACE_ON) seed(i, FURNACE_LIGHT);   // horno prendido: luz más chica
       }
     }
     // sol: celdas a cielo abierto

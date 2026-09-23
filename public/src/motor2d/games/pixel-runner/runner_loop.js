@@ -1,646 +1,497 @@
 // ══════════════════════════════════════
 //   Pixel Runner — runner_loop.js  (módulo ES6)
 // ══════════════════════════════════════
-// Ciclo de vida del juego (init/start/stop), input (teclado + touch) y el
-// update principal por frame (updateRunner). Equivalente al rol de
-// rpg_combat_input.js en RPG Pixel.
-import {
-  RUNNER, RUNNER_EL, RUNNER_ASSETS, RUNNER_ASSET_BASE, RUN_FRAMES, GRAVITY,
-  BIOME_SEGMENT, HISTORIA_GOAL, POWERUP_CHANCE, runnerScoreText,
-  COIN_SPIN_FRAMES, VIEW_W, VIEW_H,
-  SLOWFALL_GRAVITY_MULT, SLOWSPEED_RECOVER_STEP,
-  RAIN_CHECK_INTERVAL, RAIN_CHANCE, RAIN_DURATION, RAIN_JUMP_MULT,
-  RAIN_BASE_COUNT, RAIN_DENSITY, RAIN_DROP_SPEED, RAIN_DROP_WIND, RAIN_SPLASH_LIFE,
-  runnerSyncPauseBtn
-} from './runner_config.js';
-import { loadTotalCoins, refreshRunnerUpgrades, runnerScoreMultiplier, slowSpeedFactor } from './runner_economy.js';
-import { spawnObstacle, spawnPickupGroup, spawnPowerup, collectPickup } from './runner_spawn.js';
-import { startHistoriaWinApproach, updateWinApproach, playerDie } from './runner_sequence.js';
-import { drawRunner } from './runner_render.js';
-
-// ─── Calidad gráfica y el canvas de Pixel Runner ───────────────────────
-// El juego se sigue programando SIEMPRE en el espacio lógico de 480x270
-// (VIEW_W/VIEW_H): player.w/h, corridorMinX/MaxX, groundH, skyH y las
-// posiciones de spawn son píxeles absolutos de ese espacio, no
-// porcentajes. Lo único que cambia con la calidad es la resolución REAL
-// del canvas:
+// Clase PixelRunner: el juego en sí. Es dueña del estado de la partida
+// (lo que antes era el objeto global RUNNER) y se COMPONE de las demás
+// clases, cada una con una sola responsabilidad:
 //
-//   Alto  → 480x270   (escala 1)
-//   Medio → 408x230   (0.85)
-//   Bajo  → 288x162   (0.6)
-//
-// y un ctx.scale(s, s) hace que todo lo dibujado en coordenadas lógicas
-// caiga donde corresponde. El CSS estira el canvas al mismo tamaño en
-// pantalla (width/height: 100% en pixelrunner.css), así que en Bajo se
-// ven las texturas más gordas — que es justamente lo que se pide — pero
-// el personaje y los obstáculos conservan su tamaño y sus proporciones.
-// Menos píxeles para rellenar = bastante menos trabajo por frame, que es
-// de donde sale el rendimiento en gama baja.
-//
-// IMPORTANTE: nada fuera de acá debe leer RUNNER.canvas.width/height para
-// posicionar cosas — para eso está RUNNER.view (ver runner_config.js),
-// que siempre mide 480x270 pase lo que pase con la calidad.
-export function applyRunnerCanvasScale() {
-  const C = RUNNER.canvas;
-  if (!C) return;
-  const s = (typeof Engine2D !== 'undefined' && Engine2D.Quality)
-    ? Engine2D.Quality.renderScale : 1;
-  RUNNER._renderScale = s;
-  const w = Math.max(1, Math.round(VIEW_W * s));
-  const h = Math.max(1, Math.round(VIEW_H * s));
-  if (C.width !== w || C.height !== h) { C.width = w; C.height = h; }
-  // Tocar width/height resetea el contexto, así que el suavizado y la
-  // transformación se vuelven a aplicar acá (drawRunner también la fija
-  // en cada frame, por las dudas).
-  if (RUNNER.ctx) {
-    RUNNER.ctx.imageSmoothingEnabled = false;
-    RUNNER.ctx.setTransform(s, 0, 0, s, 0, 0);
+//   PixelRunner
+//    ├── dom          : RunnerDOM         (caché del HTML)
+//    ├── economia     : Economia          (monedas, tienda, progreso)
+//    ├── renderer     : RunnerRenderer    (todo el dibujo)
+//    ├── spawner      : Spawner           (genera obstáculos y pickups)
+//    ├── secuencias   : Secuencias        (muerte / victoria / cartel)
+//    ├── menu         : RunnerMenu        (menú y cómics)
+//    ├── jugador      : Jugador
+//    ├── obstacles[]  : ObstaculoSuelo / Pajaro
+//    ├── pickups[]    : Moneda / PowerUp*
+//    ├── cielo        : Cielo
+//    ├── lluvia       : Lluvia
+//    ├── loop         : Engine2D.GameLoop
+//    └── input/touch  : Engine2D.KeyboardInput / TouchControls
+import { RunnerConfig as RC, RunnerDOM } from './runner_config.js';
+import { Jugador, Cielo, Lluvia } from './runner_entities.js';
+import { Economia } from './runner_economy.js';
+import { Spawner } from './runner_spawn.js';
+import { Secuencias } from './runner_sequence.js';
+import { RunnerRenderer } from './runner_render.js';
+import { RunnerMenu } from './runner_menu_flow.js';
+
+export class PixelRunner {
+  constructor() {
+    this.dom = new RunnerDOM();
+
+    this.canvas = null;
+    this.ctx = null;
+    // Espacio lógico (480x270): TODO se posiciona acá, no en el canvas real.
+    this.view = { width: RC.VIEW_W, height: RC.VIEW_H };
+    this.renderScale = 1;
+    this.calidadEnganchada = false;
+    this.loop = null;
+    this.input = null;
+    this.touch = null;
+    this.touchPrev = { left: false, right: false, jump: false, drop: false };
+
+    // ─── Estado de la partida ───
+    this.running = false;
+    this.paused = false;
+    this.started = false;   // false = esperando el primer input (nada se mueve)
+    this.mode = 'historia'; // 'historia' (meta HISTORIA_GOAL) | 'infinito'
+    this.score = 0;
+    this.bestScore = 0;
+    // naturalSpeed = la velocidad según el puntaje; speed = la efectiva
+    // (baja con el power-up de velocidad reducida y se recupera de a poco).
+    this.baseSpeed = 5;
+    this.speed = 5;
+    this.naturalSpeed = 5;
+    this.slowSpeedFrames = 0;
+    this.doublePointsFrames = 0;
+    this.frameCount = 0;
+    this.frameAcc = 0;
+    this.obstacleTimer = 0;
+    this.obstacleInterval = 90;
+    this.pickupTimer = 0;
+    this.pickupInterval = 130;
+    this.coinsRun = 0;      // monedas de esta partida (el total vive en economia)
+    this.biome = 'grass';   // 'grass' | 'desert', se deriva del score
+
+    // Corredor de movimiento lateral
+    this.corridorMinX = 20;
+    this.corridorMaxX = 190;
+    this.moveSpeed = 2.6;
+    this.groundH = 34;
+    this.skyH = 30;
+
+    // Secuencia de victoria (null = juego normal)
+    this.winCastle = null;
+    this.winArrived = false;
+
+    // ─── Composición ───
+    this.jugador = new Jugador();
+    this.obstacles = [];
+    this.pickups = [];
+    this.cielo = new Cielo();
+    this.lluvia = new Lluvia(RC.VIEW_W, RC.VIEW_H, this.groundH);
+    this.economia = new Economia();
+    this.renderer = new RunnerRenderer(this);
+    this.spawner = new Spawner(this);
+    this.secuencias = new Secuencias(this);
+    this.menu = new RunnerMenu(this);
   }
-}
 
-export function initRunner() {
-  RUNNER.canvas = document.getElementById('runnerCanvas');
-
-  requestAnimationFrame(() => {
-    const C = RUNNER.canvas;
-    // Engine2D.getContext (en vez de C.getContext('2d') a secas) marca el
-    // canvas como pixel-art (canvas._e2dPixelArt = true) y apaga el
-    // suavizado.
-    RUNNER.ctx = Engine2D.getContext(C);
-    applyRunnerCanvasScale();
-    // Cambiar la calidad desde Ajustes mientras se juega re-escala el
-    // canvas al toque (una sola suscripción, aunque se entre y salga
-    // varias veces de la sección).
-    if (!RUNNER._qualityHooked && typeof Engine2D !== 'undefined' && Engine2D.Quality) {
-      Engine2D.Quality.onChange(applyRunnerCanvasScale);
-      RUNNER._qualityHooked = true;
+  // ─── Calidad gráfica ───
+  // El juego siempre se programa en 480x270; la calidad solo cambia la
+  // resolución REAL del canvas (Alto 1, Medio 0.85, Bajo 0.6) y un
+  // ctx.scale hace que todo caiga donde corresponde.
+  aplicarEscalaCanvas() {
+    const C = this.canvas;
+    if (!C) return;
+    const s = (typeof Engine2D !== 'undefined' && Engine2D.Quality) ? Engine2D.Quality.renderScale : 1;
+    this.renderScale = s;
+    const w = Math.max(1, Math.round(RC.VIEW_W * s));
+    const h = Math.max(1, Math.round(RC.VIEW_H * s));
+    if (C.width !== w || C.height !== h) { C.width = w; C.height = h; }
+    // Tocar width/height resetea el contexto: se vuelve a aplicar todo.
+    if (this.ctx) {
+      this.ctx.imageSmoothingEnabled = false;
+      this.ctx.setTransform(s, 0, 0, s, 0, 0);
     }
-
-    RUNNER.player.groundY = VIEW_H - RUNNER.groundH - RUNNER.player.h;
-    RUNNER.player.y = RUNNER.player.groundY;
-    RUNNER.totalCoins = loadTotalCoins();
-    refreshRunnerUpgrades(); // trae las mejoras compradas antes de que arranque la partida
-
-    RUNNER_EL.overlay.classList.add('hidden');
-    if (RUNNER.bestScore > 0) {
-      RUNNER_EL.best.textContent = 'Mejor: ' + RUNNER.bestScore + ' pts';
-    }
-
-    setupRunnerInput();
-    setupRunnerTouch();
-
-    // Cargar sprites una sola vez (Engine2D cachea, así que si ya están
-    // cargados de una sesión anterior esto resuelve al toque). Barra de
-    // carga real (Engine2D.LoadingBar), mismo patrón que Castle Escape en
-    // castle_loop.js: se ve el % mientras bajan los sprites/atlas.
-    const runnerLoadingBar = new Engine2D.LoadingBar({
-      container: document.querySelector('.runner-container') || document.body,
-      label: 'Cargando Pixel Runner…'
-    });
-    Engine2D.loadAllWithProgress([
-      { type: 'image', src: RUNNER_ASSETS.junior },
-      { type: 'atlas', src: RUNNER_ASSETS.juniorAt },
-      { type: 'image', src: RUNNER_ASSETS.bird },
-      { type: 'atlas', src: RUNNER_ASSETS.birdAt },
-      { type: 'image', src: RUNNER_ASSETS.obst },
-      { type: 'atlas', src: RUNNER_ASSETS.obstAt },
-      { type: 'image', src: RUNNER_ASSETS.mapa },
-      { type: 'atlas', src: RUNNER_ASSETS.mapaAt },
-      { type: 'image', src: RUNNER_ASSETS.item },
-      { type: 'atlas', src: RUNNER_ASSETS.itemAt },
-      // A diferencia de castillo.webp, esta sí va acá: llueve bastante
-      // seguido (25% de chance cada 250 puntos) así que conviene tenerla
-      // lista desde el arranque, no cargarla a mitad de partida.
-      { type: 'image', src: RUNNER_ASSETS.rainSplash },
-      // castillo.webp NO va acá: solo se ve al ganar Modo Historia, así
-      // que se carga bajo demanda en startHistoriaWinApproach() (ver
-      // runner_sequence.js) en vez de pesar en el arranque de TODAS las
-      // partidas, ganen o no.
-    ], (loaded, total) => {
-      runnerLoadingBar.update(loaded / total);
-    }).then(() => {
-        runnerLoadingBar.destroy();
-        startRunner();
-      }).catch(err => {
-        runnerLoadingBar.destroy();
-        console.error('No se pudieron cargar los sprites de Pixel Runner', err);
-        startRunner(); // arranca igual — drawRunner tiene fallback a rectángulos
-      });
-  });
-}
-
-// ─── Input ──────────────────────────────
-export function setupRunnerInput() {
-  if (RUNNER.input) RUNNER.input.detach();
-
-  RUNNER.input = new Engine2D.KeyboardInput(
-    {
-      ArrowUp: 'jump', Space: 'jump', KeyW: 'jump',
-      ArrowDown: 'drop', KeyS: 'drop',
-      ArrowLeft: 'left', KeyA: 'left',
-      ArrowRight: 'right', KeyD: 'right',
-    },
-    {
-      activeCheck: () => RUNNER_EL.section.classList.contains('active'),
-      preventDefaultFor: new Set(['ArrowUp', 'Space', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyS']),
-      onDown: (action) => {
-        // Enter/Espacio en el overlay de game over = reintentar
-        const overlay = RUNNER_EL.overlay;
-        if (overlay && !overlay.classList.contains('hidden')) {
-          if (action === 'jump') {
-            const btn = RUNNER_EL.restartBtn;
-            if (btn && btn.style.display !== 'none') btn.click();
-          }
-          return;
-        }
-        if (action === 'jump') runnerJumpOrStart();
-        if (action === 'drop') runnerFastDrop();
-      },
-    }
-  );
-  RUNNER.input.attach();
-}
-
-// Llamadas desde los botones táctiles (index.html, mismo patrón que rpgMove)
-export function runnerMove(dir, isDown) {
-  if (!RUNNER.input) return;
-  RUNNER.input.state[dir] = isDown;
-}
-
-// Controles táctiles DENTRO del canvas (Engine2D.TouchControls) — reemplazan
-// los viejos botones de Saltar/Bajar que vivían en HTML debajo del juego.
-// Izquierda/derecha: par horizontal abajo a la izquierda.
-// Saltar/bajar: par vertical abajo a la derecha.
-// Chicos (radius 15) para no tapar mucha pantalla de juego.
-export function setupRunnerTouch() {
-  if (RUNNER.touch) RUNNER.touch.detach();
-  const C = RUNNER.canvas;
-  // Solo se muestran/reaccionan en dispositivos táctiles — en PC el juego
-  // se controla con teclado, así que acá no deben aparecer ni ser clickeables.
-  const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
-    || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
-  // logicalWidth/Height: los botones están puestos en coordenadas de
-  // 480x270; sin esto, con la calidad en Bajo el canvas real mide 288x162
-  // y ningún toque caería adentro de los botones.
-  RUNNER.touch = new Engine2D.TouchControls(C, {
-    visible: isTouchDevice,
-    logicalWidth: VIEW_W,
-    logicalHeight: VIEW_H
-  });
-  RUNNER.touch.addButton({ id: 'left', x: 34, y: 232, radius: 26, label: '◀' });
-  RUNNER.touch.addButton({ id: 'right', x: 94, y: 232, radius: 26, label: '▶' });
-  RUNNER.touch.addButton({ id: 'jump', x: 450, y: 182, radius: 26, label: '▲' });
-  RUNNER.touch.addButton({ id: 'drop', x: 450, y: 242, radius: 26, label: '▼' });
-  RUNNER.touch.attach();
-  RUNNER._touchPrev = { left: false, right: false, jump: false, drop: false };
-}
-
-// Se llama UNA VEZ por frame desde updateRunner (antes que nada, incluso
-// con el jugador muerto, para que Saltar reintente en la pantalla de game
-// over igual que hace la tecla ↑/Espacio). Convierte el estado "sostenido"
-// del engine en las mismas llamadas que ya usaba el teclado.
-export function syncRunnerTouch() {
-  const t = RUNNER.touch;
-  if (!t) return;
-  const prev = RUNNER._touchPrev;
-
-  if (t.state.left !== prev.left) { runnerMove('left', t.state.left); prev.left = t.state.left; }
-  if (t.state.right !== prev.right) { runnerMove('right', t.state.right); prev.right = t.state.right; }
-
-  const jumpPressed = t.state.jump && !prev.jump;
-  const dropPressed = t.state.drop && !prev.drop;
-  prev.jump = t.state.jump;
-  prev.drop = t.state.drop;
-  if (!jumpPressed && !dropPressed) return;
-
-  // Mismo criterio que setupRunnerInput: si el cartel de game over está
-  // abierto, Saltar reintenta en vez de saltar.
-  const overlay = RUNNER_EL.overlay;
-  if (overlay && !overlay.classList.contains('hidden')) {
-    if (jumpPressed) {
-      const btn = RUNNER_EL.restartBtn;
-      if (btn && btn.style.display !== 'none') btn.click();
-    }
-    return;
   }
-  if (jumpPressed) runnerJumpOrStart();
-  if (dropPressed) runnerFastDrop();
-}
 
-export function runnerFastDrop() {
-  if (!RUNNER.running) return;
-  RUNNER.started = true; // agacharse/caída rápida también cuenta como el primer input
-  const p = RUNNER.player;
-  if (p.dead || p.y >= p.groundY) return;
-  p.vy = Math.abs(p.vy) * 0.5 + VIEW_H * 0.04;
-}
+  // ─── Arranque: canvas, input y carga de sprites ───
+  iniciar() {
+    this.canvas = document.getElementById('runnerCanvas');
 
-export function runnerJumpOrStart() {
-  const overlay = RUNNER_EL.overlay;
-  if (overlay && !overlay.classList.contains('hidden')) return;
-  if (!RUNNER.running) return;
-  RUNNER.started = true; // primer input: arranca el juego (personaje deja de estar quieto)
-  const p = RUNNER.player;
-  if (p.dead) return;
-  if (p.jumps < p.maxJumps) {
-    p.vy = -VIEW_H * 0.018 * (RUNNER.rainActive ? RAIN_JUMP_MULT : 1);
-    p.jumps++;
-  }
-}
-
-// ─── Ciclo de vida ──────────────────────
-export function startRunner() {
-  setMusic(RUNNER_ASSET_BASE + 'sounds/backplay.mp3');
-
-  RUNNER.score = 0;
-  RUNNER.speed = RUNNER.baseSpeed;
-  RUNNER.naturalSpeed = RUNNER.baseSpeed;
-  RUNNER.slowSpeedFrames = 0;
-  RUNNER.frameCount = 0;
-  RUNNER.rainActive = false;
-  RUNNER.rainTimer = 0;
-  RUNNER.rainNextCheck = RAIN_CHECK_INTERVAL;
-  RUNNER.rainDrops = [];
-  RUNNER.rainSplashes = [];
-  runnerUpdateHudBadges(); // limpia los badges de una corrida anterior
-  RUNNER._frameAcc = 0;
-  RUNNER.obstacleTimer = 0;
-  RUNNER.obstacleInterval = 90;
-  RUNNER.obstacles = [];
-  RUNNER.running = true;
-  RUNNER.started = false; // arranca quieto — se activa con el primer input (ver updateRunner)
-  RUNNER.pickups = [];
-  RUNNER.pickupTimer = 0;
-  RUNNER.doublePointsFrames = 0;
-  RUNNER.coinsRun = 0; // totalCoins NO se resetea acá, es histórico
-  RUNNER.winCastle = null;
-  RUNNER.winArrived = false;
-
-  const p = RUNNER.player;
-  p.x = 90;
-  p.y = p.groundY;
-  p.vy = 0;
-  p.jumps = 0;
-  p.dead = false;
-  p.animFrame = 0;
-  p.animTick = 0;
-  p.animFrameName = null;
-  p.facing = 1;
-  p.shield = false;
-  p.shieldFrames = 0;
-  p.shieldHitsLeft = 0;
-  p.slowFallFrames = 0;
-
-  // Arranca siempre en el bioma de pasto y de día (frame 0 = fase 0 del
-  // ciclo día/noche, que cae dentro del tramo de día).
-  RUNNER.biome = 'grass';
-  RUNNER.sky.t = 0;
-
-  RUNNER_EL.overlay.classList.add('hidden');
-  RUNNER_EL.scoreDisplay.textContent = runnerScoreText(0);
-  const coinsRunEl = RUNNER_EL.coinsRunDisplay;
-  if (coinsRunEl) coinsRunEl.textContent = '0';
-  RUNNER_EL.restartBtn.style.display = 'none';
-  RUNNER_EL.menuBtn.style.display = 'none';
-
-  if (RUNNER.loop) RUNNER.loop.stop();
-  RUNNER.loop = new Engine2D.GameLoop({
-    update: (dt, step) => updateRunner(step),
-    draw: () => drawRunner(),
-  });
-  RUNNER.loop.start();
-  runnerSyncPauseBtn();
-}
-
-export function stopRunner() {
-  RUNNER.running = false;
-  RUNNER._paused = false;
-  if (RUNNER.loop) RUNNER.loop.stop();
-  if (RUNNER.input) RUNNER.input.detach();
-  if (RUNNER.touch) RUNNER.touch.detach();
-  runnerSyncPauseBtn();
-}
-
-export function pauseRunner() {
-  if (!RUNNER.running || RUNNER._paused || RUNNER.player?.dead) return;
-  RUNNER._paused = true;
-  if (RUNNER.loop) RUNNER.loop.stop();
-}
-
-export function resumeRunner() {
-  if (!RUNNER.running || !RUNNER._paused || RUNNER.player?.dead) return;
-  RUNNER._paused = false;
-  if (RUNNER.loop) RUNNER.loop.start();
-}
-
-// ─── Lluvia: "motor" propio, sin sprite de gota — unas pocas líneas por
-// drop, nada de texturas tileadas (ver charla sobre costuras de piso: acá
-// ni se plantea el problema). Solo el splash contra el piso usa sprite,
-// y únicamente en calidad Alta.
-function makeRainDrop(midFall) {
-  const groundY = VIEW_H - RUNNER.groundH;
-  return {
-    x: Math.random() * VIEW_W,
-    y: midFall ? Math.random() * groundY : -10 - Math.random() * 30,
-    len: 6 + Math.random() * 6,
-  };
-}
-
-function ensureRainPool() {
-  const tier = (typeof Engine2D !== 'undefined' && Engine2D.Quality) ? Engine2D.Quality.level : 'high';
-  const target = Math.round(RAIN_BASE_COUNT * (RAIN_DENSITY[tier] ?? 1));
-  const drops = RUNNER.rainDrops;
-  while (drops.length < target) drops.push(makeRainDrop(true));
-  if (drops.length > target) drops.length = target;
-}
-
-export function updateRain(step) {
-  if (RUNNER.rainActive) {
-    ensureRainPool();
-    const groundY = VIEW_H - RUNNER.groundH;
-    // El splash contra el piso (sprite) solo en calidad Alta — en
-    // medio/bajo la gota simplemente desaparece al tocar el suelo.
-    const spawnSplash = !Engine2D.Quality || Engine2D.Quality.level === 'high';
-    for (const d of RUNNER.rainDrops) {
-      d.x += RAIN_DROP_WIND * step;
-      d.y += RAIN_DROP_SPEED * step;
-      if (d.y >= groundY) {
-        if (spawnSplash) RUNNER.rainSplashes.push({ x: d.x, y: groundY, life: RAIN_SPLASH_LIFE });
-        Object.assign(d, makeRainDrop(false));
+    requestAnimationFrame(() => {
+      // Engine2D.getContext marca el canvas como pixel-art.
+      this.ctx = Engine2D.getContext(this.canvas);
+      this.aplicarEscalaCanvas();
+      // Cambiar la calidad mientras se juega re-escala al toque (una sola suscripción).
+      if (!this.calidadEnganchada && typeof Engine2D !== 'undefined' && Engine2D.Quality) {
+        Engine2D.Quality.onChange(() => this.aplicarEscalaCanvas());
+        this.calidadEnganchada = true;
       }
-      if (d.x < -10) d.x = VIEW_W + 10;
-      else if (d.x > VIEW_W + 10) d.x = -10;
+
+      const p = this.jugador;
+      p.groundY = RC.VIEW_H - this.groundH - p.h;
+      p.y = p.groundY;
+      this.economia.totalCoins = this.economia.cargarMonedas();
+      this.economia.refrescarMejoras();
+
+      this.dom.overlay.classList.add('hidden');
+      if (this.bestScore > 0) this.dom.best.textContent = 'Mejor: ' + this.bestScore + ' pts';
+
+      this.configurarTeclado();
+      this.configurarTactil();
+
+      // castillo.webp NO va acá: se carga bajo demanda al ganar Historia.
+      const A = RC.ASSETS;
+      const barra = new Engine2D.LoadingBar({
+        container: document.querySelector('.runner-container') || document.body,
+        label: 'Cargando Pixel Runner…'
+      });
+      Engine2D.loadAllWithProgress([
+        { type: 'image', src: A.junior }, { type: 'atlas', src: A.juniorAt },
+        { type: 'image', src: A.bird }, { type: 'atlas', src: A.birdAt },
+        { type: 'image', src: A.obst }, { type: 'atlas', src: A.obstAt },
+        { type: 'image', src: A.mapa }, { type: 'atlas', src: A.mapaAt },
+        { type: 'image', src: A.item }, { type: 'atlas', src: A.itemAt },
+        { type: 'image', src: A.rainSplash }, // llueve seguido: conviene tenerla lista
+      ], (loaded, total) => barra.update(loaded / total))
+        .then(() => {
+          barra.destroy();
+          this.empezar();
+        }).catch(err => {
+          barra.destroy();
+          console.error('No se pudieron cargar los sprites de Pixel Runner', err);
+          this.empezar(); // arranca igual: el renderer tiene dibujos de respaldo
+        });
+    });
+  }
+
+  // ─── Input ───
+  configurarTeclado() {
+    if (this.input) this.input.detach();
+    this.input = new Engine2D.KeyboardInput(
+      {
+        ArrowUp: 'jump', Space: 'jump', KeyW: 'jump',
+        ArrowDown: 'drop', KeyS: 'drop',
+        ArrowLeft: 'left', KeyA: 'left',
+        ArrowRight: 'right', KeyD: 'right',
+      },
+      {
+        activeCheck: () => this.dom.section.classList.contains('active'),
+        preventDefaultFor: new Set(['ArrowUp', 'Space', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyS']),
+        onDown: (action) => {
+          // Con el cartel de game over abierto, Saltar = reintentar.
+          if (this.dom.overlayVisible()) {
+            if (action === 'jump') this.dom.clickReintentar();
+            return;
+          }
+          if (action === 'jump') this.saltarOEmpezar();
+          if (action === 'drop') this.caidaRapida();
+        },
+      }
+    );
+    this.input.attach();
+  }
+
+  mover(dir, isDown) {
+    if (!this.input) return;
+    this.input.state[dir] = isDown;
+  }
+
+  // Controles táctiles dentro del canvas (solo en dispositivos táctiles).
+  configurarTactil() {
+    if (this.touch) this.touch.detach();
+    const isTouchDevice = (window.matchMedia && window.matchMedia('(pointer: coarse)').matches)
+      || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    // Botones en coordenadas lógicas: siguen andando con cualquier calidad.
+    this.touch = new Engine2D.TouchControls(this.canvas, {
+      visible: isTouchDevice,
+      logicalWidth: RC.VIEW_W,
+      logicalHeight: RC.VIEW_H
+    });
+    this.touch.addButton({ id: 'left', x: 34, y: 232, radius: 26, label: '◀' });
+    this.touch.addButton({ id: 'right', x: 94, y: 232, radius: 26, label: '▶' });
+    this.touch.addButton({ id: 'jump', x: 450, y: 182, radius: 26, label: '▲' });
+    this.touch.addButton({ id: 'drop', x: 450, y: 242, radius: 26, label: '▼' });
+    this.touch.attach();
+    this.touchPrev = { left: false, right: false, jump: false, drop: false };
+  }
+
+  // Una vez por frame: convierte el estado táctil en las mismas acciones del teclado.
+  sincronizarTactil() {
+    const t = this.touch;
+    if (!t) return;
+    const prev = this.touchPrev;
+
+    if (t.state.left !== prev.left) { this.mover('left', t.state.left); prev.left = t.state.left; }
+    if (t.state.right !== prev.right) { this.mover('right', t.state.right); prev.right = t.state.right; }
+
+    const jumpPressed = t.state.jump && !prev.jump;
+    const dropPressed = t.state.drop && !prev.drop;
+    prev.jump = t.state.jump;
+    prev.drop = t.state.drop;
+    if (!jumpPressed && !dropPressed) return;
+
+    if (this.dom.overlayVisible()) {
+      if (jumpPressed) this.dom.clickReintentar();
+      return;
     }
-  } else if (RUNNER.rainDrops.length) {
-    // Corte simple al terminar: no quedan gotas a mitad de caída. Es una
-    // simplificación a propósito — 20s es predecible, no hace falta un
-    // apagado gradual para que se sienta bien.
-    RUNNER.rainDrops.length = 0;
+    if (jumpPressed) this.saltarOEmpezar();
+    if (dropPressed) this.caidaRapida();
   }
 
-  // Los splashes se apagan solos aunque la lluvia ya haya parado justo
-  // este frame (así el último impacto no se corta de golpe a mitad del
-  // fundido).
-  const splashes = RUNNER.rainSplashes;
-  for (let i = splashes.length - 1; i >= 0; i--) {
-    splashes[i].life -= step;
-    if (splashes[i].life <= 0) { splashes[i] = splashes[splashes.length - 1]; splashes.pop(); }
+  caidaRapida() {
+    if (!this.running) return;
+    this.started = true; // también cuenta como primer input
+    const p = this.jugador;
+    if (p.dead) return;
+    p.caidaRapida(RC.VIEW_H);
   }
-}
 
-export function updateRunner(step) {
-  // Espacio lógico (480x270), NO el canvas real: spawnObstacle/
-  // spawnPickupGroup/updateWinApproach lo reciben como `C` y solo leen
-  // .width/.height para posicionar, así que siguen andando igual con
-  // cualquier calidad.
-  const C = RUNNER.view;
-  const p = RUNNER.player;
-  syncRunnerTouch();
-  if (p.dead) return;
+  saltarOEmpezar() {
+    if (this.dom.overlayVisible()) return;
+    if (!this.running) return;
+    this.started = true; // primer input: arranca el juego
+    const p = this.jugador;
+    if (p.dead) return;
+    p.saltar(RC.VIEW_H, this.lluvia.active);
+  }
 
-  // Esperando el primer input: el personaje queda quieto parado en el
-  // piso y nada más se mueve (ni obstáculos, ni score, ni ciclo día/noche)
-  // hasta que el jugador toca cualquier botón (salto, agache, izq o der).
-  if (!RUNNER.started) {
-    const waitingInput = RUNNER.input.state;
-    if (waitingInput.left || waitingInput.right || waitingInput.jump || waitingInput.drop) {
-      RUNNER.started = true;
+  // ─── Ciclo de vida ───
+  empezar() {
+    setMusic(RC.ASSET_BASE + 'sounds/backplay.mp3');
+
+    this.score = 0;
+    this.speed = this.baseSpeed;
+    this.naturalSpeed = this.baseSpeed;
+    this.slowSpeedFrames = 0;
+    this.frameCount = 0;
+    this.lluvia.reiniciar();
+    this.actualizarHud(); // limpia los badges de una corrida anterior
+    this.frameAcc = 0;
+    this.obstacleTimer = 0;
+    this.obstacleInterval = 90;
+    this.obstacles = [];
+    this.running = true;
+    this.started = false;
+    this.pickups = [];
+    this.pickupTimer = 0;
+    this.doublePointsFrames = 0;
+    this.coinsRun = 0; // el total histórico NO se resetea
+    this.winCastle = null;
+    this.winArrived = false;
+
+    this.jugador.reiniciar();
+
+    // Siempre arranca en pasto y de día.
+    this.biome = 'grass';
+    this.cielo.t = 0;
+
+    const dom = this.dom;
+    dom.overlay.classList.add('hidden');
+    dom.scoreDisplay.textContent = this.textoPuntaje(0);
+    if (dom.coinsRunDisplay) dom.coinsRunDisplay.textContent = '0';
+    dom.restartBtn.style.display = 'none';
+    dom.menuBtn.style.display = 'none';
+
+    if (this.loop) this.loop.stop();
+    this.loop = new Engine2D.GameLoop({
+      update: (dt, step) => this.update(step),
+      draw: () => this.renderer.dibujar(),
+    });
+    this.loop.start();
+    this.sincronizarBotonPausa();
+  }
+
+  detener() {
+    this.running = false;
+    this.paused = false;
+    if (this.loop) this.loop.stop();
+    if (this.input) this.input.detach();
+    if (this.touch) this.touch.detach();
+    this.sincronizarBotonPausa();
+  }
+
+  pausar() {
+    if (!this.running || this.paused || this.jugador.dead) return;
+    this.paused = true;
+    if (this.loop) this.loop.stop();
+  }
+
+  reanudar() {
+    if (!this.running || !this.paused || this.jugador.dead) return;
+    this.paused = false;
+    if (this.loop) this.loop.start();
+  }
+
+  // ─── Update por frame ───
+  update(step) {
+    const C = this.view;
+    const p = this.jugador;
+    this.sincronizarTactil();
+    if (p.dead) return;
+
+    // Esperando el primer input: nada se mueve hasta que toque algo.
+    if (!this.started) {
+      const s = this.input.state;
+      if (s.left || s.right || s.jump || s.drop) this.started = true;
+      else return;
+    }
+
+    // Secuencia de victoria en curso: reemplaza al update normal.
+    if (this.winCastle) {
+      this.secuencias.actualizarVictoria(step);
+      return;
+    }
+
+    if (this.avanzarPuntaje(step)) return; // llegó a la meta de Historia
+
+    if (this.doublePointsFrames > 0) this.doublePointsFrames = Math.max(0, this.doublePointsFrames - step);
+    p.actualizarPowerUps(step);
+    this.actualizarVelocidad(step);
+
+    // Bioma: alterna pasto/desierto cada BIOME_SEGMENT puntos.
+    this.biome = (Math.floor(this.score / RC.BIOME_SEGMENT) % 2 === 0) ? 'grass' : 'desert';
+
+    this.lluvia.actualizarClima(this.score, step);
+    this.lluvia.actualizar(step);
+
+    p.moverLateral(step, this.input.state, this.corridorMinX, this.corridorMaxX, this.moveSpeed);
+    p.aplicarFisica(step, C.height);
+    p.animarCarrera(step);
+
+    this.cielo.sincronizar(this.frameCount);
+    this.cielo.moverNubes(step, C.width);
+
+    if (this.actualizarObstaculos(step)) return; // murió
+    this.actualizarPickups(step);
+    this.actualizarHud();
+  }
+
+  // frameCount cuenta "frames de 60fps" acumulando step: el puntaje, el
+  // ciclo día/noche y los biomas avanzan igual con cualquier FPS.
+  // Devuelve true si se llegó a la meta del Modo Historia.
+  avanzarPuntaje(step) {
+    this.frameAcc = (this.frameAcc || 0) + step;
+    let scoreChanged = false;
+    while (this.frameAcc >= 1) {
+      this.frameAcc -= 1;
+      this.frameCount++;
+      if (this.frameCount % 6 !== 0) continue;
+      this.score += this.doublePointsFrames > 0 ? this.economia.multiplicadorPuntos() : 1;
+      scoreChanged = true;
+      if (this.mode === 'historia' && this.score >= RC.HISTORIA_GOAL) {
+        this.score = RC.HISTORIA_GOAL; // no pasarse de la meta en el HUD
+        this.dom.scoreDisplay.textContent = this.textoPuntaje(this.score);
+        this.secuencias.iniciarVictoria();
+        return true;
+      }
+      if (this.score % 250 === 0) {
+        // naturalSpeed: si hay velocidad reducida activa, el aumento se nota al terminar.
+        this.naturalSpeed += 0.8;
+        this.obstacleInterval = Math.max(45, this.obstacleInterval - 5);
+      }
+    }
+    if (scoreChanged) this.dom.scoreDisplay.textContent = this.textoPuntaje(this.score);
+    return false;
+  }
+
+  // Con "velocidad reducida" queda en un % de naturalSpeed; al terminar,
+  // sube de a poco hasta volver a empatar.
+  actualizarVelocidad(step) {
+    if (this.slowSpeedFrames > 0) {
+      this.slowSpeedFrames = Math.max(0, this.slowSpeedFrames - step);
+      this.speed = this.naturalSpeed * this.economia.factorVelocidadReducida();
+    } else if (this.speed < this.naturalSpeed) {
+      this.speed = Math.min(this.naturalSpeed, this.speed + RC.SLOWSPEED_RECOVER_STEP * this.naturalSpeed * step);
     } else {
-      return;
+      this.speed = this.naturalSpeed;
     }
   }
 
-  // Secuencia de victoria de Historia en curso: el castillo entra en
-  // cuadro / Junior camina hacia la puerta. Mientras dura esto no hay
-  // spawns, colisiones ni más puntaje — ver updateWinApproach.
-  if (RUNNER.winCastle) {
-    updateWinApproach(step, C);
-    return;
-  }
-
-  // Score + velocidad
-  // frameCount cuenta "frames de 60fps" acumulando step, no frames reales:
-  // antes sumaba 1 por frame dibujado, así que el puntaje, el ciclo
-  // día/noche y los biomas avanzaban más lento con pocos FPS (o con el
-  // tope de 30 en calidad baja) y más rápido en monitores de 144Hz.
-  RUNNER._frameAcc = (RUNNER._frameAcc || 0) + step;
-  let scoreChanged = false;
-  while (RUNNER._frameAcc >= 1) {
-    RUNNER._frameAcc -= 1;
-    RUNNER.frameCount++;
-    if (RUNNER.frameCount % 6 !== 0) continue;
-    RUNNER.score += RUNNER.doublePointsFrames > 0 ? runnerScoreMultiplier() : 1; // x2/x3 (según mejora) activo = puntaje multiplicado por tick
-    scoreChanged = true;
-    if (RUNNER.mode === 'historia' && RUNNER.score >= HISTORIA_GOAL) {
-      RUNNER.score = HISTORIA_GOAL; // no pasarse de la meta en el HUD
-      RUNNER_EL.scoreDisplay.textContent = runnerScoreText(RUNNER.score);
-      startHistoriaWinApproach(C);
-      return;
+  // Spawn + mover + colisionar. Devuelve true si el jugador murió.
+  actualizarObstaculos(step) {
+    const p = this.jugador;
+    this.obstacleTimer += step;
+    if (this.obstacleTimer >= this.obstacleInterval) {
+      this.obstacleTimer = 0;
+      this.spawner.generarObstaculo();
     }
-    if (RUNNER.score % 250 === 0) {
-      // naturalSpeed (no RUNNER.speed directo): si en ese momento está
-      // activo el power-up de velocidad reducida, el aumento se nota
-      // recién cuando el efecto termine y empiece a recuperar — no rompe
-      // el power-up a mitad de camino.
-      RUNNER.naturalSpeed += 0.8;
-      RUNNER.obstacleInterval = Math.max(45, RUNNER.obstacleInterval - 5);
-    }
-  }
-  if (scoreChanged) RUNNER_EL.scoreDisplay.textContent = runnerScoreText(RUNNER.score);
-  if (RUNNER.doublePointsFrames > 0) RUNNER.doublePointsFrames = Math.max(0, RUNNER.doublePointsFrames - step);
-  if (p.shieldFrames > 0) {
-    p.shieldFrames = Math.max(0, p.shieldFrames - step);
-    p.shield = p.shieldFrames > 0;
-  }
-  if (p.slowFallFrames > 0) p.slowFallFrames = Math.max(0, p.slowFallFrames - step);
 
-  // Velocidad efectiva: mientras dura "velocidad reducida" queda fija en
-  // un % de naturalSpeed; al acabarse, sube de a poco (no de golpe) hasta
-  // volver a empatar con naturalSpeed.
-  if (RUNNER.slowSpeedFrames > 0) {
-    RUNNER.slowSpeedFrames = Math.max(0, RUNNER.slowSpeedFrames - step);
-    RUNNER.speed = RUNNER.naturalSpeed * slowSpeedFactor();
-  } else if (RUNNER.speed < RUNNER.naturalSpeed) {
-    RUNNER.speed = Math.min(RUNNER.naturalSpeed, RUNNER.speed + SLOWSPEED_RECOVER_STEP * RUNNER.naturalSpeed * step);
-  } else {
-    RUNNER.speed = RUNNER.naturalSpeed;
-  }
+    for (let i = this.obstacles.length - 1; i >= 0; i--) {
+      const o = this.obstacles[i];
+      o.mover(step, this.speed);
+      if (o.fueraDePantalla()) { this.obstacles.splice(i, 1); continue; }
+      if (!o.golpea(p)) continue;
 
-  // Bioma: alterna pasto/desierto cada BIOME_SEGMENT (500) puntos.
-  const segmentIndex = Math.floor(RUNNER.score / BIOME_SEGMENT);
-  RUNNER.biome = (segmentIndex % 2 === 0) ? 'grass' : 'desert';
-
-  // Lluvia: se tira el dado cada RAIN_CHECK_INTERVAL puntos, pero solo si
-  // no está lloviendo ya (si no llueve esta vez, se reintenta en el
-  // próximo checkpoint — no hay un segundo intento a mitad de camino).
-  while (RUNNER.score >= RUNNER.rainNextCheck) {
-    RUNNER.rainNextCheck += RAIN_CHECK_INTERVAL;
-    if (!RUNNER.rainActive && Math.random() < RAIN_CHANCE) {
-      RUNNER.rainActive = true;
-      RUNNER.rainTimer = RAIN_DURATION;
-    }
-  }
-  if (RUNNER.rainActive) {
-    RUNNER.rainTimer -= step;
-    if (RUNNER.rainTimer <= 0) { RUNNER.rainActive = false; RUNNER.rainTimer = 0; }
-  }
-  updateRain(step);
-
-
-  // Movimiento lateral (acotado al corredor). Junior siempre corre mirando
-  // a la derecha — ir hacia la izquierda no lo hace "correr para atrás",
-  // es simplemente perder terreno/velocidad relativa (el sprite no se da
-  // vuelta), por eso facing nunca pasa a -1 acá.
-  const input = RUNNER.input.state;
-  let vx = 0;
-  if (input.left) vx -= RUNNER.moveSpeed;
-  if (input.right) vx += RUNNER.moveSpeed;
-  p.x = Math.min(RUNNER.corridorMaxX, Math.max(RUNNER.corridorMinX, p.x + vx * step));
-
-  // Física vertical (salto/gravedad). Con "caída lenta" activa, la
-  // gravedad se reduce (afecta subida y bajada del salto por igual — lo
-  // que se nota es que tarda más en volver al piso).
-  const gravMult = p.slowFallFrames > 0 ? SLOWFALL_GRAVITY_MULT : 1;
-  p.vy += GRAVITY * gravMult * (C.height / 200) * step;
-  p.y += p.vy * step;
-  if (p.y >= p.groundY) {
-    p.y = p.groundY;
-    p.vy = 0;
-    p.jumps = 0;
-  }
-
-  // Animación de correr (piernas) solo si está en el piso
-  p.animTick += step;
-  if (p.animTick >= 6) { p.animTick = 0; p.animFrame = (p.animFrame + 1) % RUN_FRAMES.length; }
-
-  // Ciclo día/noche + nubes (las nubes van a su propia velocidad, más
-  // lenta que el juego — no aceleran con RUNNER.speed, dan sensación de
-  // fondo lejano / parallax). sky.t se deriva directo de frameCount (no se
-  // acumula solo) para que quede perfectamente sincronizado con el score:
-  // la noche arranca justo a los DAY_HALF puntos de cada bioma.
-  RUNNER.sky.t = RUNNER.frameCount % RUNNER.sky.cycleLen;
-  RUNNER.sky.clouds.forEach(c => {
-    c.x -= c.speed * step;
-    if (c.x < -100) c.x = C.width + 40 + Math.random() * 60;
-  });
-
-  // Spawn de obstáculos
-  RUNNER.obstacleTimer += step;
-  if (RUNNER.obstacleTimer >= RUNNER.obstacleInterval) {
-    RUNNER.obstacleTimer = 0;
-    spawnObstacle(C);
-  }
-
-  // Mover + colisionar obstáculos
-  for (let i = RUNNER.obstacles.length - 1; i >= 0; i--) {
-    const o = RUNNER.obstacles[i];
-    o.x -= RUNNER.speed * step;
-    o.animTick = (o.animTick || 0) + step;
-    if (o.x + o.w < -20) { RUNNER.obstacles.splice(i, 1); continue; }
-
-    const margin = 6;
-    if (
-      p.x + margin < o.x + o.w - margin &&
-      p.x + p.w - margin > o.x + margin &&
-      p.y + margin < o.y + o.h - margin &&
-      p.y + p.h - margin > o.y + margin
-    ) {
-      if (p.shieldFrames > 0) {
-        // El escudo protege golpes (1, o 2 con la mejora "Escudo
-        // reforzado") sin importar cuánto timer le quedaba todavía; recién
-        // se apaga del todo cuando se le acaban los golpes.
-        p.shieldHitsLeft = Math.max(0, (p.shieldHitsLeft || 1) - 1);
-        RUNNER.obstacles.splice(i, 1);
-        if (p.shieldHitsLeft <= 0) {
-          p.shieldFrames = 0;
-          p.shield = false;
-        }
+      if (p.absorberGolpe()) {
+        this.obstacles.splice(i, 1);
         continue;
       }
-      // Si hay un duelo de Pixel Runner en curso (window.dueloActivo lo
-      // pone app2.js), capturamos el puntaje final ACÁ, en el momento
-      // exacto de morir, antes de que playerDie() haga lo suyo. Es más
-      // confiable que leerlo después desde el HUD.
-      const dueloRunnerActivo = window.dueloActivo && window.dueloActivo.juego === 'runner'
-        ? window.dueloActivo
-        : null;
-      const scoreFinalDuelo = RUNNER.score;
-      playerDie();
-      if (dueloRunnerActivo && typeof window.finalizarDueloConPuntaje === 'function') {
-        window.finalizarDueloConPuntaje(dueloRunnerActivo.id, scoreFinalDuelo);
+      // Duelo de Pixel Runner en curso (lo pone app2.js): se captura el
+      // puntaje en el momento exacto de morir.
+      const duelo = window.dueloActivo && window.dueloActivo.juego === 'runner' ? window.dueloActivo : null;
+      const scoreFinalDuelo = this.score;
+      this.secuencias.morir();
+      if (duelo && typeof window.finalizarDueloConPuntaje === 'function') {
+        window.finalizarDueloConPuntaje(duelo.id, scoreFinalDuelo);
       }
-      return;
+      return true;
+    }
+    return false;
+  }
+
+  actualizarPickups(step) {
+    const p = this.jugador;
+    this.pickupTimer += step;
+    if (this.pickupTimer >= this.pickupInterval) {
+      this.pickupTimer = 0;
+      if (Math.random() < RC.POWERUP_CHANCE) this.spawner.generarPowerUp();
+      else this.spawner.generarGrupoMonedas();
+    }
+
+    for (let i = this.pickups.length - 1; i >= 0; i--) {
+      const o = this.pickups[i];
+      o.mover(step, this.speed);
+      if (o.fueraDePantalla()) { this.pickups.splice(i, 1); continue; }
+      if (o.tocaA(p)) {
+        o.recolectar(this); // polimorfismo: cada pickup sabe qué efecto da
+        this.pickups.splice(i, 1);
+      }
     }
   }
 
-  // Spawn de monedas / power-ups
-  RUNNER.pickupTimer += step;
-  if (RUNNER.pickupTimer >= RUNNER.pickupInterval) {
-    RUNNER.pickupTimer = 0;
-    if (Math.random() < POWERUP_CHANCE) {
-      spawnPowerup(C);
-    } else {
-      spawnPickupGroup(C);
-    }
+  // ─── HUD (HTML, fuera del canvas) ───
+  textoPuntaje(score) {
+    return this.mode === 'historia' ? (score + ' / ' + RC.HISTORIA_GOAL) : String(score);
   }
 
-  // Mover + colisionar monedas / power-ups (no matan, suman puntos o dan buff)
-  for (let i = RUNNER.pickups.length - 1; i >= 0; i--) {
-    const o = RUNNER.pickups[i];
-    o.x -= RUNNER.speed * step;
-    if (o.kind === 'coin') {
-      o.spinTick = (o.spinTick || 0) + step;
-      if (o.spinTick >= 4) { o.spinTick = 0; o.spinFrame = (o.spinFrame + 1) % COIN_SPIN_FRAMES.length; }
-    }
-    if (o.x + o.w < -20) { RUNNER.pickups.splice(i, 1); continue; }
-
-    if (
-      p.x < o.x + o.w &&
-      p.x + p.w > o.x &&
-      p.y < o.y + o.h &&
-      p.y + p.h > o.y
-    ) {
-      collectPickup(o);
-      RUNNER.pickups.splice(i, 1);
-    }
+  // El botón de pausa se ve SOLO mientras hay una partida en curso.
+  sincronizarBotonPausa() {
+    const btn = this.dom.pauseBtn;
+    if (btn) btn.classList.toggle('hidden', !this.running);
   }
 
-  runnerUpdateHudBadges();
-}
+  // Multiplicador de puntos y power-ups activos, recalculado cada frame.
+  actualizarHud() {
+    const p = this.jugador;
 
-// HUD en HTML (no en el canvas): multiplicador de puntos al lado de
-// "Puntos", y qué power-ups están activos debajo de "Monedas". Se
-// recalcula entero cada frame — es liviano (unos pocos elementos) y así
-// no hay que enganchar el cambio en cada lugar donde un timer puede
-// vencerse.
-export function runnerUpdateHudBadges() {
-  const p = RUNNER.player;
-
-  const mEl = RUNNER_EL.multiplierDisplay;
-  if (mEl) {
-    if (RUNNER.doublePointsFrames > 0) {
-      mEl.textContent = 'x' + runnerScoreMultiplier();
-      mEl.classList.remove('hidden');
-    } else {
-      mEl.classList.add('hidden');
+    const mEl = this.dom.multiplierDisplay;
+    if (mEl) {
+      if (this.doublePointsFrames > 0) {
+        mEl.textContent = 'x' + this.economia.multiplicadorPuntos();
+        mEl.classList.remove('hidden');
+      } else {
+        mEl.classList.add('hidden');
+      }
     }
-  }
 
-  const pEl = RUNNER_EL.activePowerupDisplay;
-  if (pEl) {
-    const badges = [];
-    if (p.shield) badges.push('<span class="runner-hud-icon runner-hud-icon-shield" title="Escudo"></span>');
-    if (p.slowFallFrames > 0) badges.push('<span class="runner-hud-icon runner-hud-icon-slowfall" title="Caída lenta"></span>');
-    if (RUNNER.slowSpeedFrames > 0) badges.push('<span class="runner-hud-icon runner-hud-icon-slowspeed" title="Velocidad reducida"></span>');
-    if (badges.length) {
-      pEl.innerHTML = badges.join('');
-      pEl.classList.remove('hidden');
-    } else {
-      pEl.classList.add('hidden');
-      pEl.innerHTML = '';
+    const pEl = this.dom.activePowerupDisplay;
+    if (pEl) {
+      const badges = [];
+      if (p.shield) badges.push('<span class="runner-hud-icon runner-hud-icon-shield" title="Escudo"></span>');
+      if (p.slowFallFrames > 0) badges.push('<span class="runner-hud-icon runner-hud-icon-slowfall" title="Caída lenta"></span>');
+      if (this.slowSpeedFrames > 0) badges.push('<span class="runner-hud-icon runner-hud-icon-slowspeed" title="Velocidad reducida"></span>');
+      if (badges.length) {
+        pEl.innerHTML = badges.join('');
+        pEl.classList.remove('hidden');
+      } else {
+        pEl.classList.add('hidden');
+        pEl.innerHTML = '';
+      }
     }
   }
 }
-
-// Puntaje a partir del cual pueden aparecer obstáculos "en grupo" (varios
-// árboles o varios cactus pegados uno al lado del otro).

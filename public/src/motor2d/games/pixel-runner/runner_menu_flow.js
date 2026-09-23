@@ -1,44 +1,63 @@
 // ══════════════════════════════════════
 //   Pixel Runner — runner_menu_flow.js  (módulo ES6)
 // ══════════════════════════════════════
-// Pantallas de menú: mostrar/ocultar el menú del runner, reiniciar y
-// arrancar una partida nueva.
-import { RUNNER, RUNNER_EL, RUNNER_ASSET_BASE } from './runner_config.js';
-import { stopRunner, setupRunnerInput, setupRunnerTouch, startRunner, initRunner } from './runner_loop.js';
+// Clase RunnerMenu: menú del runner, reiniciar/arrancar partida y los
+// cómics del Modo Historia. Recibe el juego por constructor (composición).
+import { RunnerConfig as RC } from './runner_config.js';
 
-export function restartRunner() {
-  stopRunner();
-  setupRunnerInput();
-  setupRunnerTouch();
-  startRunner();
+export class RunnerMenu {
+  constructor(juego) {
+    this.juego = juego;
+    this.dom = juego.dom;
+    this.comicCallback = null; // qué hacer al tocar "Continuar" en el cómic
+  }
+
+  reiniciar() {
+    const juego = this.juego;
+    juego.detener();
+    juego.configurarTeclado();
+    juego.configurarTactil();
+    juego.empezar();
+  }
+
+  irAlMenu() {
+    this.juego.detener();
+    this.mostrar();
+  }
+
+  mostrar() {
+    const dom = this.dom;
+    const container = document.querySelector('#sec-runner .runner-container');
+    if (dom.menu) dom.menu.classList.remove('hidden');
+    if (container) container.classList.remove('hidden');
+    if (dom.overlay) dom.overlay.classList.add('hidden');
+    if (dom.comicOverlay) dom.comicOverlay.classList.add('hidden');
+    // Por si quedó algún cartel (Mejoras/Ajustes/Cómo jugar) abierto.
+    if (typeof cerrarPanelesRunner === 'function') cerrarPanelesRunner();
+    setMusic(RC.ASSET_BASE + 'sounds/menu.mp3');
+  }
+
+  empezarPartida(mode) {
+    this.juego.mode = (mode === 'infinito') ? 'infinito' : 'historia';
+    if (this.dom.menu) this.dom.menu.classList.add('hidden');
+    setMusic(RC.ASSET_BASE + 'sounds/backplay.mp3');
+    this.juego.iniciar();
+  }
+
+  // ─── Cómics a pantalla completa ───
+  mostrarComic(src, onContinue) {
+    const overlay = this.dom.comicOverlay;
+    const img = this.dom.comicImg;
+    if (!overlay || !img) { onContinue(); return; }
+    img.src = src;
+    this.comicCallback = onContinue;
+    overlay.classList.remove('hidden');
+  }
+
+  continuarComic() {
+    if (this.dom.comicOverlay) this.dom.comicOverlay.classList.add('hidden');
+    const cb = this.comicCallback;
+    this.comicCallback = null;
+    if (typeof cb === 'function') cb();
+  }
 }
-
-export function toRunnerMenu() {
-  stopRunner();
-  showRunnerMenu();
-}
-
-export function showRunnerMenu() {
-  const menu = RUNNER_EL.menu;
-  const container = document.querySelector('#sec-runner .runner-container');
-  if (menu) menu.classList.remove('hidden');
-  if (container) container.classList.remove('hidden');
-  const ov = RUNNER_EL.overlay;
-  if (ov) ov.classList.add('hidden');
-  const comicOv = RUNNER_EL.comicOverlay;
-  if (comicOv) comicOv.classList.add('hidden');
-  // Por si quedó algún cartel (Mejoras/Ajustes/Cómo jugar) abierto de una
-  // visita anterior al menú.
-  if (typeof cerrarPanelesRunner === 'function') cerrarPanelesRunner();
-  setMusic(RUNNER_ASSET_BASE + 'sounds/menu.mp3');
-}
-
-export function startPixelRunnerGame(mode) {
-  RUNNER.mode = (mode === 'infinito') ? 'infinito' : 'historia';
-  const menu = RUNNER_EL.menu;
-  if (menu) menu.classList.add('hidden');
-  setMusic(RUNNER_ASSET_BASE + 'sounds/backplay.mp3');
-  initRunner();
-}
-
-// ─── Dibujo ─────────────────────────────

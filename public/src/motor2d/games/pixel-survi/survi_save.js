@@ -69,6 +69,7 @@ export function saveWorld(slot, payload) {
       hp: payload.hp,
       hunger: payload.hunger,
       timeOfDay: payload.timeOfDay,
+      stations: payload.stations,   // hornos y cofres (contenido y estado)
       inventory: payload.inventory,
       hotbarSlots: payload.hotbarSlots,
       selectedSlot: payload.selectedSlot,

@@ -1,167 +1,155 @@
 // ══════════════════════════════════════
 //   Pixel Runner — runner_economy.js  (módulo ES6)
 // ══════════════════════════════════════
-// Monedas, mejoras de la tienda (RUNNER.upgrades) y progreso del Modo
-// Historia — todo persistido en localStorage. Constantes en runner_config.js.
-import {
-  RUNNER, COINS_STORAGE_KEY, UPGRADES_STORAGE_KEY, UPGRADE_MAX_LEVEL,
-  UPGRADE_LEVEL_COSTS, UPGRADE_SHIELD_HITS_COST, UPGRADE_X2_TRIPLE_COST,
-  SHIELD_DURATION, DOUBLE_POINTS_DURATION, UPGRADE_DURATION_STEP,
-  SLOWFALL_DURATION, SLOWSPEED_DURATION, SLOWFALL_DURATION_STEP,
-  SLOWSPEED_FACTOR_BASE, SLOWSPEED_FACTOR_STRONG, UPGRADE_SLOWSPEED_STRONG_COST,
-  HISTORIA_STORAGE_KEY
-} from './runner_config.js';
-
-export function loadTotalCoins() {
-  const raw = localStorage.getItem(COINS_STORAGE_KEY);
-  const n = parseInt(raw, 10);
-  return Number.isFinite(n) ? n : 0;
-}
-export function saveTotalCoins(total) {
-  localStorage.setItem(COINS_STORAGE_KEY, String(total));
-}
-
-// ─── Tienda de mejoras ──────────────────────────────────────────────────
-// 6 mejoras permanentes, pagadas con las monedas juntadas (RUNNER.totalCoins),
-// persistidas en localStorage igual que las monedas y el progreso de Historia.
+// Clase Economia: monedas, tienda de mejoras y progreso del Modo Historia,
+// todo persistido en localStorage. Es la ÚNICA clase que toca esas claves.
 //
-//  - shieldLevel     (0..10): +1 seg de duración del escudo por nivel.
-//  - x2Level         (0..10): +1 seg de duración del x2 por nivel.
-//  - slowFallLevel   (0..10): +2 seg de duración de caída lenta por nivel.
-//  - slowSpeedLevel  (0..10): +1 seg de duración de velocidad reducida por nivel.
-//  - shieldHits      (bool):  el escudo pasa de aguantar 1 golpe a 2.
+// 7 mejoras permanentes, pagadas con las monedas juntadas:
+//  - shieldLevel     (0..10): +1 seg de escudo por nivel.
+//  - x2Level         (0..10): +1 seg de x2 por nivel.
+//  - slowFallLevel   (0..10): +2 seg de caída lenta por nivel.
+//  - slowSpeedLevel  (0..10): +1 seg de velocidad reducida por nivel.
+//  - shieldHits      (bool):  el escudo aguanta 2 golpes en vez de 1.
 //  - x2Triple        (bool):  el power-up de puntos pasa de x2 a x3.
 //  - slowSpeedStrong (bool):  velocidad reducida pasa de -25% a -50%.
-//
-// Las mejoras de nivel cuestan más cada vez (100,200,...,1000 = 5500 en
-// total para llevar una al máximo, misma tabla para las 4); las de un
-// solo golpe (shieldHits / x2Triple / slowSpeedStrong) son compras únicas.
-export function defaultRunnerUpgrades() {
-  return {
-    shieldLevel: 0, x2Level: 0, slowFallLevel: 0, slowSpeedLevel: 0,
-    shieldHits: false, x2Triple: false, slowSpeedStrong: false,
-  };
-}
+import { RunnerConfig as RC } from './runner_config.js';
 
-export function loadUpgrades() {
-  const def = defaultRunnerUpgrades();
-  try {
-    const raw = localStorage.getItem(UPGRADES_STORAGE_KEY);
-    if (!raw) return def;
-    const parsed = JSON.parse(raw);
-    const clampLevel = (n) => Math.min(UPGRADE_MAX_LEVEL, Math.max(0, parseInt(n, 10) || 0));
+export class Economia {
+  constructor() {
+    this.totalCoins = 0;  // total histórico (persistido)
+    this.upgrades = null; // mejoras compradas — null hasta la primera carga
+  }
+
+  // ─── Monedas ───
+  cargarMonedas() {
+    const n = parseInt(localStorage.getItem(RC.COINS_STORAGE_KEY), 10);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  guardarMonedas(total) {
+    localStorage.setItem(RC.COINS_STORAGE_KEY, String(total));
+  }
+
+  // Suma monedas agarradas y las persiste al toque (no se pierden si se
+  // cierra la pestaña antes del game over).
+  sumarMonedas(cantidad) {
+    this.totalCoins += cantidad;
+    this.guardarMonedas(this.totalCoins);
+  }
+
+  // ─── Mejoras ───
+  static mejorasPorDefecto() {
     return {
-      shieldLevel: clampLevel(parsed.shieldLevel),
-      x2Level: clampLevel(parsed.x2Level),
-      slowFallLevel: clampLevel(parsed.slowFallLevel),
-      slowSpeedLevel: clampLevel(parsed.slowSpeedLevel),
-      shieldHits: !!parsed.shieldHits,
-      x2Triple: !!parsed.x2Triple,
-      slowSpeedStrong: !!parsed.slowSpeedStrong,
+      shieldLevel: 0, x2Level: 0, slowFallLevel: 0, slowSpeedLevel: 0,
+      shieldHits: false, x2Triple: false, slowSpeedStrong: false,
     };
-  } catch (e) {
-    return def;
+  }
+
+  cargarMejoras() {
+    const def = Economia.mejorasPorDefecto();
+    try {
+      const raw = localStorage.getItem(RC.UPGRADES_STORAGE_KEY);
+      if (!raw) return def;
+      const parsed = JSON.parse(raw);
+      const clampLevel = (n) => Math.min(RC.UPGRADE_MAX_LEVEL, Math.max(0, parseInt(n, 10) || 0));
+      return {
+        shieldLevel: clampLevel(parsed.shieldLevel),
+        x2Level: clampLevel(parsed.x2Level),
+        slowFallLevel: clampLevel(parsed.slowFallLevel),
+        slowSpeedLevel: clampLevel(parsed.slowSpeedLevel),
+        shieldHits: !!parsed.shieldHits,
+        x2Triple: !!parsed.x2Triple,
+        slowSpeedStrong: !!parsed.slowSpeedStrong,
+      };
+    } catch (e) {
+      return def;
+    }
+  }
+
+  guardarMejoras(u) {
+    localStorage.setItem(RC.UPGRADES_STORAGE_KEY, JSON.stringify(u));
+  }
+
+  // Mejoras cacheadas (en el loop no hace falta leer localStorage cada frame).
+  get mejoras() {
+    if (!this.upgrades) this.upgrades = this.cargarMejoras();
+    return this.upgrades;
+  }
+
+  // Fuerza una relectura (al abrir el panel de Mejoras, para no mostrar datos viejos).
+  refrescarMejoras() {
+    this.upgrades = this.cargarMejoras();
+    return this.upgrades;
+  }
+
+  // Costo del próximo nivel/mejora de `tipo`, o null si ya está al máximo.
+  costoMejora(tipo, upgrades) {
+    const u = upgrades || this.mejoras;
+    const nivel = (n) => n >= RC.UPGRADE_MAX_LEVEL ? null : RC.UPGRADE_LEVEL_COSTS[n];
+    if (tipo === 'shieldDuration') return nivel(u.shieldLevel);
+    if (tipo === 'x2Duration') return nivel(u.x2Level);
+    if (tipo === 'slowFallDuration') return nivel(u.slowFallLevel);
+    if (tipo === 'slowSpeedDuration') return nivel(u.slowSpeedLevel);
+    if (tipo === 'shieldHits') return u.shieldHits ? null : RC.UPGRADE_SHIELD_HITS_COST;
+    if (tipo === 'x2Triple') return u.x2Triple ? null : RC.UPGRADE_X2_TRIPLE_COST;
+    if (tipo === 'slowSpeedStrong') return u.slowSpeedStrong ? null : RC.UPGRADE_SLOWSPEED_STRONG_COST;
+    return null;
+  }
+
+  // Devuelve true si se pudo pagar (descuenta y persiste), false si no.
+  comprarMejora(tipo) {
+    this.refrescarMejoras(); // por si se compró en otra pestaña/sesión
+    this.totalCoins = this.cargarMonedas();
+
+    const cost = this.costoMejora(tipo);
+    if (cost === null || this.totalCoins < cost) return false;
+
+    this.totalCoins -= cost;
+    this.guardarMonedas(this.totalCoins);
+
+    const u = this.upgrades;
+    if (tipo === 'shieldDuration') u.shieldLevel++;
+    else if (tipo === 'x2Duration') u.x2Level++;
+    else if (tipo === 'slowFallDuration') u.slowFallLevel++;
+    else if (tipo === 'slowSpeedDuration') u.slowSpeedLevel++;
+    else if (tipo === 'shieldHits') u.shieldHits = true;
+    else if (tipo === 'x2Triple') u.x2Triple = true;
+    else if (tipo === 'slowSpeedStrong') u.slowSpeedStrong = true;
+    this.guardarMejoras(u);
+    return true;
+  }
+
+  // ─── Efectos de las mejoras (duraciones en frames) ───
+  duracionEscudo() {
+    return RC.SHIELD_DURATION + this.mejoras.shieldLevel * RC.UPGRADE_DURATION_STEP;
+  }
+  duracionPuntosDobles() {
+    return RC.DOUBLE_POINTS_DURATION + this.mejoras.x2Level * RC.UPGRADE_DURATION_STEP;
+  }
+  duracionCaidaLenta() {
+    return RC.SLOWFALL_DURATION + this.mejoras.slowFallLevel * RC.SLOWFALL_DURATION_STEP;
+  }
+  duracionVelocidadReducida() {
+    return RC.SLOWSPEED_DURATION + this.mejoras.slowSpeedLevel * RC.UPGRADE_DURATION_STEP;
+  }
+  // % de naturalSpeed mientras dura "velocidad reducida".
+  factorVelocidadReducida() {
+    return this.mejoras.slowSpeedStrong ? RC.SLOWSPEED_FACTOR_STRONG : RC.SLOWSPEED_FACTOR_BASE;
+  }
+  // Golpes que aguanta el escudo (1, o 2 con la mejora).
+  golpesEscudo() {
+    return this.mejoras.shieldHits ? 2 : 1;
+  }
+  // Multiplicador de puntaje con x2 activo (2, o 3 con la mejora).
+  multiplicadorPuntos() {
+    return this.mejoras.x2Triple ? 3 : 2;
+  }
+
+  // ─── Modo Historia (completarlo desbloquea el Infinito para siempre) ───
+  historiaCompleta() {
+    return localStorage.getItem(RC.HISTORIA_STORAGE_KEY) === '1';
+  }
+  guardarHistoriaCompleta() {
+    localStorage.setItem(RC.HISTORIA_STORAGE_KEY, '1');
   }
 }
-
-export function saveUpgrades(u) {
-  localStorage.setItem(UPGRADES_STORAGE_KEY, JSON.stringify(u));
-}
-
-// Devuelve las mejoras ya cargadas (las cachea en RUNNER.upgrades la
-// primera vez) — se usa en el loop del juego, donde no hace falta pegarle
-// a localStorage en cada frame.
-export function getRunnerUpgrades() {
-  if (!RUNNER.upgrades) RUNNER.upgrades = loadUpgrades();
-  return RUNNER.upgrades;
-}
-
-// Fuerza una relectura desde localStorage. Se usa al abrir el panel de
-// Mejoras (se puede abrir desde el menú antes de jugar, o después de
-// comprar algo) para no mostrar datos viejos.
-export function refreshRunnerUpgrades() {
-  RUNNER.upgrades = loadUpgrades();
-  return RUNNER.upgrades;
-}
-
-// Costo para comprar el próximo nivel/mejora de `tipo`, o null si ya está
-// al máximo (nivel 10, o ya comprada en el caso de las mejoras únicas).
-export function getUpgradeCost(tipo, upgrades) {
-  const u = upgrades || getRunnerUpgrades();
-  if (tipo === 'shieldDuration') return u.shieldLevel >= UPGRADE_MAX_LEVEL ? null : UPGRADE_LEVEL_COSTS[u.shieldLevel];
-  if (tipo === 'x2Duration') return u.x2Level >= UPGRADE_MAX_LEVEL ? null : UPGRADE_LEVEL_COSTS[u.x2Level];
-  if (tipo === 'slowFallDuration') return u.slowFallLevel >= UPGRADE_MAX_LEVEL ? null : UPGRADE_LEVEL_COSTS[u.slowFallLevel];
-  if (tipo === 'slowSpeedDuration') return u.slowSpeedLevel >= UPGRADE_MAX_LEVEL ? null : UPGRADE_LEVEL_COSTS[u.slowSpeedLevel];
-  if (tipo === 'shieldHits') return u.shieldHits ? null : UPGRADE_SHIELD_HITS_COST;
-  if (tipo === 'x2Triple') return u.x2Triple ? null : UPGRADE_X2_TRIPLE_COST;
-  if (tipo === 'slowSpeedStrong') return u.slowSpeedStrong ? null : UPGRADE_SLOWSPEED_STRONG_COST;
-  return null;
-}
-
-// Intenta comprar una mejora. Devuelve true si se pudo pagar (y descuenta
-// las monedas + persiste todo), false si estaba al máximo o no alcanzaba.
-export function buyRunnerUpgrade(tipo) {
-  refreshRunnerUpgrades(); // relee de localStorage antes de tocar nada, por si se compró en otra pestaña/sesión
-  RUNNER.totalCoins = loadTotalCoins();
-
-  const cost = getUpgradeCost(tipo);
-  if (cost === null || RUNNER.totalCoins < cost) return false;
-
-  RUNNER.totalCoins -= cost;
-  saveTotalCoins(RUNNER.totalCoins);
-
-  const u = RUNNER.upgrades;
-  if (tipo === 'shieldDuration') u.shieldLevel++;
-  else if (tipo === 'x2Duration') u.x2Level++;
-  else if (tipo === 'slowFallDuration') u.slowFallLevel++;
-  else if (tipo === 'slowSpeedDuration') u.slowSpeedLevel++;
-  else if (tipo === 'shieldHits') u.shieldHits = true;
-  else if (tipo === 'x2Triple') u.x2Triple = true;
-  else if (tipo === 'slowSpeedStrong') u.slowSpeedStrong = true;
-  saveUpgrades(u);
-  return true;
-}
-
-// Duración efectiva (en frames) de cada power-up, ya con las mejoras de
-// nivel aplicadas — reemplazan el uso directo de SHIELD_DURATION /
-// DOUBLE_POINTS_DURATION al agarrar el pickup.
-export function shieldDurationFrames() {
-  return SHIELD_DURATION + getRunnerUpgrades().shieldLevel * UPGRADE_DURATION_STEP;
-}
-export function doublePointsDurationFrames() {
-  return DOUBLE_POINTS_DURATION + getRunnerUpgrades().x2Level * UPGRADE_DURATION_STEP;
-}
-export function slowFallDurationFrames() {
-  return SLOWFALL_DURATION + getRunnerUpgrades().slowFallLevel * SLOWFALL_DURATION_STEP;
-}
-export function slowSpeedDurationFrames() {
-  return SLOWSPEED_DURATION + getRunnerUpgrades().slowSpeedLevel * UPGRADE_DURATION_STEP;
-}
-// % de naturalSpeed al que queda RUNNER.speed mientras "velocidad
-// reducida" está activo: 0.75 (-25%) de base, 0.50 (-50%) con la mejora
-// especial "Frenada Fuerte" comprada.
-export function slowSpeedFactor() {
-  return getRunnerUpgrades().slowSpeedStrong ? SLOWSPEED_FACTOR_STRONG : SLOWSPEED_FACTOR_BASE;
-}
-// Golpes que aguanta el escudo antes de romperse (1, o 2 con la mejora).
-export function shieldMaxHits() {
-  return getRunnerUpgrades().shieldHits ? 2 : 1;
-}
-// Multiplicador de puntaje mientras el x2 está activo (2x, o 3x con la mejora).
-export function runnerScoreMultiplier() {
-  return getRunnerUpgrades().x2Triple ? 3 : 2;
-}
-
-// ─── Progreso de campaña: Modo Historia ────────────────────────────────
-// Modo Historia = llegar a HISTORIA_GOAL puntos. Al lograrlo una vez se
-// desbloquea el Modo Infinito para siempre (persistido en localStorage,
-// mismo patrón que las monedas).
-export function loadHistoriaCompleta() {
-  return localStorage.getItem(HISTORIA_STORAGE_KEY) === '1';
-}
-export function saveHistoriaCompleta() {
-  localStorage.setItem(HISTORIA_STORAGE_KEY, '1');
-}
-
-// En Historia el HUD muestra "puntos / meta" para que se vea el progreso;
-// en Infinito muestra solo el puntaje, como antes.

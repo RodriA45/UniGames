@@ -1,23 +1,5 @@
 /* ══════════════════════════════════════
    CASTLE ESCAPE (Salto Traicionero) — castle_escape.css
-   Estilos específicos de Castle Escape, separados de styles.css.
-   Reutiliza las variables de styles.css (--yellow, etc.) y los
-   componentes genéricos de ui-components.css (botones, slider de
-   ajustes/pantalla completa).
-
-   Nota de limpieza: se eliminaron ~35 reglas ".castle-escape-*"
-   (header, hud, menu, pause, result...) que estaban en styles.css
-   sin usarse en ningún .js del proyecto — parecen resabios de una
-   versión anterior del juego, antes de que todo pasara a usar el
-   prefijo "trampas-". Si tenés un index.html con esas clases en
-   algún lado avisame y las recupero; si no, es código muerto menos
-   para mantener.
-
-   También se unificaron dos bloques ".trampas-container:fullscreen"
-   que estaban duplicados letra por letra en styles.css (quedó uno
-   solo, con el max-height que tenía la segunda copia).
-
-   Cargar DESPUÉS de styles.css y ui-components.css.
    ══════════════════════════════════════ */
 
 @media (max-width: 480px) {

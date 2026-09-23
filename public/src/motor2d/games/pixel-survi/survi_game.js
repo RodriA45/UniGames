@@ -17,6 +17,7 @@ import {
   MAX_HUNGER, HUNGER_DRAIN_PER_MS, HUNGER_REGEN_THRESHOLD,
   STARVE_DAMAGE, STARVE_INTERVAL_MS, HP_REGEN_INTERVAL_MS, HP_REGEN_AMOUNT,
   LEAF_FOOD_DROP, leafPalette, ORE_DROPS, armorReduction,
+  STATION_IDS, CHEST_SLOTS, SMELT, SMELT_MS, FUEL,
   WEAPON_STATS, BARE_HAND_ATTACK,
   HIT_FLASH_MS, HIT_SHAKE_INTENSITY, HIT_SHAKE_MS,
   CAMERA_DEADZONE_W, CAMERA_DEADZONE_H, CAMERA_SMOOTHING,
@@ -51,7 +52,12 @@ const ZOOM_WHEEL_COOLDOWN_MS = 120; // los trackpads mandan decenas de eventos p
 // parejo y el scroll se mueve en pasos chicos (suave), no de a 1 pixel
 // de mundo. Si se cambian los niveles, RENDER_SCALE * zoom tiene que
 // seguir dando entero.
-const RENDER_SCALE = 4;
+const RENDER_SCALE = 4;   // (nivel Alto — ver RENDER_BY_QUALITY)
+// Optimización por nivel gráfico (Engine2D.Quality): menos resolución
+// interna y luz recalculada más espaciado. Con 2 se dibujan 4 veces
+// menos pixeles que con 4; con 1, 16 veces menos.
+const RENDER_BY_QUALITY = { high: 4, medium: 2, low: 1 };
+const LIGHT_EVERY_BY_QUALITY = { high: 1, medium: 2, low: 3 };   // cada cuántos frames
 
 // Cámara: sigue al personaje en X siempre. En Y se "ancla" a la altura
 // del piso donde está parado, así saltar no la mueve; si cae por debajo
@@ -80,6 +86,10 @@ export class SurviGame {
     } catch {}
     this._zoomIdx = zi;
     this._zoom = ZOOM_LEVELS[zi];
+    this._lightDirty = true; this._lightFrame = 0;
+    this._readQuality();
+    const Q = E2D() && E2D().Quality;
+    if (Q && Q.onChange) Q.onChange(() => { this._readQuality(); this._fit(); });
     this._lastWheelAt = 0;
 
     this.running = false;
@@ -211,6 +221,13 @@ export class SurviGame {
     this.hp = save && save.hp ? Math.min(MAX_HP, save.hp) : MAX_HP;
     this.hunger = save && save.hunger != null ? Math.min(MAX_HUNGER, save.hunger) : MAX_HUNGER;
     this.timeOfDay = save && save.timeOfDay != null ? save.timeOfDay : START_TIME_OF_DAY;
+    // hornos y cofres colocados: estado por posición "col,row"
+    const st = (save && save.stations) || {};
+    this.furnaces = st.furnaces || {};
+    this.chests = st.chests || {};
+    this.station = null;          // estación abierta: { type: 'furnace'|'chest', key }
+    this.craftStation = 'hand';   // 'hand' (inventario) o 'table' (mesa de crafteo)
+    this._stationUiT = 0;
     this.light = new LightMap();
     this.light.rebuildSky((c, r) => this.tilemap.get(c, r));
     this._starveTimer = 0;
@@ -314,8 +331,8 @@ export class SurviGame {
       return;
     }
     E2D().fitCanvas(this.canvas, VIEW_W, VIEW_H);   // tamaño CSS (encaja en el contenedor)
-    this.canvas.width = VIEW_W * RENDER_SCALE;       // backing store en alta resolución
-    this.canvas.height = VIEW_H * RENDER_SCALE;
+    this.canvas.width = VIEW_W * this.renderScale;   // backing store según el nivel gráfico
+    this.canvas.height = VIEW_H * this.renderScale;
     this.ctx.imageSmoothingEnabled = false;         // (cambiar width resetea el contexto)
   }
 
@@ -333,6 +350,7 @@ export class SurviGame {
       hp: this.hp,
       hunger: this.hunger,
       timeOfDay: this.timeOfDay,
+      stations: { furnaces: this.furnaces, chests: this.chests },
       inventory: this.inventory,
       hotbarSlots: this.hotbarSlots,
       selectedSlot: this.selectedSlot,
@@ -362,6 +380,9 @@ export class SurviGame {
     if (this.dead || !this.running) return;
     const v = force === undefined ? !this.invOpen : force;
     this.invOpen = v;
+    // abrir o cerrar el inventario siempre deja la mesa/horno/cofre cerrados
+    this.station = null;
+    this.craftStation = 'hand';
     this.pointer.down = false;
     this._resetMine();
     if (v) { this._renderInventory(); showScreen(this.ui, 'inv'); }
@@ -414,7 +435,7 @@ export class SurviGame {
       const now = performance.now();
       if (now - this._lastWheelAt < ZOOM_WHEEL_COOLDOWN_MS) return;
       this._lastWheelAt = now;
-      this.setZoomLevel(this._zoomIdx + (e.deltaY < 0 ? 1 : -1));
+      this.stepZoom(e.deltaY < 0 ? 1 : -1);
     }, { passive: false });
 
     this.canvas.addEventListener('pointerdown', (e) => {
@@ -464,6 +485,27 @@ export class SurviGame {
     });
   }
 
+  // ═══════════ Calidad gráfica ═══════════
+  _readQuality() {
+    const Q = E2D() && E2D().Quality;
+    this.quality = Q && Q.get ? Q.get() : 'high';
+    this.renderScale = RENDER_BY_QUALITY[this.quality] || RENDER_SCALE;
+    this.lightEvery = LIGHT_EVERY_BY_QUALITY[this.quality] || 1;
+    // zooms que dan pixeles enteros con esta escala
+    this._zoomOk = ZOOM_LEVELS.map((z, i) => i).filter(i => Number.isInteger(ZOOM_LEVELS[i] * this.renderScale));
+    if (!this._zoomOk.includes(this._zoomIdx)) {
+      this._zoomIdx = this._zoomOk.reduce((best, i) =>
+        Math.abs(ZOOM_LEVELS[i] - ZOOM_LEVELS[this._zoomIdx]) < Math.abs(ZOOM_LEVELS[best] - ZOOM_LEVELS[this._zoomIdx]) ? i : best, this._zoomOk[0]);
+    }
+    this._lightDirty = true;
+  }
+
+  stepZoom(dir) {
+    const pos = this._zoomOk.indexOf(this._zoomIdx);
+    const next = this._zoomOk[Math.max(0, Math.min(this._zoomOk.length - 1, pos + dir))];
+    this.setZoomLevel(next);
+  }
+
   // ═══════════ Zoom ═══════════
   setZoomLevel(idx) {
     const next = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, idx));
@@ -504,6 +546,116 @@ export class SurviGame {
     return { x: px, y: this._camAnchorY };
   }
 
+  // ═══════════ Mesa / horno / cofre ═══════════
+  _stationEmpty(col, row) {
+    const k = `${col},${row}`;
+    const f = this.furnaces[k], c = this.chests[k];
+    if (f && (f.in || f.fuel || f.out)) return false;
+    if (c && Object.keys(c).length) return false;
+    return true;
+  }
+
+  openStation(col, row) {
+    const id = this.tilemap.get(col, row), key = `${col},${row}`;
+    this.pointer.down = false;
+    this._resetMine();
+    this.invOpen = true;
+    if (id === T.CRAFT_TABLE) {
+      this.station = null; this.craftStation = 'table';
+      this.ui.renderCraft(this); showScreen(this.ui, 'craft');
+    } else if (id === T.FURNACE || id === T.FURNACE_ON) {
+      if (!this.furnaces[key]) this.furnaces[key] = { in: null, fuel: null, out: null, burn: 0, burnMax: 0, prog: 0 };
+      this.station = { type: 'furnace', key }; this.craftStation = 'hand';
+      this.ui.renderFurnace(this); showScreen(this.ui, 'furnace');
+    } else if (id === T.CHEST) {
+      if (!this.chests[key]) this.chests[key] = {};
+      this.station = { type: 'chest', key }; this.craftStation = 'hand';
+      this.ui.renderChest(this); showScreen(this.ui, 'chest');
+    }
+  }
+
+  closeStation() { this.toggleInventory(false); }
+
+  get openFurnace() { return this.station && this.station.type === 'furnace' ? this.furnaces[this.station.key] : null; }
+  get openChest() { return this.station && this.station.type === 'chest' ? this.chests[this.station.key] : null; }
+
+  // Horno: mete TODO el stack del inventario en el lugar que le toca
+  // (lo que se cocina arriba, el combustible abajo). Si ya había otra cosa
+  // ahí, vuelve al inventario.
+  furnaceInsert(id) {
+    const f = this.openFurnace, qty = this.inventory[id] || 0;
+    if (!f || !qty) return;
+    const slot = SMELT[id] ? 'in' : (FUEL[id] ? 'fuel' : null);
+    if (!slot) return;
+    if (f[slot] && f[slot].id !== id) { if (!this.furnaceTake(slot)) return; }
+    f[slot] = { id, qty: (f[slot] ? f[slot].qty : 0) + qty };
+    this._removeItem(id, qty);
+    this.ui.renderFurnace(this);
+  }
+
+  furnaceTake(slot) {
+    const f = this.openFurnace;
+    if (!f || !f[slot]) return true;
+    if (!this._hasRoomFor(f[slot].id)) { if (this.ui.showToast) this.ui.showToast('Inventario lleno'); return false; }
+    this._addItem(f[slot].id, f[slot].qty);
+    f[slot] = null;
+    if (slot === 'in') f.prog = 0;
+    this.ui.renderFurnace(this);
+    return true;
+  }
+
+  // Cofre: un clic pasa el stack entero de un lado al otro.
+  chestPut(id) {
+    const c = this.openChest, qty = this.inventory[id] || 0;
+    if (!c || !qty) return;
+    if (!(id in c) && Object.keys(c).length >= CHEST_SLOTS) { if (this.ui.showToast) this.ui.showToast('El cofre está lleno'); return; }
+    c[id] = (c[id] || 0) + qty;
+    this._removeItem(id, qty);
+    this.ui.renderChest(this);
+  }
+
+  chestTake(id) {
+    const c = this.openChest;
+    if (!c || !c[id]) return;
+    if (!this._hasRoomFor(id)) { if (this.ui.showToast) this.ui.showToast('Inventario lleno'); return; }
+    this._addItem(id, c[id]);
+    delete c[id];
+    this.ui.renderChest(this);
+  }
+
+  // Todos los hornos avanzan siempre (aunque no estén en pantalla).
+  _tickFurnaces(dt) {
+    for (const [key, f] of Object.entries(this.furnaces)) {
+      const target = f.in ? SMELT[f.in.id] : null;
+      const canSmelt = !!target && (!f.out || f.out.id === target);
+      if (f.burn <= 0 && canSmelt && f.fuel) {
+        f.burnMax = f.burn = FUEL[f.fuel.id] * SMELT_MS;
+        if (--f.fuel.qty <= 0) f.fuel = null;
+      }
+      if (f.burn > 0) {
+        f.burn = Math.max(0, f.burn - dt);
+        if (canSmelt) {
+          f.prog += dt;
+          if (f.prog >= SMELT_MS) {
+            f.prog = 0;
+            if (--f.in.qty <= 0) f.in = null;
+            f.out = f.out ? { id: target, qty: f.out.qty + 1 } : { id: target, qty: 1 };
+          }
+        } else f.prog = 0;
+      } else if (f.prog > 0) f.prog = Math.max(0, f.prog - dt * 2);   // sin fuego se enfría
+      // dibujo prendido/apagado (y la luz, que sale del tile prendido)
+      const [c, r] = key.split(',').map(Number);
+      const cur = this.tilemap.get(c, r), lit = f.burn > 0;
+      if (lit && cur === T.FURNACE) { this.tilemap.set(c, r, T.FURNACE_ON); this._lightDirty = true; }
+      else if (!lit && cur === T.FURNACE_ON) { this.tilemap.set(c, r, T.FURNACE); this._lightDirty = true; }
+    }
+    // pantalla del horno abierta: refrescar barras ~6 veces por segundo
+    if (this.openFurnace) {
+      this._stationUiT -= dt;
+      if (this._stationUiT <= 0) { this._stationUiT = 160; this.ui.renderFurnace(this, true); }
+    }
+  }
+
   _blocked() {
     return !this.running || this.paused || this.invOpen || this.dead || !this.tilemap;
   }
@@ -515,7 +667,7 @@ export class SurviGame {
     const rect = this._canvasRect;
     const sx = (e.clientX - rect.left) * (this.canvas.width / rect.width);
     const sy = (e.clientY - rect.top) * (this.canvas.height / rect.height);
-    const k = RENDER_SCALE * this._zoom;
+    const k = this.renderScale * this._zoom;
     const w = this.camera.screenToWorld(sx / k, sy / k);
     return this.tilemap.worldToTile(w.x, w.y);
   }
@@ -561,6 +713,11 @@ export class SurviGame {
     this._startSwing(SWING_MINE_MS);
 
     if (this._mine.progress >= 1) {
+      if (STATION_IDS.has(id) && !this._stationEmpty(col, row)) {
+        this._resetMine();
+        if (this.ui.showToast) this.ui.showToast(id === T.CHEST ? 'Vaciá el cofre antes de romperlo' : 'Sacá lo que hay en el horno antes de romperlo');
+        return;
+      }
       // Con el inventario lleno de tipos distintos, _addItem devuelve false
       // y el drop se perdía: el bloque quedaba roto y no te llevabas nada.
       // Mejor no romperlo y avisar.
@@ -578,6 +735,7 @@ export class SurviGame {
       }
       const broken = this.tilemap.breakTile(col, row);
       if (dropId) this._addItem(dropId);
+      if (STATION_IDS.has(id)) { const k = `${col},${row}`; delete this.furnaces[k]; delete this.chests[k]; }
       const pal = leafPalette(broken);
       const foodDrop = pal ? LEAF_FOOD_DROP[pal] : null;
       if (foodDrop && Math.random() < foodDrop.chance) this._addItem(foodDrop.id);
@@ -589,6 +747,15 @@ export class SurviGame {
 
   _tryPlace() {
     if (this._placeCd > 0) return;
+
+    // Clic derecho sobre una mesa / horno / cofre al alcance: se abre.
+    if (this._hoverTile) {
+      const { col: hc, row: hr } = this._hoverTile;
+      if (STATION_IDS.has(this.tilemap.get(hc, hr)) && this._inReach(hc, hr)) {
+        this.openStation(hc, hr);
+        return;
+      }
+    }
 
     // Comida: no es colocable, así que el mismo botón (clic derecho) la
     // come en vez de intentar plantarla en el mundo. No depende de estar
@@ -606,6 +773,8 @@ export class SurviGame {
     if (!info || !info.place || (this.inventory[id] || 0) <= 0) return; // las herramientas no se colocan
 
     if (info.place === T.TORCH && !this._torchSupported(col, row)) return;
+    // mesa/horno/cofre: se apoyan sobre un bloque sólido
+    if (STATION_IDS.has(info.place) && !(row + 1 < ROWS && SOLID_IDS.has(this.tilemap.get(col, row + 1)))) return;
     const bx = col * TILE, by = row * TILE;
     const overlapsPlayer = SOLID_IDS.has(info.place) && bx < this.player.x + this.player.w && bx + TILE > this.player.x &&
                            by < this.player.y + this.player.h && by + TILE > this.player.y;
@@ -655,6 +824,7 @@ export class SurviGame {
 
   _retileAround(col, row) {
     if (this.light) this.light.updateColumn((c, r) => this.tilemap.get(c, r), col);
+    this._lightDirty = true;
     this._dropUnsupportedTorches(col, row);
     const tm = this.tilemap;
     // Afuera del mapa se devuelve el tile del borde (y aire arriba del
@@ -805,6 +975,7 @@ export class SurviGame {
   craftItem(recipeId) {
     const recipe = RECIPES.find(r => r.id === recipeId);
     if (!recipe) return { ok: false, reason: 'not_found' };
+    if (recipe.station === 'table' && this.craftStation !== 'table') return { ok: false, reason: 'station' };
     if (!canCraft(this.inventory, recipe)) return { ok: false, reason: 'missing' };
     // Chequeamos el cupo ANTES de descontar nada: así, si el resultado no
     // va a entrar, no perdés los materiales de arriba.
@@ -948,6 +1119,8 @@ export class SurviGame {
 
   // ═══════════ Update ═══════════
   _update(dt, step) {
+    // los hornos siguen cocinando aunque tengas abierta su pantalla (o el inventario)
+    if (this.player && !this.paused && !this.dead && this.furnaces) this._tickFurnaces(dt);
     if (!this.player || this.paused || this.invOpen || this.dead) return;
 
     this.playedMs += dt;
@@ -1104,7 +1277,7 @@ export class SurviGame {
     const ctx = this.ctx;
     // Todo el dibujo trabaja en unidades lógicas (480x288); esto lo lleva
     // al backing store de alta resolución.
-    ctx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0);
+    ctx.setTransform(this.renderScale, 0, 0, this.renderScale, 0, 0);
     ctx.imageSmoothingEnabled = false;
     if (!this.tilemap) { ctx.clearRect(0, 0, VIEW_W, VIEW_H); return; }
 
@@ -1121,7 +1294,7 @@ export class SurviGame {
     // Alinear la cámara a pixeles REALES de pantalla (no de mundo): sin
     // esto cada frame caía en posiciones fraccionarias distintas y el
     // mapa "temblaba". Se deshace al final junto con el shake.
-    const snapStep = 1 / (RENDER_SCALE * this._zoom);
+    const snapStep = 1 / (this.renderScale * this._zoom);
     const snapDX = this.camera.x - Math.round(this.camera.x / snapStep) * snapStep;
     const snapDY = this.camera.y - Math.round(this.camera.y / snapStep) * snapStep;
     this.camera.x -= snapDX;
@@ -1161,7 +1334,7 @@ export class SurviGame {
       // pantalla): se achica con suavizado de alta calidad para no perder
       // detalle ni dejar pixeles desparejos. Los bloques siguen sin suavizar.
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
+      ctx.imageSmoothingQuality = this.quality === 'high' ? 'high' : 'low';
       drawSprite(ctx, this.img.player, f * c, row * c, c, c,
                  cellX, cellY, PLAYER_SPRITE.w, PLAYER_SPRITE.h, flip);
       if (swinging) this._drawSwingArm(ctx, cellX, cellY);
@@ -1181,11 +1354,14 @@ export class SurviGame {
     // ── Iluminación: oscuridad sobre todo el mundo (bloques, minerales,
     // enemigos, personaje). Luz = sol a cielo abierto + antorchas +
     // círculo de visión propio. Ver survi_light.js. ──
-    this.light.compute((c, r) => this.tilemap.get(c, r), this.camera, sun, [{
-      x: this.player.x + this.player.w / 2,
-      y: this.player.y + this.player.h / 2,
-      power: PLAYER_VISION
-    }]);
+    if (this._lightDirty || ++this._lightFrame >= this.lightEvery) {
+      this._lightFrame = 0; this._lightDirty = false;
+      this.light.compute((c, r) => this.tilemap.get(c, r), this.camera, sun, [{
+        x: this.player.x + this.player.w / 2,
+        y: this.player.y + this.player.h / 2,
+        power: PLAYER_VISION
+      }]);
+    }
     this.light.draw(ctx, this.camera);
 
     // el recuadro del bloque apuntado va arriba de la oscuridad: si no, en

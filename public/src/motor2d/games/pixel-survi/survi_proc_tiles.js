@@ -187,6 +187,75 @@ function drawTorch(t) {
   rect(t, 10, 3, 1, 2, '#ff6a00');
 }
 
+// ══════════════ estaciones ══════════════
+// Mesa de crafteo: tablero con grilla 3x3 grabada, sierra y martillo
+// arriba, patas con travesaño. Fondo transparente (se pasa por delante).
+function drawCraftTable(t) {
+  const W = ['#c08a52', '#9c6a3a', '#6b4424', '#3e2614'];   // madera clara → oscura
+  // herramientas apoyadas arriba
+  rect(t, 3, 0, 5, 1, '#b8bcc4'); rect(t, 3, 1, 5, 1, '#7d828c');     // sierra
+  rect(t, 8, 0, 2, 2, '#6b4424');
+  rect(t, 11, 0, 3, 2, '#9aa0aa'); rect(t, 12, 2, 1, 1, '#6b4424');   // martillo
+  // tablero
+  rect(t, 0, 2, 16, 5, W[1]);
+  rect(t, 0, 2, 16, 1, W[0]);
+  rect(t, 0, 6, 16, 1, W[3]);
+  for (const x of [5, 10]) rect(t, x, 3, 1, 3, W[2]);          // grilla grabada
+  rect(t, 1, 4, 14, 1, W[2]);
+  rect(t, 0, 2, 1, 5, W[3]); rect(t, 15, 2, 1, 5, W[3]);
+  // patas + travesaño
+  for (const x of [1, 12]) { rect(t, x, 7, 3, 9, W[2]); rect(t, x, 7, 1, 9, W[1]); rect(t, x + 2, 7, 1, 9, W[3]); }
+  rect(t, 4, 11, 8, 2, W[2]); rect(t, 4, 11, 8, 1, W[1]);
+}
+
+// Horno de piedra: ladrillos, boca abajo. Prendido: fuego adentro y
+// brillo en el marco de la boca.
+function drawFurnace(t, lit) {
+  const S = ['#9a9aa2', '#7c7c85', '#5d5d66', '#3d3d45'];
+  rect(t, 0, 0, 16, 16, S[1]);
+  // ladrillos
+  for (let y = 0; y < 16; y += 4) {
+    rect(t, 0, y, 16, 1, S[2]);
+    const off = (y / 4) % 2 ? 4 : 0;
+    for (let x = off; x < 16; x += 8) rect(t, x, y + 1, 1, 3, S[2]);
+  }
+  rect(t, 0, 0, 16, 1, S[0]);
+  rect(t, 0, 0, 1, 16, S[0]);
+  rect(t, 15, 0, 1, 16, S[3]); rect(t, 0, 15, 16, 1, S[3]);
+  // boca
+  rect(t, 3, 7, 10, 7, S[3]);
+  rect(t, 4, 8, 8, 6, lit ? '#2a1206' : '#141418');
+  rect(t, 3, 6, 10, 1, S[0]);
+  if (lit) {
+    rect(t, 3, 7, 10, 1, '#ff9a3c');                      // reflejo en el marco
+    rect(t, 4, 12, 8, 2, '#ff6a00');                      // brasas
+    rect(t, 5, 10, 2, 2, '#ff8a1c'); rect(t, 9, 10, 2, 2, '#ff8a1c');
+    rect(t, 6, 9, 1, 3, '#ffd23f'); rect(t, 9, 9, 1, 2, '#ffd23f');
+    rect(t, 7, 11, 2, 2, '#fff1a8');
+  } else {
+    rect(t, 5, 12, 6, 2, '#2c2c33'); rect(t, 6, 12, 1, 1, '#4a4a52'); // cenizas
+  }
+  // chimenea
+  rect(t, 11, 1, 3, 3, S[2]); rect(t, 12, 2, 1, 2, S[3]);
+}
+
+// Cofre de madera con herrajes dorados y cerradura.
+function drawChest(t) {
+  const W = ['#c08a52', '#9c6a3a', '#6b4424', '#3e2614'];
+  const G = ['#ffe07a', '#d9a520', '#8a6410'];
+  rect(t, 1, 3, 14, 13, W[1]);                    // cuerpo
+  rect(t, 1, 3, 14, 5, W[2]);                     // tapa
+  rect(t, 1, 3, 14, 1, W[0]);
+  rect(t, 2, 4, 12, 1, W[1]);
+  rect(t, 1, 8, 14, 1, W[3]);                     // unión tapa/cuerpo
+  for (const y of [10, 13]) rect(t, 2, y, 12, 1, W[2]);   // tablas
+  rect(t, 1, 3, 1, 13, W[3]); rect(t, 14, 3, 1, 13, W[3]); rect(t, 1, 15, 14, 1, W[3]);
+  // herrajes
+  for (const x of [2, 12]) { rect(t, x, 3, 2, 13, G[1]); rect(t, x, 3, 1, 13, G[0]); rect(t, x + 1, 3, 1, 13, G[2]); }
+  // cerradura
+  rect(t, 6, 7, 4, 4, G[1]); rect(t, 6, 7, 4, 1, G[0]); rect(t, 7, 9, 2, 2, G[2]); rect(t, 7, 9, 1, 1, '#1a1206');
+}
+
 // ══════════════ árboles ══════════════
 function drawLeaves(t, pal, edges, rnd, alt) {
   const [light, mid, dark] = pal.leaf;
@@ -321,6 +390,10 @@ export function buildProceduralTileset(tilesetCols, tileSize) {
   }
 
   at(TID.torch); drawTorch(t);
+  at(TID.craft_table); drawCraftTable(t);
+  at(TID.furnace); drawFurnace(t, false);
+  at(TID.furnace_on); drawFurnace(t, true);
+  at(TID.chest); drawChest(t);
 
   return canvas;
 }

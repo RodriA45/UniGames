@@ -803,3 +803,67 @@
   .survi-craft-layout { flex-direction: column; }
   .survi-craft-list { max-height: 26vh; }
 }
+
+/* ══════════ Crafteo: aviso "esto se hace en la mesa" ══════════ */
+.survi-craft-hint { margin: -0.2rem 0 0.2rem; font-size: 0.7rem; color: rgba(255, 255, 255, 0.6); text-align: center; }
+
+/* ══════════ Horno / cofre ══════════ */
+.survi-station-box { max-width: 460px; }
+.survi-station-sub { margin: 0; font-size: 0.68rem; color: rgba(255, 255, 255, 0.55); text-align: center; }
+.survi-station-label { margin: 0; align-self: flex-start; font-size: 0.72rem; font-weight: 700; color: rgba(255, 255, 255, 0.8); }
+.survi-station-empty { margin: 0.3rem; font-size: 0.7rem; color: rgba(255, 255, 255, 0.45); }
+.survi-station-inv {
+  width: 100%;
+  display: flex; flex-wrap: wrap; gap: 0.35rem;
+  padding: 0.5rem;
+  min-height: 3.2rem; max-height: 26vh; overflow-y: auto;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+/* casillero de ítem (inventario / cofre / horno) */
+.survi-screen .modal-game-box button.survi-sitem,
+.survi-screen .modal-game-box button.survi-fslot {
+  position: relative;
+  width: 3rem; height: 3rem; min-width: 0; max-width: none;
+  margin: 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+}
+.survi-screen .modal-game-box button.survi-sitem:hover,
+.survi-screen .modal-game-box button.survi-fslot.filled:hover {
+  border-color: #f5c518; background: rgba(245, 197, 24, 0.12); transform: translateY(-1px);
+}
+.survi-sitem-qty {
+  position: absolute; right: 3px; bottom: 1px;
+  font-size: 0.66rem; font-weight: 800; color: #fff;
+  text-shadow: 0 0 2px #000, 1px 1px 0 #000;
+}
+
+.survi-furnace-ui { display: flex; align-items: center; justify-content: center; gap: 1.1rem; padding: 0.4rem 0; }
+.survi-furnace-col { display: flex; flex-direction: column; align-items: center; gap: 0.35rem; }
+.survi-screen .modal-game-box button.survi-fslot { width: 3.6rem; height: 3.6rem; border-style: dashed; }
+.survi-screen .modal-game-box button.survi-fslot.filled { border-style: solid; }
+.survi-screen .modal-game-box button.survi-fslot-out { width: 4.2rem; height: 4.2rem; border-color: rgba(245, 197, 24, 0.45); }
+.survi-fslot-empty { font-size: 0.6rem; color: rgba(255, 255, 255, 0.4); }
+/* llama: se vacía de arriba hacia abajo a medida que se gasta el combustible */
+.survi-furnace-fire {
+  position: relative; width: 1.1rem; height: 1.3rem;
+  background: rgba(255, 255, 255, 0.08); border-radius: 50% 50% 35% 35%;
+  overflow: hidden;
+}
+.survi-furnace-fire-fill {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 0;
+  background: linear-gradient(to top, #ff6a00, #ffd23f);
+}
+/* flecha de progreso */
+.survi-furnace-arrow {
+  position: relative; width: 3.2rem; height: 0.8rem;
+  background: rgba(255, 255, 255, 0.1); border-radius: 999px; overflow: hidden;
+}
+.survi-furnace-arrow-fill { height: 100%; width: 0; background: #f5c518; }

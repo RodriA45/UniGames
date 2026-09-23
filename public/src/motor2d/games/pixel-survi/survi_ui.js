@@ -10,14 +10,15 @@
 
 import {
   MAX_HP, MAX_HUNGER, COVER_SRC, MODES, ITEM_INFO, HOTBAR_SIZE,
-  EQUIP_SLOTS, EQUIP_SLOT_ICON, RECIPES, CRAFT_CATS, ingredientHave, canCraft, BIOMES
+  EQUIP_SLOTS, EQUIP_SLOT_ICON, RECIPES, CRAFT_CATS, ingredientHave, canCraft, BIOMES,
+  SMELT, FUEL, SMELT_MS, CHEST_SLOTS
 } from './survi_config.js';
 import { fmtTime } from './survi_save.js';
 import { icon, BIOME_ICON } from './survi_icons.js';
 import { tileIconStyle, itemSpriteStyle, PLAYER } from './models/sprites.js';
 
 // Nombres de pantalla válidos para showScreen()
-export const SCREENS = ['cover', 'worlds', 'mode', 'settings', 'howto', 'pause', 'death', 'inv', 'equip', 'craft'];
+export const SCREENS = ['cover', 'worlds', 'mode', 'settings', 'howto', 'pause', 'death', 'inv', 'equip', 'craft', 'furnace', 'chest'];
 
 export function buildLayout(root) {
   root.classList.add('survi-root');
@@ -141,7 +142,8 @@ export function buildLayout(root) {
           <div class="game-info-row">Caer de más de 4 bloques te saca vida. En <b>hardcore</b> la muerte borra el mundo.</div>
           <div class="game-info-row">Cualquier herramienta pega, pero la <b>espada</b> es la que más daño hace y más rápido pega.</div>
           <div class="game-info-row">Cada material es mejor que el anterior: <b>madera → piedra → cobre → hierro → oro → diamante → esmeralda</b>. Los minerales piden un pico del nivel de abajo o mejor: cobre (piedra), hierro (cobre), oro (hierro), diamante (oro), esmeralda (diamante). Con un pico peor se rompen pero no sueltan nada.</div>
-          <div class="game-info-row">Los <b>palos</b> salen de la madera y el <b>flint</b> de 6 de grava. Los minerales crudos se funden a lingote con carbón.</div>
+          <div class="game-info-row">Desde el inventario solo se craftea lo simple (palos, antorchas, flechas, flint y la <b>mesa de crafteo</b>). Con <b>clic derecho</b> sobre la mesa se hace todo lo demás: herramientas, armas, armadura, mochilas, <b>horno</b> y <b>cofre</b>.</div>
+          <div class="game-info-row">En el <b>horno</b> se funden los minerales crudos a lingote y se cocina la comida, usando carbón o madera como combustible. El <b>cofre</b> guarda hasta 16 tipos de ítem.</div>
           <div class="game-info-row">${icon('drumstick')} El hambre baja solo. Rompé hojas para conseguir comida y comela con <b>clic derecho</b>. En 0 empieza a sacarte vida; bien alimentado, la regenerás de a poco.</div>
         </div>
         <button class="btn-game-secondary" data-act="back-cover">Volver</button>
@@ -183,7 +185,8 @@ export function buildLayout(root) {
     <!-- ── Craftear ── -->
     <div class="modal-game survi-screen survi-craft hidden">
       <div class="modal-game-box survi-craft-box">
-        <h2 class="modal-game-title">Craftear</h2>
+        <h2 class="modal-game-title survi-craft-title">Craftear</h2>
+        <p class="survi-craft-hint"></p>
         <div class="survi-craft-layout">
           <div class="survi-craft-side">
             <div class="survi-craft-tabs"></div>
@@ -194,6 +197,38 @@ export function buildLayout(root) {
           </div>
         </div>
         <button class="btn-game-secondary" data-act="craft-back">Volver</button>
+      </div>
+    </div>
+
+    <!-- ── Horno ── -->
+    <div class="modal-game survi-screen survi-furnace hidden">
+      <div class="modal-game-box survi-station-box">
+        <h2 class="modal-game-title">Horno</h2>
+        <div class="survi-furnace-ui">
+          <div class="survi-furnace-col">
+            <button type="button" class="survi-fslot" data-fslot="in" title="Para cocinar / fundir"></button>
+            <div class="survi-furnace-fire" title="Fuego"><div class="survi-furnace-fire-fill"></div></div>
+            <button type="button" class="survi-fslot" data-fslot="fuel" title="Combustible"></button>
+          </div>
+          <div class="survi-furnace-arrow"><div class="survi-furnace-arrow-fill"></div></div>
+          <button type="button" class="survi-fslot survi-fslot-out" data-fslot="out" title="Resultado"></button>
+        </div>
+        <p class="survi-station-sub">Tocá algo de tu inventario para meterlo al horno. Tocá un casillero para sacarlo.</p>
+        <div class="survi-station-inv survi-furnace-inv"></div>
+        <button class="btn-game-secondary" data-act="station-close">Cerrar</button>
+      </div>
+    </div>
+
+    <!-- ── Cofre ── -->
+    <div class="modal-game survi-screen survi-chest hidden">
+      <div class="modal-game-box survi-station-box">
+        <h2 class="modal-game-title">Cofre</h2>
+        <p class="survi-station-label survi-chest-label"></p>
+        <div class="survi-station-inv survi-chest-grid"></div>
+        <p class="survi-station-label">Tu inventario</p>
+        <div class="survi-station-inv survi-chest-inv"></div>
+        <p class="survi-station-sub">Tocá un ítem para pasarlo de un lado al otro.</p>
+        <button class="btn-game-secondary" data-act="station-close">Cerrar</button>
       </div>
     </div>
 
@@ -243,6 +278,8 @@ export function buildLayout(root) {
       inv: q('.survi-inv'),
       equip: q('.survi-equip'),
       craft: q('.survi-craft'),
+      furnace: q('.survi-furnace'),
+      chest: q('.survi-chest'),
       pause: q('.survi-pause'),
       death: q('.survi-death')
     },
@@ -257,6 +294,15 @@ export function buildLayout(root) {
     craftTabs: q('.survi-craft-tabs'),
     craftList: q('.survi-craft-list'),
     craftDetail: q('.survi-craft-detail'),
+    craftTitle: q('.survi-craft-title'),
+    craftHint: q('.survi-craft-hint'),
+    furnaceSlots: { in: q('[data-fslot="in"]'), fuel: q('[data-fslot="fuel"]'), out: q('[data-fslot="out"]') },
+    furnaceFire: q('.survi-furnace-fire-fill'),
+    furnaceArrow: q('.survi-furnace-arrow-fill'),
+    furnaceInv: q('.survi-furnace-inv'),
+    chestLabel: q('.survi-chest-label'),
+    chestGrid: q('.survi-chest-grid'),
+    chestInv: q('.survi-chest-inv'),
     toast: q('.survi-toast'),
     pauseInfo: q('.survi-pause-info'),
     deathTime: q('.survi-death-time'),
@@ -281,6 +327,8 @@ export function buildLayout(root) {
   ui.renderInventory = (game) => renderInventory(ui, game);
   ui.renderEquip = (game) => renderEquip(ui, game);
   ui.renderCraft = (game) => renderCraft(ui, game);
+  ui.renderFurnace = (game, barsOnly) => renderFurnace(ui, game, barsOnly);
+  ui.renderChest = (game) => renderChest(ui, game);
   ui.showToast = (msg) => showToast(ui, msg);
   // Sprite del personaje en la pantalla de Equipamiento: un recorte fijo
   // (el frame "idle") del mismo sheet que usa el canvas.
@@ -305,7 +353,8 @@ export function showScreen(ui, name) {
   }
   // El HUD solo se ve jugando o con la pausa/inventario/equipo/crafteo encima.
   const inGame = name === null || name === 'pause' || name === 'inv' ||
-                 name === 'equip' || name === 'craft' || name === 'death';
+                 name === 'equip' || name === 'craft' || name === 'death' ||
+                 name === 'furnace' || name === 'chest';
   ui.hud.classList.toggle('hidden', !inGame);
   ui.touch.classList.toggle('hidden', name !== null);
 }
@@ -547,17 +596,25 @@ function ingredientLabel(ing) {
 // primero lo que ya podés craftear.
 let craftCat = CRAFT_CATS[0].key;
 function renderCraft(ui, game) {
+  // Desde el inventario solo lo simple; en la mesa de crafteo, todo.
+  const atTable = game.craftStation === 'table';
+  const available = RECIPES.filter(r => atTable || r.station === 'hand');
+  ui.craftTitle.textContent = atTable ? 'Mesa de crafteo' : 'Craftear';
+  ui.craftHint.textContent = atTable ? '' : 'Herramientas, armas, armadura, horno y cofre se hacen en una mesa de crafteo.';
+  ui.craftHint.classList.toggle('hidden', atTable);
+  const cats = CRAFT_CATS.filter(c => available.some(r => r.cat === c.key));
+  if (!cats.some(c => c.key === craftCat)) craftCat = cats[0].key;
   ui.craftTabs.innerHTML = '';
-  for (const c of CRAFT_CATS) {
+  for (const c of cats) {
     const tab = document.createElement('button');
-    const n = RECIPES.filter(r => r.cat === c.key && canCraft(game.inventory, r)).length;
+    const n = available.filter(r => r.cat === c.key && canCraft(game.inventory, r)).length;
     tab.className = 'survi-craft-tab' + (c.key === craftCat ? ' active' : '');
     tab.innerHTML = `${c.label}${n ? `<span class="survi-craft-tab-n">${n}</span>` : ''}`;
     tab.addEventListener('click', () => { craftCat = c.key; ui.craftDetail.innerHTML = '<p class="survi-craft-empty">Elegí algo de la lista para ver qué pide.</p>'; renderCraft(ui, game); });
     ui.craftTabs.appendChild(tab);
   }
   ui.craftList.innerHTML = '';
-  const list = RECIPES.filter(r => r.cat === craftCat)
+  const list = available.filter(r => r.cat === craftCat)
     .map(r => ({ r, ok: canCraft(game.inventory, r) }))
     .sort((a, b) => (b.ok - a.ok));
   for (const { r: recipe, ok } of list) {
@@ -577,6 +634,59 @@ function renderCraft(ui, game) {
     });
     ui.craftList.appendChild(row);
   }
+}
+
+// ═══════════ Horno / cofre ═══════════
+function stackButton(id, qty, onClick, px = 30) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'survi-sitem';
+  b.title = ITEM_INFO[id] ? ITEM_INFO[id].name : '';
+  b.innerHTML = `${iconMarkup(id, px)}<span class="survi-sitem-qty">${qty}</span>`;
+  b.addEventListener('click', onClick);
+  return b;
+}
+
+const FSLOT_LABEL = { in: 'Cocinar', fuel: 'Carbón', out: 'Listo' };
+function renderFurnace(ui, game, barsOnly) {
+  const f = game.openFurnace;
+  if (!f) return;
+  for (const k of ['in', 'fuel', 'out']) {
+    const el = ui.furnaceSlots[k], st = f[k];
+    const sig = st ? `${st.id}:${st.qty}` : '';
+    if (el.dataset.sig !== sig) {           // solo se toca el DOM si cambió
+      el.dataset.sig = sig;
+      el.innerHTML = st
+        ? `${iconMarkup(st.id, 32)}<span class="survi-sitem-qty">${st.qty}</span>`
+        : `<span class="survi-fslot-empty">${FSLOT_LABEL[k]}</span>`;
+      el.classList.toggle('filled', !!st);
+    }
+    el.onclick = () => game.furnaceTake(k);
+  }
+  ui.furnaceFire.style.height = (f.burnMax ? Math.round(100 * f.burn / f.burnMax) : 0) + '%';
+  ui.furnaceArrow.style.width = Math.round(100 * Math.min(1, f.prog / SMELT_MS)) + '%';
+  if (barsOnly) return;
+  ui.furnaceInv.innerHTML = '';
+  const ids = Object.keys(game.inventory).map(Number).filter(id => SMELT[id] || FUEL[id]);
+  if (!ids.length) {
+    ui.furnaceInv.innerHTML = '<p class="survi-station-empty">No tenés nada para cocinar o fundir, ni carbón.</p>';
+    return;
+  }
+  for (const id of ids) ui.furnaceInv.appendChild(stackButton(id, game.inventory[id], () => game.furnaceInsert(id)));
+}
+
+function renderChest(ui, game) {
+  const c = game.openChest;
+  if (!c) return;
+  const keys = Object.keys(c).map(Number);
+  ui.chestLabel.textContent = `Cofre (${keys.length}/${CHEST_SLOTS})`;
+  ui.chestGrid.innerHTML = '';
+  if (!keys.length) ui.chestGrid.innerHTML = '<p class="survi-station-empty">Vacío</p>';
+  for (const id of keys) ui.chestGrid.appendChild(stackButton(id, c[id], () => game.chestTake(id)));
+  ui.chestInv.innerHTML = '';
+  const inv = Object.keys(game.inventory).map(Number);
+  if (!inv.length) ui.chestInv.innerHTML = '<p class="survi-station-empty">Tu inventario está vacío</p>';
+  for (const id of inv) ui.chestInv.appendChild(stackButton(id, game.inventory[id], () => game.chestPut(id)));
 }
 
 function renderCraftDetail(ui, game, recipe) {

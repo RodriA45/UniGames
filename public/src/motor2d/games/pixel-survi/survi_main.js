@@ -109,8 +109,13 @@ function wireActions() {
         showScreen(ui, 'craft');
         break;
       case 'craft-back':
+        // desde la mesa de crafteo, Volver cierra y vuelve al juego
+        if (game.craftStation === 'table') { game.closeStation(); break; }
         showScreen(ui, 'inv');
         ui.renderInventory(game);
+        break;
+      case 'station-close':
+        game.closeStation();
         break;
       case 'respawn':
         game.respawn();

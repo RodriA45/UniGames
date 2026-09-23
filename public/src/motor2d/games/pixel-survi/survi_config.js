@@ -83,6 +83,10 @@ export const TID = {};
   TID.copper_ore = ++n;
   TID.diamond_ore = ++n;
   TID.emerald_ore = ++n;
+  TID.craft_table = ++n;
+  TID.furnace = ++n;
+  TID.furnace_on = ++n;   // horno prendido (misma cosa, otro dibujo + da luz)
+  TID.chest = ++n;
 }
 export const TILE_COUNT = Object.keys(TID).length;   // 139
 export const TILESET_COLS = 8;
@@ -173,6 +177,10 @@ export const T = {
   DIAMOND_ORE: TID.diamond_ore,
   EMERALD_ORE: TID.emerald_ore,
   TORCH: TID.torch,
+  CRAFT_TABLE: TID.craft_table,
+  FURNACE: TID.furnace,
+  FURNACE_ON: TID.furnace_on,
+  CHEST: TID.chest,
   WOOD: TID.forest_TRUNK,
   LEAVES: TID.forest_LC,
   JLEAVES: TID.jungle_LC
@@ -201,6 +209,10 @@ export const DROPS = {};
   // por variante.
   for (const k of [...STONE_VARIANT_KEYS, ...DARK_STONE_VARIANT_KEYS]) DROPS[TID[k]] = TID.stone;
   DROPS[TID.torch] = TID.torch;
+  DROPS[TID.craft_table] = TID.craft_table;
+  DROPS[TID.furnace] = TID.furnace;
+  DROPS[TID.furnace_on] = TID.furnace;
+  DROPS[TID.chest] = TID.chest;
   for (const pal of TREE_KEYS) {
     for (const p of WOOD_PIECES) DROPS[TID[`${pal}_${p}`]] = TID[`${pal}_TRUNK`];
     // las hojas sueltan el ítem "Hojas" (MAT.leaves): ver más abajo, en Materiales
@@ -237,6 +249,10 @@ export const TOOL_FOR = {};
   HARDNESS[TID.copper_ore] = 1.20; TOOL_FOR[TID.copper_ore] = 'pickaxe';
   HARDNESS[TID.diamond_ore] = 2.20; TOOL_FOR[TID.diamond_ore] = 'pickaxe';
   HARDNESS[TID.emerald_ore] = 2.60; TOOL_FOR[TID.emerald_ore] = 'pickaxe';
+  HARDNESS[TID.craft_table] = 0.8; TOOL_FOR[TID.craft_table] = 'axe';
+  HARDNESS[TID.furnace] = 1.2;     TOOL_FOR[TID.furnace] = 'pickaxe';
+  HARDNESS[TID.furnace_on] = 1.2;  TOOL_FOR[TID.furnace_on] = 'pickaxe';
+  HARDNESS[TID.chest] = 0.8;       TOOL_FOR[TID.chest] = 'axe';
   for (const pal of TREE_KEYS) {
     for (const p of WOOD_PIECES) { HARDNESS[TID[`${pal}_${p}`]] = 0.55; TOOL_FOR[TID[`${pal}_${p}`]] = 'axe'; }
     for (const p of LEAF_PIECES) { HARDNESS[TID[`${pal}_${p}`]] = 0.15; }
@@ -266,10 +282,13 @@ export const ITEM_INFO = {};
     [TID.forest_TRUNK]:  'Tronco de roble',
     [TID.pradera_TRUNK]: 'Tronco claro',
     [TID.jungle_TRUNK]:  'Tronco de selva',
-    [TID.forest_LC]:  'Hojas',
+    [TID.forest_LC]:  'Bloque de hojas',
     [TID.pradera_LC]: 'Hojas de pradera',
     [TID.jungle_LC]:  'Follaje de selva',
-    [TID.torch]:      'Antorcha'
+    [TID.torch]:      'Antorcha',
+    [TID.craft_table]: 'Mesa de crafteo',
+    [TID.furnace]:     'Horno',
+    [TID.chest]:       'Cofre'
   };
   for (const [id, name] of Object.entries(blocks)) {
     ITEM_INFO[id] = { name, place: Number(id) };
@@ -281,6 +300,35 @@ export const ITEM_INFO = {};
 // (1000+). No son colocables (no tienen `place`): se comen con clic
 // derecho estando seleccionadas en la hotbar (ver survi_game.js `_eat`).
 export const FOOD_IDS = { berry: 2001, apple: 2002 };
+
+// Estaciones: bloques que se usan con clic derecho (abren una pantalla).
+// No son sólidos (se pasan por delante, como en Terraria) y se apoyan
+// sobre un bloque sólido.
+export const STATION_IDS = new Set([TID.craft_table, TID.furnace, TID.furnace_on, TID.chest]);
+export const CHEST_SLOTS = 16;   // tipos de ítem distintos que entran en un cofre
+
+// Comida que se consigue cruda y se cocina en el horno (carne, huevo y
+// pescado llegan con animales/pesca; las recetas ya quedan listas).
+export const FOOD = {
+  meatRaw: 2010, meatCooked: 2011, meatRotten: 2012, egg: 2013, eggCooked: 2014,
+  potato: 2015, potatoBaked: 2016, bread: 2017, watermelon: 2018, carrot: 2019,
+  fishRaw: 2020, fish2Raw: 2021, fishCooked: 2022, squidRaw: 2023, squidCooked: 2024,
+  eelRaw: 2025, eelCooked: 2026
+};
+{
+  const f = [
+    ['meatRaw', 'Carne cruda', 6, 'meat_raw'], ['meatCooked', 'Carne cocida', 32, 'meat_cooked'],
+    ['meatRotten', 'Carne podrida', 4, 'meat_rotten'], ['egg', 'Huevo', 4, 'egg'],
+    ['eggCooked', 'Huevo frito', 18, 'egg_cooked'], ['potato', 'Papa', 8, 'potato'],
+    ['potatoBaked', 'Papa al horno', 26, 'potato_baked'], ['bread', 'Pan', 28, 'bread'],
+    ['watermelon', 'Sandía', 12, 'watermelon_slice'], ['carrot', 'Zanahoria', 12, 'carrot'],
+    ['fishRaw', 'Pescado crudo', 6, 'fish_raw'], ['fish2Raw', 'Salmón crudo', 6, 'fish2_raw'],
+    ['fishCooked', 'Pescado cocido', 24, 'fish_cooked'], ['squidRaw', 'Calamar crudo', 6, 'squid_raw'],
+    ['squidCooked', 'Calamar cocido', 22, 'squid_cooked'], ['eelRaw', 'Anguila cruda', 6, 'eel_raw'],
+    ['eelCooked', 'Anguila cocida', 24, 'eel_cooked']
+  ];
+  for (const [k, name, food, sprite] of f) ITEM_INFO[FOOD[k]] = { name, food, sprite };
+}
 ITEM_INFO[FOOD_IDS.berry] = { name: 'Bayas', food: 14 };
 ITEM_INFO[FOOD_IDS.apple] = { name: 'Manzana', food: 26, sprite: 'apple' };
 
@@ -305,7 +353,8 @@ export function leafPalette(tileId) {
 export const MAT = {
   string: 4001, leaves: 4002, sticks: 4003, flint: 4004, leather: 4005,
   copperRaw: 4006, ironRaw: 4007, goldRaw: 4008, coal: 4009,
-  copperIngot: 4010, ironIngot: 4011, goldIngot: 4012, diamond: 4013, emerald: 4014
+  copperIngot: 4010, ironIngot: 4011, goldIngot: 4012, diamond: 4013, emerald: 4014,
+  arrow: 4015
 };
 {
   const m = [
@@ -314,7 +363,8 @@ export const MAT = {
     ['copperRaw', 'Cobre crudo', 'copper_raw'], ['ironRaw', 'Hierro crudo', 'iron_raw'],
     ['goldRaw', 'Oro crudo', 'gold_raw'], ['coal', 'Carbón', 'coal'],
     ['copperIngot', 'Lingote de cobre', 'copper_ingot'], ['ironIngot', 'Lingote de hierro', 'iron_ingot'],
-    ['goldIngot', 'Lingote de oro', 'gold_ingot'], ['diamond', 'Diamante', 'diamond'], ['emerald', 'Esmeralda', 'emerald']
+    ['goldIngot', 'Lingote de oro', 'gold_ingot'], ['diamond', 'Diamante', 'diamond'], ['emerald', 'Esmeralda', 'emerald'],
+    ['arrow', 'Flecha', 'arrow']
   ];
   for (const [k, name, sprite] of m) ITEM_INFO[MAT[k]] = { name, sprite };
 }
@@ -623,19 +673,24 @@ const WOOD_IDS = [T.WOOD, TID.pradera_TRUNK, TID.jungle_TRUNK];
 export const RECIPES = [];
 {
   // `cat` = pestaña de la pantalla de crafteo.
-  const add = (cat, id, result, resultQty, inputs) => RECIPES.push({ cat, id, result, resultQty, inputs });
+  // `station` = dónde se hace: 'hand' (desde el inventario) o 'table'
+  // (mesa de crafteo). En la mesa también se ven las de mano.
+  const add = (cat, id, result, resultQty, inputs, station = 'table') =>
+    RECIPES.push({ cat, id, result, resultQty, inputs, station });
   const COAL = { anyOf: [MAT.coal, T.COAL], qty: 1, label: 'Carbón' };   // carbón (o el bloque viejo de carbón)
   const STICKS = (qty) => ({ id: MAT.sticks, qty });
 
-  // ── Básicos ──
-  add('basicos', 'sticks', MAT.sticks, 4, [{ anyOf: WOOD_IDS, qty: 1, label: 'Madera' }]);
-  add('basicos', 'flint',  MAT.flint,  1, [{ id: T.GRAVEL, qty: 6 }]);
-  add('basicos', 'torch',  T.TORCH,    4, [STICKS(1), COAL]);
+  // ── Básicos (a mano, desde el inventario) ──
+  const WOOD = (qty) => ({ anyOf: WOOD_IDS, qty, label: 'Madera' });
+  add('basicos', 'sticks',      MAT.sticks,    4, [WOOD(1)], 'hand');
+  add('basicos', 'torch',       T.TORCH,       4, [STICKS(1), COAL], 'hand');
+  add('basicos', 'flint',       MAT.flint,     1, [{ id: T.GRAVEL, qty: 6 }], 'hand');
+  add('basicos', 'arrow',       MAT.arrow,     3, [{ anyOf: [MAT.flint, MAT.ironIngot], qty: 2, label: 'Flint o lingote de hierro' }, STICKS(2)], 'hand');
+  add('basicos', 'craft_table', T.CRAFT_TABLE, 1, [WOOD(4)], 'hand');
 
-  // ── Fundir (provisorio: pasa al horno en la próxima etapa) ──
-  add('fundir', 'copper_ingot', MAT.copperIngot, 1, [{ id: MAT.copperRaw, qty: 1 }, COAL]);
-  add('fundir', 'iron_ingot',   MAT.ironIngot,   1, [{ id: MAT.ironRaw, qty: 1 }, COAL]);
-  add('fundir', 'gold_ingot',   MAT.goldIngot,   1, [{ id: MAT.goldRaw, qty: 1 }, COAL]);
+  // ── Estaciones (en la mesa) ──
+  add('estaciones', 'furnace', T.FURNACE, 1, [{ id: T.STONE, qty: 8 }]);
+  add('estaciones', 'chest',   T.CHEST,   1, [WOOD(8)]);
 
   // ── Herramientas: material de cada tier ──
   const toolMat = {
@@ -670,13 +725,28 @@ export const RECIPES = [];
   add('mochilas', 'bag_large', EQUIP.bagLarge, 1, [{ id: MAT.leaves, qty: 20 }, { id: MAT.ironIngot, qty: 4 }, { id: MAT.goldIngot, qty: 1 }]);
 }
 
+// ══════════ Horno ══════════
+// Qué se transforma en qué (se completa abajo con los minerales).
+export const SMELT = {
+  [FOOD.meatRaw]: FOOD.meatCooked, [FOOD.egg]: FOOD.eggCooked, [FOOD.potato]: FOOD.potatoBaked,
+  [FOOD.fishRaw]: FOOD.fishCooked, [FOOD.fish2Raw]: FOOD.fishCooked,
+  [FOOD.squidRaw]: FOOD.squidCooked, [FOOD.eelRaw]: FOOD.eelCooked
+};
+SMELT[MAT.copperRaw] = MAT.copperIngot;
+SMELT[MAT.ironRaw] = MAT.ironIngot;
+SMELT[MAT.goldRaw] = MAT.goldIngot;
+export const SMELT_MS = 4000;          // tiempo por ítem
+// Combustible: cuántos ítems cocina cada unidad.
+export const FUEL = { [MAT.coal]: 8, [T.COAL]: 8, [MAT.sticks]: 0.5 };
+for (const id of WOOD_IDS) FUEL[id] = 1.5;
+
 export const CRAFT_CATS = [
   { key: 'basicos',      label: 'Básicos' },
+  { key: 'estaciones',   label: 'Estaciones' },
   { key: 'herramientas', label: 'Herramientas' },
   { key: 'armas',        label: 'Armas' },
   { key: 'armadura',     label: 'Armadura' },
-  { key: 'mochilas',     label: 'Mochilas' },
-  { key: 'fundir',       label: 'Fundir' }
+  { key: 'mochilas',     label: 'Mochilas' }
 ];
 
 export function ingredientHave(inventory, ingredient) {
