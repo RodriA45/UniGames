@@ -1,6 +1,4 @@
-/* ══════════════════════════════════════
-   CASTLE ESCAPE (Salto Traicionero) — castle_escape.css
-   ══════════════════════════════════════ */
+/* Castle Escape — castle_escape.css (lo carga app2.js al entrar a la sección). */
 
 @media (max-width: 480px) {
 
@@ -9,9 +7,6 @@
     gap: 0.4rem;
   }
 }
-
-
-/* ─── SALTO TRAICIONERO ─── */
 
 .trampas-container {
   position: relative;
@@ -88,7 +83,6 @@
   margin-top: 0.5rem;
 }
 
-
 .trampas-menu {
     position: absolute;
     inset: 0;
@@ -124,14 +118,7 @@
     background-repeat: no-repeat;
   }
 
-  /* .trampas-menu (menú principal, selección de nivel y ajustes) usa
-   aspect-ratio: 480/270, la misma proporción que el canvas del juego.
-   En mobile esa caja queda muy baja de alto para el contenido real
-   (título + subtítulo + botones) y todo quedaba cortado por el
-   overflow:hidden de la regla base — en selección de nivel directamente
-   no se podía tocar "Jugar Nivel". Acá lo pasamos a alto mínimo + scroll
-   y achicamos un poco todo para que entre sin necesidad de scrollear en
-   la mayoría de los celulares. */
+  /* En mobile los menús scrollean para que no se corte el contenido (la caja es 16:9). */
   @media (max-width: 480px) {
     .trampas-menu {
       aspect-ratio: auto;
@@ -181,7 +168,6 @@
       font-size: clamp(10px, 3vw, 12px);
     }
 }
-
 
   .trampas-menu-title {
     font-family: 'Press Start 2P', monospace;
@@ -434,7 +420,6 @@
     }
 }
 
-
   /* ─── Cómo jugar ─── */
   .trampas-howto-content {
     display: flex;
@@ -496,7 +481,6 @@
     }
 }
 
-
   /* ─── Castle Escape mobile ─── */
   @media (max-width: 600px) {
     /* El contenedor ocupa todo el ancho disponible sin margen extra */
@@ -531,7 +515,7 @@
       font-size: 0.85rem;
       padding: 0.55rem 1.5rem;
     }
-    
+
     /* Menú interno: súper compacto y scrollable desde arriba para que el botón "Jugar" siempre se vea en pantallas de 230px de alto */
     .trampas-menu {
       padding: 0.5rem;
@@ -641,7 +625,6 @@
     }
 }
 
-
   /* ─── Cartel de controles dentro del juego (no alert) ─── */
   .trampas-controls-sign {
     position: absolute;
@@ -741,14 +724,6 @@
 
   .trampas-hud-deaths {
     color: #ef4444;
-  }
-
-  .trampas-pause-btn {
-    font-size: 0.8rem;
-    padding: 0.3rem 0.8rem;
-    background: rgba(124, 58, 237, 0.3);
-    border-color: #7c3aed;
-    color: #c4b5fd;
   }
 
   .trampas-pause-menu {

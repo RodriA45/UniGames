@@ -5,39 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>UniGames</title>
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <meta name="description" content="UniGames: minijuegos de palabras, trivia y acción 2D, con ranking, logros, amigos y duelos." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Nunito:wght@400;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="src/styles.css" />
-  <link rel="stylesheet" href="src/motor2d/ui-components.css">
-  <!-- Los CSS de cada minijuego (pixelrunner.css, castle_escape.css, rpg.css)
-       ya NO se cargan acá: son ~2300 líneas que se parseaban en la pantalla de
-       Inicio sin usarse una sola regla. Ahora los inyecta ensureRunnerCSS() /
-       ensureCastleCSS() / ensureRpgCSS() en app2.js, junto con el import()
-       del juego, la primera vez que se entra a esa sección. El orden final
-       sigue siendo el mismo (styles.css → ui-components.css → css del juego)
-       porque se agregan al final del <head>. -->
+  <link rel="stylesheet" href="src/motor2d/ui-components.css" />
+  <link rel="stylesheet" href="src/modales.css" />
+  <!-- El CSS de cada juego 2D lo agrega app2.js al entrar a su sección (carga diferida). -->
 </head>
 <body class="has-bg-gif">
 
-<!-- ════════════════ HEADER ════════════════ -->
+<!-- ── Header ── -->
 <header>
   <div class="header-inner">
 
-    <!-- Botón hamburguesa -->
     <button class="hamburger" id="hamburger" aria-label="Abrir menú">
       <span></span>
       <span></span>
       <span></span>
     </button>
 
-    <!-- Logo -->
     <div class="logo" onclick="goTo('inicio')">UniGames</div>
 
-    <!-- Audio -->
     <div class="audio-toggle" style="margin-right: auto; margin-left: 1rem; cursor: pointer; display: flex; align-items: center;" onclick="toggleGlobalAudio()" id="globalAudioBtn" title="Activar/Desactivar Sonido">
       <svg style="width:1.8rem;height:1.8rem;fill:#FFF;" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
     </div>
 
-    <!-- Perfil / Cuenta -->
     <button class="account-toggle" id="accountToggle" onclick="handleAccountToggle()" aria-label="Mi cuenta" title="Mi cuenta">
       <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.34 0-10 1.68-10 5v1c0 .55.45 1 1 1h18c.55 0 1-.45 1-1v-1c0-3.32-6.66-5-10-5z"/></svg>
     </button>
@@ -48,7 +42,7 @@
 <!-- Fondo oscuro compartido por los menús laterales -->
 <div class="drawer-backdrop" id="drawerBackdrop" onclick="closeNav(); closeAccountDrawer();"></div>
 
-<!-- ─── MENÚ LATERAL IZQUIERDO ─── -->
+<!-- ── Menú lateral izquierdo ── -->
 <nav class="nav-menu" id="navMenu">
   <div class="nav-menu-top">
     <span class="nav-menu-logo">UniGames</span>
@@ -61,20 +55,20 @@
   </ul>
 </nav>
 
-<!-- ─── MENÚ LATERAL DERECHO: CUENTA ─── -->
+<!-- ── Menú lateral derecho: cuenta ── -->
 <aside class="account-drawer" id="accountDrawer">
   <div class="nav-menu-top">
     <span class="nav-menu-logo">Mi cuenta</span>
   </div>
   <div class="account-drawer-body" id="accountDrawerBody">
-    <!-- Contenido generado dinámicamente por updateAuthUI() -->
+    <!-- Lo llena app2.js (updateAuthUI) -->
   </div>
 </aside>
 
-<!-- ════════════════ MAIN ════════════════ -->
+<!-- ── Main ── -->
 <main>
 
-  <!-- ── SECCIÓN: INICIO ── -->
+  <!-- ── Sección: Inicio ── -->
   <section class="section active" id="sec-inicio">
 
     <div class="hero">
@@ -89,26 +83,26 @@
       <span class="section-title">Juegos Destacados</span>
     </div>
 
-    <!-- Se llena dinámicamente desde app.js -->
+    <!-- Lo llena app2.js -->
     <div class="featured-grid" id="featuredGrid"></div>
 
     <div style="text-align:center; margin:2.5rem 0 1.5rem;">
       <span class="section-title">Juegos Sencillos</span>
     </div>
 
-    <!-- Se llena dinámicamente desde app.js -->
+    <!-- Lo llena app2.js -->
     <div class="featured-grid" id="simpleGrid"></div>
 
     <div style="text-align:center; margin:2.5rem 0 1.5rem;">
       <span class="section-title">Juegos de Acción</span>
     </div>
 
-    <!-- Se llena dinámicamente desde app.js -->
+    <!-- Lo llena app2.js -->
     <div class="featured-grid" id="actionGrid"></div>
 
   </section>
 
-  <!-- ── SECCIÓN: JUEGOS ── -->
+  <!-- ── Sección: Juegos ── -->
   <section class="section" id="sec-juegos">
 
     <div class="games-intro">
@@ -125,19 +119,19 @@
       <span class="section-title">Juegos Clásicos</span>
     </div>
 
-    <!-- Se llena dinámicamente desde app2.js (renderClassicGames) -->
+    <!-- Lo llena app2.js (renderClassicGames) -->
     <div class="games-grid" id="classicGrid"></div>
 
     <div style="text-align:center; margin:2.5rem 0 1.5rem;">
       <span class="section-title">Juegos del Motor</span>
     </div>
 
-    <!-- Se llena dinámicamente desde app2.js (renderMotorGames) -->
+    <!-- Lo llena app2.js (renderMotorGames) -->
     <div class="games-grid" id="motorGrid"></div>
 
   </section>
 
-  <!-- ── SECCIÓN: PUNTUACIÓN ── -->
+  <!-- ── Sección: Puntuación ── -->
   <section class="section" id="sec-puntuacion">
 
     <div class="scores-header">
@@ -176,7 +170,7 @@
 
   </section>
 
-  <!-- ── SECCIÓN: AHORCADO ── -->
+  <!-- ── Sección: Ahorcado ── -->
   <section class="section" id="sec-ahorcado">
     <div class="game-screen-header">
       <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
@@ -184,7 +178,7 @@
       <div class="game-screen-theme" id="ahorcado-theme-label"></div>
     </div>
 
-    <div class="game-area-wrap" id="ahorcadoAreaWrap">
+    <div class="game-area-wrap">
       <!-- Cartel de inicio: título, elegir temática y jugar -->
       <div class="game-start-overlay" id="ahorcadoStartOverlay">
         <div class="game-start-box">
@@ -203,10 +197,8 @@
       </div>
 
       <div class="ahorcado-wrap" id="ahorcadoGame" style="display:none;">
-        <!-- Dibujo SVG -->
         <div class="ahorcado-drawing">
           <svg viewBox="0 0 120 160" width="120" height="160">
-            <!-- Estructura -->
             <line x1="10" y1="155" x2="110" y2="155" stroke="#1a3a6b" stroke-width="4" stroke-linecap="round"/>
             <line x1="30"  y1="155" x2="30"  y2="10"  stroke="#1a3a6b" stroke-width="4" stroke-linecap="round"/>
             <line x1="30"  y1="10"  x2="80"  y2="10"  stroke="#1a3a6b" stroke-width="4" stroke-linecap="round"/>
@@ -221,7 +213,6 @@
           </svg>
         </div>
 
-        <!-- Área de juego -->
         <div class="ahorcado-main">
           <div class="ahorcado-word" id="ahorcado-word"></div>
           <div class="ahorcado-status" id="ahorcado-status"></div>
@@ -244,7 +235,7 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: ADIVINA LA PALABRA (estilo Wordle) ── -->
+  <!-- ── Sección: Adivina la Palabra (estilo Wordle) ── -->
   <section class="section" id="sec-wordle">
     <div class="game-screen-header">
       <button class="btn-back" onclick="stopWordle(); goTo('juegos')">← Volver a Juegos</button>
@@ -252,7 +243,7 @@
       <div class="game-screen-theme" id="wordle-theme-label"></div>
     </div>
 
-    <div class="game-area-wrap" id="wordleAreaWrap">
+    <div class="game-area-wrap">
       <!-- Cartel de inicio: título, elegir temática y jugar -->
       <div class="game-start-overlay" id="wordleStartOverlay">
         <div class="game-start-box">
@@ -300,7 +291,7 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: SOPA DE LETRAS ── -->
+  <!-- ── Sección: Sopa de Letras ── -->
   <section class="section" id="sec-sopa">
     <div class="game-screen-header">
       <button class="btn-back" onclick="clearInterval(sopaState.timer); goTo('juegos')">← Volver a Juegos</button>
@@ -308,7 +299,7 @@
       <div class="game-screen-theme" id="sopa-theme-label"></div>
     </div>
 
-    <div class="game-area-wrap" id="sopaAreaWrap">
+    <div class="game-area-wrap">
       <!-- Cartel de inicio: título, elegir temática y jugar -->
       <div class="game-start-overlay" id="sopaStartOverlay">
         <div class="game-start-box">
@@ -339,7 +330,7 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: PREGUNTADOS ── -->
+  <!-- ── Sección: Preguntados ── -->
   <section class="section" id="sec-preguntados">
     <div class="game-screen-header">
       <button class="btn-back" onclick="clearInterval(pregState.timer); goTo('juegos')">← Volver a Juegos</button>
@@ -347,7 +338,7 @@
       <div class="game-screen-theme" id="preguntados-theme-label"></div>
     </div>
 
-    <div class="game-area-wrap" id="preguntadosAreaWrap">
+    <div class="game-area-wrap">
       <!-- Cartel de inicio: título, elegir temática y jugar -->
       <div class="game-start-overlay" id="preguntadosStartOverlay">
         <div class="game-start-box">
@@ -378,7 +369,7 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: TERMINA LA PALABRA ── -->
+  <!-- ── Sección: Termina la Palabra ── -->
   <section class="section" id="sec-termina">
     <div class="game-screen-header">
       <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
@@ -386,7 +377,7 @@
       <div class="game-screen-theme" id="termina-theme-label"></div>
     </div>
 
-    <div class="game-area-wrap" id="terminaAreaWrap">
+    <div class="game-area-wrap">
       <!-- Cartel de inicio: título, elegir temática y jugar -->
       <div class="game-start-overlay" id="terminaStartOverlay">
         <div class="game-start-box">
@@ -417,7 +408,7 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: ADIVINA LA COSA ── -->
+  <!-- ── Sección: Adivina la Cosa ── -->
   <section class="section" id="sec-adivina">
     <div class="game-screen-header">
       <button class="btn-back" onclick="stopAdivina(); goTo('juegos')">← Volver a Juegos</button>
@@ -425,7 +416,6 @@
       <div class="game-screen-theme" id="adivina-theme-label"></div>
     </div>
 
-    <!-- Contenedor del juego (relativo para el overlay) -->
     <div style="position: relative; flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 400px; width: 100%;">
       
       <!-- Overlay inicio / fin -->
@@ -446,22 +436,18 @@
         </div>
       </div>
 
-      <!-- Juego -->
       <div class="adivina-game" id="adivinaGame" style="display:none; margin: 1rem auto; width: 100%;">
-        <!-- Info superior -->
         <div class="adivina-meta">
           <span>Item <span id="adivinaItemNum">1</span> / <span id="adivinaItemTotal">4</span></span>
           <span>Puntos: <span id="adivinaScore">0</span></span>
           <span>Pistas usadas: <span id="adivinaPistasUsed">0</span></span>
         </div>
 
-        <!-- Imagen pixelada -->
         <div class="adivina-img-wrap">
           <canvas id="adivinaCanvas" width="260" height="200"></canvas>
           <div class="adivina-blur-label">🔍 Imagen pixelada — desbloquear con pistas</div>
         </div>
 
-        <!-- Pistas -->
         <div class="adivina-pistas-wrap">
           <div id="adivinaPistasList" class="adivina-pistas-list"></div>
           <button class="adivina-btn-pista" id="adivinaBtnPista" onclick="revelarPista()">
@@ -469,14 +455,12 @@
           </button>
         </div>
 
-        <!-- Input respuesta -->
         <div class="adivina-input-wrap">
           <input type="text" id="adivinaInput" class="adivina-input" placeholder="Escribí tu respuesta..." autocomplete="off" />
           <button class="btn-play adivina-btn-submit" onclick="submitAdivina()">✓ Confirmar</button>
         </div>
         <button class="btn-back" id="adivinaBtnRendirse" style="margin:.6rem auto 0;display:none;" onclick="rendirseAdivina()">🏳 Me rindo, mostrar respuesta</button>
 
-        <!-- Feedback -->
         <div id="adivinaFeedback" class="adivina-feedback" style="display:none;"></div>
       </div>
     </div>
@@ -492,7 +476,7 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: PIXEL RUNNER ── -->
+  <!-- ── Sección: Pixel Runner ── -->
   <section class="section" id="sec-runner">
     <div class="game-screen-header">
       <button class="btn-back" onclick="stopRunner(); goTo('juegos')">← Volver a Juegos</button>
@@ -538,7 +522,7 @@
             <div class="runner-panel-title">🎮 Elegí tu modo</div>
           </div>
           <div class="runner-panel-content runner-mode-content">
-            <button class="runner-mode-card" id="runnerModoHistoriaBtn" onclick="elegirModoRunner('historia')">
+            <button class="runner-mode-card" onclick="elegirModoRunner('historia')">
               <span class="runner-mode-icon">📖</span>
               <span class="runner-mode-name">Historia</span>
               <span class="runner-mode-desc">Llegá a los 2.500 puntos</span>
@@ -556,7 +540,7 @@
       <div class="runner-comic-overlay hidden" id="runnerComicOverlay">
         <div class="runner-comic-box">
           <img class="runner-comic-img" id="runnerComicImg" src="" alt="Cómic Pixel Runner">
-          <button class="btn-play runner-comic-btn" id="runnerComicBtn" onclick="runnerComicContinuar()">Continuar ▶</button>
+          <button class="btn-play runner-comic-btn" onclick="runnerComicContinuar()">Continuar ▶</button>
         </div>
       </div>
 
@@ -568,9 +552,9 @@
           <p class="runner-overlay-title" id="runnerOverlayTitle">¡Pixel Runner!</p>
           <p class="runner-overlay-sub" id="runnerOverlaySub">↑ Saltar &nbsp;·&nbsp; ↓ Caída rápida<br>Doble salto disponible</p>
           <p class="runner-best" id="runnerBest"></p>
-          <div class="runner-gameover-buttons">
-            <button class="btn-play runner-restart-btn" id="runnerRestartBtn" onclick="restartRunner()">▶ Jugar de nuevo</button>
-            <button class="btn-play runner-menu-btn" id="runnerMenuBtn" onclick="toRunnerMenu()">Volver al menú</button>
+          <div>
+            <button class="btn-play" id="runnerRestartBtn" onclick="restartRunner()">▶ Jugar de nuevo</button>
+            <button class="btn-play" id="runnerMenuBtn" onclick="toRunnerMenu()">Volver al menú</button>
           </div>
         </div>
       </div>
@@ -625,10 +609,7 @@
               <label>Pantalla completa</label>
               <button type="button" class="runner-fullscreen-btn" id="runnerFullscreenBtn" onclick="runnerToggleFullscreen()">Activar</button>
             </div>
-            <!-- Selector de calidad gráfica: lo inserta ensureQualityRows()
-                 (app2.js) con Engine2D.Quality.createRow(). Es UNA sola
-                 preferencia global — se sincroniza sola con los otros dos
-                 juegos, no hace falta elegirla en cada uno. -->
+            <!-- Selector de calidad: lo inserta app2.js (ensureQualityRows). Es una sola preferencia para todos los juegos. -->
             <div id="runnerQualitySlot"></div>
           </div>
         </div>
@@ -673,7 +654,7 @@
 
   </section>
 
-  <!-- ── SECCIÓN: CASTLE ESCAPE ── -->
+  <!-- ── Sección: Castle Escape ── -->
   <section class="section" id="sec-castle_escape">
     <div class="game-screen-header">
       <button class="btn-back" onclick="stopTrampas(); goTo('juegos')">← Volver a Juegos</button>
@@ -713,7 +694,7 @@
         </div>
         <div class="trampas-level-nav">
           <button class="trampas-nav-arrow" id="trNavLeft" onclick="trNavLevel(-1)">◀</button>
-          <div class="trampas-level-card-big" id="trLevelCardBig">
+          <div class="trampas-level-card-big">
             <div class="trampas-big-stars" id="trBigStars">
               <span class="star">★</span><span class="star">★</span><span class="star">★</span>
             </div>
@@ -803,7 +784,7 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: RPG PIXEL ── -->
+  <!-- ── Sección: RPG Pixel ── -->
   <section class="section" id="sec-rpg_pixel">
     <div class="game-screen-header">
       <button class="btn-back" onclick="rpgExitToHub();">← Volver a Juegos</button>
@@ -833,7 +814,7 @@
             <h2 class="rpg-menu-title">RPG Pixel</h2>
             <p class="rpg-menu-sub">Elegí una partida guardada o empezá una nueva</p>
             <div class="rpg-menu-buttons" id="rpgSlotsButtons">
-              <!-- Se completa dinámicamente desde rpg.js (rpgRenderSlots) -->
+              <!-- Lo llena el RPG (renderSlots) -->
             </div>
             <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgShowMainMenu()">Menú principal</button>
           </div>
@@ -854,7 +835,7 @@
             <h2 class="rpg-menu-title">RPG Pixel</h2>
             <p class="rpg-menu-sub">Elegí un capítulo</p>
             <div class="rpg-menu-buttons" id="rpgChapterButtons">
-              <!-- Se completa dinámicamente desde rpg.js (rpgRenderChapters) -->
+              <!-- Lo llena el RPG (capítulos del slot) -->
             </div>
             <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgBackToSlots()">Cambiar partida</button>
           </div>
@@ -864,7 +845,7 @@
             <h2 class="rpg-menu-title">Mejoras</h2>
             <div style="color: #ffd700; margin-bottom: 0.2rem; font-weight: 800;">Oro disponible: <span id="rpgMejorasGold">0</span></div>
             <div class="rpg-mejoras-list" id="rpgMejorasList">
-              <!-- Se llena dinámicamente -->
+              <!-- Lo llena el RPG (tienda de mejoras) -->
             </div>
             <button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;margin-top:0.6rem;" onclick="rpgShowMainMenu()">Volver</button>
           </div>
@@ -936,7 +917,7 @@
           <p class="rpg-overlay-title" id="rpgOverlayTitle">Nivel 1</p>
           <p class="rpg-overlay-sub" id="rpgOverlaySub">Caminá con las flechas / WASD, disparás con Espacio o click en la dirección que caminaste. Mantené Shift o el botón 🛡️ para bloquear.</p>
           <div class="rpg-overlay-buttons" id="rpgOverlayButtons">
-            <button class="btn-play" id="rpgOverlayMainBtn" onclick="rpgBeginCombat()">▶ Empezar</button>
+            <button class="btn-play" onclick="rpgBeginCombat()">▶ Empezar</button>
           </div>
         </div>
       </div>
@@ -954,10 +935,8 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: PIXEL SURVI ── -->
-  <!-- El juego se monta entero adentro de #survi-root (canvas, HUD, menús).
-       No va ningún <script> ni <link> acá: app2.js importa el módulo y el CSS
-       con lazy loading recién al entrar a esta sección (ensureSurviLoaded). -->
+  <!-- ── Sección: Pixel Survi ── -->
+  <!-- El juego se arma entero dentro de #survi-root; app2.js carga su CSS y módulo al entrar (ensureSurviLoaded). -->
   <section class="section" id="sec-pixel_survi">
     <div class="game-screen-header">
       <button class="btn-back" onclick="goTo('juegos')">← Volver a Juegos</button>
@@ -978,7 +957,7 @@
     </div>
   </section>
 
-  <!-- ── SECCIÓN: AMIGOS ── -->
+  <!-- ── Sección: Amigos ── -->
   <section class="section" id="sec-amigos">
 
     <div class="scores-header">
@@ -1003,7 +982,7 @@
     <div id="amigosLoggedContent">
 
     <!-- Tabs: Tus amigos / Solicitudes / Buscar amigos -->
-    <div class="lb-tabs" id="friendsTabs" style="margin-top:1.25rem;">
+    <div class="lb-tabs" style="margin-top:1.25rem;">
       <button type="button" class="lb-tab active" id="friendsTabMios" onclick="mostrarTabAmigos('mios')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Tus amigos <span id="friendsTabMiosCount">(0/50)</span></button>
       <button type="button" class="lb-tab" id="friendsTabSolicitudes" onclick="mostrarTabAmigos('solicitudes')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="22" y1="11" x2="16" y2="11"></line></svg> Solicitudes <span id="friendsTabSolicitudesCount"></span></button>
       <button type="button" class="lb-tab" id="friendsTabDuelos" onclick="mostrarTabAmigos('duelos')"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1"></circle></svg> Duelos</button>
@@ -1013,21 +992,21 @@
     <!-- Vista: Tus amigos -->
     <div id="friendsViewMios">
       <div class="friends-list-box" id="friendsListBox">
-        <!-- Se llena dinámicamente desde app2.js (renderAmigos) -->
+        <!-- Lo llena app2.js (renderAmigos) -->
       </div>
     </div>
 
     <!-- Vista: Solicitudes de amistad -->
     <div id="friendsViewSolicitudes" class="hidden">
       <div class="friends-list-box" id="friendsSolicitudesBox">
-        <!-- Se llena dinámicamente desde app2.js (renderSolicitudes) -->
+        <!-- Lo llena app2.js (renderSolicitudes) -->
       </div>
     </div>
 
     <!-- Vista: Duelos -->
     <div id="friendsViewDuelos" class="hidden">
       <div class="friends-list-box" id="friendsDuelosBox">
-        <!-- Se llena dinámicamente desde app2.js (renderDuelos) -->
+        <!-- Lo llena app2.js (renderDuelos) -->
       </div>
     </div>
 
@@ -1038,7 +1017,7 @@
         <input type="text" id="buscarAmigoInput" class="friends-search-input" placeholder="Buscar usuario por nombre..." oninput="buscarUsuarios()">
       </div>
       <div class="friends-search-results hidden" id="buscarAmigoResultados">
-        <!-- Se llena dinámicamente desde app2.js (buscarUsuarios) -->
+        <!-- Lo llena app2.js (buscarUsuarios) -->
       </div>
     </div>
 
@@ -1046,7 +1025,7 @@
 
   </section>
 
-  <!-- ── SECCIÓN: LOGROS ── -->
+  <!-- ── Sección: Logros ── -->
   <section class="section" id="sec-logros">
 
     <div class="scores-header">
@@ -1070,7 +1049,6 @@
 
     <div id="logrosLoggedContent">
 
-    <!-- Contador de progreso -->
     <div class="logros-progress-box">
       <div class="logros-progress-top">
         <span>Progreso total</span>
@@ -1083,19 +1061,18 @@
 
     <!-- Tabs para elegir el minijuego -->
     <div class="lb-tabs" id="logrosGameTabs">
-      <!-- Se llena dinámicamente desde app2.js (renderLogrosTabs) -->
+      <!-- Lo llena app2.js (renderLogrosTabs) -->
     </div>
 
-    <!-- Lista de logros -->
     <div class="achievements-list" id="logrosList">
-      <!-- Se llena dinámicamente desde app2.js (renderLogros) -->
+      <!-- Lo llena app2.js (renderLogros) -->
     </div>
 
     </div>
 
   </section>
 
-  <!-- ── SECCIÓN: PERFIL ── -->
+  <!-- ── Sección: Perfil ── -->
   <section class="section" id="sec-perfil">
 
     <div class="game-screen-header">
@@ -1104,12 +1081,12 @@
     </div>
 
     <div id="perfilBox">
-      <!-- Se llena dinámicamente desde app2.js (renderPerfil) -->
+      <!-- Lo llena app2.js (renderPerfil) -->
     </div>
 
   </section>
 
-  <!-- ── SECCIÓN: CONDICIONES DE USO ── -->
+  <!-- ── Sección: Condiciones de Uso ── -->
   <section class="section" id="sec-terminos">
     <button class="btn-back" onclick="goTo('inicio')">← Volver a Inicio</button>
 
@@ -1161,7 +1138,7 @@
 
 </main>
 
-<!-- ════════════════ FOOTER ════════════════ -->
+<!-- ── Footer ── -->
 <footer>
   <div class="footer-inner">
     <a href="#" class="footer-logo" onclick="goTo('inicio'); return false;">UniGames</a>
@@ -1176,182 +1153,7 @@
   </div>
 </footer>
 
-<!-- ════════════════ MODAL AUTH (diseño nuevo) ════════════════ -->
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
-<style>
-  .modal-overlay {
-    position: fixed; inset: 0; z-index: 1000;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none;
-    transition: opacity 0.3s ease;
-    padding: 1rem;
-  }
-  .modal-overlay.open { opacity: 1; pointer-events: all; }
-
-  .modal-bg-blur {
-    position: absolute; inset: 0;
-    background: rgba(8, 11, 26, 0.75);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-  }
-  .modal-orb {
-    position: absolute; border-radius: 50%;
-    filter: blur(60px); opacity: 0.4; pointer-events: none;
-    animation: morb linear infinite;
-  }
-  .modal-orb-1 { width: 340px; height: 340px; background: #6C2BD9; top: -10%; left: -5%; animation-duration: 18s; }
-  .modal-orb-2 { width: 280px; height: 280px; background: #2563EB; bottom: -5%; right: -5%; animation-duration: 22s; animation-direction: reverse; }
-  @keyframes morb {
-    0%   { transform: translate(0,0) scale(1); }
-    33%  { transform: translate(20px,-30px) scale(1.05); }
-    66%  { transform: translate(-15px,15px) scale(0.97); }
-    100% { transform: translate(0,0) scale(1); }
-  }
-
-  .modal-card {
-    position: relative; z-index: 1;
-    background: rgba(255,255,255,0.05);
-    backdrop-filter: blur(28px); -webkit-backdrop-filter: blur(28px);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 24px;
-    padding: 2rem 2rem 1.75rem;
-    width: 100%; max-width: 400px;
-    box-shadow: 0 8px 60px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
-    transform: translateY(16px); transition: transform 0.3s ease;
-  }
-  .modal-overlay.open .modal-card { transform: translateY(0); }
-
-  .modal-close-new {
-    position: absolute; top: 1rem; right: 1rem;
-    background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
-    color: #94A3B8; border-radius: 50%; width: 32px; height: 32px;
-    display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 14px; line-height: 1;
-    transition: all 0.2s ease;
-  }
-  .modal-close-new:hover { background: rgba(255,255,255,0.15); color: #fff; }
-
-  .modal-logo-badge {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: rgba(108,43,217,0.2); border: 1px solid rgba(108,43,217,0.4);
-    border-radius: 999px; padding: 5px 12px; margin-bottom: 1.1rem;
-  }
-  .modal-logo-dot {
-    width: 7px; height: 7px; border-radius: 50%;
-    background: #A78BFA; box-shadow: 0 0 7px #A78BFA;
-    animation: pulse-dot 2s ease-in-out infinite;
-  }
-  @keyframes pulse-dot {
-    0%,100% { opacity:1; transform:scale(1); }
-    50% { opacity:0.5; transform:scale(0.8); }
-  }
-  .modal-logo-text { font-family:'Outfit',sans-serif; font-size:12px; font-weight:600; color:#C4B5FD; letter-spacing:0.08em; text-transform:uppercase; }
-
-  .modal-tabs-new {
-    display: flex; background: rgba(0,0,0,0.35);
-    border-radius: 11px; padding: 3px; margin-bottom: 1.5rem; gap: 3px;
-  }
-  .tab-btn-new {
-    flex: 1; padding: 8px; border: none; border-radius: 9px;
-    font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600;
-    cursor: pointer; transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
-    background: transparent; color: #64748B;
-  }
-  .tab-btn-new.active {
-    background: linear-gradient(135deg, #6C2BD9, #3B82F6);
-    color: #fff; box-shadow: 0 3px 14px rgba(108,43,217,0.45);
-    transform: translateY(-1px);
-  }
-  .tab-btn-new:not(.active):hover { color: #94A3B8; background: rgba(255,255,255,0.05); }
-
-  .auth-form-section { display: none; }
-  .auth-form-section.active { display: block; }
-
-  .auth-form-group { margin-bottom: 0.85rem; }
-  .auth-form-label {
-    display: block; font-size: 11px; font-weight: 500;
-    color: #94A3B8; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 5px;
-  }
-  .auth-input-wrap { position: relative; }
-  .auth-input-wrap svg {
-    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-    color: #4B5563; width: 15px; height: 15px; pointer-events: none; transition: color 0.2s;
-  }
-  .auth-input-wrap:focus-within svg { color: #A78BFA; }
-
-  .auth-hint {
-    display: block; font-size: 10.5px; color: #64748B;
-    margin-top: 5px; line-height: 1.3;
-  }
-
-  .pwd-strength-wrap {
-    display: flex; align-items: center; gap: 8px;
-    margin-top: 7px; height: 0; opacity: 0; overflow: hidden;
-    transition: height 0.2s ease, opacity 0.2s ease;
-  }
-  .pwd-strength-wrap.show { height: 16px; opacity: 1; }
-  .pwd-strength-bar {
-    flex: 1; height: 5px; border-radius: 4px;
-    background: rgba(255,255,255,0.1); overflow: hidden;
-  }
-  .pwd-strength-fill {
-    height: 100%; width: 0%; border-radius: 4px;
-    background: #ef4444; transition: width 0.25s ease, background 0.25s ease;
-  }
-  .pwd-strength-label {
-    font-size: 10.5px; font-weight: 700; white-space: nowrap; color: #64748B;
-    min-width: 44px; text-align: right;
-  }
-
-  .auth-input {
-    width: 100%; background: rgba(0,0,0,0.3);
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 11px;
-    padding: 11px 12px 11px 36px; color: #F1F5F9;
-    font-family: 'Inter', sans-serif; font-size: 14px; outline: none;
-    transition: all 0.25s ease;
-  }
-  .auth-input::placeholder { color: #2D3748; }
-  .auth-input:hover { border-color: rgba(167,139,250,0.3); }
-  .auth-input:focus {
-    border-color: #7C3AED; background: rgba(108,43,217,0.08);
-    box-shadow: 0 0 0 3px rgba(108,43,217,0.18);
-  }
-
-  .auth-btn-submit {
-    width: 100%; padding: 12px;
-    background: linear-gradient(135deg, #6C2BD9 0%, #3B82F6 100%);
-    border: none; border-radius: 11px; color: #fff;
-    font-family: 'Outfit', sans-serif; font-size: 14px; font-weight: 700;
-    cursor: pointer; letter-spacing: 0.02em; margin-top: 0.4rem;
-    position: relative; overflow: hidden; transition: all 0.25s ease;
-  }
-  .auth-btn-submit::before {
-    content:''; position:absolute; inset:0;
-    background: linear-gradient(135deg, #7C3AED, #60A5FA);
-    opacity: 0; transition: opacity 0.25s ease;
-  }
-  .auth-btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 24px rgba(108,43,217,0.5); }
-  .auth-btn-submit:hover::before { opacity: 1; }
-  .auth-btn-submit:active { transform: translateY(0); }
-  .auth-btn-submit span { position: relative; z-index: 1; }
-
-  .auth-switch-link {
-    text-align: center; font-size: 12px; color: #64748B; margin-top: 0.85rem;
-  }
-  .auth-switch-link button {
-    background: none; border: none; color: #A78BFA; font-weight: 600;
-    cursor: pointer; font-size: 12px; padding: 0 2px; transition: color 0.2s;
-  }
-  .auth-switch-link button:hover { color: #C4B5FD; text-decoration: underline; }
-
-  .auth-alert {
-    border-radius: 9px; padding: 9px 12px; font-size: 12px;
-    margin-bottom: 0.85rem; display: none;
-  }
-  .auth-alert.error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #FCA5A5; }
-  .auth-alert.success { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: #86EFAC; }
-  .auth-alert.show { display: block; }
-</style>
+<!-- ── Modal: login / registro ── -->
 
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-bg-blur" onclick="closeModal()"></div>
@@ -1371,10 +1173,9 @@
       <button class="tab-btn-new"        id="tabRegister" onclick="switchTab('register')">Registrarse</button>
     </div>
 
-    <!-- LOGIN -->
     <div id="auth-section-login" class="auth-form-section active">
       <div id="login-alert" class="auth-alert"></div>
-      <form id="formLogin" onsubmit="handleLogin(event)">
+      <form onsubmit="handleLogin(event)">
         <div class="auth-form-group">
           <label class="auth-form-label">Usuario o Email</label>
           <div class="auth-input-wrap">
@@ -1411,10 +1212,9 @@
       <div class="auth-switch-link">¿No tenés cuenta? <button onclick="switchTab('register')">Registrate gratis</button></div>
     </div>
 
-    <!-- REGISTER -->
     <div id="auth-section-register" class="auth-form-section">
       <div id="register-alert" class="auth-alert"></div>
-      <form id="formRegister" onsubmit="handleRegister(event)">
+      <form onsubmit="handleRegister(event)">
         <div class="auth-form-group">
           <label class="auth-form-label">Nombre de usuario</label>
           <div class="auth-input-wrap">
@@ -1457,7 +1257,7 @@
   </div>
 </div>
 
-<!-- MODAL DE RECUPERAR CONTRASEÑA -->
+<!-- Modal: recuperar contraseña -->
 <div class="modal-overlay" id="recoverOverlay">
   <div class="modal-bg-blur" onclick="closeRecoverModal()"></div>
   <div class="modal-orb modal-orb-1"></div>
@@ -1493,13 +1293,13 @@
   </div>
 </div>
 
-<!-- MODAL DE INFO / CRÉDITOS -->
+<!-- Modal: info / créditos -->
 <div class="info-overlay" id="infoOverlay" onclick="if(event.target===this) closeInfoModal()">
   <div class="info-modal">
     <button class="info-close" onclick="closeInfoModal()" aria-label="Cerrar modal">✕</button>
     
     <div class="info-pages-wrap">
-    <!-- PÁGINA 1: ACERCA DEL PROYECTO -->
+    <!-- Página 1: el proyecto -->
     <div class="info-page active" id="infoPage1">
       <h2>Acerca del Proyecto</h2>
       <p class="info-subtitle">Proyecto Integrador Final - <b>UniGames</b></p>
@@ -1511,7 +1311,7 @@
       </div>
     </div>
 
-    <!-- PÁGINA 2: TECNOLOGÍAS CLAVE -->
+    <!-- Página 2: tecnologías -->
     <div class="info-page" id="infoPage2">
       <h2>Tecnologías Clave</h2>
       <p class="info-subtitle">Arquitectura y Herramientas</p>
@@ -1524,7 +1324,7 @@
       </div>
     </div>
 
-    <!-- PÁGINA 3: EQUIPO -->
+    <!-- Página 3: equipo -->
     <div class="info-page" id="infoPage3">
       <h2>Equipo de Desarrollo</h2>
       <p class="info-subtitle">Estudiantes a cargo del proyecto</p>
@@ -1544,7 +1344,7 @@
       </div>
     </div>
 
-    <!-- PÁGINA 4: TUTORIAL -->
+    <!-- Página 4: tutorial -->
     <div class="info-page" id="infoPage4">
       <h2>Tutorial Rápido</h2>
       <p class="info-subtitle">¿Cómo usar UniGames?</p>
@@ -1559,7 +1359,7 @@
     </div>
     </div>
 
-    <!-- CONTROLES DE PAGINACIÓN -->
+    <!-- Paginación -->
     <div class="info-nav">
       <button class="info-btn-nav" id="infoBtnAtras" onclick="changeInfoPage(-1)">◀ Atrás</button>
       <div class="info-dots" id="infoDots">
@@ -1573,81 +1373,7 @@
   </div>
 </div>
 
-<!-- ════════════════ PANEL ADMIN ════════════════ -->
-<style>
-  .admin-overlay {
-    position: fixed; inset: 0; z-index: 1100;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none;
-    transition: opacity 0.25s ease;
-    padding: 1rem;
-  }
-  .admin-overlay.show { opacity: 1; pointer-events: all; }
-  .admin-overlay .modal-bg-blur { position: absolute; inset: 0; background: rgba(8,11,26,0.8); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-
-  .admin-card {
-    position: relative; z-index: 1;
-    background: rgba(15, 23, 42, 0.92);
-    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 20px;
-    width: 100%; max-width: 920px; max-height: 88vh;
-    display: flex; flex-direction: column;
-    box-shadow: 0 8px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
-    transform: translateY(16px); transition: transform 0.25s ease;
-    overflow: hidden;
-  }
-  .admin-overlay.show .admin-card { transform: translateY(0); }
-
-  .admin-card-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 1.1rem 1.4rem 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
-  }
-  .admin-card-title { display: flex; align-items: center; gap: 8px; font-family:'Outfit',sans-serif; font-weight: 700; color: #F1F5F9; font-size: 16px; }
-  .admin-card-title .modal-logo-dot { background:#4ade80; box-shadow:0 0 7px #4ade80; }
-
-  .admin-tabs {
-    display: flex; gap: 4px; padding: 0 1.4rem; border-bottom: 1px solid rgba(255,255,255,0.08);
-    overflow-x: auto; flex-shrink: 0;
-  }
-  .admin-tab {
-    background: transparent; border: none; color: #64748B;
-    font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600;
-    padding: 10px 14px; cursor: pointer; white-space: nowrap;
-    border-bottom: 2px solid transparent; transition: all 0.2s ease;
-  }
-  .admin-tab:hover { color: #C4B5FD; }
-  .admin-tab.active { color: #A78BFA; border-bottom-color: #A78BFA; }
-
-  .admin-card-body { padding: 1.2rem 1.4rem 1.5rem; overflow-y: auto; }
-  .admin-tab-content { display: none; }
-
-  .admin-stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
-  .admin-stat-card {
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
-    padding: 14px 16px;
-  }
-  .admin-stat-card .n { font-family:'Outfit',sans-serif; font-size: 26px; font-weight: 800; color: #fff; }
-  .admin-stat-card .l { font-size: 11px; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
-
-  .admin-section-title { font-size: 12px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 8px; }
-  .admin-section-title:first-child { margin-top: 0; }
-
-  .admin-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
-  .admin-list li { background: rgba(0,0,0,0.3); border-radius: 8px; padding: 9px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; color: #E2E8F0; }
-
-  .admin-juegos-toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
-  .admin-juegos-form { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px; margin-bottom: 16px; }
-  .admin-juegos-form select.auth-input, .admin-juegos-form input.auth-input { padding-left: 12px; }
-  .admin-btn-small { border: none; color: #fff; padding: 5px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 700; }
-  select.auth-input { background-color: #1E293B; }
-  select.auth-input option { background-color: #1E293B; color: #F1F5F9; }
-  .admin-juegos-nota { font-size: 11px; color: #94A3B8; font-style: italic; margin: -8px 0 12px; }
-
-  @media (max-width: 640px) {
-    .admin-juegos-toolbar { grid-template-columns: 1fr; }
-  }
-</style>
+<!-- ── Panel admin ── -->
 
 <div class="admin-overlay" id="adminOverlay">
   <div class="modal-bg-blur" onclick="closeAdminModal()"></div>
@@ -1667,7 +1393,7 @@
 
     <div class="admin-card-body">
 
-      <!-- DASHBOARD -->
+      <!-- Dashboard -->
       <div class="admin-tab-content" id="adminTabDashboard" style="display:block;">
         <div class="admin-stats-row">
           <div class="admin-stat-card"><div class="n" id="dashboardTotal">-</div><div class="l">Usuarios totales</div></div>
@@ -1679,7 +1405,7 @@
         <div style="height:220px; position:relative;"><canvas id="gamesChart"></canvas></div>
       </div>
 
-      <!-- USUARIOS / CUENTAS -->
+      <!-- Usuarios -->
       <div class="admin-tab-content" id="adminTabUsuarios">
         <div class="auth-form-group">
           <input class="auth-input" id="adminUserSearch" placeholder="Buscar por usuario o email..." style="padding-left:12px;">
@@ -1687,7 +1413,7 @@
         <ul class="admin-list" id="adminUsersList" style="max-height: 400px;"></ul>
       </div>
 
-      <!-- AVISOS -->
+      <!-- Avisos -->
       <div class="admin-tab-content" id="adminTabAvisos">
         <div class="admin-section-title">Crear nuevo aviso</div>
         <div class="admin-juegos-form">
@@ -1711,7 +1437,7 @@
         <div id="adminAvisosList" style="display:flex; flex-direction:column; gap:8px;"></div>
       </div>
 
-      <!-- JUEGOS (contenido) -->
+      <!-- Contenido de los juegos -->
       <div class="admin-tab-content" id="adminTabJuegos">
         <div class="admin-juegos-toolbar">
           <div class="auth-form-group" style="margin-bottom:0;">
@@ -1744,7 +1470,7 @@
         <div id="juegosContenidoList"></div>
       </div>
 
-      <!-- CONFIG -->
+      <!-- Configuración -->
       <div class="admin-tab-content" id="adminTabConfig">
         <div class="auth-form-group">
           <label class="auth-form-label">Tema de color</label>
@@ -1774,69 +1500,7 @@
   </div>
 </div>
 
-<!-- ════════════════ NOTIFICACIONES ════════════════ -->
-<style>
-  .notif-overlay {
-    position: fixed; inset: 0; z-index: 1150;
-    display: flex; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none;
-    transition: opacity 0.25s ease;
-    padding: 1rem;
-  }
-  .notif-overlay.show { opacity: 1; pointer-events: all; }
-  .notif-overlay .modal-bg-blur { position: absolute; inset: 0; background: rgba(8,11,26,0.8); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-
-  .notif-card {
-    position: relative; z-index: 1;
-    background: rgba(15, 23, 42, 0.92);
-    backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 20px;
-    width: 100%; max-width: 460px; max-height: 82vh;
-    display: flex; flex-direction: column;
-    box-shadow: 0 8px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
-    transform: translateY(16px); transition: transform 0.25s ease;
-    overflow: hidden;
-  }
-  .notif-overlay.show .notif-card { transform: translateY(0); }
-
-  .notif-card-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 1.1rem 1.4rem 0.9rem; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0;
-  }
-  .notif-card-title { display: flex; align-items: center; gap: 8px; font-family:'Outfit',sans-serif; font-weight: 700; color: #F1F5F9; font-size: 16px; }
-  .notif-card-title .modal-logo-dot { background:#4ade80; box-shadow:0 0 7px #4ade80; }
-
-  .notif-card-toolbar {
-    display: flex; justify-content: flex-end; padding: 0.6rem 1.4rem 0;
-  }
-  .notif-mark-all {
-    background: none; border: none; color: #A78BFA; font-size: 12px; font-weight: 600;
-    cursor: pointer; padding: 4px 6px;
-  }
-  .notif-mark-all:hover { color: #C4B5FD; text-decoration: underline; }
-
-  .notif-card-body { padding: 0.6rem 1.1rem 1.3rem; overflow-y: auto; }
-
-  .notif-item {
-    display: flex; align-items: flex-start; gap: 10px;
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 12px; padding: 10px 12px; margin: 0 0.3rem 8px;
-    cursor: pointer; transition: background 0.2s ease;
-  }
-  .notif-item:hover { background: rgba(255,255,255,0.08); }
-  .notif-item.unread { border-left: 3px solid #A78BFA; }
-  .notif-item-icon { font-size: 18px; line-height: 1; margin-top: 1px; flex-shrink: 0; }
-  .notif-item-text { flex: 1; font-size: 12.5px; color: #E2E8F0; line-height: 1.4; }
-  .notif-item-date { display:block; font-size: 10.5px; color: #64748B; margin-top: 3px; }
-  .notif-item-del {
-    background: none; border: none; color: #64748B; font-size: 13px;
-    cursor: pointer; padding: 2px 4px; flex-shrink: 0;
-  }
-  .notif-item-del:hover { color: #ef4444; }
-
-  .notif-empty { text-align:center; color:#94A3B8; font-size:12px; padding: 26px 10px; }
-</style>
+<!-- ── Duelos y notificaciones ── -->
 
 <!-- Selector de minijuego al retar a un amigo a duelo -->
 <div class="duelo-overlay" id="dueloSelectorOverlay">
@@ -1847,22 +1511,21 @@
     <!-- Paso 1: elegir el juego -->
     <div class="duelo-card-title" id="dueloJuegoTitle">⚔️ ¿A qué lo retás?</div>
     <div class="duelo-juego-opciones" id="dueloJuegoOpciones">
-      <!-- Se llena dinámicamente desde app2.js (abrirSelectorJuegoDuelo) -->
+      <!-- Lo llena app2.js (abrirSelectorJuegoDuelo) -->
     </div>
 
-    <!-- Paso 2: elegir temática (y duración, si aplica) — solo para los
-         juegos en DUELO_REQUIERE_TEMATICA (app2.js) -->
+    <!-- Paso 2: temática (y duración) para los juegos que la piden -->
     <div class="duelo-card-title" id="dueloOpcionesTitle" style="display:none;">🎯 Elegí las opciones</div>
-    <div class="duelo-opciones-step" id="dueloOpcionesStep" style="display:none;">
+    <div id="dueloOpcionesStep" style="display:none;">
       <p class="duelo-opciones-label">Temática</p>
       <div class="theme-selector game-start-themes" id="dueloTematicaOpciones">
-        <!-- Se llena dinámicamente desde app2.js (mostrarPasoOpcionesDuelo) -->
+        <!-- Lo llena app2.js (mostrarPasoOpcionesDuelo) -->
       </div>
 
       <div id="dueloDuracionWrap" style="display:none;">
         <p class="duelo-opciones-label">Duración</p>
         <div class="theme-selector game-start-themes" id="dueloDuracionOpciones">
-          <!-- Se llena dinámicamente desde app2.js (mostrarPasoOpcionesDuelo) -->
+          <!-- Lo llena app2.js (mostrarPasoOpcionesDuelo) -->
         </div>
       </div>
 
@@ -1878,8 +1541,7 @@
   <div class="duelo-card duelo-result-card">
     <div class="duelo-result-title" id="duelResultTitle">¡Ganaste el duelo!</div>
     <div class="duelo-result-vs" id="duelResultVs">
-      <!-- Se arma dinámicamente desde app2.js (mostrarResultadoDuelo):
-           yo (avatar/nombre/puntos) — VS — oponente (avatar/nombre/puntos) -->
+      <!-- Lo llena app2.js (mostrarResultadoDuelo): vos — VS — rival -->
     </div>
     <p class="duelo-result-desc" id="duelResultDesc"></p>
     <div class="duelo-result-buttons">
@@ -1905,18 +1567,8 @@
   </div>
 </div>
 
-<!-- Script -->
-<!-- chart.js NO va acá: solo lo usa el dashboard del panel de admin y lo baja
-     ensureChartJsLoaded() (app2.js) al abrir esa pestaña. Estaba duplicado:
-     el lazy loader ya existía pero esta etiqueta nunca se había borrado, así
-     que ~200KB los descargaba todo el mundo.
-     sprites.js tampoco: es el global SPRITES que usa rpg_render.js, así que
-     ahora lo encadena ensureRpgLoaded() antes de importar rpg_main.js (mismo
-     patrón que castle_escape_levels.js). El resto del RPG ya era diferido.
-     defer en los dos que quedan: sin él, supabase-js (~120KB) y app2.js
-     (5700 líneas) frenan el parseo del HTML. Con defer se bajan en paralelo
-     y se ejecutan en orden al terminar el documento — engine2d.js queda
-     definido antes que app2.js igual. -->
+<!-- Chart.js y el sprites.js del RPG se cargan recién cuando hacen falta (app2.js).
+     defer: se bajan en paralelo y se ejecutan en orden al terminar el HTML. -->
 <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script defer src="src/motor2d/engine2d.js"></script>
 <script defer src="src/app2.js"></script>

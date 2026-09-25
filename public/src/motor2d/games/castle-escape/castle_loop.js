@@ -10,7 +10,11 @@ import { CastleMenu } from './castle_menu_flow.js';
 import { SecuenciasNivel } from './castle_sequence.js';
 
 export class CastleEscape {
-  constructor() {
+  // servicios: ServiciosApp (../servicios_app.js) — música, volumen,
+  // puntajes, duelos y navegación del sitio. Se recibe por constructor
+  // (inyección de dependencias): el juego no toca globals de app2.js.
+  constructor(servicios) {
+    this.servicios = servicios;
     this.dom = new CastleDOM();
     this.levels = C.cargarNiveles();
 
@@ -19,11 +23,13 @@ export class CastleEscape {
     this.ctx = null;
     this.running = false;
     this.levelIndex = 0;
-    this.deathsThisLevel = 0;
     this.totalDeaths = 0;
-    this.totalScore = 0;
-    this.levelStartTime = 0;
+    // ms de juego en el nivel actual: se suma en update(), así la pausa y
+    // los menús no cuentan para la estrella de tiempo.
+    this.tiempoNivelMs = 0;
     this.levelDeaths = 0;
+    // Índice del nivel cuya capa estática está horneada (ver cargarNivel).
+    this.nivelHorneado = null;
     this.floorY = 0;
     this.selectedLevel = 0;
     // true recién cuando terminaron de cargar sprites/atlas (ver iniciar)
@@ -52,7 +58,8 @@ export class CastleEscape {
     this.touchPrev = { left: false, right: false, jump: false };
 
     // ─── Composición ───
-    this.progreso = new Progreso();
+    // Estrellas por usuario (ver ServiciosApp.claveUsuario).
+    this.progreso = new Progreso(undefined, (base) => this.servicios.claveUsuario(base));
     this.renderer = new CastleRenderer(this);
     this.menu = new CastleMenu(this);
     this.secuencias = new SecuenciasNivel(this);
@@ -160,9 +167,8 @@ export class CastleEscape {
   empezarNivel(i) {
     if (!this.levels.length || !this.levels[i]) return;
     this.levelIndex = i;
-    this.totalScore = 0;
     this.totalDeaths = 0;
-    this.levelStartTime = performance.now();
+    this.tiempoNivelMs = 0;
     this.levelDeaths = 0;
     this.explosiones.limpiar();
     this.cargarNivel(i);
@@ -191,7 +197,6 @@ export class CastleEscape {
     this.platforms = lvl.platforms.map(def => Plataforma.desde(def));
     this.hazards = lvl.hazards.map(def => Peligro.desde(def));
     this.arrows = lvl.arrows.map(def => new Flecha(def));
-    this.deathsThisLevel = 0;
 
     this.levelW = lvl.width || C.W;
     this.levelH = lvl.height || C.H;
@@ -207,17 +212,22 @@ export class CastleEscape {
     // Capa estática: piso/paredes fijas + pinchos de pozo, pre-pintados UNA
     // sola vez en vez de en cada frame. El orden pincho-antes-que-plataforma
     // hace falta para el truco de "piso falso con pinchos escondidos".
-    this.staticLayer = new Engine2D.StaticLayer(this.levelW, this.levelH);
-    this.staticLayer.bake(bctx => {
-      for (const hz of this.hazards) {
-        if (hz.type === 'spike') this.renderer.dibujarPinchos(bctx, hz.x, hz.y, hz.w, hz.h, hz);
-      }
-      for (const plat of this.platforms) {
-        if (!plat.esEstatica()) continue;
-        this.renderer.dibujarPlataforma(bctx, plat);
-        if (plat.decor === 'spike') this.renderer.dibujarPinchos(bctx, plat.x, plat.y - 20, plat.w, 20);
-      }
-    });
+    // Se hornea una vez por nivel: al morir se recarga el MISMO nivel y lo
+    // estático (piso, paredes, pinchos) no cambió, así que se reusa.
+    if (this.nivelHorneado !== index || !this.staticLayer) {
+      this.nivelHorneado = index;
+      this.staticLayer = new Engine2D.StaticLayer(this.levelW, this.levelH);
+      this.staticLayer.bake(bctx => {
+        for (const hz of this.hazards) {
+          if (hz.type === 'spike') this.renderer.dibujarPinchos(bctx, hz.x, hz.y, hz.w, hz.h, hz);
+        }
+        for (const plat of this.platforms) {
+          if (!plat.esEstatica()) continue;
+          this.renderer.dibujarPlataforma(bctx, plat);
+          if (plat.decor === 'spike') this.renderer.dibujarPinchos(bctx, plat.x, plat.y - 20, plat.w, 20);
+        }
+      });
+    }
 
     this.jugador.reiniciar(lvl.start);
 
@@ -227,20 +237,24 @@ export class CastleEscape {
     if (cont) cont.style.background = `#150620 url('${C.ASSET_BASE}models/back.webp') center/cover no-repeat`;
   }
 
-  // ★ completar · ★★ en tiempo · ★★★ con pocas muertes
+  // ★ completar · ★★ además en tiempo · ★★★ además con pocas muertes.
+  // Acumulativas: antes la tercera solo miraba las muertes, así que se
+  // podían sacar 3 estrellas tardando el triple del tiempo límite.
   calcularEstrellas() {
-    const elapsed = (performance.now() - this.levelStartTime) / 1000;
+    const elapsed = this.tiempoNivelMs / 1000;
     const timeLimit = C.TIME_LIMITS[this.levelIndex] || 60;
     const deathLimit = C.DEATH_LIMITS[this.levelIndex] || 5;
     let stars = 1;
-    if (elapsed <= timeLimit) stars = 2;
-    if (this.levelDeaths <= deathLimit) stars = 3;
+    if (elapsed <= timeLimit) {
+      stars = 2;
+      if (this.levelDeaths <= deathLimit) stars = 3;
+    }
     return stars;
   }
 
   empezar() {
     this.dom.overlay.classList.add('hidden');
-    this.levelStartTime = performance.now();
+    this.tiempoNivelMs = 0;
     this.levelDeaths = 0;
     this.running = true;
     this.loop.start();
@@ -251,6 +265,9 @@ export class CastleEscape {
   detener() {
     this.running = false;
     this.loop.stop();
+    // Si se sale durante la animación de muerte, que el nivel no se
+    // recargue después (pisaba el fondo del menú con el del castillo).
+    this.secuencias.cancelarTimers();
     this.input.detach();
     if (this.touch) this.touch.detach();
     this.keys.left = false;
@@ -284,13 +301,13 @@ export class CastleEscape {
     this.jugador.saltar();
   }
 
-  // ─── Audio (usa el AudioManager global de app2.js si existe) ───
+  // ─── Audio (a través de los servicios del sitio) ───
   ponerMusica(nombre) {
-    if (typeof setMusic === 'function') setMusic(C.ASSET_BASE + 'sounds/' + nombre);
+    this.servicios.ponerMusica(C.ASSET_BASE + 'sounds/' + nombre);
   }
 
   alternarMusica() {
-    if (typeof bgMusic !== 'undefined' && bgMusic) bgMusic.muted = !bgMusic.muted;
+    this.servicios.alternarSilencioMusica();
   }
 
   // ─── Update por frame ───
@@ -299,6 +316,7 @@ export class CastleEscape {
     this.sincronizarTactil();
     const p = this.jugador;
     if (p.dead) return;
+    this.tiempoNivelMs += step * C.MS_POR_STEP;
 
     // Plataformas móviles y sierras (polimorfismo: cada una sabe si se mueve)
     for (const plat of this.platforms) plat.actualizar(step, p);
@@ -309,7 +327,7 @@ export class CastleEscape {
     p.aplicarGravedad(step, this.platforms);
 
     // Derrumbe de plataformas 'crumble' 400ms después de pisarlas
-    for (const plat of this.platforms) plat.actualizarDerrumbe();
+    for (const plat of this.platforms) plat.actualizarDerrumbe(step);
 
     // Salto continuo táctil: con el botón mantenido, salta apenas aterriza.
     if (this.keys.jump && p.onGround) p.saltar();
@@ -319,9 +337,8 @@ export class CastleEscape {
     for (const a of this.arrows) {
       if (!a.active) continue;
       a.actualizar(step, this.levelW, this.levelH);
-      if (p.colisionaCon(a)) this.secuencias.morirJugador();
+      if (p.colisionaCon(a)) { this.secuencias.morirJugador(); return; }
     }
-    if (p.dead) return;
 
     // Peligros: estáticos (pinchos, estrella) y móviles (sierra)
     for (const hz of this.hazards) {

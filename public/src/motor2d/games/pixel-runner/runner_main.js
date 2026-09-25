@@ -10,8 +10,10 @@
 //     tiene que estar siempre expuesto.
 import { PixelRunner } from './runner_loop.js';
 import { RunnerConfig } from './runner_config.js';
+import { ServiciosApp } from '../servicios_app.js';
 
-export const juego = new PixelRunner();
+// Acá se arman las dependencias y se le pasan al juego (el juego no las crea).
+export const juego = new PixelRunner(new ServiciosApp());
 
 Object.assign(window, {
   // index.html (onclick/oninput)

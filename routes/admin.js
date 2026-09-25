@@ -1,9 +1,24 @@
 const express = require('express');
 const { getDb } = require('../database/db');
-const { verificarAdmin, JWT_SECRET } = require('../middlewares/auth');
-const jwt = require('jsonwebtoken');
+const { verificarAdmin } = require('../middlewares/auth');
 
 const router = express.Router();
+
+// Violación de índice UNIQUE en PostgreSQL (palabra/pregunta/item repetido).
+const esDuplicado = (err) => err && err.code === '23505';
+const MSG_DUPLICADO = 'Ya existe ese contenido para esta temática';
+
+// Mismo criterio que parseAliases de routes/juegos.js: JSON o "a,b,c".
+function parseAliases(raw) {
+    if (!raw) return [];
+    try {
+        const v = JSON.parse(raw);
+        return Array.isArray(v) ? v : [];
+    } catch {
+        return String(raw).split(',').map(a => a.trim()).filter(Boolean);
+    }
+}
+
 
 // ==========================================
 // ENDPOINTS PÚBLICOS / CONFIG (NO REQUIEREN ADMIN PARA LEER)
@@ -34,23 +49,6 @@ router.get('/avisos/activo', async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
-});
-
-// === RUTA PARA AUTO-LOGIN ADMIN DESDE EL SCRIPT ===
-router.get('/dev-login', (req, res) => {
-    const host = req.hostname || req.get('host') || '';
-    const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
-    const secret = req.query.secret;
-    const DEV_SECRET = process.env.DEV_SECRET || 'unigames_super_secret';
-
-    if (!isLocal && secret !== DEV_SECRET) {
-        return res.status(403).send('Acceso denegado. Se requiere clave de desarrollo.');
-    }
-
-    const token = jwt.sign({ id: 9999, username: 'DevAdmin', rol: 'admin' }, JWT_SECRET, { expiresIn: '7d' });
-    const userStr = encodeURIComponent(JSON.stringify({ id: 9999, username: 'DevAdmin', rol: 'admin' }));
-    
-    res.redirect(`/?dev_token=${token}&dev_user=${userStr}&open_admin=true`);
 });
 
 // ==========================================
@@ -140,11 +138,11 @@ router.get('/dashboard', async (req, res) => {
         stats.partidasPorJuego = partidasPorJuego;
         
         const top5 = await db.all(`
-            SELECT u.nombre_usuario as jugador, SUM(p.puntos) as puntosTotales 
+            SELECT u.nombre_usuario as jugador, SUM(p.puntos)::int AS "puntosTotales" 
             FROM partidas p 
             JOIN usuarios u ON p.usuario_id = u.id 
             GROUP BY u.id 
-            ORDER BY puntosTotales DESC 
+            ORDER BY "puntosTotales" DESC 
             LIMIT 5
         `);
         stats.top5 = top5;
@@ -297,6 +295,7 @@ router.post('/ahorcado', async (req, res) => {
         );
         res.json({ id: result.rows[0].id, success: true });
     } catch (err) {
+        if (esDuplicado(err)) return res.status(400).json({ error: MSG_DUPLICADO });
         res.status(500).json({ error: err.message });
     }
 });
@@ -315,6 +314,7 @@ router.put('/ahorcado/:id', async (req, res) => {
         );
         res.json({ success: true });
     } catch (err) {
+        if (esDuplicado(err)) return res.status(400).json({ error: MSG_DUPLICADO });
         res.status(500).json({ error: err.message });
     }
 });
@@ -363,6 +363,7 @@ router.post('/wordle', async (req, res) => {
         );
         res.json({ id: result.rows[0].id, success: true });
     } catch (err) {
+        if (esDuplicado(err)) return res.status(400).json({ error: MSG_DUPLICADO });
         res.status(500).json({ error: err.message });
     }
 });
@@ -380,6 +381,7 @@ router.put('/wordle/:id', async (req, res) => {
         );
         res.json({ success: true });
     } catch (err) {
+        if (esDuplicado(err)) return res.status(400).json({ error: MSG_DUPLICADO });
         res.status(500).json({ error: err.message });
     }
 });
@@ -439,7 +441,7 @@ router.post('/preguntas', async (req, res) => {
         );
         res.json({ id: result.rows[0].id, success: true });
     } catch (err) {
-        if (err.message.includes('UNIQUE constraint failed')) {
+        if (esDuplicado(err)) {
             return res.status(400).json({ error: 'Ya existe esa pregunta para esta temática' });
         }
         res.status(500).json({ error: err.message });
@@ -460,7 +462,7 @@ router.put('/preguntas/:id', async (req, res) => {
         );
         res.json({ success: true });
     } catch (err) {
-        if (err.message.includes('UNIQUE constraint failed')) {
+        if (esDuplicado(err)) {
             return res.status(400).json({ error: 'Ya existe esa pregunta para esta temática' });
         }
         res.status(500).json({ error: err.message });
@@ -503,7 +505,7 @@ router.get('/adivina', async (req, res) => {
         // Igual que en /api/adivina/items: exponemos "pistas" como array y "aliases" parseado
         const items = rows.map(r => ({
             ...r,
-            aliases: r.aliases ? JSON.parse(r.aliases) : [],
+            aliases: parseAliases(r.aliases),
             pistas: [r.pista_1, r.pista_2, r.pista_3, r.pista_4],
         }));
         res.json(items);
@@ -526,6 +528,7 @@ router.post('/adivina', async (req, res) => {
         );
         res.json({ id: result.rows[0].id, success: true });
     } catch (err) {
+        if (esDuplicado(err)) return res.status(400).json({ error: MSG_DUPLICADO });
         res.status(500).json({ error: err.message });
     }
 });
@@ -545,6 +548,7 @@ router.put('/adivina/:id', async (req, res) => {
         );
         res.json({ success: true });
     } catch (err) {
+        if (esDuplicado(err)) return res.status(400).json({ error: MSG_DUPLICADO });
         res.status(500).json({ error: err.message });
     }
 });

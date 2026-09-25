@@ -1,26 +1,12 @@
-// ══════════════════════════════════════
-//   UniGames — app.js (Programación Orientada a Objetos)
-// ══════════════════════════════════════
-//
-// Estructura:
-//   • Modulo        → clase base abstracta. Enlaza los métodos a la instancia
-//                     (para usarlos como callbacks) y define el ciclo de vida
-//                     iniciar().
-//   • Cada área de la app es una clase que HEREDA de Modulo y encapsula su
-//     propio estado (this.xxx) y comportamiento (métodos).
-//   • App           → clase raíz: crea todos los módulos (composición) y los
-//                     arranca en orden. Se accede a cada módulo como app.<modulo>.
-//   • Las constantes de configuración son propiedades static de su clase.
-//
-// Compatibilidad: el HTML (onclick="goTo('amigos')") y los scripts de cada
-// juego (rpg.js, pixelrunner.js, etc.) llaman funciones y variables globales,
-// así que App.exponerGlobales() publica los métodos y el estado de cada
-// módulo en window sin duplicar código.
+// UniGames — app2.js (frontend, POO)
+// Modulo: clase base abstracta (enlaza los métodos a la instancia).
+// Cada área de la app es un Modulo con su estado y comportamiento; App los
+// compone y los arranca (app.<modulo>). App.exponerGlobales() publica sus
+// métodos y estado en window para el HTML (onclick) y los juegos 2D.
 
 class Modulo {
   constructor() {
     if (new.target === Modulo) throw new Error('Modulo es abstracta: usá una subclase');
-    // Enlaza cada método de la subclase a esta instancia
     let proto = Object.getPrototypeOf(this);
     while (proto && proto !== Modulo.prototype) {
       for (const nombre of Object.getOwnPropertyNames(proto)) {
@@ -48,18 +34,13 @@ class Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   AuthManager — Sesión del usuario: login, registro, Google, recuperar clave y logout.  (app.auth)
-// ══════════════════════════════════════
+// AuthManager — Sesión del usuario: login, registro, Google, recuperar clave y logout. (app.auth)
 class AuthManager extends Modulo {
   constructor() {
     super();
-    // ══════════════════════════════════════
-    //   UniGames — app.js
-    // ══════════════════════════════════════
     this.currentUser = null;
-    // --- Configuración de Supabase ---
     this.supabaseClient = null;
+    this.syncEnCurso = null; // { token, promesa } del POST /api/auth/sync en curso
   }
 
   iniciar() {
@@ -72,25 +53,8 @@ class AuthManager extends Modulo {
           // Suscribirse a cambios de autenticación (ej. cuando volvemos de Google OAuth)
           this.supabaseClient.auth.onAuthStateChange(async (event, session) => {
             if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
-              // Sincronizar SIEMPRE que haya sesión de Supabase y no tengamos un token local válido
-              // o si venimos de un redirect (OAuth)
-              const res = await fetch('/api/auth/sync', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  supabaseToken: session.access_token,
-                }),
-              });
-              const backendData = await res.json();
-              if (res.ok) {
-                this.currentUser = backendData.user;
-                localStorage.setItem('unigames_token', backendData.token);
-                localStorage.setItem('unigames_user', JSON.stringify(this.currentUser));
-                this.updateAuthUI();
-                app.logros.sincronizarLogrosConBackend();
-
+              const r = await this.sincronizarSesion(session.access_token);
+              if (r.ok) {
                 // Limpiar la URL si venimos de un redirect de OAuth
                 if (
                   window.location.hash.includes('access_token') ||
@@ -99,15 +63,15 @@ class AuthManager extends Modulo {
                   window.history.replaceState({}, document.title, window.location.pathname);
                 }
               } else {
-                const errText = await res.text();
-                this.showAuthAlert('login-alert', 'Error de Sync: ' + res.status + ' ' + errText, 'error');
+                // (antes: res.text() después de res.json() → el body ya estaba leído y tiraba TypeError)
+                this.showAuthAlert('login-alert', (r.data && r.data.error) || 'Error al sincronizar la sesión.', 'error');
                 this.openModal('login');
                 this.supabaseClient.auth.signOut();
               }
             } else if (event === 'SIGNED_OUT') {
               localStorage.removeItem('unigames_token');
               localStorage.removeItem('unigames_user');
-              this.currentUser = null;
+              this.cambiarUsuario(null);
               this.updateAuthUI();
             }
           });
@@ -133,7 +97,6 @@ class AuthManager extends Modulo {
       })
       .catch((err) => console.error('Error cargando config de supabase:', err));
 
-    // ─── Lógica de API (Backend) ───────────
   }
 
   // ─── Modal login / registro ────────────
@@ -144,7 +107,6 @@ class AuthManager extends Modulo {
 
   closeModal() {
     app.nucleo.APP_EL.modalOverlay.classList.remove('open');
-    // Limpiar inputs al cerrar
     const inputs = ['loginIdentity', 'loginPassword', 'regUsername', 'regEmail', 'regPassword'];
     inputs.forEach((id) => {
       const el = document.getElementById(id);
@@ -168,11 +130,8 @@ class AuthManager extends Modulo {
     setTimeout(() => el.classList.remove('show'), 4000);
   }
 
-  // Medidor de fuerza de contraseña del formulario de registro. Se llama
-  // desde el oninput del input #regPassword (index.html); antes no estaba
-  // definida en ningún lado y tiraba ReferenceError apenas se tipeaba algo.
-  // No es una validación real (esa la hace registerSchema en el backend) —
-  // es solo el feedback visual de la barrita + etiqueta.
+  // Medidor de fuerza de contraseña del registro (oninput de #regPassword).
+  // Es solo feedback visual: la validación real la hace el backend.
   checkPasswordStrength(value) {
     const wrap = document.getElementById('pwdStrengthWrap');
     const fill = document.getElementById('pwdStrengthFill');
@@ -247,31 +206,13 @@ class AuthManager extends Modulo {
         return this.showAuthAlert('login-alert', 'Correo o contraseña incorrectos.', 'error');
       }
 
-      // 2. Sincronizar con nuestro backend para obtener el Token local y el ID
-      const res = await fetch('/api/auth/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          supabaseToken: supaData.session.access_token,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        this.currentUser = data.user;
-        localStorage.setItem('unigames_token', data.token);
-        localStorage.setItem('unigames_user', JSON.stringify(this.currentUser));
-        this.showAuthAlert(
-          'login-alert',
-          '¡Bienvenido, ' + app.utils.sanitizeHTML(data.user.username) + '!',
-          'success',
-        );
-        this.updateAuthUI();
-        app.logros.sincronizarLogrosConBackend();
+      // 2. Sincronizar con nuestro backend (token local + id)
+      const { ok, data } = await this.sincronizarSesion(supaData.session.access_token);
+      if (ok) {
+        this.showAuthAlert('login-alert', '¡Bienvenido, ' + data.user.username + '!', 'success');
         setTimeout(this.closeModal, 900);
       } else {
-        this.showAuthAlert('login-alert', data.error || 'Error al sincronizar sesión.', 'error');
+        this.showAuthAlert('login-alert', (data && data.error) || 'Error al sincronizar sesión.', 'error');
       }
     } catch (err) {
       console.error(err);
@@ -306,6 +247,10 @@ class AuthManager extends Modulo {
       const { data: supaData, error: supaError } = await this.supabaseClient.auth.signUp({
         email: email,
         password: password,
+        // Si Supabase pide confirmar el email, acá no hay sesión y el /sync de
+        // abajo no corre: el nombre elegido se guarda en user_metadata y el
+        // backend lo toma de ahí en el primer login.
+        options: { data: { username: username } },
       });
       if (supaError) {
         return this.showAuthAlert('register-alert', supaError.message, 'error');
@@ -319,27 +264,12 @@ class AuthManager extends Modulo {
       }
 
       // 2. Sincronizar con backend
-      const res = await fetch('/api/auth/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          supabaseToken: supaData.session.access_token,
-          username: username,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        this.currentUser = data.user;
-        localStorage.setItem('unigames_token', data.token);
-        localStorage.setItem('unigames_user', JSON.stringify(this.currentUser));
+      const { ok, data } = await this.sincronizarSesion(supaData.session.access_token, username);
+      if (ok) {
         this.showAuthAlert('register-alert', '¡Cuenta creada exitosamente! Sesión iniciada.', 'success');
-        this.updateAuthUI();
-        app.logros.sincronizarLogrosConBackend();
         setTimeout(this.closeModal, 1200);
       } else {
-        this.showAuthAlert('register-alert', data.error || 'Error al completar el registro.', 'error');
+        this.showAuthAlert('register-alert', (data && data.error) || 'Error al completar el registro.', 'error');
       }
     } catch (err) {
       console.error(err);
@@ -347,11 +277,47 @@ class AuthManager extends Modulo {
     }
   }
 
+  // POST /api/auth/sync: cambia el token de Supabase por el JWT del backend
+  // y deja la sesión iniciada. Lo usan el login, el registro y el evento
+  // SIGNED_IN de Supabase. Ese evento también se dispara al loguearse con
+  // email, así que había DOS sync a la vez; en el registro, los dos podían
+  // intentar crear el usuario y el segundo fallaba. Ahora, si ya hay un sync
+  // en curso para el mismo token, se reusa esa misma promesa.
+  sincronizarSesion(accessToken, username) {
+    if (this.syncEnCurso && this.syncEnCurso.token === accessToken) return this.syncEnCurso.promesa;
+    const promesa = (async () => {
+      const res = await fetch('/api/auth/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(username ? { supabaseToken: accessToken, username } : { supabaseToken: accessToken }),
+      });
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {
+        /* respuesta sin body */
+      }
+      if (res.ok) {
+        this.cambiarUsuario(data.user);
+        localStorage.setItem('unigames_token', data.token);
+        localStorage.setItem('unigames_user', JSON.stringify(this.currentUser));
+        this.updateAuthUI();
+        app.logros.sincronizarLogrosConBackend();
+      }
+      return { ok: res.ok, status: res.status, data };
+    })();
+    this.syncEnCurso = { token: accessToken, promesa };
+    promesa.finally(() => {
+      if (this.syncEnCurso && this.syncEnCurso.promesa === promesa) this.syncEnCurso = null;
+    });
+    return promesa;
+  }
+
   async handleGoogleLogin() {
     if (!this.supabaseClient)
       return this.showAuthAlert(
         'login-alert',
-        'Error de conexi�n con seguridad. Verifica que supabase este configurado.',
+        'Error de conexión con seguridad. Verificá que Supabase esté configurado.',
         'error',
       );
     const { data, error } = await this.supabaseClient.auth.signInWithOAuth({
@@ -494,37 +460,37 @@ class AuthManager extends Modulo {
     }
   }
 
+  // Cambia el usuario logueado. El progreso de los juegos 2D es por usuario
+  // (ServiciosApp.claveUsuario): si hay un juego abierto, primero se sale a
+  // Juegos para que guarde con la cuenta con la que se estaba jugando.
+  cambiarUsuario(usuario) {
+    const antes = this.currentUser ? this.currentUser.id : null;
+    const despues = usuario ? usuario.id : null;
+    if (antes !== despues) {
+      const activa = document.querySelector('.section.active');
+      const juegos2D = ['sec-runner', 'sec-castle_escape', 'sec-rpg_pixel', 'sec-pixel_survi'];
+      if (activa && juegos2D.includes(activa.id) && typeof window.goTo === 'function') window.goTo('juegos');
+    }
+    this.currentUser = usuario;
+  }
+
   logout() {
     if (this.supabaseClient) {
       this.supabaseClient.auth.signOut();
     }
-    this.currentUser = null;
+    this.cambiarUsuario(null);
     localStorage.removeItem('unigames_token');
     localStorage.removeItem('unigames_user');
     this.updateAuthUI();
   }
 }
 
-// ══════════════════════════════════════
-//   Nucleo — Caché del DOM, manejo de errores y auto-login de desarrollo.  (app.nucleo)
-// ══════════════════════════════════════
+// Nucleo — Caché del DOM y manejo de errores. (app.nucleo)
 class Nucleo extends Modulo {
   constructor() {
     super();
-    // === AUTO-LOGIN DEV ===
-    this.urlParams = new URLSearchParams(window.location.search);
-    // ======================
-    // ═══════════════════════════════════════════════
-    //   Caché del DOM
-    // ═══════════════════════════════════════════════
-    // Mismo criterio que en rpg.js/pixelrunner.js/castle_escape.js: buscar
-    // una sola vez, al cargar el script, los elementos que YA existen en el
-    // HTML (el script va al final del <body>). Ojo: acá quedaron afuera los
-    // elementos que NO están en index.html porque se arman con innerHTML
-    // recién cuando se abre esa pantalla (panel de admin, dashboard,
-    // input/timer de Termina y Preguntados, banner de aviso) — esos se
-    // tienen que seguir buscando en el momento, cachearlos daría null para
-    // siempre.
+    // Caché del DOM: elementos que ya existen en index.html. Los que se arman con
+    // innerHTML al abrir una pantalla (admin, dashboard, etc.) se buscan en el momento.
     this.APP_EL = {
       accountDrawer: document.getElementById('accountDrawer'),
       accountDrawerBody: document.getElementById('accountDrawerBody'),
@@ -609,46 +575,20 @@ class Nucleo extends Modulo {
     };
   }
 
-  iniciar() {
-    if (this.urlParams.has('dev_token') && this.urlParams.has('dev_user')) {
-      localStorage.setItem('unigames_token', this.urlParams.get('dev_token'));
-      localStorage.setItem('unigames_user', decodeURIComponent(this.urlParams.get('dev_user')));
-      window.history.replaceState({}, document.title, '/');
-      // Refrescar para aplicar los cambios de sesión de inmediato
-      window.location.reload();
-    }
-  }
-
   onerror(msg, url, line, col, err) {
     alert('Error: ' + msg + ' at line ' + line);
     return false;
   }
 }
 
-// ══════════════════════════════════════
-//   AudioManager — Música de fondo, volúmenes globales y pausa al cambiar de pestaña.  (app.audio)
-// ══════════════════════════════════════
+// AudioManager — Música de fondo, volúmenes globales y pausa al cambiar de pestaña. (app.audio)
 class AudioManager extends Modulo {
   constructor() {
     super();
-    // ─── Audio Manager ─────────────────────
     this.globalAudioEnabled = true;
-    this.pageMusicMuted = false;
     this.musicVolume = this.loadStoredVolume('musicVolume', 0.5);
     this.sfxVolume = this.loadStoredVolume('sfxVolume', 0.8);
     this.bgMusic = new Audio('assert/menu.mp3');
-    // no bajar el audio hasta el primer play() real (gesto del usuario)
-    this.gameMusicMap = {
-      runner: 'pixel-runner.mp3',
-      castle_escape: 'backsong.mp3',
-      sopa: null,
-      ahorcado: null,
-      wordle: null,
-      trampas: null,
-      adivina: null,
-      termina: null,
-      preguntados: null,
-    };
     this.firstInteractionArmed = false;
     // Reproduce una pista de música de fondo (menú o juego).
     // Solo cambia el src si es distinto para no reiniciar la reproducción,
@@ -664,12 +604,10 @@ class AudioManager extends Modulo {
     this.bgMusic.preload = 'none';
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
-        // Pausar música ambiental si estaba sonando
         if (!this.bgMusic.paused) {
           this.bgMusic.pause();
           this.tabMutedByVisibility = true;
         }
-        // Pausar canales de audio del motor 2D
         if (typeof Engine2D !== 'undefined' && Engine2D.Audio) {
           Engine2D.Audio.pause();
         }
@@ -687,11 +625,10 @@ class AudioManager extends Modulo {
         // Reanudar música de fondo si se pausó por cambio de pestaña
         if (this.tabMutedByVisibility) {
           this.tabMutedByVisibility = false;
-          if (this.globalAudioEnabled && !this.pageMusicMuted) {
+          if (this.globalAudioEnabled) {
             this.attemptPlayMusic();
           }
         }
-        // Reanudar audio del motor 2D
         if (typeof Engine2D !== 'undefined' && Engine2D.Audio) {
           Engine2D.Audio.resume();
         }
@@ -702,13 +639,8 @@ class AudioManager extends Modulo {
       }
     });
 
-    // ─── Datos de juegos ───────────────────
-    // Colores por juego (header + botón de la tarjeta grande). undefined =
-    // usa el navy/azul por defecto de .card-header-band/.btn-play — antes
-    // esto estaba escrito a mano, repetido, dentro del HTML de la página
-    // Juegos; ahora vive acá junto con el resto de los datos del juego, así
-    // que Inicio y Juegos salen SIEMPRE iguales (una sola fuente) y agregar
-    // un juego nuevo es sumar un objeto, no inventar un color a ojo en HTML.
+    // Datos de cada juego (una sola fuente para las tarjetas de Inicio y Juegos).
+    // Colores undefined = los por defecto de .card-header-band/.btn-play.
   }
 
   // Volumen de música/efectos — 0 a 1, persistido en localStorage para que
@@ -749,14 +681,10 @@ class AudioManager extends Modulo {
     this.attemptPlayMusic();
   }
 
-  // Los navegadores bloquean bgMusic.play() si no hay un gesto del usuario
-  // (click/tap/tecla) todavía. Por eso al entrar a la página la música no
-  // se escuchaba: play() fallaba en silencio (solo el console.log del catch).
-  // attemptPlayMusic() intenta reproducir y, si el navegador lo bloquea,
-  // arma un listener para arrancar apenas el usuario interactúe con la
-  // página por primera vez (no hace falta que toque el botón de audio).
+  // Los navegadores bloquean play() sin un gesto del usuario: si falla, se
+  // reintenta con la primera interacción (click, toque o tecla).
   attemptPlayMusic() {
-    if (!this.globalAudioEnabled || this.pageMusicMuted) return;
+    if (!this.globalAudioEnabled) return;
     const playPromise = this.bgMusic.play();
     if (playPromise && typeof playPromise.catch === 'function') {
       playPromise.catch(() => this.armFirstInteractionUnlock());
@@ -789,7 +717,7 @@ class AudioManager extends Modulo {
     if (this.globalAudioEnabled) {
       app.nucleo.APP_EL.globalAudioBtn.innerHTML =
         '<svg style="width:1.8rem;height:1.8rem;fill:#FFF;filter:drop-shadow(0 0 2px rgba(255,255,255,0.8));" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
-      this.unmutepageMusic();
+      this.attemptPlayMusic();
     } else {
       app.nucleo.APP_EL.globalAudioBtn.innerHTML =
         '<svg style="width:1.8rem;height:1.8rem;fill:#FFF;filter:drop-shadow(0 0 2px rgba(255,255,255,0.8));" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>';
@@ -797,18 +725,9 @@ class AudioManager extends Modulo {
     }
   }
 
+  // trackName con o sin el prefijo 'assert/'
   changeBgMusic(trackName) {
-    // trackName puede venir con o sin ruta
-    // Si ya tiene assert/ o sounds/, usarlo tal cual, si no, prefijo assert/
-    let newSrc;
-    if (trackName.startsWith('assert/')) {
-      newSrc = trackName;
-    } else if (trackName.startsWith('sounds/')) {
-      newSrc = 'assert/' + trackName;
-    } else {
-      newSrc = 'assert/' + trackName;
-    }
-    this.setMusic(newSrc);
+    this.setMusic(trackName.startsWith('assert/') ? trackName : 'assert/' + trackName);
   }
 
   setMusic(src, forceRestart) {
@@ -825,20 +744,9 @@ class AudioManager extends Modulo {
     this.attemptPlayMusic();
   }
 
-  mutePageMusic() {
-    this.pageMusicMuted = true;
-    this.bgMusic.pause();
-  }
-
-  unmutepageMusic() {
-    this.pageMusicMuted = false;
-    this.attemptPlayMusic();
-  }
 }
 
-// ══════════════════════════════════════
-//   CatalogoJuegos — Datos de los minijuegos y render de las cards del inicio.  (app.catalogo)
-// ══════════════════════════════════════
+// CatalogoJuegos — Datos de los minijuegos y render de las cards del inicio. (app.catalogo)
 class CatalogoJuegos extends Modulo {
   // Los 3 juegos sencillos fijos que se muestran siempre en el inicio.
   static SIMPLE_GAME_IDS = ['sopa', 'ahorcado', 'preguntados'];
@@ -947,17 +855,9 @@ class CatalogoJuegos extends Modulo {
     ];
   }
 
-  // Tarjeta "completa" (header con color propio + cuerpo) — antes esto
-  // vivía escrito a mano 9 veces en el HTML de la página Juegos, y en
-  // Inicio se usaba una versión más simple y lisa (gameCardHTML). Ahora es
-  // una sola función para los dos: se ven exactamente igual en todos lados.
-  // opts.withId: solo las tarjetas de la página Juegos llevan id="card-X"
-  // (lo usa scrollToGame para encontrarlas). Si Inicio y Recomendados
-  // también lo llevaran, habría ids duplicados y getElementById devolvería
-  // la primera copia del DOM — la de Inicio, que está oculta.
-  // OJO: no pasar esta función directo a .map() — map le manda el índice
-  // como segundo argumento. Usar siempre g => gameCardFullHTML(g).
-  gameCardFullHTML(g, opts = {}) {
+  // Tarjeta completa de un juego (la misma en Inicio y en Juegos).
+  // No pasar directo a .map() (le mandaría el índice): usar g => gameCardFullHTML(g).
+  gameCardFullHTML(g) {
     const bandStyle = g.bg ? ` style="background: ${g.bg};"` : '';
     const titleStyle = g.titleColor ? ` style="color:${g.titleColor};"` : '';
     const btnStyle =
@@ -966,7 +866,7 @@ class CatalogoJuegos extends Modulo {
         : '';
     const tags = g.tags || (g.tag ? [g.tag] : []);
     return `
-    <div class="game-card-full"${opts.withId ? ` id="card-${g.id}"` : ''} onclick="launchGame('${g.id}', this)">
+    <div class="game-card-full" onclick="launchGame('${g.id}', this)">
       <div class="card-header-band"${bandStyle}>
         <span class="card-emoji"><span class="card-emoji-float">${app.utils.gameIconSVG(g.id, 32)}</span></span>
         <span class="card-title"${titleStyle}>${g.title}</span>
@@ -982,9 +882,7 @@ class CatalogoJuegos extends Modulo {
   `;
   }
 
-  // Destacados: 3 al azar, pero SIN los que ya están fijos en "Sencillos"
-  // (antes el pool incluía todo, así que Sopa/Ahorcado/Preguntados podían
-  // salir sorteados y aparecer duplicados a dos scrolls de distancia).
+  // Destacados: 3 al azar sin repetir los fijos de "Sencillos".
   renderFeatured() {
     const pool = [...this.allGames, ...this.actionGames].filter(
       (g) => !CatalogoJuegos.SIMPLE_GAME_IDS.includes(g.id),
@@ -993,7 +891,6 @@ class CatalogoJuegos extends Modulo {
     app.nucleo.APP_EL.featuredGrid.innerHTML = three.map((g) => this.gameCardFullHTML(g)).join('');
   }
 
-  // Juegos sencillos: 3 fijos (definidos en SIMPLE_GAME_IDS).
   renderSimple() {
     const list = CatalogoJuegos.SIMPLE_GAME_IDS.map((id) => this.allGames.find((g) => g.id === id)).filter(
       Boolean,
@@ -1001,33 +898,22 @@ class CatalogoJuegos extends Modulo {
     app.nucleo.APP_EL.simpleGrid.innerHTML = list.map((g) => this.gameCardFullHTML(g)).join('');
   }
 
-  // Juegos de acción: los jugables con el motor 2D.
   renderAction() {
     app.nucleo.APP_EL.actionGrid.innerHTML = this.actionGames.map((g) => this.gameCardFullHTML(g)).join('');
   }
 
-  // Página "Juegos" (catálogo completo): separada en Clásicos (palabras/
-  // trivia) y Del Motor (los 4 del motor 2D) — antes era una sola grilla
-  // con las 9 tarjetas escritas a mano en el HTML.
+  // Página Juegos: Clásicos y Del Motor (los 4 juegos 2D).
   renderClassicGames() {
     if (app.nucleo.APP_EL.classicGrid)
       app.nucleo.APP_EL.classicGrid.innerHTML = this.allGames
-        .map((g) =>
-          this.gameCardFullHTML(g, {
-            withId: true,
-          }),
-        )
+        .map((g) => this.gameCardFullHTML(g))
         .join('');
   }
 
   renderMotorGames() {
     if (app.nucleo.APP_EL.motorGrid)
       app.nucleo.APP_EL.motorGrid.innerHTML = this.actionGames
-        .map((g) =>
-          this.gameCardFullHTML(g, {
-            withId: true,
-          }),
-        )
+        .map((g) => this.gameCardFullHTML(g))
         .join('');
   }
 
@@ -1039,33 +925,9 @@ class CatalogoJuegos extends Modulo {
     container.innerHTML = three.map((g) => this.gameCardFullHTML(g)).join('');
   }
 
-  scrollToGame(gameId) {
-    // Cambiar a la pestaña de juegos manualmente para evitar conflicto de scroll
-    document.querySelectorAll('.section').forEach((s) => s.classList.remove('active'));
-    const target = app.nucleo.APP_EL.secJuegos;
-    if (target) target.classList.add('active');
-    setTimeout(() => {
-      const card = document.getElementById('card-' + gameId);
-      if (card) {
-        card.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-        card.style.transition = 'transform 0.3s, box-shadow 0.3s';
-        card.style.transform = 'scale(1.02)';
-        card.style.boxShadow = '0 0 20px rgba(255,255,255,0.2)';
-        setTimeout(() => {
-          card.style.transform = 'none';
-          card.style.boxShadow = 'none';
-        }, 1500);
-      }
-    }, 50);
-  }
 }
 
-// ══════════════════════════════════════
-//   AmigosManager — Lista de amigos, búsqueda de usuarios y solicitudes de amistad.  (app.amigos)
-// ══════════════════════════════════════
+// AmigosManager — Lista de amigos, búsqueda de usuarios y solicitudes de amistad. (app.amigos)
 class AmigosManager extends Modulo {
   // Máximo de amigos permitidos (debe coincidir con MAX_AMIGOS en routes/amigos.js,
   // que es quien realmente lo hace cumplir).
@@ -1085,7 +947,6 @@ class AmigosManager extends Modulo {
     this.buscarUsuariosTimeout = null;
   }
 
-  // Trae la lista de amigos desde el backend y refresca la vista.
   async fetchAmigos() {
     const box = document.getElementById('friendsListBox');
     if (box) box.innerHTML = `<div class="friends-empty"><p>Cargando amigos...</p></div>`;
@@ -1211,7 +1072,7 @@ class AmigosManager extends Modulo {
         } else if (limiteAlcanzado) {
           accion = `<span class="friend-search-status">${app.utils.uiIconSVG('warning')} Límite de amigos alcanzado</span>`;
         } else {
-          accion = `<button class="friend-btn friend-btn-add" onclick="enviarSolicitudAmistad(${u.id}, '${app.utils.sanitizeHTML(u.username)}')">${app.utils.uiIconSVG('plus')} Agregar</button>`;
+          accion = `<button class="friend-btn friend-btn-add" onclick="enviarSolicitudAmistad(${u.id}, ${app.utils.jsArg(u.username)})">${app.utils.uiIconSVG('plus')} Agregar</button>`;
         }
         return `
       <div class="friend-row friend-search-row">
@@ -1457,18 +1318,10 @@ class AmigosManager extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   DuelosManager — Duelos 1v1: retos, selección de juego, resultados y revanchas.  (app.duelos)
-// ══════════════════════════════════════
+// DuelosManager — Duelos 1v1: retos, selección de juego, resultados y revanchas. (app.duelos)
 class DuelosManager extends Modulo {
-  // ══════════════════════════════════════
-  //   DUELOS 1v1
-  // Conectado a routes/duelos.js: GET/POST /api/duelos, POST .../aceptar,
-  // .../rechazar, .../resultado, .../revancha.
-  // ══════════════════════════════════════
-  // Juegos habilitados para duelo (debe reflejar JUEGOS_DUELO de routes/duelos.js).
-  // El ícono de cada uno se resuelve con gameIconSVG(key), el mismo set de
-  // íconos de línea que ya se usa en Inicio/Juegos — nada de emojis acá.
+  // Duelos 1v1 (routes/duelos.js). Juegos habilitados: debe coincidir con
+  // JUEGOS_DUELO del backend.
   static JUEGOS_DUELO_INFO = {
     ahorcado: {
       nombre: 'Ahorcado',
@@ -1536,11 +1389,8 @@ class DuelosManager extends Modulo {
   ];
   constructor() {
     super();
-    // Duelo que se está jugando ahora mismo (null si no hay ninguno en curso).
-    // { id, juego: 'ahorcado' | 'runner' }. Se declara con "var" (no "let") a
-    // propósito: así queda colgado de window y el módulo ES6 de Pixel Runner
-    // (runner_loop.js) puede leer window.dueloActivo para saber si hay que
-    // reportar el puntaje al terminar la partida.
+    // Duelo en curso ({ id, juego }) o null. Los juegos 2D lo leen con
+    // window.dueloActivo (ver exponerGlobales).
     this.dueloActivo = null;
     // Últimos duelos traídos del backend (se llena con fetchDuelos()).
     this.duelosList = [];
@@ -1848,10 +1698,8 @@ class DuelosManager extends Modulo {
     </div>`;
   }
 
-  // Cartel final del duelo: arriba quién ganó/perdió, y abajo un VS con el
-  // ícono de perfil, nombre y puntaje de cada uno + "Revancha"/"Volver".
-  // Si el rival todavía no jugó, muestra en cambio un aviso de espera (con
-  // el puntaje del rival como "?" hasta que juegue su parte).
+  // Cartel final del duelo: ganador y VS con ícono, nombre y puntaje de cada
+  // uno. Si el rival no jugó todavía, muestra el aviso de espera.
   mostrarResultadoDuelo(d) {
     const overlay = document.getElementById('duelResultOverlay');
     const title = document.getElementById('duelResultTitle');
@@ -1906,17 +1754,9 @@ class DuelosManager extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   LogrosManager — Definición, progreso, sincronización y render de los logros.  (app.logros)
-// ══════════════════════════════════════
+// LogrosManager — Definición, progreso, sincronización y render de los logros. (app.logros)
 class LogrosManager extends Modulo {
-  // ══════════════════════════════════════
-  //   LOGROS
-  //   Sistema de logros: definición de los 50 logros, guardado local
-  //   (localStorage, provisorio hasta que exista el backend) y la
-  //   lógica que revisa y desbloquea automáticamente cada logro a
-  //   medida que se juega.
-  // ══════════════════════════════════════
+  // Logros: definición, guardado (localStorage + backend) y chequeo automático.
   // Juegos disponibles para filtrar la lista de logros.
   static LOGROS_JUEGOS = [
     {
@@ -2624,10 +2464,7 @@ class LogrosManager extends Modulo {
     this.logrosFiltroActivo = 'todos';
   }
 
-  // ─── Guardado de logros obtenidos ───
-  // La lista de ids desbloqueados se guarda en localStorage (funciona
-  // también sin sesión iniciada) y se sincroniza con el backend
-  // (GET/POST /api/logros) cuando hay un usuario logueado.
+  // Logros obtenidos: localStorage + sincronización con GET/POST /api/logros.
   getLogrosObtenidos() {
     try {
       return JSON.parse(localStorage.getItem('unigames_logros')) || [];
@@ -2695,11 +2532,9 @@ class LogrosManager extends Modulo {
     localStorage.setItem('unigames_logros_stats', JSON.stringify(stats));
   }
 
-  // Combina un "patch" de progreso con las stats ya guardadas: los
-  // números se suman, los que terminan en "_best" se quedan con el
-  // máximo, los arrays se mezclan sin duplicar, y los que terminan en
-  // "_racha" arman un contador de racha actual + racha máxima (el
-  // valor del patch debe ser true para sumar 1, o false para cortarla).
+  // Combina un patch con las stats: números se suman, "_best" guarda el máximo,
+  // arrays se unen sin duplicar, "_racha" lleva racha actual y máxima
+  // (true suma 1, false la corta).
   aplicarPatchLogros(patch) {
     const stats = this.getLogrosStats();
     Object.entries(patch).forEach(([key, val]) => {
@@ -2731,11 +2566,8 @@ class LogrosManager extends Modulo {
     });
   }
 
-  // Punto central: cada minijuego llama a esto una vez por partida
-  // terminada, pasando un "patch" con lo que corresponda actualizar
-  // (ver ejemplos de uso en initAhorcado/initWordle/etc. más abajo).
-  // Sin cuenta no se trackea ni se guarda progreso de logros (se exige
-  // estar logueado para "conseguir y guardar logros").
+  // Cada minijuego lo llama una vez por partida terminada con su patch de
+  // stats. Sin sesión no se guarda progreso de logros.
   registrarProgresoJuego(juegoId, patch = {}) {
     if (!app.auth.currentUser) return;
     const stats = this.getLogrosStats();
@@ -2744,17 +2576,6 @@ class LogrosManager extends Modulo {
     if (!stats.juegosJugados.includes(juegoId)) stats.juegosJugados.push(juegoId);
     this.guardarLogrosStats(stats);
     this.aplicarPatchLogros(patch);
-    this.revisarLogros(juegoId);
-  }
-
-  // Para logros de racha que se actualizan a mitad de partida (por
-  // ejemplo, cada pregunta de Preguntados), sin contar una "partida"
-  // nueva cada vez.
-  actualizarRachaLogro(juegoId, campo, continua) {
-    if (!app.auth.currentUser) return;
-    this.aplicarPatchLogros({
-      [campo]: continua,
-    });
     this.revisarLogros(juegoId);
   }
 
@@ -2867,12 +2688,9 @@ class LogrosManager extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   PerfilManager — Perfil propio y de otros usuarios (ícono, descripción, puntajes).  (app.perfil)
-// ══════════════════════════════════════
+// PerfilManager — Perfil propio y de otros usuarios (ícono, descripción, puntajes). (app.perfil)
 class PerfilManager extends Modulo {
-  // Los 30 íconos de perfil reales (public/assert/perfil_icons/icon_01.webp
-  // ... icon_30.webp), recortados de la spritesheet que pasó Santiago.
+  // Íconos de perfil: public/assert/perfil_icons/icon_01..30.webp
   static PERFIL_ICONOS = Array.from(
     {
       length: 30,
@@ -2883,17 +2701,9 @@ class PerfilManager extends Modulo {
   static PERFIL_ICONO_DEFAULT = 'assert/perfil_icons/icon_01.webp';
   constructor() {
     super();
-    // ══════════════════════════════════════
-    //   PERFIL
-    //   Conectado al backend (routes/perfil.js):
-    //     - perfil propio       -> GET /api/perfil
-    //     - perfil de otro user -> GET /api/usuarios/:id/perfil
-    //     - guardar descripción -> PATCH /api/perfil { descripcion }
-    //     - cambiar ícono       -> PATCH /api/perfil { icono }
-    //   Los puntajes máximos por minijuego siguen siendo de ejemplo hasta
-    //   que exista ese endpoint (no forma parte del sistema de amigos/logros).
-    // ══════════════════════════════════════
-    // { modo: 'propio' | 'otro', id: number, data: {...} | null }
+    // Perfil propio (GET/PATCH /api/perfil) y de otros (GET /api/usuarios/:id/perfil).
+    // Los puntajes máximos son de ejemplo: no hay endpoint todavía.
+    // perfilContexto: { modo: 'propio' | 'otro', id, data }
     this.perfilContexto = {
       modo: 'propio',
       id: null,
@@ -3051,7 +2861,7 @@ class PerfilManager extends Modulo {
       case 'solicitud_recibida':
         return `<span class="profile-friend-request-btn" style="cursor:default;opacity:.8;">Te envió una solicitud — revisala en Amigos</span>`;
       default:
-        return `<button class="profile-friend-request-btn" onclick="enviarSolicitudAmistad(${data.id}, '${app.utils.sanitizeHTML(data.username)}')">${app.utils.uiIconSVG('plus', 14)} Solicitud de amistad</button>`;
+        return `<button class="profile-friend-request-btn" onclick="enviarSolicitudAmistad(${data.id}, ${app.utils.jsArg(data.username)})">${app.utils.uiIconSVG('plus', 14)} Solicitud de amistad</button>`;
     }
   }
 
@@ -3083,7 +2893,7 @@ class PerfilManager extends Modulo {
         <div class="profile-header-info">
           <div class="profile-name-container" id="profileNameContainer" style="display:flex;align-items:center;gap:8px;">
             <div class="profile-name" id="profileNameText">${app.utils.sanitizeHTML(u.username)}</div>
-            ${esPropio ? `<button class="profile-name-edit-btn" onclick="iniciarEdicionUsuario('${app.utils.sanitizeHTML(u.username)}')" title="Cambiar nombre" style="background:none;border:none;color:#94A3B8;cursor:pointer;padding:4px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"></path></svg></button>` : ''}
+            ${esPropio ? `<button class="profile-name-edit-btn" onclick="iniciarEdicionUsuario(${app.utils.jsArg(u.username)})" title="Cambiar nombre" style="background:none;border:none;color:#94A3B8;cursor:pointer;padding:4px;"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"></path></svg></button>` : ''}
           </div>
           ${
             esPropio
@@ -3136,7 +2946,7 @@ class PerfilManager extends Modulo {
         ? ''
         : `
     <div class="section-title" style="font-size:12px;margin-top:1.75rem;">Amigos en común / lista de amigos</div>
-    <div class="profile-scores-grid">${(u.amigos || []).map((a) => `<div class="profile-score-card">${a.username}</div>`).join('')}</div>
+    <div class="profile-scores-grid">${(u.amigos || []).map((a) => `<div class="profile-score-card">${app.utils.sanitizeHTML(a.username)}</div>`).join('')}</div>
     `
     }
 
@@ -3198,19 +3008,14 @@ class PerfilManager extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   Navegacion — Navegación entre secciones, menú hamburguesa y panel de cuenta.  (app.navegacion)
-// ══════════════════════════════════════
+// Navegacion — Navegación entre secciones, menú hamburguesa y panel de cuenta. (app.navegacion)
 class Navegacion extends Modulo {
   constructor() {
     super();
     // ─── Guardar HTML original de secciones que reemplazan su contenido ───
     this.originalSectionHTML = {};
-    // ─── Menú hamburguesa ──────────────────
     this.hamburger = app.nucleo.APP_EL.hamburger;
     this.navMenu = app.nucleo.APP_EL.navMenu;
-    // Easter Egg
-    this.gravityClickCount = 0;
   }
 
   iniciar() {
@@ -3245,26 +3050,9 @@ class Navegacion extends Modulo {
     }
   }
 
-  // ─── Calidad gráfica → clase en el <html> ───
-  // Engine2D.Quality ya recorta lo que dibuja el canvas, pero el CSS de los
-  // carteles/overlays no lo puede consultar. Con esta clase, las reglas caras
-  // (backdrop-filter, que obliga a la GPU a releer el framebuffer de atrás y
-  // se paga por frame mientras el modal está encima del juego corriendo) se
-  // apagan solas en calidad baja. Ver el bloque `.q-low` en ui-components.css.
-  // ─── Selector de calidad gráfica en Ajustes (los tres juegos) ───
-  // Engine2D.Quality.createRow() ya devuelve la fila armada (label + 3
-  // botones Bajo/Medio/Alto) y se auto-sincroniza con el nivel actual — no
-  // hace falta escribirle lógica de click ni de estado acá. Se inserta UNA
-  // vez por panel apenas arranca la página (los tres paneles ya están en el
-  // DOM desde el index.html, solo ocultos con clases CSS, así que no hace
-  // falta esperar a que se abra ninguno).
-  //
-  // Es UNA sola preferencia global (Engine2D.Quality), no una por juego: al
-  // elegir "Bajo" desde Castle Escape, las otras dos filas —en Pixel Runner
-  // y en el RPG— quedan marcadas en "Bajo" también la próxima vez que se
-  // abran, porque cada createRow() se suscribió por su cuenta a los cambios.
-  // El guard `slot.childElementCount` evita duplicar la fila si esta función
-  // se llamara más de una vez.
+  // Calidad gráfica: clase q-low/q-medium/q-high en <html> para que el CSS apague
+  // efectos caros (backdrop-filter). Además inserta la fila Bajo/Medio/Alto de
+  // Engine2D.Quality en los ajustes de cada juego (una sola preferencia global).
   ensureQualityRows() {
     if (typeof Engine2D === 'undefined' || !Engine2D.Quality) return;
     const slots = [
@@ -3286,10 +3074,7 @@ class Navegacion extends Modulo {
     document.documentElement.classList.toggle('q-low', level === 'low');
   }
 
-  // Envuelve cada letra del título de bienvenida en su propio <span> con un
-  // pequeño desfasaje (animation-delay), para el efecto de ola del CSS
-  // (.wave-letter). Se corre una sola vez; respeta el <span> de "UniGames"
-  // que ya estaba adentro (mantiene su color propio).
+  // Efecto ola del título de bienvenida: un <span> por letra con su delay.
   animateHeroLetters() {
     const h1 = document.getElementById('heroTitle');
     if (!h1 || h1.dataset.animated) return;
@@ -3319,16 +3104,12 @@ class Navegacion extends Modulo {
   }
 
   goTo(section) {
-    // Stop all 2D engine loops to prevent background lag when switching games
     if (typeof stopRunner === 'function') stopRunner();
     if (typeof stopTrampas === 'function') stopTrampas();
-    if (typeof stopRpg === 'function') stopRpg();
     if (typeof rpgStopLoop === 'function') rpgStopLoop();
     if (typeof stopSurvi === 'function') stopSurvi();
 
-    // Ocultar todas las secciones
     document.querySelectorAll('.section').forEach((s) => s.classList.remove('active'));
-    // Mostrar la sección solicitada
     document.getElementById('sec-' + section).classList.add('active');
 
     // Actualizar link activo en el menú (solo para las secciones del nav)
@@ -3343,9 +3124,7 @@ class Navegacion extends Modulo {
     const navIdx = map[section] !== undefined ? map[section] : map['juegos'];
     if (links[navIdx]) links[navIdx].classList.add('active');
 
-    // Al navegar a la sección de puntuación, siempre arranca en Global — ya
-    // no hay tabs para elegir, así que no tiene sentido "recordar" en qué
-    // juego te habías quedado la vez anterior.
+    // Puntuación siempre arranca en Global.
     if (section === 'puntuacion') app.puntuaciones.volverAPuntuacionGlobal();
 
     // Refrescar amigos / logros / perfil al navegar a esas secciones
@@ -3367,12 +3146,8 @@ class Navegacion extends Modulo {
       section === 'pixel_survi';
     document.body.classList.toggle('in-engine-game', isEngineGame);
     if (isEngineGame) {
-      // Estos juegos manejan su propia música (la ponen ellos mismos vía
-      // setMusic al mostrar su menú). Ojo: NO llamar a mutePageMusic() acá,
-      // porque deja pageMusicMuted = true y el setMusic() que viene justo
-      // después (showRunnerMenu / initTrampas / rpgInit) queda bloqueado hasta
-      // que el usuario mutea y desmutea manualmente.
-      app.audio.unmutepageMusic();
+      // Estos juegos ponen su propia música (setMusic) al mostrar su menú.
+      app.audio.attemptPlayMusic();
       if (section === 'castle_escape') {
         app.cargador.ensureCastleLoaded().then(() => {
           if (typeof initTrampas === 'function') initTrampas();
@@ -3389,8 +3164,8 @@ class Navegacion extends Modulo {
         });
       }
     } else {
-      // Cualquier otra sección usa la música ambiente del sitio: la reactivamos
-      app.audio.unmutepageMusic();
+      // Cualquier otra sección usa la música ambiente del sitio
+      app.audio.attemptPlayMusic();
       if (typeof app.audio.changeBgMusic === 'function') app.audio.changeBgMusic('menu.mp3');
     }
 
@@ -3413,9 +3188,7 @@ class Navegacion extends Modulo {
       backdrop.classList.remove('open');
   }
 
-  // Click en el botón redondo del header: sin sesión va DIRECTO al login
-  // (antes abría el cajón lateral solo para mostrar un botón que a su vez
-  // abría el login — un paso de más). Con sesión, abre el menú de siempre.
+  // Botón redondo del header: sin sesión abre el login; con sesión, el menú de cuenta.
   handleAccountToggle() {
     if (app.auth.currentUser) {
       this.toggleAccountDrawer();
@@ -3445,10 +3218,6 @@ class Navegacion extends Modulo {
     if (backdrop && !this.navMenu.classList.contains('open')) backdrop.classList.remove('open');
   }
 
-  iniciarJuego(gameKey) {
-    app.lanzador.launchGame(gameKey, null);
-  }
-
   applyTheme(tema) {
     document.body.classList.remove('theme-light', 'theme-blue', 'theme-red');
     if (tema === 'light') {
@@ -3458,53 +3227,22 @@ class Navegacion extends Modulo {
     }
   }
 
-  triggerEasterEgg() {
-    this.gravityClickCount++;
-    if (this.gravityClickCount >= 5) {
-      document.body.classList.add('gravity-inverted');
-      this.gravityClickCount = 0;
-    }
-  }
-
-  restoreGravity() {
-    document.body.classList.remove('gravity-inverted');
-  }
 }
 
-// ══════════════════════════════════════
-//   CargadorModulos — Carga diferida de scripts/CSS de cada juego y selector de calidad.  (app.cargador)
-// ══════════════════════════════════════
+// CargadorModulos — Carga diferida de scripts/CSS de cada juego y selector de calidad. (app.cargador)
 class CargadorModulos extends Modulo {
   constructor() {
     super();
-    // ─── Navegación entre secciones ────────
-    // ─── Carga diferida de Pixel Runner / Castle Escape ───
-    // Antes runner_main.js y castle_main.js se cargaban siempre desde
-    // index.html, jueguen o no. Ahora se importan recién la primera vez que
-    // el usuario entra a esa sección — el resto de las visitas no paga ese
-    // código. Cada ensure*Loaded() cachea la promesa para no reimportar en
-    // entradas siguientes a la misma sección.
-    // Los CSS de los juegos salieron del <head> de index.html (eran ~2300
-    // líneas parseándose en Inicio sin usarse). Se inyectan acá, al final del
-    // <head>, así quedan DESPUÉS de styles.css y ui-components.css — el mismo
-    // orden de cascada que tenían antes. Idempotente: si ya está el <link>, no
-    // hace nada, aunque se entre diez veces a la sección.
-    // Devuelve una promesa que resuelve cuando la hoja ya está aplicada: si el
-    // juego arrancara antes, se vería un frame con el canvas y los carteles sin
-    // estilos (contenedor sin tamaño, barra de carga desarmada). Si el CSS
-    // falla se sigue adelante igual — mejor el juego feo que no jugar.
+    // Carga diferida de los juegos: el CSS y los módulos se bajan la primera vez
+    // que se entra a la sección (la promesa se cachea). ensureCSS resuelve cuando
+    // la hoja ya se aplicó, para no mostrar un frame sin estilos.
     this.cssPromises = {};
     this.runnerModuleLoading = null;
     this.castleModuleLoading = null;
     this.rpgModuleLoading = null;
-    // Chart.js (200KB) solo lo usa el dashboard del panel de admin — nadie
-    // más lo necesita, así que se baja recién al abrir esa pestaña en vez de
-    // venir siempre desde index.html.
+    // Chart.js (200KB) se baja recién al abrir el dashboard del admin.
     this.chartJsLoading = null;
-    // Pixel Survi es 100% módulos ES: no necesita ningún script clásico
-    // previo (no usa globales tipo SPRITES ni CASTLE_ESCAPE_CUSTOM_LEVELS),
-    // así que el CSS y el import() van en paralelo. Igual que los otros,
-    // la promesa se cachea: se baja una sola vez por sesión.
+    // Pixel Survi es solo módulos ES: CSS e import() en paralelo.
     this.surviModuleLoading = null;
   }
 
@@ -3533,9 +3271,7 @@ class CargadorModulos extends Modulo {
     return this.cssPromises[href];
   }
 
-  // Carga un script clásico (no módulo) una sola vez. Lo usan los juegos que
-  // dependen de un global evaluado antes del import(): castle_escape_levels.js
-  // (CASTLE_ESCAPE_CUSTOM_LEVELS) y sprites.js (SPRITES, que usa rpg_render.js).
+  // Carga un script clásico una sola vez (para globals que un juego lee al importarse).
   loadClassicScript(src) {
     return new Promise((resolve, reject) => {
       const s = document.createElement('script');
@@ -3557,9 +3293,7 @@ class CargadorModulos extends Modulo {
 
   ensureCastleLoaded() {
     if (!this.castleModuleLoading) {
-      // castle_config.js lee CASTLE_ESCAPE_CUSTOM_LEVELS ni bien se evalúa el
-      // módulo, así que ese script clásico tiene que estar cargado ANTES de
-      // importar castle_main.js (por eso va encadenado, no en paralelo).
+      // castle_escape_levels.js (global CASTLE_ESCAPE_CUSTOM_LEVELS) va antes del import().
       this.castleModuleLoading = Promise.all([
         this.ensureCSS('src/motor2d/games/castle-escape/castle_escape.css'),
         this.loadClassicScript('src/motor2d/games/castle-escape/castle_escape_levels.js'),
@@ -3570,11 +3304,7 @@ class CargadorModulos extends Modulo {
 
   ensureRpgLoaded() {
     if (!this.rpgModuleLoading) {
-      // sprites.js define el global SPRITES que rpg_render.js lee ni bien
-      // dibuja, así que tiene que estar evaluado ANTES del import() (va
-      // encadenado, no en paralelo — mismo caso que castle_escape_levels.js).
-      // Antes venía eager desde index.html, siendo que el resto del RPG ya
-      // era diferido.
+      // El sprites.js del RPG define el global SPRITES: tiene que cargarse antes del import().
       this.rpgModuleLoading = Promise.all([
         this.ensureCSS('src/motor2d/games/rpg-pixel/rpg.css'),
         this.loadClassicScript('src/motor2d/games/rpg-pixel/models/sprites.js'),
@@ -3601,21 +3331,10 @@ class CargadorModulos extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   RunnerUI — Paneles de Pixel Runner: pausa, modos, mejoras, ajustes y pantalla completa.  (app.runner)
-// ══════════════════════════════════════
+// RunnerUI — Paneles de Pixel Runner: pausa, modos, mejoras, ajustes y pantalla completa. (app.runner)
 class RunnerUI extends Modulo {
-  // ─── Panel de Mejoras (tienda de mejoras permanentes con monedas) ───
-  // El estado real (niveles, compradas, monedas) vive en pixelrunner.js
-  // (RUNNER.upgrades / RUNNER.totalCoins + localStorage). Acá solo se arma
-  // el HTML del panel a partir de ese estado, cada vez que se abre o se
-  // compra algo — así siempre se ve al día.
-  // Orden a propósito: primero TODAS las mejoras de nivel (se compran
-  // muchas veces, van subiendo de a poco) y después TODAS las especiales
-  // (compra única, cambian una regla del juego). `campo` es la propiedad
-  // de RUNNER.upgrades que cada una lee/escribe — antes esto era un
-  // ternario a mano por cada mejora nueva; con 6 en vez de 4 ya no daba,
-  // así que quedó genérico.
+  // Panel de Mejoras del runner: el estado vive en el juego (Economia); acá solo
+  // se arma el HTML. Primero las mejoras por nivel y después las de compra única.
   static RUNNER_UPGRADE_DEFS = [
     // ── Mejoras de nivel (10 niveles, misma tabla de costos 100..1000) ──
     {
@@ -3681,12 +3400,8 @@ class RunnerUI extends Modulo {
   ];
   constructor() {
     super();
-    // ─── Pausa durante la partida (botón que reemplazó al de pantalla
-    // completa, arriba a la derecha del canvas) ───
-    // 3 opciones nada más: Continuar, Ajustes, Volver al menú. Ajustes es el
-    // único cartel alcanzable desde DOS lugares (el menú principal y acá) —
-    // runnerAjustesFromPause recuerda por cuál vino para que su "← Volver"
-    // sepa a dónde mandarte de nuevo.
+    // Pausa: Continuar, Ajustes o Volver al menú. runnerAjustesFromPause recuerda
+    // desde dónde se abrió Ajustes para volver ahí.
     this.runnerAjustesFromPause = false;
   }
 
@@ -3695,10 +3410,7 @@ class RunnerUI extends Modulo {
     document.addEventListener('webkitfullscreenchange', this.runnerSyncFullscreenBtn);
   }
 
-  // ─── Carteles internos del Pixel Runner (Mejoras / Ajustes / Cómo jugar) ───
-  // Reemplazan los alert() del navegador: son paneles que se muestran arriba
-  // del menú del juego, dentro del mismo recuadro. Todos comparten
-  // cerrarPanelesRunner() para volver al menú.
+  // Paneles del runner (Mejoras / Ajustes / Cómo jugar) sobre el menú del juego.
   cerrarPanelesRunner() {
     [
       'runnerMejorasPanel',
@@ -3756,11 +3468,7 @@ class RunnerUI extends Modulo {
     }
   }
 
-  // ─── Selección de modo (Historia / Infinito) ───
-  // Se muestra al tocar "Jugar" en el menú de Pixel Runner. Infinito arranca
-  // bloqueado hasta completar Historia (llegar a los 2500 pts), estado que
-  // persiste en localStorage (ver loadHistoriaCompleta/saveHistoriaCompleta
-  // en pixelrunner.js).
+  // Selección de modo: Infinito se desbloquea al completar Historia.
   mostrarModoRunner() {
     const desbloqueado = typeof loadHistoriaCompleta === 'function' && loadHistoriaCompleta();
     const btnInfinito = app.nucleo.APP_EL.runnerModoInfinitoBtn;
@@ -3775,14 +3483,8 @@ class RunnerUI extends Modulo {
     if (panel) panel.classList.remove('hidden');
   }
 
-  // ─── Modo Duelo de Pixel Runner ───
-  // Usa el modo Infinito ya existente (el que más puntos haga gana), pero
-  // arranca directo sin pasar por el menú ni por el candado de "Completá
-  // Historia primero" (los duelos siempre habilitan Infinito).
-  // El puntaje final se reporta desde runner_loop.js (updateRunner), en el
-  // momento exacto en que el jugador choca: ahí se lee window.dueloActivo
-  // y, si corresponde, se llama a window.finalizarDueloConPuntaje(...) con
-  // el RUNNER.score de ese instante. Ver el comentario en runner_loop.js.
+  // Duelo de Pixel Runner: modo Infinito directo, sin menú ni candado. El
+  // puntaje lo reporta el juego al chocar (runner_loop.js).
   iniciarRunnerDuelo(dueloId) {
     app.duelos.dueloActivo = {
       id: dueloId,
@@ -3791,12 +3493,8 @@ class RunnerUI extends Modulo {
     app.navegacion.goTo('runner');
     this.cerrarPanelesRunner();
     const menu = document.getElementById('runnerMenu');
-    // classList, no .style.display: showRunnerMenu()/toRunnerMenu() solo
-    // sacan la clase 'hidden' para volver a mostrarlo. Un .style.display
-    // inline puesto acá pisaba esa clase para siempre en esa pestaña — al
-    // volver del duelo al menú normal, quedaba invisible (portada, título y
-    // botones) sin ningún error visible, porque el estilo inline le ganaba a
-    // la clase CSS.
+    // Con classList (no .style.display): un display inline le ganaba a la clase y
+    // el menú quedaba invisible al volver del duelo.
     if (menu) menu.classList.add('hidden');
     app.utils.mostrarToast('¡Arrancó el duelo! Modo Infinito.');
     this.runnerSyncFullscreenBtn();
@@ -3877,9 +3575,7 @@ class RunnerUI extends Modulo {
   }
 
   mostrarMejoras() {
-    // RUNNER / loadTotalCoins vienen de pixelrunner.js (mismo scope global).
-    // Se relee siempre de localStorage para no mostrar datos viejos si el
-    // panel se abre antes de que arranque una partida en esta sesión.
+    // Se relee siempre: el panel puede abrirse después de jugar.
     const coinsEl = app.nucleo.APP_EL.runnerMejorasCoinsTotal;
     const total = typeof loadTotalCoins === 'function' ? loadTotalCoins() : 0;
     if (coinsEl) coinsEl.textContent = total;
@@ -3918,12 +3614,7 @@ class RunnerUI extends Modulo {
     if (label) label.textContent = pct + '%';
   }
 
-  // ─── Pantalla completa (panel de Ajustes) ───
-  // Pone en fullscreen el .runner-container (canvas + HUD + overlays), no
-  // toda la página, para no perder los carteles/menús que viven dentro de
-  // ese mismo contenedor. runnerSyncFullscreenBtn() mantiene el texto del
-  // botón al día tanto si el cambio lo dispara este botón como si el
-  // usuario sale con Esc (evento fullscreenchange).
+  // Pantalla completa del .runner-container (no de toda la página).
   runnerGetFullscreenElement() {
     return document.fullscreenElement || document.webkitFullscreenElement || null;
   }
@@ -3960,14 +3651,9 @@ class RunnerUI extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   Ahorcado — Minijuego Ahorcado (normal y duelo).  (app.ahorcado)
-// ══════════════════════════════════════
+// Ahorcado — Minijuego Ahorcado (normal y duelo). (app.ahorcado)
 class Ahorcado extends Modulo {
-  // ══════════════════════════════════════
   //   AHORCADO
-  // ══════════════════════════════════════
-  // (Palabras borradas, ahora vienen del backend)
   static PARTES_HANG = ['h-head', 'h-body', 'h-arm-l', 'h-arm-r', 'h-leg-l', 'h-leg-r'];
   constructor() {
     super();
@@ -3979,10 +3665,7 @@ class Ahorcado extends Modulo {
       finished: false,
       tematicaId: 'normal',
     };
-    // ─── Modo Duelo de Ahorcado ───
-    // null si no hay un duelo en curso. Mientras esté activo, guessLetter()
-    // no guarda puntaje normal ni suma logros: acumula puntos de cada una de
-    // las 5 palabras y al final manda el total a /api/duelos/:id/resultado.
+    // Duelo de Ahorcado (null si no hay): suma 5 palabras y manda el total al duelo.
     this.ahorcadoDuelo = null;
   }
 
@@ -4061,7 +3744,6 @@ class Ahorcado extends Modulo {
       tematicaId,
     };
 
-    // Reset SVG
     Ahorcado.PARTES_HANG.forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.style.display = 'none';
@@ -4154,7 +3836,6 @@ class Ahorcado extends Modulo {
           });
         }
       } else {
-        // Revelar todas las letras al perder
         this.ahorcadoState.revealed = word.split('');
         statusEl.textContent = '💀 ¡Perdiste! La palabra era: ' + word.toUpperCase();
         statusEl.className = 'ahorcado-status lose';
@@ -4181,13 +3862,8 @@ class Ahorcado extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   AdivinaPalabra — Minijuego Adivina la Palabra estilo Wordle (normal y duelo).  (app.wordle)
-// ══════════════════════════════════════
+// AdivinaPalabra — Minijuego Adivina la Palabra estilo Wordle (normal y duelo). (app.wordle)
 class AdivinaPalabra extends Modulo {
-  // ══════════════════════════════════════
-  //   ADIVINA LA PALABRA (estilo Wordle, hard, con temática)
-  // ══════════════════════════════════════
   static WORDLE_MAX_ATTEMPTS = 5;
   static WORDLE_TEMATICAS = {
     1: 'Videojuegos',
@@ -4197,11 +3873,7 @@ class AdivinaPalabra extends Modulo {
   };
   constructor() {
     super();
-    // ─── Modo Duelo de Adivina la Palabra ───
-    // null si no hay un duelo en curso. Una sola palabra con la temática
-    // elegida al mandar el reto; al resolverla (ganada o perdida) se manda el
-    // puntaje directo a /api/duelos/:id/resultado en vez de guardar puntaje
-    // normal o sumar logros (igual criterio que ahorcadoDuelo).
+    // Duelo de Adivina la Palabra (null si no hay): una palabra, el puntaje va al duelo.
     this.wordleDuelo = null;
     this.wordleState = {
       word: '',
@@ -4324,11 +3996,9 @@ class AdivinaPalabra extends Modulo {
         let letter = '';
         let cls = 'wordle-tile';
         if (r < rows.length) {
-          // Fila ya confirmada: mostrar letra + color
           letter = rows[r].letters[c];
           cls += ' ' + rows[r].colors[c];
         } else if (r === currentRow) {
-          // Fila en curso: mostrar letras que se van tipeando
           letter = currentGuess[c] || '';
           if (letter) cls += ' filled';
         }
@@ -4479,13 +4149,10 @@ class AdivinaPalabra extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   Puntuaciones — Tabla de posiciones global y por juego, y guardado de puntajes.  (app.puntuaciones)
-// ══════════════════════════════════════
+// Puntuaciones — Tabla de posiciones global y por juego, y guardado de puntajes. (app.puntuaciones)
 class Puntuaciones extends Modulo {
   constructor() {
     super();
-    // ─── Leaderboard con tabs por juego ────
     this.lbCurrentTab = 'all';
   }
 
@@ -4497,9 +4164,7 @@ class Puntuaciones extends Modulo {
     }
   }
 
-  // La sección ya no tiene tabs para elegir juego — se entra a la
-  // puntuación de un juego puntual haciendo click en su tarjeta desde
-  // Global (ver fetchLeaderboardGlobal), y se vuelve con este botón.
+  // Se entra a la tabla de un juego tocando su tarjeta en Global.
   volverAPuntuacionGlobal() {
     this.lbCurrentTab = 'all';
     app.nucleo.APP_EL.lbPanelAll.classList.add('active');
@@ -4515,10 +4180,7 @@ class Puntuaciones extends Modulo {
     return '<div class="lb-empty-mini"><p class="lb-empty-title">Sin récord aún</p><p class="lb-empty-sub">Sé el primero en jugar</p></div>';
   }
 
-  // Busca los datos (color, ícono) de un juego por id, en cualquiera de las
-  // dos listas — mismos datos que ya arman las tarjetas de Inicio/Juegos,
-  // así que una tarjeta de "Sopa" acá se ve exactamente como en el resto
-  // del sitio.
+  // Datos (color, ícono) de un juego por id, en cualquiera de las dos listas.
   findGameMeta(id) {
     return (
       app.catalogo.allGames.find((g) => g.id === id) ||
@@ -4527,9 +4189,7 @@ class Puntuaciones extends Modulo {
     );
   }
 
-  // Click en una tarjeta de "Global": entra al panel de ese juego (la tabla
-  // completa) — antes esto le hacía click a un botón de tab que ya no
-  // existe, ahora abre el panel directo y pone el título a mano.
+  // Tarjeta de Global → tabla completa de ese juego.
   irATabDePuntuacion(target, nombreJuego) {
     this.lbCurrentTab = target;
     app.nucleo.APP_EL.lbPanelAll.classList.remove('active');
@@ -4549,10 +4209,7 @@ class Puntuaciones extends Modulo {
       if (!res.ok) throw new Error();
       const data = await res.json(); // { juego_id: { juego, entries: [{jugador, puntos}] } }
 
-      // Los 8 juegos que de verdad guardan puntaje — en este orden fijo,
-      // SIEMPRE los 8, tengan datos o no. Antes solo se armaba una tarjeta
-      // por cada juego_id que el servidor incluía en la respuesta, así que
-      // un juego con cero partidas (todavía) directamente no aparecía acá.
+      // Los 8 juegos con puntaje, siempre en este orden y aunque no tengan datos.
       const GAME_ID_MAP = {
         1: 'sopa',
         2: 'preguntados',
@@ -4589,13 +4246,13 @@ class Puntuaciones extends Modulo {
               (e, i) => `
         <div class="lb-rank-row">
           <span class="lb-rank-num">${medals[i] || '#' + (i + 1)}</span>
-          <span class="lb-player-name" onclick="event.stopPropagation(); verPerfilPorUsername('${app.utils.sanitizeHTML(e.jugador)}')">${app.utils.sanitizeHTML(e.jugador)}</span>
+          <span class="lb-player-name" onclick="event.stopPropagation(); verPerfilPorUsername(${app.utils.jsArg(e.jugador)})">${app.utils.sanitizeHTML(e.jugador)}</span>
           <span class="score-badge">${app.utils.sanitizeHTML(String(e.puntos))}</span>
         </div>`,
             )
             .join('');
           return `
-        <div class="game-card-full lb-game-card" onclick="irATabDePuntuacion('${gameId === 'runner' ? 'runner' : jid}', '${app.utils.sanitizeHTML(g.juego)}')">
+        <div class="game-card-full lb-game-card" onclick="irATabDePuntuacion('${gameId === 'runner' ? 'runner' : jid}', ${app.utils.jsArg(g.juego)})">
           <div class="card-header-band"${bandStyle}>
             <span class="card-emoji"><span class="card-emoji-float">${app.utils.gameIconSVG(gameId, 26)}</span></span>
             <span class="card-title"${titleStyle}>${app.utils.sanitizeHTML(g.juego)}</span>
@@ -4659,7 +4316,7 @@ class Puntuaciones extends Modulo {
           const cls = i < 3 ? `rank-${i + 1}` : '';
           return `<tr>
         <td class="${cls}">${medal} ${i >= 3 ? i + 1 : ''}</td>
-        <td><span class="lb-player-name" onclick="verPerfilPorUsername('${app.utils.sanitizeHTML(s.jugador)}')">${app.utils.sanitizeHTML(s.jugador)}</span></td>
+        <td><span class="lb-player-name" onclick="verPerfilPorUsername(${app.utils.jsArg(s.jugador)})">${app.utils.sanitizeHTML(s.jugador)}</span></td>
         <td><span class="score-badge">${app.utils.sanitizeHTML(String(s.puntos))}</span></td>
       </tr>`;
         })
@@ -4674,12 +4331,10 @@ class Puntuaciones extends Modulo {
   async guardarPuntaje(juego_id, puntos, tematica_id) {
     if (!app.auth.currentUser) return; // Solo guarda si hay sesión iniciada
     try {
-      const token = localStorage.getItem('unigames_token');
-      await fetch('/api/partidas', {
+      await app.api.authFetch('/api/partidas', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           juego_id: juego_id,
@@ -4694,16 +4349,9 @@ class Puntuaciones extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   Preguntados — Minijuego Preguntados (normal y duelo).  (app.preguntados)
-// ══════════════════════════════════════
+// Preguntados — Minijuego Preguntados (normal y duelo). (app.preguntados)
 class Preguntados extends Modulo {
-  // ══════════════════════════════════════
-  //   PREGUNTADOS
-  // ══════════════════════════════════════
-  static PREGUNTADOS_TOTAL = 10;
   static PREGUNTADOS_TIME = 15;
-  // segundos por pregunta
   static TEMATICA_NAMES = {
     1: 'Videojuegos',
     2: 'Películas',
@@ -4727,12 +4375,7 @@ class Preguntados extends Modulo {
       tematicaId: 1,
       finished: false,
     };
-    // ─── Modo Duelo de Preguntados ───
-    // null si no hay un duelo en curso. Una sola ronda completa (mismas
-    // preguntas que en modo libre) con la temática elegida al mandar el
-    // reto; al terminar se manda el puntaje directo a
-    // /api/duelos/:id/resultado en vez de guardar puntaje normal o sumar
-    // logros (igual criterio que ahorcadoDuelo/wordleDuelo).
+    // Duelo de Preguntados (null si no hay): una ronda, el puntaje va al duelo.
     this.pregDuelo = null;
   }
 
@@ -4952,20 +4595,11 @@ class Preguntados extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   SopaDeLetras — Minijuego Sopa de Letras (normal y duelo).  (app.sopa)
-// ══════════════════════════════════════
+// SopaDeLetras — Minijuego Sopa de Letras (normal y duelo). (app.sopa)
 class SopaDeLetras extends Modulo {
-  // ══════════════════════════════════════
-  //   SOPA DE LETRAS
-  // ══════════════════════════════════════
   static SOPA_GRID = 12;
-  // 12x12
   static SOPA_TIME = 120;
-  // Palabras hardcodeadas por temática — quedan como FALLBACK si falla el
-  // fetch a /api/sopa/palabras (o devuelve muy pocas), para que el juego no
-  // se rompa por un problema de red/server. La fuente real ahora es la BD
-  // (tabla palabras_ahorcado, la misma que ya usa Ahorcado).
+  // Palabras de respaldo por si falla /api/sopa/palabras.
   static SOPA_WORDS = {
     1: [
       'POKEMON',
@@ -5007,7 +4641,6 @@ class SopaDeLetras extends Modulo {
   };
   constructor() {
     super();
-    // 2 minutos
     this.sopaState = {
       words: [],
       grid: [],
@@ -5023,11 +4656,7 @@ class SopaDeLetras extends Modulo {
       erroresSeleccion: 0,
     };
     this.sopaFinishTimeout = null;
-    // ─── Modo Duelo de Sopa de Letras ───
-    // null si no hay un duelo en curso. Un solo intento con la temática y
-    // duración elegidas al mandar el reto; al terminar (por completarla o por
-    // tiempo) se manda el puntaje directo a /api/duelos/:id/resultado, sin
-    // guardar puntaje normal ni sumar logros (igual criterio que ahorcadoDuelo).
+    // Duelo de Sopa (null si no hay): un intento con temática y duración del reto.
     this.sopaDuelo = null;
   }
 
@@ -5078,7 +4707,6 @@ class SopaDeLetras extends Modulo {
       palabras = SopaDeLetras.SOPA_WORDS[tematicaId] || SopaDeLetras.SOPA_WORDS[1];
     }
     const candidatos = [...new Set(palabras.map((w) => w.toUpperCase()).filter((w) => w.length <= maxLargo))];
-    // Mezclar y tomar hasta 8 palabras
     const shuffled = [...candidatos].sort(() => Math.random() - 0.5).slice(0, 8);
     const { grid, placed } = this.buildSopaGrid(shuffled, SopaDeLetras.SOPA_GRID);
     this.sopaState = {
@@ -5156,7 +4784,6 @@ class SopaDeLetras extends Modulo {
       }
     }
 
-    // Rellenar con letras aleatorias
     const alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     for (let r = 0; r < size; r++)
       for (let c = 0; c < size; c++)
@@ -5318,7 +4945,6 @@ class SopaDeLetras extends Modulo {
 
   checkSopaSelection() {
     const sel = this.sopaState.selected;
-    // Formar la palabra seleccionada
     const word = sel.map(([r, c]) => this.sopaState.grid[r][c]).join('');
     const wordRev = word.split('').reverse().join('');
     for (const p of this.sopaState.placed) {
@@ -5329,9 +4955,7 @@ class SopaDeLetras extends Modulo {
         document.querySelector('.sopa-score-disp').innerHTML =
           '<svg style="width:1rem;height:1rem;fill:gold;vertical-align:middle;margin-right:2px;" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> ' +
           this.sopaState.score;
-        // Marcar encontradas
         this.updateSopaHighlight();
-        // Actualizar lista de palabras
         document.querySelectorAll('.sopa-word').forEach((el) => {
           if (el.textContent === p.word) el.classList.add('sopa-word-found');
         });
@@ -5351,11 +4975,7 @@ class SopaDeLetras extends Modulo {
   }
 
   sopaFinish(won) {
-    // Guard: evita que se ejecute dos veces (puede pasar si el jugador
-    // encuentra la última palabra justo cuando el tiempo llega a 0 —
-    // el timeout y el setTimeout de victoria competían y la segunda
-    // llamada pisaba el HTML recién renderizado con el botón "Jugar de
-    // nuevo", dejándolo sin su listener funcional).
+    // Evita terminar dos veces (última palabra justo cuando el tiempo llega a 0).
     if (this.sopaState.finished) return;
     this.sopaState.finished = true;
     clearInterval(this.sopaState.timer);
@@ -5418,13 +5038,8 @@ class SopaDeLetras extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   TerminaPalabra — Minijuego Termina la Palabra (normal y duelo).  (app.termina)
-// ══════════════════════════════════════
+// TerminaPalabra — Minijuego Termina la Palabra (normal y duelo). (app.termina)
 class TerminaPalabra extends Modulo {
-  // ══════════════════════════════════════
-  //   TERMINA LA PALABRA
-  // ══════════════════════════════════════
   static TERMINA_MAX = 5;
   constructor() {
     super();
@@ -5436,11 +5051,7 @@ class TerminaPalabra extends Modulo {
       finished: false,
       tematicaId: 1,
     };
-    // ─── Modo Duelo de Termina la Palabra ───
-    // null si no hay un duelo en curso. Una sola palabra con la temática
-    // elegida al mandar el reto; al resolverla (acertada o agotados los
-    // intentos) se manda el puntaje directo a /api/duelos/:id/resultado, sin
-    // guardar puntaje normal ni sumar logros (igual criterio que wordleDuelo).
+    // Duelo de Termina la Palabra (null si no hay): una palabra, el puntaje va al duelo.
     this.terminaDuelo = null;
   }
 
@@ -5667,17 +5278,10 @@ class TerminaPalabra extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   AdivinaCosa — Minijuego Adivina la Cosa (normal y duelo).  (app.adivina)
-// ══════════════════════════════════════
+// AdivinaCosa — Minijuego Adivina la Cosa (normal y duelo). (app.adivina)
 class AdivinaCosa extends Modulo {
-  // ══════════════════════════════════════
-  //   ADIVINA LA COSA
-  // ══════════════════════════════════════
-  // Datos del juego organizados por temática — quedan como FALLBACK si falla
-  // el fetch a /api/adivina/items (o esa temática todavía no tiene items
-  // cargados en la BD). La fuente real ahora es la tabla adivina_items.
-  // Cada item tiene: respuesta, pistas (de vaga a específica), imagen
+  // Items de respaldo por temática, por si falla /api/adivina/items.
+  // Cada item: respuesta, pistas (de vaga a específica), imagen y aliases.
   static ADIVINA_DATA = {
     1: [
       // Videojuegos
@@ -5871,17 +5475,11 @@ class AdivinaCosa extends Modulo {
   constructor() {
     super();
     this.adivinaState = null;
-    // ─── Modo Duelo de Adivina la Cosa ───
-    // null si no hay un duelo en curso. Una sola ronda completa (mismos
-    // items que en modo libre) con la temática elegida al mandar el reto;
-    // arranca directo sin pasar por el cartel de "▶ Empezar", y al terminar
-    // se manda el puntaje directo a /api/duelos/:id/resultado en vez de
-    // guardar puntaje normal o sumar logros (igual criterio que sopaDuelo).
+    // Duelo de Adivina la Cosa (null si no hay): una ronda, arranca directo.
     this.adivinaDuelo = null;
   }
 
   iniciar() {
-    // Soporte Enter en input
     document.addEventListener('DOMContentLoaded', () => {
       const inp = app.nucleo.APP_EL.adivinaInput;
       if (inp)
@@ -5969,13 +5567,11 @@ class AdivinaCosa extends Modulo {
     const s = this.adivinaState;
     const item = s.items[s.itemIdx];
 
-    // Meta
     app.nucleo.APP_EL.adivinaItemNum.textContent = s.itemIdx + 1;
     app.nucleo.APP_EL.adivinaItemTotal.textContent = s.items.length;
     app.nucleo.APP_EL.adivinaScore.textContent = s.score;
     app.nucleo.APP_EL.adivinaPistasUsed.textContent = s.pistasUsedThisItem || 0;
 
-    // Pistas
     app.nucleo.APP_EL.adivinaPistasList.innerHTML = '';
     s.pistasRevealedThisItem = s.pistasRevealedThisItem || [];
     for (const pista of s.pistasRevealedThisItem) {
@@ -5985,17 +5581,14 @@ class AdivinaCosa extends Modulo {
       app.nucleo.APP_EL.adivinaPistasList.appendChild(el);
     }
 
-    // Botón pista
     const btn = app.nucleo.APP_EL.adivinaBtnPista;
     const remaining = item.pistas.length - (s.pistasRevealedThisItem?.length || 0);
     btn.disabled = remaining === 0;
     btn.querySelector ? null : null;
     app.nucleo.APP_EL.adivinaPistaCosto.textContent = `(-${this.pistasCosto(s.pistasRevealedThisItem?.length || 0)} pts)`;
 
-    // Imagen pixelada
     this.renderAdivinaCanvas(item.imagen, s.pistasRevealedThisItem?.length || 0, item.pistas.length);
 
-    // Input
     app.nucleo.APP_EL.adivinaInput.value = '';
     app.nucleo.APP_EL.adivinaInput.disabled = false;
     app.nucleo.APP_EL.adivinaFeedback.style.display = 'none';
@@ -6035,7 +5628,6 @@ class AdivinaCosa extends Modulo {
         return;
       }
 
-      // Dibujar pequeño, luego escalar
       const small = document.createElement('canvas');
       small.width = Math.max(1, Math.floor(w / pixelSize));
       small.height = Math.max(1, Math.floor(h / pixelSize));
@@ -6087,7 +5679,6 @@ class AdivinaCosa extends Modulo {
     const btnRendirse = app.nucleo.APP_EL.adivinaBtnRendirse;
     if (btnRendirse) btnRendirse.style.display = 'none';
 
-    // Revelar imagen completa
     this.renderAdivinaCanvas(item.imagen, 99, item.pistas.length);
     setTimeout(() => this.nextAdivinaItem(), 2200);
   }
@@ -6142,7 +5733,6 @@ class AdivinaCosa extends Modulo {
           : {}),
       });
 
-      // Revelar imagen completa
       this.renderAdivinaCanvas(item.imagen, 99, item.pistas.length);
       setTimeout(() => this.nextAdivinaItem(), 1800);
     } else {
@@ -6163,7 +5753,6 @@ class AdivinaCosa extends Modulo {
     s.respondido = false;
     s.itemIdx++;
     if (s.itemIdx >= s.items.length) {
-      // Fin del juego
       s.finished = true;
 
       // En duelo: no se guarda puntaje normal ni logros, el puntaje va
@@ -6197,25 +5786,20 @@ class AdivinaCosa extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   InfoModal — Modal de información / créditos del equipo.  (app.info)
-// ══════════════════════════════════════
+// InfoModal — Modal de información / créditos del equipo. (app.info)
 class InfoModal extends Modulo {
   constructor() {
     super();
-    // ─── MODAL INFO / CRÉDITOS ───
     this.currentInfoPage = 1;
     this.totalInfoPages = 4;
   }
 
   iniciar() {
-    // Init theme on load
-    fetch('/api/config')
+    fetch('/api/admin/config')
       .then((r) => r.json())
       .then((c) => {
         if (c.color_tema) app.navegacion.applyTheme(c.color_tema);
 
-        // Configure system banner
         const banner = document.getElementById('systemBanner');
         const bannerText = document.getElementById('systemBannerText');
         if (banner && bannerText) {
@@ -6347,22 +5931,17 @@ class InfoModal extends Modulo {
   }
 
   updateInfoModal() {
-    // Ocultar todas las páginas
     document.querySelectorAll('.info-page').forEach((p) => p.classList.remove('active'));
-    // Mostrar la página actual
     const activePage = document.getElementById('infoPage' + this.currentInfoPage);
     if (activePage) activePage.classList.add('active');
 
-    // Actualizar dots
     const dots = document.querySelectorAll('#infoDots .dot');
     dots.forEach((dot, index) => {
       if (index === this.currentInfoPage - 1) dot.classList.add('active');
       else dot.classList.remove('active');
     });
 
-    // "Atrás" no tiene sentido en la primera página, ni "Siguiente" en la
-    // última — antes quedaban los dos siempre visibles, aunque no llevaran
-    // a ningún lado.
+    // Sin "Atrás" en la primera página ni "Siguiente" en la última.
     const btnAtras = document.getElementById('infoBtnAtras');
     const btnSiguiente = document.getElementById('infoBtnSiguiente');
     if (btnAtras) btnAtras.style.visibility = this.currentInfoPage === 1 ? 'hidden' : 'visible';
@@ -6371,13 +5950,10 @@ class InfoModal extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   AvisosManager — Avisos globales: CRUD desde el admin y banner público.  (app.avisos)
-// ══════════════════════════════════════
+// AvisosManager — Avisos globales: CRUD desde el admin y banner público. (app.avisos)
 class AvisosManager extends Modulo {
   constructor() {
     super();
-    // Insert slide animation dynamically
     this.avisoStyle = document.createElement('style');
   }
 
@@ -6390,29 +5966,18 @@ class AvisosManager extends Modulo {
 `;
     document.head.appendChild(this.avisoStyle);
 
-    // Load it when DOM is ready
     document.addEventListener('DOMContentLoaded', () => {
       // wait a bit for standard init
       setTimeout(this.loadAvisoPublico, 500);
     });
 
-    // ==========================================
-    // ADMIN - CONTENIDO DE JUEGOS (Ahorcado / Adivina la Palabra / Preguntados / Adivina la Cosa)
-    // ==========================================
   }
 
-  // ==========================================
-  // AVISOS (ADMIN CRUD)
-  // ==========================================
   async loadAdminAvisos() {
     const token = localStorage.getItem('unigames_token');
     if (!token) return;
     try {
-      const res = await fetch('/api/admin/avisos', {
-        headers: {
-          Authorization: 'Bearer ' + token,
-        },
-      });
+      const res = await app.api.authFetch('/api/admin/avisos');
       if (!res.ok) throw new Error('Error fetching avisos');
       const avisos = await res.json();
       const listDiv = document.getElementById('adminAvisosList');
@@ -6427,7 +5992,7 @@ class AvisosManager extends Modulo {
             <div style="background:rgba(0,0,0,0.3); border-radius:6px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; border-left: 4px solid ${aviso.color || '#3b82f6'};">
                 <div style="flex:1;">
                     <div style="font-size:13px; color:#F1F5F9; font-weight:600; margin-bottom:4px;">
-                        ${aviso.icono || '📢'} ${aviso.texto}
+                        ${app.utils.sanitizeHTML(aviso.icono || '📢')} ${app.utils.sanitizeHTML(aviso.texto)}
                     </div>
                     <div style="font-size:10px; color:#94A3B8;">
                         Estado: <span style="color: ${aviso.activo ? '#4ade80' : '#94A3B8'}">${aviso.activo ? 'Activo (Mostrándose)' : 'Inactivo'}</span>
@@ -6454,12 +6019,10 @@ class AvisosManager extends Modulo {
       alert('El texto del aviso no puede estar vacío');
       return;
     }
-    const token = localStorage.getItem('unigames_token');
     try {
-      const res = await fetch('/api/admin/avisos', {
+      const res = await app.api.authFetch('/api/admin/avisos', {
         method: 'POST',
         headers: {
-          Authorization: 'Bearer ' + token,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -6481,12 +6044,10 @@ class AvisosManager extends Modulo {
   }
 
   async toggleAvisoAdmin(id, activar) {
-    const token = localStorage.getItem('unigames_token');
     try {
-      const res = await fetch(`/api/admin/avisos/${id}/toggle`, {
+      const res = await app.api.authFetch(`/api/admin/avisos/${id}/toggle`, {
         method: 'PUT',
         headers: {
-          Authorization: 'Bearer ' + token,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -6505,13 +6066,9 @@ class AvisosManager extends Modulo {
 
   async eliminarAvisoAdmin(id) {
     if (!confirm('¿Seguro que deseas eliminar este aviso de forma permanente?')) return;
-    const token = localStorage.getItem('unigames_token');
     try {
-      const res = await fetch(`/api/admin/avisos/${id}`, {
+      const res = await app.api.authFetch(`/api/admin/avisos/${id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: 'Bearer ' + token,
-        },
       });
       if (res.ok) {
         this.loadAdminAvisos();
@@ -6528,14 +6085,13 @@ class AvisosManager extends Modulo {
       if (!res.ok) return;
       const aviso = await res.json();
 
-      // Remove existing aviso if any
       const existingAviso = document.getElementById('global-aviso-banner');
       if (existingAviso) existingAviso.remove();
       if (aviso) {
         const avisoHTML = `
                 <div id="global-aviso-banner" style="background: ${aviso.color || '#3b82f6'}; color: white; text-align: center; padding: 12px 20px; font-weight: 600; font-size: 14px; position: relative; z-index: 50; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); animation: slideDownAviso 0.5s ease-out forwards;">
-                    <span style="margin-right:8px; font-size:16px;">${aviso.icono || '📢'}</span>
-                    ${aviso.texto}
+                    <span style="margin-right:8px; font-size:16px;">${app.utils.sanitizeHTML(aviso.icono || '📢')}</span>
+                    ${app.utils.sanitizeHTML(aviso.texto)}
                 </div>
             `;
         // Insertar justo debajo del header
@@ -6550,25 +6106,27 @@ class AvisosManager extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   Utils — Utilidades generales (sanitizar HTML, íconos SVG, mezclar arrays).  (app.utils)
-// ══════════════════════════════════════
+// Utils — Utilidades generales (sanitizar HTML, íconos SVG, mezclar arrays). (app.utils)
 class Utils extends Modulo {
-  // ─── Utilidades ────────────────────────
   shuffle(arr) {
     return [...arr].sort(() => Math.random() - 0.5);
   }
 
+  // Escapa texto para HTML: contenido y atributos ("..." o '...').
   sanitizeHTML(str) {
-    const div = document.createElement('div');
-    div.appendChild(document.createTextNode(str));
-    return div.innerHTML;
+    return String(str ?? '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    })[c]);
   }
 
-  // Íconos de línea (mismo estilo que el menú lateral: trazo simple,
-  // sin relleno) para cada minijuego, usados en las tarjetas de Inicio/
-  // Juegos, las pestañas de Puntuación/Logros y la lista de logros.
-  // TODO (backend): sin relación con backend, es solo presentación.
+  // Texto como argumento dentro de un onclick="...": sanitizeHTML solo no alcanza
+  // (el navegador decodifica &#39; antes de ejecutar). Uso sin comillas:
+  // onclick="f(${app.utils.jsArg(nombre)})"
+  jsArg(valor) {
+    return this.sanitizeHTML(JSON.stringify(String(valor ?? '')));
+  }
+
+  // Íconos de línea de cada minijuego (tarjetas, puntuación, logros).
   gameIconSVG(id, size = 22) {
     const paths = {
       sopa: '<rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect>',
@@ -6639,31 +6197,30 @@ class Utils extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   ApiClient — Cliente HTTP del backend (agrega el token JWT).  (app.api)
-// ══════════════════════════════════════
+// ApiClient — Cliente HTTP del backend (agrega el token JWT). (app.api)
 class ApiClient extends Modulo {
-  // ══════════════════════════════════════
-  //   AMIGOS
-  //   Conectado al backend: routes/amigos.js expone
-  //   GET /api/amigos, GET/POST /api/amigos/solicitudes,
-  //   POST /api/amigos/solicitudes/:id/(aceptar|rechazar) y
-  //   DELETE /api/amigos/:id. La búsqueda de usuarios usa
-  //   GET /api/usuarios/buscar?nombre=...
-  // ══════════════════════════════════════
-  // Helper chico para no repetir el armado de headers en cada fetch
-  // autenticado. Devuelve el JSON parseado; si la respuesta no es ok,
-  // tira un Error con el mensaje que mandó el backend (o uno genérico).
-  async apiFetch(url, options = {}) {
+  async authFetch(url, options = {}) {
     const token = localStorage.getItem('unigames_token');
-    const headers = {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    };
+    const headers = { ...(options.headers || {}) };
     if (token) headers['Authorization'] = 'Bearer ' + token;
-    const res = await fetch(url, {
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401 && token) this.sesionVencida();
+    return res;
+  }
+
+  sesionVencida() {
+    if (!app.auth.currentUser) return;
+    app.auth.logout();
+    app.utils.mostrarToast('Tu sesión venció: iniciá sesión de nuevo.', 'error');
+    app.auth.openModal('login');
+  }
+
+  // Igual que authFetch, pero manda JSON y devuelve el JSON parseado; si
+  // la respuesta no es ok, tira un Error con el mensaje del backend.
+  async apiFetch(url, options = {}) {
+    const res = await this.authFetch(url, {
       ...options,
-      headers,
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     });
     let data = null;
     try {
@@ -6676,33 +6233,19 @@ class ApiClient extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   LanzadorJuegos — Selector de temática y arranque de los minijuegos desde las cards.  (app.lanzador)
-// ══════════════════════════════════════
+// LanzadorJuegos — Selector de temática y arranque de los minijuegos desde las cards. (app.lanzador)
 class LanzadorJuegos extends Modulo {
   // Los 6 minijuegos "clásicos" (los que usan el cartel de elegir temática +
   // jugar al entrar). Los juegos de acción (runner, castle_escape, rpg_pixel)
   // manejan su propio menú y no pasan por este flujo.
   static CLASSIC_GAME_IDS = ['ahorcado', 'wordle', 'sopa', 'preguntados', 'termina', 'adivina'];
-  // ─── Selector de temática ──────────────
   selectTheme(btn) {
     const parent = btn.closest('.theme-selector');
     parent.querySelectorAll('.theme-btn').forEach((b) => b.classList.remove('selected'));
     btn.classList.add('selected');
   }
 
-  // ─── Juegos: próximamente ──────────────
-  proximamente() {
-    alert(
-      '🚧 ¡Próximamente!\n\nEste juego está en desarrollo. Iniciá sesión para ser notificado cuando esté listo.',
-    );
-  }
-
-  // ─── Lanzar juego desde la card (inicio o juegos) ──
-  // Ya no se elige la temática acá: solo navega a la pantalla del juego.
-  // Ahí aparece el cartel (título + elegir temática + botón Jugar) y recién
-  // cuando se confirma arranca el juego de verdad — esto le da tiempo al
-  // jugador antes de que la partida empiece.
+  // Desde una tarjeta: solo navega; la temática se elige en la pantalla del juego.
   launchGame(gameKey, btn) {
     app.navegacion.goTo(gameKey);
     if (gameKey === 'runner') {
@@ -6827,21 +6370,10 @@ class LanzadorJuegos extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   Notificaciones — Notificaciones del usuario: listado, badges y marcado como leídas.  (app.notificaciones)
-// ══════════════════════════════════════
+// Notificaciones — Notificaciones del usuario: listado, badges y marcado como leídas. (app.notificaciones)
 class Notificaciones extends Modulo {
-  // ══════════════════════════════════════
-  // ==========================================
-  // NOTIFICACIONES
-  // Conectado a routes/notificaciones.js: GET /api/notificaciones,
-  // GET /api/notificaciones/no-leidas, POST /api/notificaciones/:id/leer,
-  // POST /api/notificaciones/leer-todas, DELETE /api/notificaciones/:id.
-  // Se generan desde el backend en 3 casos: solicitud de amistad recibida,
-  // aviso nuevo publicado desde el Panel Admin, y récord de puntuación
-  // superado por otro jugador.
-  // ==========================================
-  // Emoji + destino (goTo) según el tipo de notificación que manda el backend.
+  // Notificaciones (routes/notificaciones.js): amistad, avisos y récords superados.
+  // Emoji + destino (goTo) según el tipo de notificación.
   static NOTIF_ICONOS = {
     solicitud_amistad: '🤝',
     aviso: '📢',
@@ -6851,12 +6383,7 @@ class Notificaciones extends Modulo {
     duelo_resultado: '🏁',
   };
   iniciar() {
-    // Polling liviano: cada 30s, si hay sesión, refresca el contador para que
-    // se note una notificación nueva sin tener que recargar la página.
-    // Con la pestaña en segundo plano no se pide nada: despertar la radio del
-    // celular 120 veces por hora para una respuesta que nadie va a ver es de lo
-    // que más batería come en gama baja. Al volver a la pestaña se refresca de
-    // una, así el badge no queda desactualizado esperando el próximo tick.
+    // Cada 30s refresca el contador (no con la pestaña oculta: gasta batería).
     setInterval(() => {
       if (document.hidden) return;
       this.actualizarBadgeNotificaciones();
@@ -6865,9 +6392,6 @@ class Notificaciones extends Modulo {
       if (!document.hidden) this.actualizarBadgeNotificaciones();
     });
 
-    // ==========================================
-    // ADMIN PANEL LOGIC
-    // ==========================================
   }
 
   formatearFechaNotif(fechaStr) {
@@ -7018,9 +6542,7 @@ class Notificaciones extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   AdminPanel — Panel de administración: configuración, usuarios, roles y dashboard.  (app.admin)
-// ══════════════════════════════════════
+// AdminPanel — Panel de administración: configuración, usuarios, roles y dashboard. (app.admin)
 class AdminPanel extends Modulo {
   openAdminModal() {
     document.getElementById('adminOverlay').classList.add('show');
@@ -7036,7 +6558,7 @@ class AdminPanel extends Modulo {
 
   async loadAdminConfig() {
     try {
-      const res = await fetch('/api/config');
+      const res = await fetch('/api/admin/config');
       const config = await res.json();
       if (config.color_tema) document.getElementById('adminTema').value = config.color_tema;
       if (config.github_rodrigo) document.getElementById('adminGitRodrigo').value = config.github_rodrigo;
@@ -7048,7 +6570,6 @@ class AdminPanel extends Modulo {
   }
 
   async saveAdminConfig() {
-    const token = localStorage.getItem('unigames_token');
     const data = {
       color_tema: document.getElementById('adminTema').value,
       github_rodrigo: document.getElementById('adminGitRodrigo').value,
@@ -7056,11 +6577,10 @@ class AdminPanel extends Modulo {
       github_kevin: document.getElementById('adminGitKevin').value,
     };
     try {
-      const res = await fetch('/api/admin/config', {
+      const res = await app.api.authFetch('/api/admin/config', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + token,
         },
         body: JSON.stringify(data),
       });
@@ -7076,18 +6596,12 @@ class AdminPanel extends Modulo {
   }
 
   async loadAdminUsers() {
-    const token = localStorage.getItem('unigames_token');
     const list = document.getElementById('adminUsersList');
     try {
-      const res = await fetch('/api/admin/usuarios', {
-        headers: {
-          Authorization: 'Bearer ' + token,
-        },
-      });
+      const res = await app.api.authFetch('/api/admin/usuarios');
       if (!res.ok) return (list.innerHTML = '<li>Error cargando usuarios</li>');
       let users = await res.json();
 
-      // Add Search logic
       const searchInput = document.getElementById('adminUserSearch');
       window.allAdminUsers = users;
       const renderUsers = (userList) => {
@@ -7096,8 +6610,8 @@ class AdminPanel extends Modulo {
             (u) => `
           <li>
             <div>
-              <b style="${u.estado === 'suspendido' ? 'color:#EF4444;text-decoration:line-through;' : ''}">${u.nombre_usuario}</b> 
-              <span style="color:#94A3B8; font-size:11px;">(${u.email})</span>
+              <b style="${u.estado === 'suspendido' ? 'color:#EF4444;text-decoration:line-through;' : ''}">${app.utils.sanitizeHTML(u.nombre_usuario)}</b> 
+              <span style="color:#94A3B8; font-size:11px;">(${app.utils.sanitizeHTML(u.email)})</span>
             </div>
             <div style="display:flex; gap:5px; align-items:center;">
               <select onchange="changeUserRole(${u.id}, this.value)" class="auth-input" style="width:auto; padding:2px; font-size:11px;">
@@ -7128,13 +6642,11 @@ class AdminPanel extends Modulo {
   }
 
   async changeUserRole(id, rol) {
-    const token = localStorage.getItem('unigames_token');
     try {
-      const res = await fetch('/api/admin/usuarios/' + id + '/rol', {
+      const res = await app.api.authFetch('/api/admin/usuarios/' + id + '/rol', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + token,
         },
         body: JSON.stringify({
           rol,
@@ -7161,23 +6673,17 @@ class AdminPanel extends Modulo {
   }
 
   async loadAdminDashboard() {
-    const token = localStorage.getItem('unigames_token');
     try {
-      const res = await fetch('/api/admin/dashboard', {
-        headers: {
-          Authorization: 'Bearer ' + token,
-        },
-      });
+      const res = await app.api.authFetch('/api/admin/dashboard');
       if (!res.ok) return;
       const stats = await res.json();
       document.getElementById('dashboardActivos').textContent = stats.activos;
       document.getElementById('dashboardTotal').textContent = stats.totalUsuarios;
       const top5 = document.getElementById('dashboardTop5');
       top5.innerHTML = stats.top5
-        .map((u, i) => `<li>${i + 1}. <b>${u.jugador}</b> - ${u.puntosTotales} pts</li>`)
+        .map((u, i) => `<li>${i + 1}. <b>${app.utils.sanitizeHTML(u.jugador)}</b> - ${u.puntosTotales} pts</li>`)
         .join('');
 
-      // Chart.js
       await app.cargador.ensureChartJsLoaded();
       const ctx = document.getElementById('gamesChart').getContext('2d');
       if (window.adminChart) window.adminChart.destroy();
@@ -7215,13 +6721,11 @@ class AdminPanel extends Modulo {
   }
 
   async changeUserStatus(id, estado) {
-    const token = localStorage.getItem('unigames_token');
     try {
-      const res = await fetch(`/api/admin/usuarios/${id}/estado`, {
+      const res = await app.api.authFetch(`/api/admin/usuarios/${id}/estado`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + token,
         },
         body: JSON.stringify({
           estado,
@@ -7234,9 +6738,7 @@ class AdminPanel extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
-//   AdminContenidoJuegos — Admin del contenido de los juegos (palabras, preguntas, objetos).  (app.adminJuegos)
-// ══════════════════════════════════════
+// AdminContenidoJuegos — Admin del contenido de los juegos (palabras, preguntas, objetos). (app.adminJuegos)
 class AdminContenidoJuegos extends Modulo {
   iniciar() {
     window.__jgEditingId = null;
@@ -7279,13 +6781,8 @@ class AdminContenidoJuegos extends Modulo {
 
   async jgFetchTematicas(force) {
     if (window.__jgTematicas.length && !force) return window.__jgTematicas;
-    const token = localStorage.getItem('unigames_token');
     try {
-      const res = await fetch('/api/admin/tematicas', {
-        headers: {
-          Authorization: 'Bearer ' + token,
-        },
-      });
+      const res = await app.api.authFetch('/api/admin/tematicas');
       window.__jgTematicas = res.ok ? await res.json() : [];
     } catch (e) {
       console.error(e);
@@ -7494,16 +6991,14 @@ class AdminContenidoJuegos extends Modulo {
     const tipo = document.getElementById('juegosTipoSelect').value;
     const payload = this.jgValidarYArmarPayload(tipo);
     if (!payload) return;
-    const token = localStorage.getItem('unigames_token');
     const endpoint =
       '/api/admin/' + this.jgEndpoint(tipo) + (window.__jgEditingId ? '/' + window.__jgEditingId : '');
     const method = window.__jgEditingId ? 'PUT' : 'POST';
     try {
-      const res = await fetch(endpoint, {
+      const res = await app.api.authFetch(endpoint, {
         method,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: 'Bearer ' + token,
         },
         body: JSON.stringify(payload),
       });
@@ -7564,13 +7059,9 @@ class AdminContenidoJuegos extends Modulo {
 
   async eliminarContenidoJuego(tipo, id) {
     if (!confirm('¿Eliminar este elemento de forma permanente?')) return;
-    const token = localStorage.getItem('unigames_token');
     try {
-      const res = await fetch('/api/admin/' + this.jgEndpoint(tipo) + '/' + id, {
+      const res = await app.api.authFetch('/api/admin/' + this.jgEndpoint(tipo) + '/' + id, {
         method: 'DELETE',
-        headers: {
-          Authorization: 'Bearer ' + token,
-        },
       });
       if (res.ok) {
         if (window.__jgEditingId === id) this.cancelarEdicionJuego();
@@ -7586,18 +7077,13 @@ class AdminContenidoJuegos extends Modulo {
   async loadJuegosContenidoList() {
     const tipo = document.getElementById('juegosTipoSelect').value;
     const tematicaFiltro = document.getElementById('juegosTematicaFiltro').value;
-    const token = localStorage.getItem('unigames_token');
     const listBox = document.getElementById('juegosContenidoList');
     listBox.innerHTML =
       '<div style="text-align:center; color:#94A3B8; font-size:12px; padding:10px;">Cargando...</div>';
     let url = '/api/admin/' + this.jgEndpoint(tipo);
     if (tematicaFiltro) url += '?tematica_id=' + tematicaFiltro;
     try {
-      const res = await fetch(url, {
-        headers: {
-          Authorization: 'Bearer ' + token,
-        },
-      });
+      const res = await app.api.authFetch(url);
       if (!res.ok) {
         listBox.innerHTML = '<div style="color:#FCA5A5; font-size:12px;">Error cargando contenido</div>';
         return;
@@ -7641,9 +7127,7 @@ class AdminContenidoJuegos extends Modulo {
   }
 }
 
-// ══════════════════════════════════════
 //   App — clase raíz: compone los módulos y arranca la aplicación
-// ══════════════════════════════════════
 class App extends Modulo {
   arrancar() {
     this.auth = new AuthManager();
@@ -7769,9 +7253,7 @@ class App extends Modulo {
   }
 
   iniciar() {
-    // ─── Inicialización ────────────────────
     document.addEventListener('DOMContentLoaded', () => {
-      // Año dinámico en el footer
       app.nucleo.APP_EL.year.textContent = new Date().getFullYear();
 
       // Restaurar sesión desde localStorage
@@ -7786,10 +7268,7 @@ class App extends Modulo {
         localStorage.removeItem('unigames_user');
         localStorage.removeItem('unigames_token');
       }
-      // Se llama siempre (haya o no sesión guardada): si no hay currentUser,
-      // esto es lo que pinta el botón de "Iniciar sesión" en el menú lateral.
-      // Antes solo se llamaba dentro del if de arriba, por eso en una visita
-      // nueva (sin nada en localStorage) el panel quedaba vacío.
+      // Siempre: sin sesión, esto pinta el botón de "Iniciar sesión".
       app.auth.updateAuthUI();
       const params = new URLSearchParams(window.location.search);
       const urlError = params.get('error_description');
@@ -7804,29 +7283,6 @@ class App extends Modulo {
         }, 500);
         window.history.replaceState({}, document.title, window.location.pathname);
       }
-      const dToken = params.get('dev_token');
-      const dUserStr = params.get('dev_user');
-      const openAdmin = params.get('open_admin');
-      if (dToken && dUserStr) {
-        try {
-          const u = JSON.parse(decodeURIComponent(dUserStr));
-          localStorage.setItem('unigames_token', dToken);
-          localStorage.setItem('unigames_user', JSON.stringify(u));
-          app.auth.currentUser = u;
-          app.auth.updateAuthUI();
-
-          // Remove params from URL to clean it up
-          window.history.replaceState({}, document.title, '/');
-
-          // Open admin modal if requested
-          if (openAdmin === 'true') {
-            setTimeout(() => {
-              app.admin.openAdminModal();
-            }, 500);
-          }
-        } catch (e) {}
-      }
-
       // Guardar HTML original de secciones de juego (antes de que se modifiquen)
       app.navegacion.saveOriginalSections();
 
@@ -7837,7 +7293,6 @@ class App extends Modulo {
       app.catalogo.renderClassicGames();
       app.catalogo.renderMotorGames();
 
-      // Evitar recarga en links del menú
       document.querySelectorAll('.nav-menu a').forEach((a) => {
         a.addEventListener('click', (e) => e.preventDefault());
       });
@@ -7854,7 +7309,6 @@ class App extends Modulo {
   }
 }
 
-// Instancia única de la aplicación
 const app = new App();
 window.app = app;
 app.arrancar();

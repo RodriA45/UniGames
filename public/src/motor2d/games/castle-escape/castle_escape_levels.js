@@ -1,8 +1,7 @@
-// Exportado desde Castle Escape Level Editor
-// Guardá este archivo como src/games/castle_escape_levels.js (reemplazando
-// el que ya esté ahí) e incluilo con un <script> ANTES de castle_escape.js
-// en index.html — así el juego usa estos niveles siempre, en cualquier
-// navegador, sin depender del localStorage del editor.
+// Exportado desde Castle Escape Level Editor.
+// Para actualizar los niveles: exportar desde el editor y reemplazar este
+// archivo (public/src/motor2d/games/castle-escape/castle_escape_levels.js).
+// El juego lee SOLO este archivo (ver CastleConfig.cargarNiveles).
 const CASTLE_ESCAPE_CUSTOM_LEVELS = [
   {
     nombre: "Nivel 1",
@@ -118,8 +117,6 @@ const CASTLE_ESCAPE_CUSTOM_LEVELS = [
       { x: 360, y: 150, w: 30, h: 30, type: 'normal', tile: 'wall_bl' },
       { x: 360, y: 120, w: 30, h: 30, type: 'normal', tile: 'wall_l' },
       { x: 360, y: 90, w: 30, h: 30, type: 'normal', tile: 'wall_l' },
-      { x: 360, y: 30, w: 30, h: 30, type: 'normal', tile: 'wall_l' },
-      { x: 360, y: 30, w: 30, h: 30, type: 'normal', tile: 'wall_l' },
       { x: 360, y: 30, w: 30, h: 30, type: 'normal', tile: 'wall_l' },
       { x: 360, y: 60, w: 30, h: 30, type: 'normal', tile: 'wall_l' },
       { x: 360, y: 0, w: 30, h: 30, type: 'normal', tile: 'wall_l' },

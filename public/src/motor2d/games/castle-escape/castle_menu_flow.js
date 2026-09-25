@@ -69,8 +69,9 @@ export class CastleMenu {
   mostrarAjustes() {
     this.mostrarPantalla(this.dom.settings);
     // Sincronizar los sliders con el volumen global actual
-    const musicPct = Math.round((typeof getGlobalMusicVolume === 'function' ? getGlobalMusicVolume() : 0.5) * 100);
-    const sfxPct = Math.round((typeof getGlobalSfxVolume === 'function' ? getGlobalSfxVolume() : 0.8) * 100);
+    const servicios = this.juego.servicios;
+    const musicPct = Math.round(servicios.volumenMusica() * 100);
+    const sfxPct = Math.round(servicios.volumenSfx() * 100);
     if (this.dom.musicVolume) this.dom.musicVolume.value = musicPct;
     if (this.dom.sfxVolume) this.dom.sfxVolume.value = sfxPct;
     this.dom.musicVolumeValue.textContent = musicPct + '%';
@@ -88,12 +89,12 @@ export class CastleMenu {
 
   cambiarVolumenMusica(v) {
     this.dom.musicVolumeValue.textContent = v + '%';
-    if (typeof setGlobalMusicVolume === 'function') setGlobalMusicVolume(v / 100);
+    this.juego.servicios.setVolumenMusica(v / 100);
   }
 
   cambiarVolumenSfx(v) {
     this.dom.sfxVolumeValue.textContent = v + '%';
-    if (typeof setGlobalSfxVolume === 'function') setGlobalSfxVolume(v / 100);
+    this.juego.servicios.setVolumenSfx(v / 100);
   }
 
   // Cartel de controles dentro del juego (botón ❓ del HUD).

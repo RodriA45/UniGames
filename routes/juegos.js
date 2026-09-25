@@ -6,6 +6,20 @@ const { partidaSchema } = require('../schemas');
 
 const router = express.Router();
 
+// aliases vive como texto en la DB. Lo normal es JSON (así lo guardan el
+// panel admin y el seed), pero filas viejas del seed quedaron como
+// "a,b,c". Se aceptan los dos formatos para no tirar 500 por una fila.
+function parseAliases(raw) {
+    if (!raw) return [];
+    try {
+        const v = JSON.parse(raw);
+        return Array.isArray(v) ? v : [];
+    } catch {
+        return String(raw).split(',').map(a => a.trim()).filter(Boolean);
+    }
+}
+
+
 // 3. Obtener tabla de puntuaciones (Leaderboard)
 router.get('/leaderboard', async (req, res) => {
     const { juego_id } = req.query;
@@ -288,7 +302,7 @@ router.get('/adivina/items', async (req, res) => {
         // en la columna, se parsea antes de mandarlo).
         const items = rows.map(r => ({
             respuesta: r.respuesta,
-            aliases: r.aliases ? JSON.parse(r.aliases) : [],
+            aliases: parseAliases(r.aliases),
             imagen: r.imagen,
             pistas: [r.pista_1, r.pista_2, r.pista_3, r.pista_4],
         }));

@@ -12,6 +12,25 @@ export class Secuencias {
   constructor(juego) {
     this.juego = juego;
     this.dom = juego.dom;
+    this.timers = new Set(); // setTimeout pendientes (caída, pausa en la puerta)
+  }
+
+  // setTimeout que se puede cancelar en bloque (ver cancelarTimers).
+  programar(fn, ms) {
+    const id = setTimeout(() => {
+      this.timers.delete(id);
+      fn();
+    }, ms);
+    this.timers.add(id);
+    return id;
+  }
+
+  // Lo llaman detener() y empezar(): si se sale al menú o se reinicia en
+  // medio de la caída o de la victoria, los timeouts viejos no deben pintar
+  // el cartel de fin encima de lo que se esté mostrando ahora.
+  cancelarTimers() {
+    for (const id of this.timers) clearTimeout(id);
+    this.timers.clear();
   }
 
   // ─── Victoria (Modo Historia) ───
@@ -20,10 +39,18 @@ export class Secuencias {
   // se carga recién ahora y no en el arranque.
   async iniciarVictoria() {
     const juego = this.juego, C = juego.view;
+    // Sincrónico, ANTES del await: desde este frame el update normal deja de
+    // correr (ver PixelRunner.update). Y si se vuelve a llamar mientras
+    // carga la imagen, no hace nada.
+    if (juego.ganando) return;
+    juego.ganando = true;
+    const partida = juego.partidaId;
     juego.obstacles = [];
     juego.pickups = [];
 
     const img = await Engine2D.loadImage(RC.ASSETS.castillo).catch(() => null);
+    // Mientras cargaba, el jugador pudo salir al menú o reiniciar.
+    if (juego.partidaId !== partida || !juego.ganando) return;
 
     const p = juego.jugador;
     const h = RC.CASTLE_TARGET_H;
@@ -52,11 +79,19 @@ export class Secuencias {
     const juego = this.juego, C = juego.view;
     const p = juego.jugador;
     const castle = juego.winCastle;
-    if (!castle) return;
 
     // El cielo sigue su curso para que la escena no se congele.
     juego.cielo.sincronizar(juego.frameCount);
     juego.cielo.moverNubes(step, C.width);
+    // Si llegó a la meta en el aire, que termine de caer (antes quedaba
+    // flotando mientras entraba el castillo).
+    p.aplicarFisica(step, C.height);
+
+    // Todavía cargando castillo.webp: trota en el lugar.
+    if (!castle) {
+      p.animarCarrera(step);
+      return;
+    }
 
     if (!castle.settled) {
       castle.x -= juego.speed * step;
@@ -75,7 +110,7 @@ export class Secuencias {
       p.animarCarrera(step);
     } else {
       juego.winArrived = true;
-      setTimeout(() => this.terminarVictoria(), RC.WIN_APPROACH_PAUSE_MS);
+      this.programar(() => this.terminarVictoria(), RC.WIN_APPROACH_PAUSE_MS);
     }
   }
 
@@ -86,7 +121,7 @@ export class Secuencias {
     juego.running = false;
     juego.sincronizarBotonPausa();
     if (juego.loop) juego.loop.stop();
-    bgMusic.pause();
+    juego.servicios.pausarMusica();
 
     this.guardarRecord();
 
@@ -109,8 +144,8 @@ export class Secuencias {
     juego.jugador.dead = true;
     juego.running = false;
     juego.sincronizarBotonPausa();
-    bgMusic.pause();
-    if (typeof playDeathSound === 'function') playDeathSound();
+    juego.servicios.pausarMusica();
+    juego.servicios.sonidoMuerte();
     if (juego.loop) juego.loop.stop();
 
     this.guardarRecord();
@@ -120,7 +155,7 @@ export class Secuencias {
   guardarRecord() {
     const juego = this.juego;
     if (juego.score > juego.bestScore) juego.bestScore = juego.score;
-    guardarPuntaje(Secuencias.ID_JUEGO_PUNTAJE, juego.score);
+    juego.servicios.guardarPuntaje(Secuencias.ID_JUEGO_PUNTAJE, juego.score);
   }
 
   // Recorre fall_0..fall_3 a mano (el loop ya está parado) y recién al
@@ -137,16 +172,16 @@ export class Secuencias {
       if (frame < RC.FALL_FRAMES.length) {
         p.animFrameName = RC.FALL_FRAMES[frame];
         juego.renderer.dibujar(true);
-        setTimeout(step, RC.FALL_FRAME_DELAY);
+        this.programar(step, RC.FALL_FRAME_DELAY);
       } else {
-        setTimeout(() => {
+        this.programar(() => {
           this.dom.best.textContent = 'Mejor: ' + juego.bestScore + ' pts';
           // Recién al perder se muestra el total histórico de monedas.
           this.mostrarOverlay('¡Game Over!', 'Puntos: ' + juego.score + '  ·  Monedas totales: ' + juego.economia.totalCoins, true);
         }, RC.FALL_HOLD_BEFORE_OVERLAY);
       }
     };
-    setTimeout(step, RC.FALL_FRAME_DELAY);
+    this.programar(step, RC.FALL_FRAME_DELAY);
   }
 
   // ─── Cartel de fin de partida ───

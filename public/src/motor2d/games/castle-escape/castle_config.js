@@ -13,6 +13,15 @@ export class CastleConfig {
   static GRAVITY = 0.42;
   static JUMP_VY = -7.4;
   static MOVE_SPEED = 2.7;
+  // Velocidad máxima de caída (px por step). Sin tope, en una caída larga
+  // la velocidad crecía sin límite y se atravesaban las plataformas finas.
+  static MAX_FALL_SPEED = 9;
+  // Desplazamiento vertical máximo por sub-paso de colisión: menos de la
+  // mitad de la plataforma más fina (15px), así no se la saltea ni con un
+  // frame lento (step grande).
+  static MAX_SUBPASO_Y = 7;
+  // Duración de un step en ms (el GameLoop normaliza a "frames de 60fps").
+  static MS_POR_STEP = 1000 / 60;
 
   // ─── Sprite del jugador (reutilizado de Pixel Runner: junior.png/atlas) ───
   static RUN_FRAMES = ['run_0', 'run_1', 'run_2', 'run_3', 'run_4', 'run_5', 'run_6'];
@@ -27,11 +36,12 @@ export class CastleConfig {
 
   static STONE_MORTAR = '#232025';
 
-  // ─── Niveles: se cargan dinámicamente desde el Editor de Niveles ───
-  // Prioridad: 1) datos en vivo del editor en localStorage, 2) el archivo
-  // exportado castle_escape_levels.js (CASTLE_ESCAPE_CUSTOM_LEVELS),
-  // 3) array vacío (el menú muestra un aviso en vez de romperse).
-  static CUSTOM_LEVELS_LS_KEY = 'castleEscapeLevelEditorData_v3';
+  // ─── Niveles: los exporta el Editor de Niveles ───
+  // Salen SOLO del archivo castle_escape_levels.js (CASTLE_ESCAPE_CUSTOM_LEVELS).
+  // Antes también se leía una clave de localStorage que tenía prioridad: el
+  // editor ya no la escribe, pero cualquiera podía cargarla desde la consola
+  // con un nivel trivial y jugar eso en vez de los niveles oficiales.
+  // Sin niveles → array vacío (el menú muestra un aviso en vez de romperse).
 
   static ASSETS = [
     { type: 'image', src: CastleConfig.ASSET_BASE + 'models/mapa.webp' },
@@ -49,13 +59,6 @@ export class CastleConfig {
   ];
 
   static cargarNiveles() {
-    try {
-      const raw = localStorage.getItem(CastleConfig.CUSTOM_LEVELS_LS_KEY);
-      if (raw) {
-        const data = JSON.parse(raw);
-        if (data && Array.isArray(data.levels) && data.levels.length) return data.levels;
-      }
-    } catch (e) {}
     if (typeof CASTLE_ESCAPE_CUSTOM_LEVELS !== 'undefined' &&
         Array.isArray(CASTLE_ESCAPE_CUSTOM_LEVELS) && CASTLE_ESCAPE_CUSTOM_LEVELS.length) {
       return CASTLE_ESCAPE_CUSTOM_LEVELS;

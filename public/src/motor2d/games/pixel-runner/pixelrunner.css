@@ -1,15 +1,6 @@
-/* ══════════════════════════════════════
-   PIXEL RUNNER — runner.css
-   Estilos específicos de Pixel Runner, separados de styles.css
-   (donde antes vivían mezclados con el resto del sitio y con los
-   de Castle Escape). Reutiliza las variables de styles.css
-   (--blue-dark, --yellow, etc.) y los componentes genéricos de
-   ui-components.css (botones, filas de lista, slider de ajustes).
+/* Pixel Runner — pixelrunner.css (lo carga app2.js al entrar a la sección). */
 
-   Cargar DESPUÉS de styles.css y ui-components.css.
-   ══════════════════════════════════════ */
-
-/* ─── PIXEL RUNNER ─── */
+/* ─── Pixel runner ─── */
 .runner-hud {
   position: absolute;
   top: 0.6rem;
@@ -32,10 +23,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
-/* Mismo look que el contador de puntos (nítido, HTML — no texto dibujado
-   en el canvas, que se ve pixeleado/borroso al escalar). Va debajo del
-   contador de puntos y muestra solo las monedas de la partida actual;
-   el total histórico se ve recién al perder (ver runnerOverlaySub). */
+/* Monedas de la partida, con el mismo look que el contador de puntos. */
 .runner-coins-display {
   font-family: 'Press Start 2P', monospace;
   font-size: 11px;
@@ -71,15 +59,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Pantalla completa (ver runnerToggleFullscreen en app.js): el navegador
-   por defecto solo centra el elemento a su tamaño natural dentro de un
-   fondo negro, así que se pisa el aspect-ratio del contenedor para que
-   use todo el viewport. En horizontal (PC, celular apaisado) el alto es
-   la referencia y el ancho sale del aspect-ratio. En vertical (celular
-   en mano) se invierte: si se dejara el alto como referencia, el ancho
-   que sale del aspect-ratio se pasa del viewport, se recorta con
-   max-width y el sprite queda estirado — por eso el media query de abajo
-   cambia la referencia a ancho ahí. */
+/* Pantalla completa: el contenedor usa todo el viewport respetando el 16:9. */
 .runner-container:fullscreen,
 .runner-container:-webkit-full-screen {
   width: 100vw;
@@ -111,7 +91,6 @@
     max-height: 100vh;
   }
 }
-
 
 .runner-overlay {
   position: absolute;
@@ -173,69 +152,7 @@
   min-height: 1rem;
 }
 
-.runner-start-btn {
-  background: var(--yellow);
-  color: var(--blue-dark);
-  font-weight: 900;
-  font-size: 1rem;
-  padding: 0.7rem 2rem;
-  border-radius: 10px;
-  margin-top: 0.5rem;
-}
-
-.runner-hint {
-  text-align: center;
-  margin-top: 0.75rem;
-  font-size: 0.78rem;
-  color: #64748b;
-  font-weight: 600;
-}
-
-.runner-controls {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 0.9rem;
-}
-
-.runner-ctrl-btn {
-  background: var(--blue-dark);
-  color: white;
-  border: 2px solid var(--blue-accent);
-  border-radius: 10px;
-  padding: 0.6rem 1.8rem;
-  font-family: 'Nunito', sans-serif;
-  font-weight: 800;
-  font-size: 1rem;
-  cursor: pointer;
-  user-select: none;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  transition: background 0.15s, transform 0.1s;
-}
-
-.runner-ctrl-btn:active {
-  background: var(--blue-accent);
-  transform: scale(0.96);
-}
-
 @media (max-width: 480px) {
-  .runner-controls {
-    gap: 0.75rem;
-    margin-top: 0.75rem;
-  }
-
-  .runner-ctrl-btn {
-    flex: 1;
-    padding: 1rem 0;
-    font-size: 1.15rem;
-    border-radius: 12px;
-    border-width: 3px;
-  }
-
-  .runner-hint {
-    font-size: 0.7rem;
-  }
 
   /* Canvas más alto en mobile para más espacio de juego */
   .runner-container {
@@ -272,20 +189,9 @@
     font-size: 0.72rem;
     line-height: 1.4;
   }
-
-  .runner-start-btn {
-    padding: 0.5rem 1.4rem;
-    font-size: 0.9rem;
-    margin-top: 0.2rem;
-  }
 }
 
-
-/* ─── Carteles internos del Pixel Runner (Mejoras / Ajustes / Cómo jugar) ───
-   Reemplazan los antiguos alert() del navegador: se ven arriba del menú,
-   dentro del mismo recuadro del juego. El slider de Ajustes usa el
-   componente compartido .game-slider-row (ver ui-components.css), el
-   mismo que usan Castle Escape y RPG. */
+/* Carteles del runner (Mejoras / Ajustes / Cómo jugar) dentro del recuadro del juego. */
 .runner-panel {
   position: absolute;
   inset: 0;
@@ -483,14 +389,9 @@
   }
 }
 
-
 /* ─── Cómic de Historia (intro al elegir el modo / final al ganar) ─── */
-/* Va DENTRO de .runner-container (absolute, como el resto de los carteles
-   del juego) — no a pantalla completa. Ese contenedor es chico (aspect-
-   ratio 480/270) así que la imagen no puede escalar libre por altura: va
-   en un flex column donde la imagen ocupa el espacio que sobra
-   (flex:1 + min-height:0 + object-fit:contain) y el botón queda siempre
-   fijo abajo, visible y clickeable, sea cual sea el tamaño del recuadro. */
+/* El cómic va dentro de .runner-container: la imagen ocupa el espacio libre
+   y el botón queda siempre visible. */
 .runner-comic-overlay {
   position: absolute;
   inset: 0;
@@ -555,7 +456,6 @@
     padding: 0.4rem 0.7rem;
   }
 }
-
 
 .runner-mode-content {
   display: flex;
@@ -648,10 +548,7 @@
   }
 }
 
-
-  /* Badges de color de los power-ups del Pixel Runner, dentro del cartel
-   "Cómo jugar" — mismos colores que usa el juego para dibujarlos
-   (ver drawRunner en pixelrunner.js: escudo azul, x2 naranja). */
+  /* Colores de los power-ups en "Cómo jugar" (los mismos que dibuja el juego). */
   .runner-powerup-badge {
     font-family: 'Nunito', sans-serif;
     font-weight: 800;
@@ -666,20 +563,9 @@
   .runner-powerup-x2 {
     color: #f97316;
     border-color: rgba(249, 115, 22, 0.5);
-  }@media (max-width: 480px) {
+  }
 
-    /* Pixel Runner controles táctiles más grandes */
-    .runner-ctrl-btn {
-      padding: 0.75rem 2rem;
-      font-size: 1.05rem;
-    }
-}
-
-
-  /* ══════════════════════════════════════
-   PIXEL RUNNER — MENÚ DEL JUEGO
-   (overlay dentro del runner-container)
-   ══════════════════════════════════════ */
+  /* ─── Menú del juego ─── */
   .runner-menu {
     position: absolute;
     top: 0;
@@ -739,9 +625,7 @@
     border: 1px solid rgba(255, 255, 255, 0.15);
   }
 
-  /* Ocupa el espacio restante debajo del título/subtítulo y centra los
-   botones ahí adentro, para que quede simétrico (mismo aire arriba y
-   abajo del bloque de botones) sin mover el título de su lugar. */
+  /* Centra los botones en el espacio que queda debajo del título. */
   .runner-menu-buttons-wrap {
     flex: 1;
     width: 100%;
@@ -785,10 +669,7 @@
     border-color: rgba(255, 255, 255, 0.6);
   }
 
-  /* El menú de inicio (runner-menu) vive dentro de .runner-container, que
-   tiene aspect-ratio 480/270 y overflow:hidden para no deformar el canvas.
-   En mobile esa caja queda muy baja de alto y el título/botones del menú
-   quedaban cortados arriba y abajo. Lo hacemos scrollable y compacto. */
+  /* En mobile el menú scrollea para que no se corten el título ni los botones. */
   @media (max-width: 480px) {
     .runner-menu-background {
       padding: 0.75rem 1rem;
@@ -828,16 +709,9 @@
     }
 }
 
-/* ══════════════════════════════════════
-   AGREGADO — fixes y HUD nuevo
-   ══════════════════════════════════════ */
+/* ─── HUD y carteles ─── */
 
-/* "← Volver" de los carteles (Mejoras/Ajustes/Cómo jugar/Pausa). Estaba
-   sin estilo: la clase se usa en el HTML pero nunca se definió acá — solo
-   existía en castle_escape.css (con la paleta violeta de ESE juego), y si
-   esa hoja no está cargada en esta sección, quedaba como un <button> de
-   navegador de fábrica. Paleta propia de Pixel Runner (--yellow), self-
-   contained, no depende de que otro archivo esté cargado. */
+/* "← Volver" de los carteles (Mejoras, Ajustes, Cómo jugar y Pausa). */
 .trampas-back-btn {
   background: rgba(255, 255, 255, 0.08);
   color: var(--yellow, #f5c518);
@@ -855,9 +729,7 @@
   transform: scale(1.05);
 }
 
-/* Filas de "Cómo jugar" — mismo problema: la clase no estaba definida acá,
-   así que el texto de la tecla y la descripción corrían pegados sin
-   separación ni jerarquía visual. */
+/* Filas de "Cómo jugar": tecla y descripción. */
 .trampas-howto-row {
   display: flex;
   align-items: center;
@@ -947,10 +819,7 @@
   width: 100%;
 }
 
-/* ─── HUD: fila de "Puntos" + multiplicador ───
-   El badge de x2/x3 vive AFUERA de .runner-score-display (era hijo suyo
-   antes) — así queda como un elemento hermano bien separado, en vez de
-   depender del texto/spacing de adentro de ese div. */
+/* HUD: puntos y, al lado, el badge del multiplicador. */
 .runner-score-row {
   display: flex;
   align-items: baseline;
@@ -970,10 +839,7 @@
   display: none;
 }
 
-/* ─── HUD: power-up activo (debajo de "Monedas") ───
-   Íconos reales recortados de item.webp (mismo sheet que usa el canvas),
-   no texto — un pedacito de hoja de sprites vía background-position, a la
-   escala exacta de esa hoja para que las proporciones no se distorsionen. */
+/* HUD: power-ups activos, recortados de item.webp. */
 .runner-active-powerup {
   display: flex;
   flex-direction: row;
@@ -994,14 +860,6 @@
 .runner-hud-icon-shield {
   width: 18.14px;
   background-position: -95.76px -0.68px;
-}
-.runner-hud-icon-x2 {
-  width: 18.31px;
-  background-position: -114.58px -0.68px;
-}
-.runner-hud-icon-x3 {
-  width: 17.8px;
-  background-position: -133.56px -0.68px;
 }
 .runner-hud-icon-slowfall {
   width: 17.63px;

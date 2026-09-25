@@ -15,25 +15,33 @@
 import { RunnerConfig as RC } from './runner_config.js';
 
 export class Economia {
-  constructor() {
+  // clave: función que convierte una clave base en la del usuario actual
+  // (ServiciosApp.claveUsuario). Por defecto, la misma clave.
+  constructor(clave = (base) => base) {
+    this.clave = clave;
     this.totalCoins = 0;  // total histórico (persistido)
     this.upgrades = null; // mejoras compradas — null hasta la primera carga
+    this.upgradesClave = null; // de qué clave (usuario) salió el caché de mejoras
   }
 
   // ─── Monedas ───
   cargarMonedas() {
-    const n = parseInt(localStorage.getItem(RC.COINS_STORAGE_KEY), 10);
+    const n = parseInt(localStorage.getItem(this.clave(RC.COINS_STORAGE_KEY)), 10);
     return Number.isFinite(n) ? n : 0;
   }
 
   guardarMonedas(total) {
-    localStorage.setItem(RC.COINS_STORAGE_KEY, String(total));
+    localStorage.setItem(this.clave(RC.COINS_STORAGE_KEY), String(total));
   }
 
   // Suma monedas agarradas y las persiste al toque (no se pierden si se
   // cierra la pestaña antes del game over).
   sumarMonedas(cantidad) {
-    this.totalCoins += cantidad;
+    // Se suma sobre lo guardado (no sobre totalCoins en memoria): si se
+    // cambió de cuenta sin salir del juego, la memoria tenía el total de
+    // otro usuario y se lo hubiera pisado. Cada suma ya se persiste, así
+    // que lo guardado siempre es el total real.
+    this.totalCoins = this.cargarMonedas() + cantidad;
     this.guardarMonedas(this.totalCoins);
   }
 
@@ -48,7 +56,7 @@ export class Economia {
   cargarMejoras() {
     const def = Economia.mejorasPorDefecto();
     try {
-      const raw = localStorage.getItem(RC.UPGRADES_STORAGE_KEY);
+      const raw = localStorage.getItem(this.clave(RC.UPGRADES_STORAGE_KEY));
       if (!raw) return def;
       const parsed = JSON.parse(raw);
       const clampLevel = (n) => Math.min(RC.UPGRADE_MAX_LEVEL, Math.max(0, parseInt(n, 10) || 0));
@@ -67,18 +75,20 @@ export class Economia {
   }
 
   guardarMejoras(u) {
-    localStorage.setItem(RC.UPGRADES_STORAGE_KEY, JSON.stringify(u));
+    localStorage.setItem(this.clave(RC.UPGRADES_STORAGE_KEY), JSON.stringify(u));
   }
 
   // Mejoras cacheadas (en el loop no hace falta leer localStorage cada frame).
+  // Si cambió el usuario (otra clave), se recarga: el caché era de otra cuenta.
   get mejoras() {
-    if (!this.upgrades) this.upgrades = this.cargarMejoras();
+    if (!this.upgrades || this.upgradesClave !== this.clave(RC.UPGRADES_STORAGE_KEY)) this.refrescarMejoras();
     return this.upgrades;
   }
 
   // Fuerza una relectura (al abrir el panel de Mejoras, para no mostrar datos viejos).
   refrescarMejoras() {
     this.upgrades = this.cargarMejoras();
+    this.upgradesClave = this.clave(RC.UPGRADES_STORAGE_KEY);
     return this.upgrades;
   }
 
@@ -147,9 +157,9 @@ export class Economia {
 
   // ─── Modo Historia (completarlo desbloquea el Infinito para siempre) ───
   historiaCompleta() {
-    return localStorage.getItem(RC.HISTORIA_STORAGE_KEY) === '1';
+    return localStorage.getItem(this.clave(RC.HISTORIA_STORAGE_KEY)) === '1';
   }
   guardarHistoriaCompleta() {
-    localStorage.setItem(RC.HISTORIA_STORAGE_KEY, '1');
+    localStorage.setItem(this.clave(RC.HISTORIA_STORAGE_KEY), '1');
   }
 }

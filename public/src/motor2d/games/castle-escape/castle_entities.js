@@ -83,15 +83,29 @@ export class Jugador extends EntidadNivel {
   }
 
   // Gravedad + choque vertical: piso arriba del bloque y techo abajo.
+  // Con tope de velocidad y sub-pasos: si el desplazamiento del frame es
+  // grande (caída larga o frame lento), se avanza de a tramos cortos y se
+  // chequea el choque en cada uno, así no se atraviesan plataformas finas.
   aplicarGravedad(step, plataformas) {
-    this.vy += C.GRAVITY * step;
-    this.y += this.vy * step;
+    this.vy = Math.min(this.vy + C.GRAVITY * step, C.MAX_FALL_SPEED);
     this.onGround = false;
     this.ridingPlatform = null;
 
+    const dy = this.vy * step;
+    const pasos = Math.max(1, Math.ceil(Math.abs(dy) / C.MAX_SUBPASO_Y));
+    for (let i = 0; i < pasos; i++) {
+      this.y += dy / pasos;
+      if (this.resolverChoqueVertical(plataformas)) break;
+    }
+  }
+
+  // Devuelve true si chocó (piso o techo): ahí se corta el movimiento.
+  resolverChoqueVertical(plataformas) {
+    let choco = false;
     for (const plat of plataformas) {
       if (!plat.esSolida()) continue;
       if (!this.colisionaCon(plat)) continue;
+      choco = true;
       if (this.vy < 0) {
         // Golpe de cabeza contra la parte de abajo del bloque.
         this.y = plat.y + plat.h;
@@ -103,6 +117,7 @@ export class Jugador extends EntidadNivel {
       this.onGround = true;
       plat.alPisar(this);
     }
+    return choco;
   }
 }
 
@@ -151,7 +166,7 @@ export class Plataforma extends EntidadNivel {
   // Hooks que las subclases sobrescriben:
   actualizar(step, jugador) {}   // antes de mover al jugador
   alPisar(jugador) {}            // el jugador aterrizó encima
-  actualizarDerrumbe() {}        // después de las colisiones
+  actualizarDerrumbe(step) {}    // después de las colisiones
 }
 
 // 'moving': va y viene y arrastra al jugador que va parado encima.
@@ -182,16 +197,20 @@ export class PlataformaMovil extends Plataforma {
 }
 
 // 'crumble': se tiñe al pisarla y desaparece 400ms después.
+// touchedAt = ms de juego desde que se pisó (null = nunca). Se acumula con
+// step en vez de usar performance.now(): así la pausa congela el derrumbe
+// (antes, si pausabas justo después de pisarla, al volver ya no estaba).
 export class PlataformaDerrumbable extends Plataforma {
   static TIEMPO_DERRUMBE = 400;
 
   alPisar() {
-    if (this.touchedAt === null) this.touchedAt = performance.now();
+    if (this.touchedAt === null) this.touchedAt = 0;
   }
 
-  actualizarDerrumbe() {
+  actualizarDerrumbe(step) {
     if (this.touchedAt !== null && !this.gone) {
-      if (performance.now() - this.touchedAt > PlataformaDerrumbable.TIEMPO_DERRUMBE) this.gone = true;
+      this.touchedAt += step * C.MS_POR_STEP;
+      if (this.touchedAt > PlataformaDerrumbable.TIEMPO_DERRUMBE) this.gone = true;
     }
   }
 

@@ -1,59 +1,9 @@
-/* ══════════════════════════════════════════════════════════════
-   JueFriv — ui-components.css
-   Sistema de componentes CSS genérico para los minijuegos.
+/* UniGames — ui-components.css
+   Componentes compartidos por los juegos 2D (modal, botones, sliders, filas,
+   tarjetas, calidad gráfica). Un juego nuevo usa estas clases en vez de
+   redefinirlas. Se carga siempre. */
 
-   Qué es esto:
-   Clases base reutilizables (modal, botones, sliders, filas de
-   lista, tarjetas) pensadas para que un minijuego NUEVO las use
-   directo y no tenga que reinventar la interfaz de cero. Antes de
-   este archivo, RPG (rpg.css), Pixel Runner y Castle Escape (los
-   dos en styles.css) tenían cada uno su propia versión de lo mismo
-   con nombres distintos (.rpg-menu-content, .runner-panel-box,
-   .trampas-menu, .rpg-howto-row, .runner-mejora-card,
-   .trampas-howto-row...) con valores casi idénticos.
-
-   Cómo usarlo en un juego NUEVO:
-     <div class="modal-game">
-       <div class="modal-game-box">
-         <h2 class="modal-game-title">Ajustes</h2>
-         <div class="game-settings-content">
-           <div class="game-slider-row">
-             <label>Música</label>
-             <input type="range" min="0" max="100" value="50">
-             <span class="game-slider-value">50%</span>
-           </div>
-         </div>
-         <button class="btn-game-primary">Continuar</button>
-         <button class="btn-game-secondary">Salir</button>
-       </div>
-     </div>
-
-   Importante — compatibilidad con lo que YA existe:
-   .trampas-slider-row/.trampas-slider-value/.trampas-settings-content/
-   .trampas-fullscreen-row y .runner-fullscreen-btn/.runner-fullscreen-row
-   ya se usaban cruzados entre juegos (RPG arma su cartel de Ajustes
-   con clases de Castle Escape y de Pixel Runner al mismo tiempo,
-   ver rpg.js). Por eso esas reglas viven ACÁ (cargado siempre) y no
-   en runner.css/castle_escape.css — moverlas a un archivo que solo
-   carga en su juego rompía el Ajustes de RPG. Quedan de alias junto
-   a la clase ".game-*" nueva: no hacía falta tocar rpg.js,
-   pixelrunner.js ni el HTML de Castle Escape.
-
-   Orden de carga en el <head>, DESPUÉS de styles.css y ANTES de
-   cada CSS de juego (rpg.css, runner.css, castle_escape.css, o el
-   del próximo minijuego):
-     <link rel="stylesheet" href="styles.css">
-     <link rel="stylesheet" href="ui-components.css">
-     <link rel="stylesheet" href="runner.css">
-     <link rel="stylesheet" href="castle_escape.css">
-     <link rel="stylesheet" href="rpg.css">
-   ══════════════════════════════════════════════════════════════ */
-
-/* ─── Tokens propios de los componentes de juego ───────────────
-   Se apoyan en las variables de styles.css (--blue-dark, --yellow,
-   etc.) para no desentonar, y agregan las que faltaban (radios,
-   timing de transición) para que todo el sistema use los mismos
-   números en vez de que cada juego invente el suyo. */
+/* Tokens de los componentes (radios, tiempos). Usan las variables de styles.css. */
 :root {
   --game-radius: 12px;
   --game-radius-sm: 8px;
@@ -63,10 +13,7 @@
   --game-row-border: rgba(255, 255, 255, 0.15);
 }
 
-/* ─── .modal-game — overlay/cartel a pantalla completa ──────────
-   Reemplaza el patrón repetido en .rpg-overlay, .runner-overlay,
-   .runner-panel, .trampas-overlay y .trampas-menu: position:absolute
-   cubriendo el contenedor del juego, centrado, con blur de fondo. */
+/* .modal-game: cartel que cubre el contenedor del juego, centrado y con blur. */
 .modal-game {
   position: absolute;
   inset: 0;
@@ -123,11 +70,7 @@
   }
 }
 
-/* ─── Botones de juego ──────────────────────────────────────────
-   Mismo espíritu que .btn-play (styles.css) pero pensado para
-   vivir arriba de fondos oscuros de canvas. Incluye la
-   micro-interacción pedida: transición pareja + scale en hover,
-   para que se sienta "premium" en vez de un cambio brusco. */
+/* Botones de juego (para fondos oscuros de canvas), con scale suave en hover. */
 .btn-game-primary {
   background: var(--yellow, #f5c518);
   color: var(--blue-dark, #0f1e3d);
@@ -182,9 +125,7 @@
   transform: scale(0.97);
 }
 
-/* Botón cuadrado chico (pausa/HUD): mismo patrón que .rpg-hud-btn
-   y .trampas-hud-btn, unificado para que un juego nuevo no tenga
-   que redefinirlo. */
+/* Botón cuadrado chico del HUD (pausa, etc.). */
 .game-icon-btn {
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.4);
@@ -203,14 +144,7 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* ─── .game-info-row — fila de lista/tarjeta chica ───────────────
-   Este es el patrón MÁS repetido de los tres juegos: fondo blanco
-   al 6% de opacidad, borde suave, radio ~10-12px. Aparece como
-   .rpg-howto-row, .rpg-mejora-row, .rpg-reward-row,
-   .runner-mejora-card y .trampas-howto-row, cada uno con su propio
-   nombre para el mismo diseño. Un juego nuevo usa esta clase sola;
-   los juegos existentes se quedan como están (no hacía falta
-   tocarles el HTML/JS para este cambio). */
+/* .game-info-row: fila de lista chica (cómo jugar, mejoras, recompensas). */
 .game-info-row {
   display: flex;
   align-items: center;
@@ -227,43 +161,7 @@
   background: rgba(255, 255, 255, 0.09);
 }
 
-/* ─── .game-card — tarjeta clickeable grande (selección de modo/nivel) ─
-   Generaliza .runner-mode-card / .trampas-level-card-big. */
-.game-card {
-  width: 100%;
-  max-width: 320px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.3rem;
-  padding: 1.2rem 1rem;
-  background: linear-gradient(145deg, rgba(245, 197, 24, 0.14), rgba(245, 197, 24, 0.04));
-  border: 2px solid rgba(245, 197, 24, 0.5);
-  border-radius: 14px;
-  color: #fff;
-  cursor: pointer;
-  font-family: inherit;
-  transition: transform var(--game-transition), border-color var(--game-transition), background var(--game-transition);
-}
-
-.game-card:hover:not(.locked) {
-  transform: translateY(-2px) scale(1.02);
-  border-color: var(--yellow);
-  background: linear-gradient(145deg, rgba(245, 197, 24, 0.24), rgba(245, 197, 24, 0.08));
-}
-
-.game-card.locked {
-  cursor: not-allowed;
-  opacity: 0.45;
-  border-color: #555;
-  background: rgba(255, 255, 255, 0.04);
-}
-
-/* ─── Slider de ajustes (volumen, etc.) ──────────────────────────
-   Ya compartido de hecho por Castle Escape, Pixel Runner y RPG
-   (ver comentario grande arriba del archivo). ".game-slider-row" es
-   el nombre a usar en juegos nuevos; ".trampas-slider-row" queda de
-   alias — mismo selector, mismas reglas, cero HTML/JS para tocar. */
+/* Slider de ajustes. .trampas-slider-row queda como alias de .game-slider-row. */
 .game-slider-row,
 .trampas-slider-row {
   display: flex;
@@ -336,12 +234,7 @@
   }
 }
 
-/* ─── Selector de calidad gráfica (Bajo / Medio / Alto) ──────────
-   Lo genera Engine2D.Quality.createRow() y se mete dentro de
-   .game-settings-content, al lado de los sliders de volumen. Reusa
-   .game-slider-row para el marco (mismo fondo, borde y padding que
-   las filas de Música/Efectos) y solo agrega el grupo de botones,
-   así el cartel de Ajustes queda parejo sin CSS por juego. */
+/* Selector de calidad (Bajo / Medio / Alto): lo arma Engine2D.Quality.createRow(). */
 .game-quality-options {
   flex: 1;
   display: flex;
@@ -393,13 +286,11 @@
   }
 }
 
-/* ─── Botón / fila de pantalla completa ──────────────────────────
-   Idéntico patrón entre Pixel Runner y Castle Escape con nombres
-   distintos (.runner-fullscreen-* / .trampas-fullscreen-*). Un juego
-   nuevo usa ".game-fullscreen-btn" y ".game-fullscreen-row". */
+/* Pantalla completa: .game-fullscreen-btn / .game-fullscreen-row. */
 .game-fullscreen-btn,
+
 .runner-fullscreen-btn,
-.trampas-fullscreen-btn,
+
 .rpg-fullscreen-btn {
   flex: 0 0 auto;
   background: #facc15;
@@ -414,8 +305,9 @@
 }
 
 .game-fullscreen-btn:hover,
+
 .runner-fullscreen-btn:hover,
-.trampas-fullscreen-btn:hover,
+
 .rpg-fullscreen-btn:hover {
   transform: scale(1.05);
   filter: brightness(1.05);
@@ -428,31 +320,14 @@
   justify-content: space-between;
 }
 
-/* iOS Safari no soporta la Fullscreen API en elementos genéricos —
-   el botón se oculta ahí por completo (ver runnerCheckFullscreenSupport
-   en pixelrunner.js) en vez de mostrar un botón que no hace nada. */
+/* iOS Safari no soporta la Fullscreen API en elementos: ahí se oculta el botón. */
 .game-fullscreen-row.unsupported,
 .runner-fullscreen-row.unsupported,
 .trampas-fullscreen-row.unsupported,
 .rpg-fullscreen-row.unsupported {
   display: none;
 }
-/* ─── Calidad baja — efectos caros apagados ─────────────────────
-   La clase .q-low la pone app2.js en el <html> siguiendo a
-   Engine2D.Quality (ver syncQualityClass en app2.js). Va acá porque este
-   archivo se carga siempre y alcanza a los overlays de los tres juegos,
-   que viven en CSS distintos.
-
-   backdrop-filter es lo más caro de la lista: obliga a la GPU a releer el
-   framebuffer de atrás, y se paga CADA frame mientras el cartel está
-   encima de un canvas que sigue corriendo. En una GPU móvil vieja, un
-   menú de pausa abierto puede costar más que el juego entero. El fondo se
-   compensa subiendo la opacidad, así el texto se sigue leyendo igual sin
-   el blur.
-
-   Las transiciones/scale de los botones también se apagan: son baratas de
-   a una, pero son las que disparan repintados justo cuando el dedo está
-   sobre el control. */
+/* Calidad baja (.q-low en <html>, la pone app2.js): se apagan blur y sombras caras. */
 .q-low .modal-game {
   backdrop-filter: none;
   background: rgba(10, 15, 20, 0.96);
@@ -465,18 +340,23 @@
 }
 
 .q-low .btn-game-primary,
+
 .q-low .btn-game-secondary,
+
 .q-low .game-icon-btn,
-.q-low .game-card,
+
 .q-low .game-info-row,
+
 .q-low .game-fullscreen-btn {
   transition: none;
 }
 
 .q-low .btn-game-primary:hover,
+
 .q-low .btn-game-secondary:hover,
+
 .q-low .game-icon-btn:hover,
-.q-low .game-card:hover:not(.locked),
+
 .q-low .game-fullscreen-btn:hover {
   transform: none;
 }
@@ -489,10 +369,4 @@
 .q-low .modal-game-title {
   text-shadow: none;
 }
-
-/* OJO: esta línea estaba guardada en UTF-16 (un byte nulo entre cada
-   carácter) mientras el resto del archivo es UTF-8 — pasa cuando se
-   agrega algo con `>>` desde PowerShell. El navegador levanta el archivo
-   como UTF-8 y ese tramo le llega como basura, así que la regla se
-   descartaba sin avisar. Reescrita en UTF-8. */
 canvas { image-rendering: pixelated; }

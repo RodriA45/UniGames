@@ -6,8 +6,10 @@
 // desde afuera del módulo, con los mismos nombres de siempre:
 
 import { CastleEscape } from './castle_loop.js';
+import { ServiciosApp } from '../servicios_app.js';
 
-export const juego = new CastleEscape();
+// Acá se arman las dependencias y se le pasan al juego (el juego no las crea).
+export const juego = new CastleEscape(new ServiciosApp());
 
 Object.assign(window, {
   initTrampas: () => juego.iniciar(),

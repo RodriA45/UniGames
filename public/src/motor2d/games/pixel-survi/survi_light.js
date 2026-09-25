@@ -15,61 +15,80 @@
 //   quedan como degradé circular, no como escalones de a bloque.
 // ══════════════════════════════════════════════════════════════
 
-import {
-  COLS, ROWS, TILE, SOLID_IDS, LIGHT_AIR_DECAY, LIGHT_SOLID_DECAY,
-  TORCH_LIGHT, PLAYER_VISION, DARK_COLOR, T
-} from './survi_config.js';
-
-const MARGIN = 12;            // tiles extra alrededor de la vista
-const FURNACE_LIGHT = 0.75;   // ~7 tiles
-const SQRT2 = Math.SQRT2;
+import { SurviConfig } from './survi_config.js';
 
 export class LightMap {
+  static MARGIN = 12; // tiles extra alrededor de la vista
+  static FURNACE_LIGHT = 0.75; // ~7 tiles
+  static SQRT2 = Math.SQRT2;
   constructor() {
     this.canvas = document.createElement('canvas');
     this.ctx = this.canvas.getContext('2d');
-    this.skyRow = new Int16Array(COLS);   // primer sólido de cada columna (desde arriba)
-    this.grid = null; this.queue = null;
-    this.c0 = 0; this.r0 = 0; this.w = 0; this.h = 0;
+    this.skyRow = new Int16Array(SurviConfig.COLS); // primer sólido de cada columna (desde arriba)
+    this.grid = null;
+    this.queue = null;
+    this.c0 = 0;
+    this.r0 = 0;
+    this.w = 0;
+    this.h = 0;
   }
 
   // Recalcula todas las columnas (al cargar el mundo).
   rebuildSky(get) {
-    for (let c = 0; c < COLS; c++) this.updateColumn(get, c);
+    for (let c = 0; c < SurviConfig.COLS; c++) this.updateColumn(get, c);
   }
 
   // Una columna (al romper o colocar un bloque en ella).
   updateColumn(get, col) {
-    if (col < 0 || col >= COLS) return;
+    if (col < 0 || col >= SurviConfig.COLS) return;
     let r = 0;
-    while (r < ROWS && !SOLID_IDS.has(get(col, r))) r++;
+    while (r < SurviConfig.ROWS && !SurviConfig.SOLID_IDS.has(get(col, r))) r++;
     this.skyRow[col] = r;
   }
 
   _ensure(w, h) {
     if (this.w === w && this.h === h && this.grid) return;
-    this.w = w; this.h = h;
+    this.w = w;
+    this.h = h;
     this.grid = new Float32Array(w * h);
-    this.queue = new Int32Array(w * h * 4);   // cola circular: sobra lugar
-    this.canvas.width = w; this.canvas.height = h;
+    this.queue = new Int32Array(w * h * 4); // cola circular: sobra lugar
+    this.canvas.width = w;
+    this.canvas.height = h;
     this.image = this.ctx.createImageData(w, h);
   }
 
   // camera: {x,y,width,height} en px de mundo. sun: 0..1.
   // points: [{x, y, power}] en px de mundo (visión del personaje, etc.).
-  compute(get, camera, sun, points) {
-    const c0 = Math.max(0, Math.floor(camera.x / TILE) - MARGIN);
-    const r0 = Math.max(0, Math.floor(camera.y / TILE) - MARGIN);
-    const c1 = Math.min(COLS - 1, Math.ceil((camera.x + camera.width) / TILE) + MARGIN);
-    const r1 = Math.min(ROWS - 1, Math.ceil((camera.y + camera.height) / TILE) + MARGIN);
-    const w = c1 - c0 + 1, h = r1 - r0 + 1;
+  // luzExtra(col, row): luz propia de la celda (ej. la lava), o null.
+  compute(get, camera, sun, points, luzExtra = null) {
+    const c0 = Math.max(0, Math.floor(camera.x / SurviConfig.TILE) - LightMap.MARGIN);
+    const r0 = Math.max(0, Math.floor(camera.y / SurviConfig.TILE) - LightMap.MARGIN);
+    const c1 = Math.min(
+      SurviConfig.COLS - 1,
+      Math.ceil((camera.x + camera.width) / SurviConfig.TILE) + LightMap.MARGIN,
+    );
+    const r1 = Math.min(
+      SurviConfig.ROWS - 1,
+      Math.ceil((camera.y + camera.height) / SurviConfig.TILE) + LightMap.MARGIN,
+    );
+    const w = c1 - c0 + 1,
+      h = r1 - r0 + 1;
     this._ensure(w, h);
-    this.c0 = c0; this.r0 = r0;
-    const L = this.grid, Q = this.queue, QN = Q.length;
+    this.c0 = c0;
+    this.r0 = r0;
+    const L = this.grid,
+      Q = this.queue,
+      QN = Q.length;
     L.fill(0);
-    let qh = 0, qt = 0;
-    const seed = (i, v) => { if (v > L[i]) { L[i] = v; Q[qt] = i; qt = (qt + 1) % QN; } };
-
+    let qh = 0,
+      qt = 0;
+    const seed = (i, v) => {
+      if (v > L[i]) {
+        L[i] = v;
+        Q[qt] = i;
+        qt = (qt + 1) % QN;
+      }
+    };
     // solidez de la zona, leída una sola vez
     if (!this.solid || this.solid.length !== w * h) this.solid = new Uint8Array(w * h);
     const S = this.solid;
@@ -77,9 +96,13 @@ export class LightMap {
       for (let x = 0; x < w; x++) {
         const id = get(c0 + x, r0 + y);
         const i = y * w + x;
-        S[i] = SOLID_IDS.has(id) ? 1 : 0;
-        if (id === T.TORCH) seed(i, TORCH_LIGHT);
-        else if (id === T.FURNACE_ON) seed(i, FURNACE_LIGHT);   // horno prendido: luz más chica
+        S[i] = SurviConfig.SOLID_IDS.has(id) ? 1 : 0;
+        if (id === SurviConfig.T.TORCH) seed(i, SurviConfig.TORCH_LIGHT);
+        else if (id === SurviConfig.T.FURNACE_ON) seed(i, LightMap.FURNACE_LIGHT); // horno prendido: luz más chica
+        else if (luzExtra) {
+          const e = luzExtra(c0 + x, r0 + y);
+          if (e) seed(i, e);
+        }
       }
     }
     // sol: celdas a cielo abierto
@@ -91,15 +114,17 @@ export class LightMap {
     }
     // fuentes puntuales (visión del personaje)
     for (const p of points) {
-      const x = Math.floor(p.x / TILE) - c0, y = Math.floor(p.y / TILE) - r0;
+      const x = Math.floor(p.x / SurviConfig.TILE) - c0,
+        y = Math.floor(p.y / SurviConfig.TILE) - r0;
       if (x >= 0 && y >= 0 && x < w && y < h) seed(y * w + x, p.power);
     }
-
     // propagación (se relaja hasta que no mejora nada)
     while (qh !== qt) {
-      const i = Q[qh]; qh = (qh + 1) % QN;
+      const i = Q[qh];
+      qh = (qh + 1) % QN;
       const v = L[i];
-      const x = i % w, y = (i - x) / w;
+      const x = i % w,
+        y = (i - x) / w;
       for (let dy = -1; dy <= 1; dy++) {
         const ny = y + dy;
         if (ny < 0 || ny >= h) continue;
@@ -110,21 +135,28 @@ export class LightMap {
           const ni = ny * w + nx;
           // en diagonal no se cuela entre dos sólidos que se tocan por la esquina
           if (dx && dy && S[y * w + nx] && S[ny * w + x]) continue;
-          const decay = (S[ni] ? LIGHT_SOLID_DECAY : LIGHT_AIR_DECAY) * (dx && dy ? SQRT2 : 1);
+          const decay =
+            (S[ni] ? SurviConfig.LIGHT_SOLID_DECAY : SurviConfig.LIGHT_AIR_DECAY) * (dx && dy ? LightMap.SQRT2 : 1);
           const nv = v - decay;
-          if (nv > L[ni] + 0.004) { L[ni] = nv; Q[qt] = ni; qt = (qt + 1) % QN; }
+          if (nv > L[ni] + 0.004) {
+            L[ni] = nv;
+            Q[qt] = ni;
+            qt = (qt + 1) % QN;
+          }
         }
       }
     }
-
     // oscuridad = 1 - luz (con una curva: la penumbra se ve menos lavada)
     const d = this.image.data;
-    const [R, G, B] = DARK_COLOR;
+    const [R, G, B] = SurviConfig.DARK_COLOR;
     for (let i = 0; i < w * h; i++) {
       const lit = Math.min(1, L[i]);
       const dark = Math.pow(1 - lit, 1.25);
       const o = i * 4;
-      d[o] = R; d[o + 1] = G; d[o + 2] = B; d[o + 3] = Math.round(dark * 255);
+      d[o] = R;
+      d[o + 1] = G;
+      d[o + 2] = B;
+      d[o + 3] = Math.round(dark * 255);
     }
     this.ctx.putImageData(this.image, 0, 0);
   }
@@ -133,27 +165,29 @@ export class LightMap {
   // por el zoom (mismo espacio que tilemap.draw).
   draw(ctx, camera) {
     if (!this.w) return;
-    const sx = this.c0 * TILE - camera.x, sy = this.r0 * TILE - camera.y;
+    const sx = this.c0 * SurviConfig.TILE - camera.x,
+      sy = this.r0 * SurviConfig.TILE - camera.y;
     const prev = ctx.imageSmoothingEnabled;
-    ctx.imageSmoothingEnabled = true;   // degradé suave entre tiles
-    ctx.drawImage(this.canvas, 0, 0, this.w, this.h, sx, sy, this.w * TILE, this.h * TILE);
+    ctx.imageSmoothingEnabled = true; // degradé suave entre tiles
+    ctx.drawImage(this.canvas, 0, 0, this.w, this.h, sx, sy, this.w * SurviConfig.TILE, this.h * SurviConfig.TILE);
     ctx.imageSmoothingEnabled = prev;
   }
-}
 
-// Luz del sol según la hora (0..1 del ciclo).
-export function sunAt(t, nightSun) {
-  const lerp = (a, b, k) => a + (b - a) * k;
-  if (t < 0.5) return 1;
-  if (t < 0.6) return lerp(1, nightSun, (t - 0.5) / 0.1);
-  if (t < 0.9) return nightSun;
-  return lerp(nightSun, 1, (t - 0.9) / 0.1);
-}
+  // Luz del sol según la hora (0..1 del ciclo).
+  static sunAt(t, nightSun) {
+    const lerp = (a, b, k) => a + (b - a) * k;
+    if (t < 0.5) return 1;
+    if (t < 0.6) return lerp(1, nightSun, (t - 0.5) / 0.1);
+    if (t < 0.9) return nightSun;
+    return lerp(nightSun, 1, (t - 0.9) / 0.1);
+  }
 
-// Mezcla dos colores #rrggbb (k = 0 → a, 1 → b).
-export function mixHex(a, b, k) {
-  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
-  const ch = (p, s) => (p >> s) & 255;
-  const m = (s) => Math.round(ch(pa, s) + (ch(pb, s) - ch(pa, s)) * k);
-  return `rgb(${m(16)},${m(8)},${m(0)})`;
+  // Mezcla dos colores #rrggbb (k = 0 → a, 1 → b).
+  static mixHex(a, b, k) {
+    const pa = parseInt(a.slice(1), 16),
+      pb = parseInt(b.slice(1), 16);
+    const ch = (p, s) => (p >> s) & 255;
+    const m = (s) => Math.round(ch(pa, s) + (ch(pb, s) - ch(pa, s)) * k);
+    return `rgb(${m(16)},${m(8)},${m(0)})`;
+  }
 }

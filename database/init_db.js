@@ -170,6 +170,47 @@ async function initDb() {
             );
         `);
 
+        // ─── Evitar duplicados del seed ───
+        // seed_games.js corre en cada arranque. ON CONFLICT DO NOTHING solo
+        // frena algo si hay un índice UNIQUE, y estas tres tablas no tenían.
+        // 1) se borran los duplicados que ya existan (queda el de menor id)
+        // 2) se crea el índice único (IF NOT EXISTS: se puede correr siempre)
+        // LOWER(): el seed guarda en mayúsculas y el panel admin en minúsculas.
+        // COALESCE(tematica_id, 0): en Ahorcado la temática puede ser NULL.
+        console.log('Limpiando duplicados de palabras/items...');
+        await db.query(`
+            DELETE FROM palabras_ahorcado a USING palabras_ahorcado b
+            WHERE a.id > b.id
+              AND LOWER(a.palabra) = LOWER(b.palabra)
+              AND COALESCE(a.tematica_id, 0) = COALESCE(b.tematica_id, 0);
+        `);
+        await db.query(`
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_palabras_ahorcado
+            ON palabras_ahorcado (LOWER(palabra), COALESCE(tematica_id, 0));
+        `);
+
+        await db.query(`
+            DELETE FROM palabras_wordle a USING palabras_wordle b
+            WHERE a.id > b.id
+              AND LOWER(a.palabra) = LOWER(b.palabra)
+              AND a.tematica_id = b.tematica_id;
+        `);
+        await db.query(`
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_palabras_wordle
+            ON palabras_wordle (LOWER(palabra), tematica_id);
+        `);
+
+        await db.query(`
+            DELETE FROM adivina_items a USING adivina_items b
+            WHERE a.id > b.id
+              AND LOWER(a.respuesta) = LOWER(b.respuesta)
+              AND a.tematica_id = b.tematica_id;
+        `);
+        await db.query(`
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_adivina_items
+            ON adivina_items (LOWER(respuesta), tematica_id);
+        `);
+
         console.log('Insertando datos base...');
 
         await db.query(`
@@ -181,9 +222,13 @@ async function initDb() {
             (5, 'Adivina la Cosa', 'Adivinar con pistas'),
             (6, 'Adivina la Palabra', 'Adiviná la palabra letra por letra, estilo Wordle, en 5 intentos'),
             (7, 'Pixel Runner', 'Saltá obstáculos y conseguí la mayor puntuación posible'),
-            (8, 'Salto Traicionero', 'Plataformas con trampas escondidas: pisos falsos, flechas y sorpresas')
+            (8, 'Castle Escape', 'Plataformas con trampas escondidas: pisos falsos, flechas y sorpresas')
             ON CONFLICT (id) DO NOTHING;
         `);
+        // El juego 8 se llamaba "Salto Traicionero" antes de ser Castle
+        // Escape. ON CONFLICT DO NOTHING no pisa filas existentes, así que
+        // en una DB ya creada el nombre viejo se corrige acá (solo una vez).
+        await db.query(`UPDATE juegos SET nombre = 'Castle Escape' WHERE id = 8 AND nombre = 'Salto Traicionero';`);
         // Note: For ON CONFLICT DO NOTHING to work on "id", "id" must have a UNIQUE constraint or be PRIMARY KEY. 
 
         await db.query(`

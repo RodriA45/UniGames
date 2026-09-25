@@ -1,26 +1,29 @@
 const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_no_usar_en_prod';
 
-// --- Rate limiting simple (en memoria) ---
-// Factory genérica: cada middleware creado con esto tiene su propio
-// almacén en memoria (por IP) y su propia ventana/tope, para no mezclar
-// contadores entre limitadores distintos (ej: login/registro vs. el
-// resto de la API, que necesitan topes muy diferentes).
+// Sin JWT_SECRET el servidor no arranca: antes usaba un secreto por defecto
+// que estaba en el repo, y con él cualquiera podía firmar un token de admin.
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+    throw new Error('Falta la variable de entorno JWT_SECRET (ver .env.example)');
+}
+
+// --- Rate limiting simple (en memoria, por IP) ---
+// Cada limitador tiene su propio almacén, ventana y tope.
+// (En producción real iría en Redis: esto se reinicia en cada deploy.)
 function crearRateLimiter({ windowMs, max }) {
     const store = {};
 
-    // Limpiar entradas viejas cada 5 minutos para no crecer sin límite en memoria.
+    // Limpieza cada 5 minutos para no crecer sin límite.
     setInterval(() => {
         const now = Date.now();
         for (const ip in store) {
-            if (now - store[ip].start > windowMs * 2) {
-                delete store[ip];
-            }
+            if (now - store[ip].start > windowMs * 2) delete store[ip];
         }
-    }, 5 * 60 * 1000);
+    }, 5 * 60 * 1000).unref();
 
     return function rateLimitMiddleware(req, res, next) {
-        const ip = req.ip || req.connection.remoteAddress;
+        // req.ip es la IP real del cliente gracias a app.set('trust proxy', 1)
+        const ip = req.ip || req.socket.remoteAddress;
         const now = Date.now();
 
         if (!store[ip] || now - store[ip].start > windowMs) {
@@ -36,32 +39,29 @@ function crearRateLimiter({ windowMs, max }) {
     };
 }
 
-// Límite estricto para registro/login: 10 intentos por minuto por IP
-// (mismo comportamiento que antes, ahora armado con la factory de arriba).
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-const RATE_LIMIT_MAX = 10;
-const authRateLimit = crearRateLimiter({ windowMs: RATE_LIMIT_WINDOW_MS, max: RATE_LIMIT_MAX });
+// Login/registro: 10 intentos por minuto por IP.
+const authRateLimit = crearRateLimiter({ windowMs: 60 * 1000, max: 10 });
 
-// Límite más permisivo para el resto de la API (notificaciones, perfiles
-// públicos, etc.): pensado para uso normal navegando la app, pero que
-// frena scraping agresivo o bots pegándole sin parar a un endpoint.
+// Resto de la API: uso normal sí, scraping o bots no.
 const apiRateLimit = crearRateLimiter({ windowMs: 60 * 1000, max: 60 });
 
-// --- Middleware para verificar JWT ---
+// --- Verificar JWT ---
+// 401 = no autenticado (sin token, inválido o vencido): el front cierra la
+// sesión y abre el login. 403 queda para "autenticado pero sin permiso".
 function verificarToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
     if (!token) return res.status(401).json({ error: 'Acceso denegado. Token no proporcionado.' });
-    
+
     jwt.verify(token, JWT_SECRET, (err, user) => {
-        if (err) return res.status(403).json({ error: 'Token inválido o expirado.' });
+        if (err) return res.status(401).json({ error: 'Sesión vencida o inválida. Iniciá sesión de nuevo.' });
         req.user = user;
         next();
     });
 }
 
-// Middleware para verificar si es Admin
+// Verificar que sea admin
 const verificarAdmin = (req, res, next) => {
     verificarToken(req, res, () => {
         if (req.user && req.user.rol === 'admin') {

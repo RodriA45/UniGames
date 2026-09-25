@@ -1,13 +1,6 @@
-/* ══════════════════════════════════════
-   JueFriv — styles.css
-   Estilos globales del sitio (nav, cards, layout de secciones,
-   .btn-play base). Los estilos específicos de cada minijuego viven
-   en su propio archivo: ui-components.css (componentes compartidos
-   entre juegos), runner.css (Pixel Runner), castle_escape.css
-   (Castle Escape) y rpg.css (RPG Pixel). Agregá el <link> de
-   ui-components.css + el del juego correspondiente en las páginas
-   que lo necesiten, en ese orden, después de este archivo.
-   ══════════════════════════════════════ */
+/* UniGames — styles.css
+   Estilos globales del sitio (header, menús, tarjetas, secciones, minijuegos
+   clásicos). Los juegos 2D tienen su propio CSS y los modales van en modales.css. */
 
 *,
 *::before,
@@ -59,13 +52,8 @@ body.has-bg-gif::before {
   inset: 0;
   z-index: -1;
   background: var(--blue-dark) url('../fondo.webp') center center / cover no-repeat;
-  /* Sin will-change: este elemento es fixed + inset:0, así que un
-     will-change permanente le pide al navegador una capa GPU del tamaño del
-     viewport entero, viva toda la sesión, en una página que casi no
-     scrollea — en un celular de 2GB esa capa compite con los buffers del
-     canvas de los juegos. will-change es para avisar de un cambio
-     INMINENTE; acá el fondo nunca se mueve. El translateZ(0) de abajo ya
-     lo promociona a su propia capa, que era lo que se buscaba. */
+  /* Sin will-change: en un elemento fixed de pantalla completa deja una capa GPU
+   del tamaño del viewport viva toda la sesión (pesa en celulares de gama baja). */
   transform: translateZ(0);
   pointer-events: none;
 }
@@ -75,7 +63,7 @@ body.has-bg-gif main {
   border-radius: 0;
 }
 
-/* ─── HEADER ─── */
+/* ─── Header ─── */
 header {
   background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
   position: sticky;
@@ -92,8 +80,6 @@ header {
   height: 64px;
   gap: 1rem;
 }
-
-/* Hamburguesa */
 .hamburger {
   background: none;
   border: 2px solid rgba(255, 255, 255, 0.3);
@@ -135,8 +121,6 @@ header {
 .hamburger.open span:nth-child(3) {
   transform: translateY(-7px) rotate(-45deg);
 }
-
-/* Logo */
 .logo {
   font-family: 'Press Start 2P', monospace;
   font-size: clamp(14px, 2.5vw, 22px);
@@ -151,9 +135,7 @@ header {
   white-space: nowrap;
 }
 
-/* Área de autenticación / perfil — redondo, mismo look esté o no logueado.
-   Logueado muestra un avatar (inicial del nombre) en vez del ícono
-   genérico; ver updateAuthUI() en app2.js, que arma este contenido. */
+/* Botón de cuenta: ícono genérico o avatar (lo arma updateAuthUI en app2.js). */
 .account-toggle {
   display: flex;
   align-items: center;
@@ -178,21 +160,6 @@ header {
 .account-toggle svg {
   transition: transform 0.2s ease;
   fill: var(--white);
-}
-
-/* Avatar de inicial cuando hay sesión iniciada pero no eligió imagen */
-.account-avatar {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, var(--yellow), #d99a00);
-  color: var(--blue-dark);
-  font-family: 'Press Start 2P', monospace;
-  font-size: 0.95rem;
-  font-weight: 400;
 }
 
 /* Avatar real (el que se elige en Perfil) */
@@ -229,7 +196,7 @@ header {
   pointer-events: none;
 }
 
-/* ─── FONDO OSCURO DE LOS MENÚS LATERALES ─── */
+/* ─── Fondo oscuro de los menús laterales ─── */
 .drawer-backdrop {
   position: fixed;
   inset: 0;
@@ -247,7 +214,7 @@ header {
   pointer-events: auto;
 }
 
-/* ─── MENÚ LATERAL IZQUIERDO ─── */
+/* ─── Menú lateral izquierdo ─── */
 .nav-menu {
   position: fixed;
   top: 0;
@@ -284,10 +251,7 @@ header {
   letter-spacing: 1px;
 }
 
-/* Mismo diseño que los botones del menú de cuenta (.account-drawer-btn):
-   caja con fondo y borde sutil, esquinas de 10px, mismo espaciado entre
-   opciones y mismo hover (fondo azul + borde amarillo + corrimiento de
-   2px). Antes eran filas planas sin borde que se corrían más al hover. */
+/* Mismo diseño que los botones del menú de cuenta (.account-drawer-btn). */
 .nav-menu ul {
   list-style: none;
   padding: 1.25rem;
@@ -332,7 +296,7 @@ header {
   line-height: 0;
 }
 
-/* ─── MENÚ LATERAL DERECHO: CUENTA ─── */
+/* ─── Menú lateral derecho: cuenta ─── */
 .account-drawer {
   position: fixed;
   top: 0;
@@ -392,11 +356,7 @@ header {
   transform: translateX(2px);
 }
 
-/* Texto + ícono de cada opción flotan (misma animación gentleFloat que
-   las tarjetas, 3px de recorrido) SOLO mientras el mouse está encima de
-   esa opción. Aplica a los dos menús laterales: cuenta y navegación.
-   El texto arranca 0.15s después que el ícono, como en las tarjetas,
-   para que no se muevan exactamente en sincro. */
+/* Texto e ícono de cada opción flotan solo con el mouse encima (menús laterales). */
 .account-drawer-btn-label,
 .nav-icon {
   display: inline-block;
@@ -435,7 +395,7 @@ header {
   background: var(--yellow-glow);
 }
 
-/* ─── MAIN ─── */
+/* ─── Main ─── */
 main {
   flex: 1;
   padding: 2rem 1.5rem;
@@ -444,7 +404,7 @@ main {
   width: 100%;
 }
 
-/* ─── SECCIONES ─── */
+/* ─── Secciones ─── */
 .section {
   display: none;
   animation: fadeIn 0.3s ease;
@@ -466,7 +426,7 @@ main {
   }
 }
 
-/* ─── INICIO — HERO ─── */
+/* ─── Inicio — hero ─── */
 .hero {
   text-align: center;
   padding: 2.5rem 1rem 2rem;
@@ -497,9 +457,7 @@ main {
   color: var(--blue-accent);
 }
 
-/* Cada letra del título flota con un pequeño desfasaje entre una y la
-   siguiente (ver animateHeroLetters en app2.js) — hace un efecto de ola
-   suave en vez de mover el título entero de una. */
+/* Cada letra del título flota con un pequeño desfasaje (animateHeroLetters en app2.js). */
 .wave-letter {
   display: inline-block;
   animation: gentleFloat 2.2s ease-in-out infinite;
@@ -523,126 +481,11 @@ main {
   display: inline-block;
 }
 
-/* --- Menú de Inicio --- */
-.inicio-container {
-  max-width: 800px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-  text-align: center;
-}
-
-.inicio-portada {
-  width: 100%;
-  height: 400px;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  margin-bottom: 2rem;
-  border-radius: 24px;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-}
-
-.inicio-portada::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  border-radius: 24px;
-}
-
-.inicio-título {
-  position: absolute;
-  top: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: 'Press Start 2P', monospace;
-  font-size: clamp(24px, 6vw, 36px);
-  color: #fff;
-  text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
-  margin: 0;
-}
-
-.inicio-botones {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.btn-inicio {
-  font-family: 'Press Start 2P', monospace;
-  font-size: clamp(12px, 1.5vw, 16px);
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: transform 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
-}
-
-.btn-inicio:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
-}
-
-.btn-inicio:active {
-  transform: translateY(0);
-}
-
-/* Responsive */
-@media (max-width: 480px) {
-  .inicio-portada {
-    height: 250px;
-  }
-
-  .inicio-título {
-    font-size: clamp(18px, 8vw, 28px);
-  }
-
-  .inicio-botones {
-    gap: 0.5rem;
-  }
-
-  .btn-inicio {
-    padding: 0.5rem 1rem;
-    font-size: clamp(10px, 2vw, 14px);
-  }
-}
-
-
 .featured-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1.25rem;
   margin-top: 2rem;
-}
-
-/* Cards simples (inicio) */
-.game-card {
-  background: var(--white);
-  border: 2px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 1.5rem;
-  box-shadow: var(--card-shadow);
-  transition: transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 0.28s ease, border-color 0.28s ease;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.game-card:hover {
-  transform: translateY(-6px) scale(1.035);
-  box-shadow: 0 14px 36px rgba(37, 99, 235, 0.28);
-  border-color: var(--blue-accent);
-}
-
-.game-card:active {
-  transform: translateY(-2px) scale(1.01);
 }
 
 /* Flotado sutil y compartido — logos, letras del hero, título/ícono de
@@ -658,14 +501,7 @@ main {
   transition: transform 0.28s ease;
 }
 
-.game-card:hover .card-emoji {
-  transform: scale(1.15) rotate(-4deg);
-}
-
-/* El flotado va en un span ADENTRO de .card-emoji, no en .card-emoji
-   mismo — si los dos animaran el mismo "transform", el hover (que
-   también usa transform, para el scale+rotate) y el flotado continuo se
-   pisarían entre sí. Así cada uno tiene su propia propiedad para animar. */
+/* El flotado va en un span dentro de .card-emoji para no pisar el transform del hover. */
 .card-emoji-float {
   display: inline-flex;
   animation: gentleFloat 2.4s ease-in-out infinite;
@@ -697,8 +533,6 @@ main {
   border-radius: 20px;
   align-self: flex-start;
 }
-
-/* Botón jugar */
 .btn-play {
   margin-top: auto;
   background: var(--blue-accent);
@@ -718,10 +552,7 @@ main {
   transform: scale(1.05);
 }
 
-/* Botón "Jugar" de las tarjetas: en vez de agrandar el botón entero (eso
-   ya lo hace .btn-play:hover de arriba, para el resto del sitio), acá
-   crece SOLO la palabra + el ícono, y poco — "se agrande muy poco y
-   después vuelva a su tamaño normal". */
+/* Botón "Jugar" de las tarjetas: crecen solo el texto y el ícono, apenas. */
 .game-card-full .btn-play:hover {
   transform: none;
 }
@@ -739,7 +570,7 @@ main {
   transform: scale(0.97);
 }
 
-/* ─── SECCIÓN JUEGOS ─── */
+/* ─── Sección juegos ─── */
 .games-intro {
   background: linear-gradient(135deg, var(--blue-dark), var(--blue-mid));
   color: white;
@@ -869,13 +700,7 @@ main {
   border-color: var(--blue-accent);
 }
 
-.no-theme-note {
-  font-size: 0.78rem;
-  color: var(--gray-mid);
-  font-style: italic;
-}
-
-/* ─── SECCIÓN PUNTUACIÓN ─── */
+/* ─── Sección puntuación ─── */
 .scores-header {
   background: linear-gradient(135deg, var(--blue-dark), var(--blue-mid));
   color: white;
@@ -979,18 +804,7 @@ tbody td {
   font-size: 0.82rem;
 }
 
-.game-pill {
-  background: var(--gray-light);
-  color: var(--blue-dark);
-  border-radius: 20px;
-  padding: 0.2rem 0.65rem;
-  font-size: 0.78rem;
-  font-weight: 700;
-}
-
-/* ─── MODAL ─── (estilos nuevos definidos en index.html inline) ─── */
-
-/* ─── FOOTER ─── */
+/* ─── Footer ─── */
 footer {
   background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
   color: rgba(255, 255, 255, 0.65);
@@ -1006,18 +820,11 @@ footer span {
   color: var(--yellow);
 }
 
-/* Antes tenía max-width:1100px + margin:0 auto, igual que .main — pero
-   el header (donde vive el OTRO logo) no tiene ese límite y va de borde
-   a borde. Con los dos anchos distintos, el logo del footer quedaba más
-   metido hacia adentro que el del header, encima de él. Sacando el
-   límite acá, los dos logos quedan sobre la misma línea vertical. */
+/* Sin max-width: va de borde a borde como el header, así los dos logos quedan alineados. */
 .footer-inner {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  /* align-items:center centra el logo contra la ALTURA TOTAL de la
-     columna del medio (links + copyright). Antes el copyright estaba
-     afuera de esta grilla, así que el logo solo se centraba contra la
-     fila de los links y quedaba pegado arriba. */
+  /* El logo se centra contra la altura total de la columna del medio. */
   align-items: center;
   gap: 1rem;
   width: 100%;
@@ -1034,8 +841,7 @@ footer span {
 .footer-logo {
   justify-self: start;
   font-family: 'Press Start 2P', monospace;
-  /* Mismo tamaño y sombra que .logo del header — antes era más chico y
-     sin el brillo, así que no se veían "iguales" como se pidió. */
+  /* Mismo tamaño y sombra que el .logo del header. */
   font-size: clamp(14px, 2.5vw, 22px);
   color: var(--yellow);
   text-shadow:
@@ -1043,7 +849,7 @@ footer span {
     0 0 20px rgba(245, 197, 24, 0.5),
     2px 2px 0 #7a5f00;
   letter-spacing: 2px;
-  line-height: 1; /* la fuente pixel trae mucho aire arriba con el line-height por defecto */
+  line-height: 1;
   text-decoration: none;
   cursor: pointer;
   user-select: none;
@@ -1059,7 +865,6 @@ footer span {
 .logo,
 .footer-logo {
   display: inline-block;
-  animation: gentleFloat 2.6s ease-in-out infinite;
 }
 
 .footer-nav {
@@ -1105,7 +910,7 @@ footer span {
   }
 }
 
-/* ─── CONDICIONES DE USO ─── */
+/* ─── Condiciones de uso ─── */
 #sec-terminos .terms-wrap {
   max-width: 780px;
   margin: 1.5rem auto 0;
@@ -1144,7 +949,7 @@ footer span {
   margin: 0;
 }
 
-/* ─── PANTALLAS DE JUEGO ─── */
+/* ─── Pantallas de juego ─── */
 .game-screen-header {
   display: flex;
   align-items: center;
@@ -1190,7 +995,7 @@ footer span {
   margin-left: auto;
 }
 
-/* ─── CARTEL DE INICIO DE MINIJUEGO (elegir temática + jugar) ─── */
+/* ─── Cartel de inicio de minijuego (elegir temática + jugar) ─── */
 .game-area-wrap {
   position: relative;
   min-height: 360px;
@@ -1250,7 +1055,7 @@ footer span {
   margin: 0 auto;
 }
 
-/* ─── CAJA DE INFO DEBAJO DEL MINIJUEGO (título + cómo se juega) ─── */
+/* ─── Caja de info debajo del minijuego (título + cómo se juega) ─── */
 .game-info-box {
   background: white;
   border: 2px solid #e2e8f0;
@@ -1284,7 +1089,7 @@ footer span {
   margin-bottom: 1rem;
 }
 
-/* ─── CAJA DE JUEGOS RECOMENDADOS (debajo de game-info-box) ─── */
+/* ─── Caja de juegos recomendados (debajo de game-info-box) ─── */
 .game-recommended-box {
   background: white;
   border: 2px solid #e2e8f0;
@@ -1298,8 +1103,6 @@ footer span {
 .game-recommended-box .featured-grid {
   margin-top: 0.5rem;
 }
-
-/* Coming soon */
 .coming-soon-box {
   background: white;
   border: 2px dashed #e2e8f0;
@@ -1313,23 +1116,7 @@ footer span {
   margin: 0 auto;
 }
 
-.cs-emoji {
-  font-size: 4rem;
-}
-
-.cs-title {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 12px;
-  color: var(--blue-dark);
-}
-
-.cs-desc {
-  font-size: 0.92rem;
-  color: #64748b;
-  line-height: 1.6;
-}
-
-/* ─── AHORCADO ─── */
+/* ─── Ahorcado ─── */
 .ahorcado-wrap {
   display: flex;
   gap: 2.5rem;
@@ -1450,7 +1237,7 @@ footer span {
   gap: 1rem;
 }
 
-/* ─── ADIVINA LA PALABRA (estilo Wordle) ─── */
+/* ─── Adivina la palabra (estilo Wordle) ─── */
 .wordle-wrap {
   display: flex;
   flex-direction: column;
@@ -1595,13 +1382,11 @@ footer span {
 .key-btn-enter:hover {
   background: var(--blue-dark);
 }
-
-  /* ─── GENÉRICO ─── */
   .hidden {
     display: none !important;
   }
 
-  /* ─── RESPONSIVE ─── */
+  /* ─── Responsive ─── */
 
   /* Tablet */
   @media (max-width: 768px) {
@@ -1644,7 +1429,6 @@ footer span {
     }
 }
 
-
   /* Mobile */
   @media (max-width: 480px) {
 
@@ -1657,10 +1441,6 @@ footer span {
 
     .logo {
       font-size: 12px;
-    }
-
-    .hide-on-mobile {
-      display: none !important;
     }
 
     /* Hero */
@@ -1834,8 +1614,6 @@ footer span {
     .adivina-btn-submit {
       width: 100%;
     }
-
-    /* Coming soon */
     .coming-soon-box {
       padding: 2rem 1.25rem;
     }
@@ -1857,10 +1635,7 @@ footer span {
     }
 }
 
-
-  /* ═══════════════════════════════════
-   ANIMACIÓN LOGO HEADER
-   ═══════════════════════════════════ */
+  /* ─── Animación logo header ─── */
   .logo,
   .footer-logo {
     animation: logoGlow 3s ease-in-out infinite;
@@ -1904,9 +1679,7 @@ footer span {
     }
   }
 
-  /* ═══════════════════════════════════
-   PREGUNTADOS
-   ═══════════════════════════════════ */
+  /* ─── Preguntados ─── */
   .preg-wrap {
     max-width: 640px;
     margin: 0 auto;
@@ -1986,7 +1759,6 @@ footer span {
       grid-template-columns: 1fr;
     }
 }
-
 
   .preg-opt {
     display: flex;
@@ -2084,9 +1856,7 @@ footer span {
     color: #d69e2e;
   }
 
-  /* ═══════════════════════════════════
-   SOPA DE LETRAS
-   ═══════════════════════════════════ */
+  /* ─── Sopa de letras ─── */
   .sopa-wrap {
     display: flex;
     flex-direction: column;
@@ -2232,10 +2002,7 @@ footer span {
     }
 }
 
-
-  /* ═══════════════════════════════════
-   TERMINA LA PALABRA
-   ═══════════════════════════════════ */
+  /* ─── Termina la palabra ─── */
   .termina-wrap {
     max-width: 560px;
     margin: 0 auto;
@@ -2362,10 +2129,7 @@ footer span {
     border: 2px solid #e53e3e;
   }
 
-
-  /* ═══════════════════════════════════
-   LEADERBOARD TABS + CARDS
-   ═══════════════════════════════════ */
+  /* ─── Leaderboard tabs + cards ─── */
   .lb-tabs {
     display: flex;
     flex-wrap: wrap;
@@ -2409,19 +2173,14 @@ footer span {
     animation: fadeIn 0.25s ease;
   }
 
-  /* Grid global: ahora son .game-card-full (mismo look que las tarjetas
-     de juego) con un cuerpo propio para el podio top-3. */
+  /* Grid global: tarjetas .game-card-full con el podio de cada juego. */
   .lb-global-grids {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.25rem;
   }
 
-  /* Alto fijo — antes crecía según la cantidad de entradas y una tarjeta
-     con 1 jugador vs otra con muchos quedaban de tamaños bien distintos.
-     Lista vertical numerada; si hay más filas de las que entran en el
-     alto fijo, se scrollea para abajo adentro de la tarjeta (no estira
-     la tarjeta ni scrollea de costado). */
+  /* Alto fijo para que todas las tarjetas midan igual; si hay más filas, scroll interno. */
   .lb-game-card-body {
     height: 304px;
     padding: 0.5rem 1rem;
@@ -2529,47 +2288,7 @@ footer span {
     box-shadow: 0 2px 12px rgba(15, 30, 61, 0.07);
   }
 
-  .lb-game-title {
-    background: var(--blue-dark);
-    color: var(--yellow);
-    font-family: 'Press Start 2P', monospace;
-    font-size: 8px;
-    padding: 0.75rem 1rem;
-    letter-spacing: 0.05em;
-  }
-
-  .lb-mini-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.88rem;
-  }
-
-  .lb-mini-table thead th {
-    background: var(--gray-light);
-    padding: 0.45rem 0.75rem;
-    text-align: left;
-    font-size: 0.75rem;
-    font-weight: 800;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  .lb-mini-table tbody tr:hover {
-    background: #f8fafc;
-  }
-
-  .lb-mini-table tbody td {
-    padding: 0.55rem 0.75rem;
-    border-top: 1px solid #f1f5f9;
-    font-weight: 700;
-  }
-
-  /* ══════════════════════════════════════
-   ADIVINA LA COSA
-   ══════════════════════════════════════ */
-
-  /* Overlay inicio/fin */
+  /* ─── Adivina la cosa ─── */
   .adivina-overlay {
     position: absolute;
     inset: 0;
@@ -2590,8 +2309,6 @@ footer span {
     width: 90%;
     box-shadow: 0 8px 40px rgba(37, 99, 235, 0.18);
   }
-
-  /* Contenedor principal del juego */
   #sec-adivina {
     position: relative;
   }
@@ -2604,8 +2321,6 @@ footer span {
     flex-direction: column;
     gap: 1.1rem;
   }
-
-  /* Meta bar */
   .adivina-meta {
     display: flex;
     justify-content: space-between;
@@ -2616,8 +2331,6 @@ footer span {
     padding: .5rem 1rem;
     border-radius: .6rem;
   }
-
-  /* Imagen pixelada */
   .adivina-img-wrap {
     text-align: center;
   }
@@ -2635,8 +2348,6 @@ footer span {
     color: #94a3b8;
     margin-top: .4rem;
   }
-
-  /* Pistas */
   .adivina-pistas-wrap {
     display: flex;
     flex-direction: column;
@@ -2693,8 +2404,6 @@ footer span {
     opacity: .4;
     cursor: default;
   }
-
-  /* Input */
   .adivina-input-wrap {
     display: flex;
     gap: .6rem;
@@ -2720,8 +2429,6 @@ footer span {
     padding: .6rem 1.2rem !important;
     font-size: .9rem !important;
   }
-
-  /* Feedback */
   .adivina-feedback {
     text-align: center;
     padding: .8rem;
@@ -2742,7 +2449,7 @@ footer span {
     border: 2px solid #fca5a5;
   }
 
-/* ─── MODAL INFO / CRÉDITOS ─── */
+/* ─── Modal info / créditos ─── */
 .info-overlay {
   position: fixed;
   top: 0;
@@ -2773,11 +2480,7 @@ footer span {
   border-radius: 20px;
   width: 100%;
   max-width: 600px;
-  /* Alto fijo — antes cada página tenía su propio contenido/alto y el
-     modal se agrandaba o achicaba entero al cambiar de página. Ahora el
-     modal mide siempre lo mismo; si el contenido de una página no entra
-     (pantallas chicas), scrollea SOLO esa zona (.info-pages-wrap), nunca
-     el modal entero. */
+  /* Alto fijo: el modal no cambia de tamaño al pasar de página; scrollea solo el contenido. */
   height: 520px;
   max-height: 85vh;
   padding: 2rem;
@@ -2870,14 +2573,11 @@ footer span {
   font-size: 0.92rem;
   line-height: 1.6;
   color: #e2e8f0;
-  /* Mismo criterio que el modal entero: alto fijo para que las 4 páginas
-     se vean iguales, con scroll propio si el contenido de alguna no entra
-     (la de Tecnologías, con 5 ítems, es la que más lo necesita). */
+  /* Mismo alto para las 4 páginas, con scroll propio si el contenido no entra. */
   height: 300px;
   overflow-y: auto;
   box-sizing: border-box;
 }
-
 
 .info-content-box p {
   margin-bottom: 0.5rem;
@@ -3019,25 +2719,6 @@ footer span {
   transform: scale(1.2);
 }
 
-  /* Lienzo del juego: capa 1, por encima del fondo (capa 0) */
-  #castleEscapeCanvas {
-    position: relative;
-    z-index: 1;
-    display: block;
-    width: 100%;
-    max-width: 500px;
-    margin: 0 auto;
-    image-rendering: pixelated;
-    touch-action: none;
-  }
-
-
-body.game-active {
-  overflow: hidden !important;
-  touch-action: none !important;
-}
-
-
 body.theme-light {
   --blue-dark: #cbd5e1;
   --blue-mid: #f1f5f9;
@@ -3051,41 +2732,11 @@ body.theme-red {
     --blue-mid: #4a0a0a;
     --blue-accent: #dc2626;
   }
-
-/* Admin Tabs */
-.admin-tabs {
-  display: flex; gap: 5px; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1);
+.admin-tabs { margin-bottom: 15px;
 }
-.admin-tab {
-  background: transparent; border: none; color: #94A3B8; cursor: pointer; padding: 8px 12px;
-  font-size: 13px; font-weight: 500; font-family: 'Inter', sans-serif;
-  border-bottom: 2px solid transparent; transition: all 0.2s;
-}
-.admin-tab:hover { color: #F1F5F9; }
-.admin-tab.active { color: #A78BFA; border-bottom-color: #A78BFA; }
-.admin-tab-content { display: none; }
-
-/* Admin Users List */
-.admin-list { list-style: none; padding: 0; margin: 0; }
-.admin-list li {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05);
+.admin-list li { border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 .admin-list li:last-child { border-bottom: none; }
-
-/* Easter Egg */
-body.gravity-inverted {
-  transform: rotate(180deg);
-  transition: transform 1.5s ease-in-out;
-  overflow: hidden; /* Prevents scrollbars from acting weird */
-}
-#gravityRestoreBtn {
-  position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
-  z-index: 999999; display: none; background: #EF4444; color: white;
-  padding: 10px 20px; border-radius: 20px; border: none; cursor: pointer;
-  font-weight: bold; box-shadow: 0 4px 10px rgba(239,68,68,0.4);
-}
-body.gravity-inverted #gravityRestoreBtn { display: block; }
 
 /* Overrides for Light Theme */
 body.theme-light header,
@@ -3144,8 +2795,7 @@ body.theme-light .section-title {
 
 /* ─── Castle Escape: pantalla completa en mobile ─── */
 @media (max-width: 600px) {
-  /* Cuando la sección del juego está activa, reducir el padding lateral
-     del main para que el canvas y los botones táctiles usen todo el ancho */
+  /* Con un juego 2D activo, menos padding lateral para el canvas. */
   main:has(#sec-castle_escape.active) {
     padding-left: 0.4rem;
     padding-right: 0.4rem;
@@ -3166,9 +2816,7 @@ body.theme-light .section-title {
   }
 }
 
-/* ═══════════════════════════════════
-   AMIGOS
-   ═══════════════════════════════════ */
+/* ─── Amigos ─── */
 .friends-search-box {
   position: relative;
   margin-top: 1.25rem;
@@ -3320,22 +2968,6 @@ body.theme-light .section-title {
   gap: 0.35rem;
 }
 
-.friend-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--gray-mid);
-  flex-shrink: 0;
-}
-
-.friend-status.online {
-  color: #16a34a;
-}
-
-.friend-status.online .friend-status-dot {
-  background: #16a34a;
-}
-
 .friend-actions {
   display: flex;
   gap: 0.5rem;
@@ -3378,9 +3010,7 @@ body.theme-light .section-title {
   background: #eff6ff;
 }
 
-/* ═══════════════════════════════════
-   LOGROS
-   ═══════════════════════════════════ */
+/* ─── Logros ─── */
 .logros-progress-box {
   background: linear-gradient(135deg, var(--blue-dark), var(--blue-mid));
   border-radius: 16px;
@@ -3702,10 +3332,7 @@ body.theme-light .section-title {
     text-align: right;
   }
 
-  /* Cuadro para retar/jugar un duelo: más angosto y con menos aire para
-     que entren los 7 juegos + el paso de temática sin desbordar la
-     pantalla (el scroll interno de .duelo-card queda como red de
-     seguridad para celulares muy chicos). */
+  /* Cuadro del duelo: angosto para que entren los 7 juegos y el paso de temática. */
   .duelo-card {
     width: 92vw;
     padding: 1.5rem 1.1rem;
@@ -3752,9 +3379,7 @@ body.theme-light .section-title {
   }
 }
 
-/* ═══════════════════════════════════
-   PERFIL
-   ═══════════════════════════════════ */
+/* ─── Perfil ─── */
 .profile-header {
   display: flex;
   align-items: center;
@@ -4042,13 +3667,7 @@ body.theme-light .section-title {
   }
 }
 
-/* ═══════════════════════════════════
-   DUELOS 1v1
-   Overlays del selector de minijuego (al retar a un amigo) y del cartel
-   de resultado (al terminar de jugar el duelo). Mismo lenguaje visual
-   que .app-toast / .friend-row / .modal-orb para no introducir un estilo
-   nuevo en la app.
-   ═══════════════════════════════════ */
+/* ─── Duelos 1v1: selector de juego y cartel de resultado ─── */
 
 .duelo-overlay {
   position: fixed;
@@ -4156,9 +3775,7 @@ body.theme-light .section-title {
   margin-bottom: 0.25rem;
 }
 
-/* VS del cartel de resultado: yo — VS — oponente, cada uno con su
-   ícono de perfil, nombre y puntaje. El lado ganador se resalta con
-   borde/fondo dorado y una corona (sin usar emojis). */
+/* VS del cartel de resultado: el ganador lleva borde dorado y corona. */
 .duelo-result-vs {
   display: flex;
   align-items: center;
@@ -4279,11 +3896,7 @@ body.theme-light .section-title {
   gap: 0.6rem;
 }
 
-/* Botón "Volver" del cartel de resultado. Antes reutilizaba
-   .runner-btn-secondary (definida en pixelrunner.css para el menú oscuro
-   del Runner: fondo/texto claros). Al aplicarse acá, sobre .duelo-card que
-   tiene fondo blanco, quedaba texto claro sobre fondo claro y era invisible.
-   Se define acá su propio estilo para no depender de esa hoja externa. */
+/* Botón "Volver" del cartel de resultado (legible sobre la tarjeta blanca). */
 .duelo-btn-secondary {
   background: var(--gray-light);
   border: 2px solid #e2e8f0;
@@ -4294,56 +3907,7 @@ body.theme-light .section-title {
   background: #e2e8f0;
 }
 
-/* Botón de pantalla completa dentro del juego Pixel Runner: arriba a la
-   derecha (el .runner-hud con Puntos/Monedas vive arriba a la IZQUIERDA,
-   ver pixelrunner.css, así que van sin pisarse). Es hermano de .runner-hud
-   dentro de .runner-container (que ya tiene position:relative ahí), por
-   eso alcanza con position:absolute acá. */
-.runner-hud-fullscreen-btn {
-  position: absolute;
-  top: 0.6rem;
-  right: 0.6rem;
-  z-index: 40;
-  width: 34px;
-  height: 34px;
-  border: none;
-  border-radius: 8px;
-  background: rgba(15, 30, 61, 0.55);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.18s, transform 0.18s;
-}
-
-.runner-hud-fullscreen-btn:hover {
-  background: rgba(15, 30, 61, 0.8);
-  transform: scale(1.06);
-}
-
-.runner-hud-fullscreen-btn.unsupported {
-  display: none;
-}
-
-/* Mismo breakpoint que pixelrunner.css (480px), donde el HUD de
-   Puntos/Monedas se achica y se acerca más al borde. */
-@media (max-width: 480px) {
-  .runner-hud-fullscreen-btn {
-    top: 0.4rem;
-    right: 0.4rem;
-    width: 28px;
-    height: 28px;
-  }
-
-  .runner-hud-fullscreen-btn svg {
-    width: 15px;
-    height: 15px;
-  }
-}
-
-
-/* Boton Google */
+/* Mismo breakpoint que el HUD de pixelrunner.css (480px). */
 .auth-btn-google {
   display: flex;
   align-items: center;
@@ -4409,14 +3973,9 @@ body.theme-light .section-title {
   text-decoration: underline;
 }
 
+/* ─── Rendimiento (gama baja) ─── */
 
-/* ═══════════════════════════════════
-   PERF — gama baja
-   ═══════════════════════════════════ */
-
-/* Overlays con backdrop-filter: cerrados (opacity 0) igual quedaban como
-   capa con blur viva. Con visibility: hidden el navegador ni los compone.
-   El delay en visibility deja terminar el fade de salida. */
+/* Overlays cerrados: visibility hidden para que el navegador no componga su blur. */
 .drawer-backdrop,
 .info-overlay,
 .duelo-overlay {
@@ -4430,10 +3989,8 @@ body.theme-light .section-title {
   transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
 
-/* El brillo del logo anima text-shadow (no lo hace la GPU): repinta el
-   header sticky en cada frame, justo mientras el canvas del juego también
-   dibuja. Se apaga dentro de los juegos del motor, en calidad baja y si el
-   sistema pide menos movimiento. */
+/* El brillo del logo repinta el header en cada frame: se apaga dentro de los
+   juegos 2D, en calidad baja y con "reducir movimiento". */
 body.in-engine-game .logo,
 html.q-low .logo {
   animation: none;

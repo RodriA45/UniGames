@@ -1,13 +1,5 @@
-/* ══════════════════════════════════════════════════════════════
-   Pixel Survi — pixel-survi.css
-   Se apoya en ui-components.css (modal-game, btn-game-*,
-   game-icon-btn, game-slider-row, game-info-row). Acá va solo lo
-   específico: canvas, HUD de vida, hotbar, inventario, portada,
-   tarjetas de mundo y la pantalla de muerte.
-
-   Lo inyecta app2.js con ensureCSS() al entrar a la sección, así que
-   siempre queda DESPUÉS de styles.css y ui-components.css.
-   ══════════════════════════════════════════════════════════════ */
+/* Pixel Survi — pixel-survi.css (lo carga app2.js al entrar a la sección).
+   Usa los componentes de ui-components.css; acá va solo lo propio del juego. */
 
 .survi-root {
   position: relative;
@@ -34,7 +26,7 @@
 
 .survi-root .hidden { display: none !important; }
 
-/* ─── HUD ──────────────────────────────────────────────────────── */
+/* ─── HUD ─── */
 .survi-hud {
   position: absolute;
   inset: 0;
@@ -153,7 +145,7 @@
   text-align: right;
 }
 
-/* ─── Hotbar ───────────────────────────────────────────────────── */
+/* ─── Hotbar ─── */
 .survi-hotbar {
   pointer-events: auto;
   display: flex;
@@ -193,8 +185,7 @@
 
  /* El width/height y el background los pone el JS inline: el ícono es un
     recorte del atlas (tiles.png o tools-icon.png), no un color plano. */
-.survi-slot-icon,
-.survi-inv-icon {
+.survi-slot-icon {
   display: block;
   image-rendering: pixelated;
 }
@@ -208,7 +199,7 @@
   font-weight: 800;
 }
 
-/* ─── Pantallas (portada, mundos, modo, ajustes, cómo jugar…) ──── */
+/* ─── Pantallas (portada, mundos, modo, ajustes, cómo jugar…) ─── */
 .survi-screen { z-index: 20; }
 
 .survi-screen .modal-game-box button {
@@ -269,7 +260,7 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
-/* ══════════ Íconos SVG (survi_icons.js) ══════════ */
+/* ─── Íconos svg (survi_icons.js) ─── */
 .survi-ico { display: inline-block; vertical-align: -0.15em; flex-shrink: 0; }
 .survi-health-heart .survi-ico, .survi-hunger-icon .survi-ico { display: block; }
 .survi-equip-icon { display: flex; align-items: center; justify-content: center; line-height: 1; }
@@ -278,10 +269,8 @@
 .survi-fullscreen-btn .survi-ico { margin-right: 0.35em; }
 .survi-howto-list .survi-ico { color: #e8a25a; margin-right: 0.3em; }
 
-/* ══════════ Tarjetas de los 3 mundos ══════════
-   Selectores con la lista adelante a propósito: los botones del sitio
-   traen estilos globales (ancho 100%, padding, fondo) que antes estiraban
-   el botón de borrar y aplastaban el texto. */
+/* Tarjetas de los 3 mundos (selectores con la lista adelante para ganarle a los
+   estilos globales de los botones). */
 .survi-worlds-box { max-width: 460px; }
 .survi-worlds-list {
   width: 100%;
@@ -471,7 +460,7 @@
 
 .survi-howto-list .game-info-row { padding: 0.35rem 0.6rem; }
 
-/* ─── Inventario ───────────────────────────────────────────────── */
+/* ─── Inventario ─── */
 .survi-inv-box { max-width: 480px; }
 
 .survi-inv-grid {
@@ -511,8 +500,6 @@
 .survi-inv-count {
   position: absolute;
   top: 2px; right: 5px;
-  font-size: 0.65rem;
-  font-weight: 800;
   text-shadow: 0 0 2px #000;
 }
 
@@ -534,9 +521,7 @@
 }
 .survi-inv-actions button { flex: 1; }
 
-/* Hueco vacío del inventario general: mismo tamaño que uno ocupado, sin
-   contenido, para que "10 huecos" se vea de un vistazo y no solo en el
-   contador de arriba. */
+/* Hueco vacío del inventario: mismo tamaño que uno ocupado. */
 .survi-inv-cell-empty {
   min-height: 3.6rem;
   border-style: dashed;
@@ -544,9 +529,6 @@
   background: transparent;
   cursor: default;
 }
-
-/* Ítems de equipo sin sprite propio todavía: un emoji hace de ícono. */
-.survi-emoji-icon { display: block; line-height: 1; } /* (ya no se usa: equipo pasó a survi-equip-icon) */
 
 /* Aviso corto tipo "Inventario lleno". */
 .survi-toast {
@@ -567,7 +549,7 @@
 }
 .survi-toast.hidden { display: none; }
 
-/* ─── Equipamiento ─────────────────────────────────────────────── */
+/* ─── Equipamiento ─── */
 .survi-equip-box { max-width: 520px; }
 
 .survi-equip-layout {
@@ -639,7 +621,7 @@
   overflow-y: auto;
 }
 
-/* ─── Craftear ─────────────────────────────────────────────────── */
+/* ─── Craftear ─── */
 .survi-craft-box { max-width: 560px; }
 
 .survi-craft-layout {
@@ -734,7 +716,7 @@
 .survi-craft-btn { margin-top: auto; }
 .survi-craft-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
 
-/* ─── Muerte: rojo transparente sobre el mundo ─────────────────── */
+/* ─── Muerte: rojo transparente sobre el mundo ─── */
 .survi-death {
   background: rgba(150, 20, 20, 0.45);
   backdrop-filter: none;
@@ -752,7 +734,7 @@
   font-weight: 700;
 }
 
-/* ─── Controles táctiles ───────────────────────────────────────── */
+/* ─── Controles táctiles ─── */
 .survi-touch {
   position: absolute;
   inset: 0;
@@ -804,10 +786,10 @@
   .survi-craft-list { max-height: 26vh; }
 }
 
-/* ══════════ Crafteo: aviso "esto se hace en la mesa" ══════════ */
+/* ─── Crafteo: aviso "esto se hace en la mesa" ─── */
 .survi-craft-hint { margin: -0.2rem 0 0.2rem; font-size: 0.7rem; color: rgba(255, 255, 255, 0.6); text-align: center; }
 
-/* ══════════ Horno / cofre ══════════ */
+/* ─── Horno / cofre ─── */
 .survi-station-box { max-width: 460px; }
 .survi-station-sub { margin: 0; font-size: 0.68rem; color: rgba(255, 255, 255, 0.55); text-align: center; }
 .survi-station-label { margin: 0; align-self: flex-start; font-size: 0.72rem; font-weight: 700; color: rgba(255, 255, 255, 0.8); }
@@ -867,3 +849,66 @@
   background: rgba(255, 255, 255, 0.1); border-radius: 999px; overflow: hidden;
 }
 .survi-furnace-arrow-fill { height: 100%; width: 0; background: #f5c518; }
+
+/* ── Durabilidad: barrita debajo del ícono de herramientas y armaduras ── */
+.survi-equip-slot,
+.survi-sitem { position: relative; }
+.survi-dura {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 3px;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+.survi-dura > span { display: block; height: 100%; }
+
+/* ── Aire bajo el agua: 10 burbujas arriba de la vida ── */
+.survi-air {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 4px;
+  pointer-events: none;
+}
+.survi-air i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(160, 210, 255, 0.5);
+  background: transparent;
+}
+.survi-air i.llena {
+  background: radial-gradient(circle at 35% 35%, #e6f4ff 0 25%, #58a6ff 30% 100%);
+  border-color: #cfe7ff;
+}
+
+/* ── Inventario: arrastrar y soltar (ver survi_arrastre.js) ── */
+.survi-inv-hotbar {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+.survi-inv-hotbar .survi-slot { width: 2.6rem; height: 2.6rem; }
+[data-drag-id] { touch-action: none; cursor: grab; user-select: none; }
+.survi-arrastrando { opacity: 0.35; }
+.survi-drop-hover {
+  outline: 2px solid var(--yellow, #f5c518);
+  outline-offset: 2px;
+  background: rgba(245, 197, 24, 0.15) !important;
+}
+.survi-fantasma {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none; /* para que elementFromPoint vea lo que hay debajo */
+  transform: translate(-50%, -50%) scale(1.15);
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
+  cursor: grabbing;
+}
+/* el arco sin flechas: el número en rojo */
+.survi-slot-count.survi-sin-flechas { color: #ff6b6b; }

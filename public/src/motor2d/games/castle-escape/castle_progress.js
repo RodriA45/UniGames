@@ -3,18 +3,26 @@
 // ══════════════════════════════════════
 
 export class Progreso {
-  constructor(clave = 'trampasStars') {
+  // claveUsuario: función que convierte la clave base en la del usuario
+  // actual (ServiciosApp.claveUsuario). Por defecto, la misma clave.
+  constructor(clave = 'trampasStars', claveUsuario = (base) => base) {
     this.clave = clave;
+    this.claveUsuario = claveUsuario;
+  }
+
+  // Se calcula en cada acceso: si se cambia de cuenta, se leen sus estrellas.
+  get claveActual() {
+    return this.claveUsuario(this.clave);
   }
 
   // { indiceNivel: estrellas }
   obtenerTodas() {
-    try { return JSON.parse(localStorage.getItem(this.clave)) || {}; }
+    try { return JSON.parse(localStorage.getItem(this.claveActual)) || {}; }
     catch { return {}; }
   }
 
   guardarTodas(stars) {
-    localStorage.setItem(this.clave, JSON.stringify(stars));
+    localStorage.setItem(this.claveActual, JSON.stringify(stars));
   }
 
   estrellasDe(i) {

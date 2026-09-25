@@ -33,14 +33,14 @@ export class RunnerMenu {
     if (dom.overlay) dom.overlay.classList.add('hidden');
     if (dom.comicOverlay) dom.comicOverlay.classList.add('hidden');
     // Por si quedó algún cartel (Mejoras/Ajustes/Cómo jugar) abierto.
-    if (typeof cerrarPanelesRunner === 'function') cerrarPanelesRunner();
-    setMusic(RC.ASSET_BASE + 'sounds/menu.mp3');
+    this.juego.servicios.cerrarPanelesRunner();
+    this.juego.servicios.ponerMusica(RC.ASSET_BASE + 'sounds/menu.mp3');
   }
 
   empezarPartida(mode) {
     this.juego.mode = (mode === 'infinito') ? 'infinito' : 'historia';
     if (this.dom.menu) this.dom.menu.classList.add('hidden');
-    setMusic(RC.ASSET_BASE + 'sounds/backplay.mp3');
+    this.juego.servicios.ponerMusica(RC.ASSET_BASE + 'sounds/backplay.mp3');
     this.juego.iniciar();
   }
 

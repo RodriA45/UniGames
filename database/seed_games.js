@@ -75,20 +75,22 @@ async function seed() {
         `);
         
         // 4. Adivina la Cosa
+        // aliases va como JSON (array), igual que lo guarda el panel admin:
+        // /api/adivina/items lo lee con JSON.parse.
         await db.query(`
             INSERT INTO adivina_items (tematica_id, respuesta, aliases, imagen, pista_1, pista_2, pista_3, pista_4) VALUES
-            (1, 'Pac-Man', 'pacman,pac man', '', 'Es amarillo', 'Come pastillas', 'Lo persiguen fantasmas', 'Es redondo'),
-            (1, 'Mario Bros', 'mario,super mario', '', 'Es un fontanero', 'Salta mucho', 'Rescata princesas', 'Come hongos'),
-            (1, 'Minecraft', 'mine,minecraft', '', 'Todo es de bloques', 'Sobrevives en la noche', 'Haces crafteos', 'Cuidado con los Creepers'),
-            (2, 'Darth Vader', 'darthvader,vader', '', 'Usa casco negro', 'Respira muy fuerte', 'Tiene un sable de luz rojo', 'Es el padre de Luke'),
-            (2, 'Harry Potter', 'harry,potter', '', 'Es un mago', 'Va a una escuela de magia', 'Tiene una cicatriz', 'Usa varita'),
-            (2, 'Spiderman', 'spider,spiderman,peter parker', '', 'Superhéroe de Marvel', 'Tira telarañas', 'Tiene sentido arácnido', 'Le picó un bicho'),
-            (3, 'Pikachu', 'pika,pikachu', '', 'Es amarillo', 'Tira electricidad', 'No le gusta entrar a la pokébola', 'Su mejor amigo es Ash'),
-            (3, 'Goku', 'goku,kakaroto', '', 'Es un Sayayin', 'Pelo de punta', 'Lucha por proteger la tierra', 'Busca las esferas del dragón'),
-            (3, 'Totoro', 'totoro,mi vecino totoro', '', 'Película de Ghibli', 'Espíritu del bosque grande', 'Pelo gris y panzón', 'Espera el autobús con paraguas'),
-            (4, 'GitHub', 'git hub,git', '', 'El logo es un gato/pulpo', 'Sirve para guardar código', 'Lo compró Microsoft', 'Usa control de versiones'),
-            (4, 'Stack Overflow', 'stackoverflow,stack', '', 'Web para programadores', 'Donde copias y pegas código', 'Resuelve tus dudas', 'El logo es un pilar de papeles'),
-            (4, 'Teclado', 'teclado,keyboard', '', 'Es hardware', 'Tiene teclas', 'Haces ruido al escribir', 'Usas WASD para jugar')
+            (1, 'Pac-Man', '["pacman", "pac man"]', '', 'Es amarillo', 'Come pastillas', 'Lo persiguen fantasmas', 'Es redondo'),
+            (1, 'Mario Bros', '["mario", "super mario"]', '', 'Es un fontanero', 'Salta mucho', 'Rescata princesas', 'Come hongos'),
+            (1, 'Minecraft', '["mine", "minecraft"]', '', 'Todo es de bloques', 'Sobrevives en la noche', 'Haces crafteos', 'Cuidado con los Creepers'),
+            (2, 'Darth Vader', '["darthvader", "vader"]', '', 'Usa casco negro', 'Respira muy fuerte', 'Tiene un sable de luz rojo', 'Es el padre de Luke'),
+            (2, 'Harry Potter', '["harry", "potter"]', '', 'Es un mago', 'Va a una escuela de magia', 'Tiene una cicatriz', 'Usa varita'),
+            (2, 'Spiderman', '["spider", "spiderman", "peter parker"]', '', 'Superhéroe de Marvel', 'Tira telarañas', 'Tiene sentido arácnido', 'Le picó un bicho'),
+            (3, 'Pikachu', '["pika", "pikachu"]', '', 'Es amarillo', 'Tira electricidad', 'No le gusta entrar a la pokébola', 'Su mejor amigo es Ash'),
+            (3, 'Goku', '["goku", "kakaroto"]', '', 'Es un Sayayin', 'Pelo de punta', 'Lucha por proteger la tierra', 'Busca las esferas del dragón'),
+            (3, 'Totoro', '["totoro", "mi vecino totoro"]', '', 'Película de Ghibli', 'Espíritu del bosque grande', 'Pelo gris y panzón', 'Espera el autobús con paraguas'),
+            (4, 'GitHub', '["git hub", "git"]', '', 'El logo es un gato/pulpo', 'Sirve para guardar código', 'Lo compró Microsoft', 'Usa control de versiones'),
+            (4, 'Stack Overflow', '["stackoverflow", "stack"]', '', 'Web para programadores', 'Donde copias y pegas código', 'Resuelve tus dudas', 'El logo es un pilar de papeles'),
+            (4, 'Teclado', '["teclado", "keyboard"]', '', 'Es hardware', 'Tiene teclas', 'Haces ruido al escribir', 'Usas WASD para jugar')
             ON CONFLICT DO NOTHING;
         `);
 

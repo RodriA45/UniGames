@@ -28,7 +28,11 @@ import { RunnerRenderer } from './runner_render.js';
 import { RunnerMenu } from './runner_menu_flow.js';
 
 export class PixelRunner {
-  constructor() {
+  // servicios: ServiciosApp (../servicios_app.js) — música, volumen,
+  // puntajes, duelos y navegación del sitio. Se recibe por constructor
+  // (inyección de dependencias): el juego no toca globals de app2.js.
+  constructor(servicios) {
+    this.servicios = servicios;
     this.dom = new RunnerDOM();
 
     this.canvas = null;
@@ -75,6 +79,14 @@ export class PixelRunner {
     // Secuencia de victoria (null = juego normal)
     this.winCastle = null;
     this.winArrived = false;
+    // true desde que se llega a la meta de Historia (antes de que termine de
+    // cargar castillo.webp): corta spawns, colisiones y puntaje en el acto.
+    this.ganando = false;
+    // Se incrementa en cada empezar(): lo async (carga del castillo) chequea
+    // que siga siendo la misma partida antes de tocar el estado.
+    this.partidaId = 0;
+    // Última combinación de badges pintada en el HUD (ver actualizarHud).
+    this.hudKey = null;
 
     // ─── Composición ───
     this.jugador = new Jugador();
@@ -82,7 +94,8 @@ export class PixelRunner {
     this.pickups = [];
     this.cielo = new Cielo();
     this.lluvia = new Lluvia(RC.VIEW_W, RC.VIEW_H, this.groundH);
-    this.economia = new Economia();
+    // Monedas, mejoras e Historia se guardan por usuario (ver ServiciosApp.claveUsuario).
+    this.economia = new Economia((base) => this.servicios.claveUsuario(base));
     this.renderer = new RunnerRenderer(this);
     this.spawner = new Spawner(this);
     this.secuencias = new Secuencias(this);
@@ -234,7 +247,7 @@ export class PixelRunner {
   }
 
   caidaRapida() {
-    if (!this.running) return;
+    if (!this.running || this.ganando) return;
     this.started = true; // también cuenta como primer input
     const p = this.jugador;
     if (p.dead) return;
@@ -243,7 +256,7 @@ export class PixelRunner {
 
   saltarOEmpezar() {
     if (this.dom.overlayVisible()) return;
-    if (!this.running) return;
+    if (!this.running || this.ganando) return;
     this.started = true; // primer input: arranca el juego
     const p = this.jugador;
     if (p.dead) return;
@@ -252,7 +265,7 @@ export class PixelRunner {
 
   // ─── Ciclo de vida ───
   empezar() {
-    setMusic(RC.ASSET_BASE + 'sounds/backplay.mp3');
+    this.servicios.ponerMusica(RC.ASSET_BASE + 'sounds/backplay.mp3');
 
     this.score = 0;
     this.speed = this.baseSpeed;
@@ -273,6 +286,10 @@ export class PixelRunner {
     this.coinsRun = 0; // el total histórico NO se resetea
     this.winCastle = null;
     this.winArrived = false;
+    this.ganando = false;
+    this.partidaId++;
+    this.hudKey = null;
+    this.secuencias.cancelarTimers(); // animación de muerte de la partida anterior
 
     this.jugador.reiniciar();
 
@@ -299,6 +316,9 @@ export class PixelRunner {
   detener() {
     this.running = false;
     this.paused = false;
+    // Si se sale durante la caída o la victoria, que no aparezca el cartel
+    // de Game Over / cómic encima del menú.
+    this.secuencias.cancelarTimers();
     if (this.loop) this.loop.stop();
     if (this.input) this.input.detach();
     if (this.touch) this.touch.detach();
@@ -331,8 +351,11 @@ export class PixelRunner {
       else return;
     }
 
-    // Secuencia de victoria en curso: reemplaza al update normal.
-    if (this.winCastle) {
+    // Secuencia de victoria en curso (o cargando el castillo): reemplaza al
+    // update normal. Antes solo miraba winCastle, que recién existe cuando
+    // termina de cargar la imagen: mientras tanto seguían los spawns y se
+    // podía morir después de haber llegado a la meta.
+    if (this.ganando) {
       this.secuencias.actualizarVictoria(step);
       return;
     }
@@ -421,14 +444,13 @@ export class PixelRunner {
         this.obstacles.splice(i, 1);
         continue;
       }
-      // Duelo de Pixel Runner en curso (lo pone app2.js): se captura el
-      // puntaje en el momento exacto de morir.
-      const duelo = window.dueloActivo && window.dueloActivo.juego === 'runner' ? window.dueloActivo : null;
+      // Duelo de Pixel Runner en curso: se captura el puntaje en el
+      // momento exacto de morir.
+      const activo = this.servicios.dueloActivo();
+      const duelo = activo && activo.juego === 'runner' ? activo : null;
       const scoreFinalDuelo = this.score;
       this.secuencias.morir();
-      if (duelo && typeof window.finalizarDueloConPuntaje === 'function') {
-        window.finalizarDueloConPuntaje(duelo.id, scoreFinalDuelo);
-      }
+      if (duelo) this.servicios.finalizarDuelo(duelo.id, scoreFinalDuelo);
       return true;
     }
     return false;
@@ -480,7 +502,12 @@ export class PixelRunner {
     }
 
     const pEl = this.dom.activePowerupDisplay;
-    if (pEl) {
+    // Se llama en cada frame: reescribir innerHTML 60 veces por segundo
+    // fuerza layout y recrea los <span> (los title nunca llegaban a verse).
+    // Solo se toca el DOM cuando cambia la combinación de badges.
+    const hudKey = (p.shield ? 1 : 0) + '|' + (p.slowFallFrames > 0 ? 1 : 0) + '|' + (this.slowSpeedFrames > 0 ? 1 : 0);
+    if (pEl && hudKey !== this.hudKey) {
+      this.hudKey = hudKey;
       const badges = [];
       if (p.shield) badges.push('<span class="runner-hud-icon runner-hud-icon-shield" title="Escudo"></span>');
       if (p.slowFallFrames > 0) badges.push('<span class="runner-hud-icon runner-hud-icon-slowfall" title="Caída lenta"></span>');

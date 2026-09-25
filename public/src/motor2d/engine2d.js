@@ -1,389 +1,384 @@
 // ══════════════════════════════════════
 //   Engine2D — engine2d.js
 // ══════════════════════════════════════
-//
-// Motor 2D chico para canvas, sacado de lo genérico que ya vivía adentro
-// de rpg.js (loop con dt normalizado, cache de imágenes/atlas, helpers de
-// dibujo con drawImage, manejo de teclado, entidades/escenas). La idea es
-// que cada minijuego nuevo NO reescriba esto: solo define su config de
-// niveles, sus entidades (con update/draw) y listo.
-//
-// No depende de nada del resto del proyecto — no toca DOM de HUD/overlay
-// específico ni sabe nada de "secciones" (sec-rpg_pixel, etc). Cada juego
-// sigue siendo dueño de su propio HTML/CSS/overlay, como ya vienen siendo
-// Pixel Runner y RPG Pixel. Este archivo se carga UNA vez en index.html
-// (antes que los .js de cada juego) y expone el objeto global `Engine2D`.
-//
-// Uso típico de un minijuego nuevo:
-//
-//   const loop = new Engine2D.GameLoop({
-//     update: (dt, step) => scene.update(dt, step),
-//     draw:   () => { ctx.clearRect(0,0,C.width,C.height); scene.draw(ctx); }
-//   });
-//   Engine2D.loadAll([{type:'image', src:'foo.png'}]).then(() => loop.start());
-//
-// ══════════════════════════════════════
 
 const Engine2D = (function () {
+  // EngineService — clase base de los servicios del motor
 
-  // ─────────────────────────────────────
+  class EngineService {
+    constructor() {
+      if (new.target === EngineService) throw new Error('EngineService es abstracta');
+      let proto = Object.getPrototypeOf(this);
+      while (proto && proto !== EngineService.prototype) {
+        for (const k of Object.getOwnPropertyNames(proto)) {
+          if (k === 'constructor' || Object.prototype.hasOwnProperty.call(this, k)) continue;
+          const d = Object.getOwnPropertyDescriptor(proto, k);
+          if (typeof d.value === 'function') this[k] = d.value.bind(this);
+        }
+        proto = Object.getPrototypeOf(proto);
+      }
+    }
+  }
   // Assets: cache de imágenes y atlas JSON
-  // ─────────────────────────────────────
-  const images = {};
-  const atlases = {};
-  // Promesas en vuelo, por src. Sin esto, dos llamadas a loadImage() del
-  // mismo archivo antes de que termine la primera se pisaban el onload del
-  // MISMO objeto Image: la segunda ganaba y la promesa de la primera no
-  // resolvía nunca (su .then quedaba colgado). Pasa en cuanto dos juegos —
-  // o un juego y su DialogueBox — piden el mismo sprite a la vez.
-  const imagePromises = {};
+  // Clase AssetManager: Cache de imágenes y atlas JSON (con promesas en vuelo para no duplicar cargas).
+  class AssetManager extends EngineService {
+    // Estado interno (privado: no se puede leer ni modificar desde afuera)
+    #images;
+    #atlases;
+    #imagePromises;
+    #atlasPromises;
+    constructor() {
+      super();
+      this.#images = {};
+      this.#atlases = {};
+      this.#imagePromises = {};
+      this.#atlasPromises = {};
+    }
 
-  function loadImage(src) {
-    const cached = images[src];
-    // .complete queda en true tanto si cargó bien como si falló (404), así
-    // que hace falta naturalWidth: si no, una imagen que 404eó una vez
-    // queda "cacheada como válida" para toda la sesión.
-    if (cached && cached.complete && cached.naturalWidth > 0) return Promise.resolve(cached);
-    if (imagePromises[src]) return imagePromises[src];
-
-    const p = new Promise((resolve, reject) => {
-      const img = new Image();
-      img.onload = () => {
-        delete imagePromises[src];
-        resolve(img);
-      };
-      img.onerror = () => {
-        // No dejar el objeto roto en el cache: si no, un reintento
-        // posterior (ya con la ruta arreglada) lo daría por bueno.
-        delete imagePromises[src];
-        delete images[src];
-        reject(new Error('No se pudo cargar la imagen: ' + src));
-      };
-      images[src] = img;
-      img.src = src;
-    });
-    imagePromises[src] = p;
-    return p;
-  }
-
-  const atlasPromises = {};
-
-  function loadAtlas(src) {
-    if (atlases[src]) return Promise.resolve(atlases[src]);
-    if (atlasPromises[src]) return atlasPromises[src];
-    const p = fetch(src)
-      .then(r => {
-        // fetch NO rechaza por un 404 (GitHub Pages, por ejemplo, devuelve
-        // un 404.html con status 404 y content-type html): sin este
-        // chequeo, r.json() explota con un error de parseo genérico que ni
-        // siquiera dice qué atlas era.
-        if (!r.ok) throw new Error('No se pudo cargar el atlas (' + r.status + '): ' + src);
-        return r.json();
-      })
-      .then(data => {
-        delete atlasPromises[src];
-        atlases[src] = data;
-        return data;
-      })
-      .catch(err => {
-        delete atlasPromises[src];
-        throw err;
+    loadImage(src) {
+      const cached = this.#images[src];
+      // .complete queda en true tanto si cargó bien como si falló (404), así
+      // que hace falta naturalWidth: si no, una imagen que 404eó una vez
+      // queda "cacheada como válida" para toda la sesión.
+      if (cached && cached.complete && cached.naturalWidth > 0) return Promise.resolve(cached);
+      if (this.#imagePromises[src]) return this.#imagePromises[src];
+      const p = new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          delete this.#imagePromises[src];
+          resolve(img);
+        };
+        img.onerror = () => {
+          // No dejar el objeto roto en el cache: si no, un reintento
+          // posterior (ya con la ruta arreglada) lo daría por bueno.
+          delete this.#imagePromises[src];
+          delete this.#images[src];
+          reject(new Error('No se pudo cargar la imagen: ' + src));
+        };
+        this.#images[src] = img;
+        img.src = src;
       });
-    atlasPromises[src] = p;
-    return p;
-  }
-
-  // manifest: [{type:'image', src}, {type:'atlas', src}, {type:'audio', src}, ...]
-  // Devuelve Promise.all — usar .catch() en el que llama para mostrar
-  // el mensaje de "no se pudieron cargar los recursos" propio del juego.
-  // `type:'audio'` solo precarga la pista en el caché de Audio (no la
-  // reproduce): el juego la usa después con Engine2D.Audio.playMusic/playSFX.
-  function loadAll(manifest) {
-    return Promise.all(manifest.map(item => {
-      if (item.type === 'atlas') return loadAtlas(item.src);
-      if (item.type === 'audio') return loadAudio(item.src);
-      return loadImage(item.src);
-    }));
-  }
-
-  // Igual que loadAll, pero avisa el progreso a medida que cada recurso
-  // termina de cargar — para poder mostrar una barra de carga real (0%
-  // a 100%) en vez de un cartel de "cargando..." fijo o un spinner que no
-  // dice nada. onProgress(loaded, total) se llama una vez por cada ítem
-  // que termina (en el orden en que van terminando, no el del manifest).
-  // Un ítem que falla (imagen rota, audio 404) también cuenta como
-  // "terminado" para el progreso, pero hace que la Promise final rechace
-  // — el que llama decide si eso frena el juego o lo deja arrancar igual
-  // (ver LoadingBar más abajo para el caso típico de "no bloquear todo
-  // por un solo asset que falló").
-  function loadAllWithProgress(manifest, onProgress) {
-    const total = manifest.length;
-    if (total === 0) {
-      if (onProgress) onProgress(0, 0);
-      return Promise.resolve([]);
+      this.#imagePromises[src] = p;
+      return p;
     }
-    let loaded = 0;
-    const mark = () => { loaded++; if (onProgress) onProgress(loaded, total); };
-    return Promise.all(manifest.map(item => {
-      let p;
-      if (item.type === 'atlas') p = loadAtlas(item.src);
-      else if (item.type === 'audio') p = Promise.resolve(loadAudio(item.src));
-      else p = loadImage(item.src);
-      return p.then(
-        result => { mark(); return result; },
-        err => { mark(); throw err; }
+
+    loadAtlas(src) {
+      if (this.#atlases[src]) return Promise.resolve(this.#atlases[src]);
+      if (this.#atlasPromises[src]) return this.#atlasPromises[src];
+      const p = fetch(src)
+        .then((r) => {
+          // fetch NO rechaza por un 404 (GitHub Pages, por ejemplo, devuelve
+          // un 404.html con status 404 y content-type html): sin este
+          // chequeo, r.json() explota con un error de parseo genérico que ni
+          // siquiera dice qué atlas era.
+          if (!r.ok) throw new Error('No se pudo cargar el atlas (' + r.status + '): ' + src);
+          return r.json();
+        })
+        .then((data) => {
+          delete this.#atlasPromises[src];
+          this.#atlases[src] = data;
+          return data;
+        })
+        .catch((err) => {
+          delete this.#atlasPromises[src];
+          throw err;
+        });
+      this.#atlasPromises[src] = p;
+      return p;
+    }
+
+    loadAll(manifest) {
+      return Promise.all(
+        manifest.map((item) => {
+          if (item.type === 'atlas') return this.loadAtlas(item.src);
+          if (item.type === 'audio') return audioSystem.load(item.src);
+          return this.loadImage(item.src);
+        }),
       );
-    }));
-  }
+    }
 
-  function getImage(src) { return images[src]; }
-  function getAtlas(src) { return atlases[src]; }
-  // Reemplaza lo que hay cacheado bajo `src` (una <img> real cargada con
-  // loadImage) por otra cosa que también sirva para drawImage — típicamente
-  // un <canvas> con esa misma imagen re-dibujada + retoques por código
-  // encima (ver bakeProceduralTiles en pixel-survi). Todo lo que ya
-  // guardó ese `src` (p.ej. TileMap.tilesetSrc) sigue funcionando igual:
-  // drawImage no distingue <img> de <canvas>.
-  function setImage(src, imgOrCanvas) { images[src] = imgOrCanvas; }
+    loadAllWithProgress(manifest, onProgress) {
+      const total = manifest.length;
+      if (total === 0) {
+        if (onProgress) onProgress(0, 0);
+        return Promise.resolve([]);
+      }
+      let loaded = 0;
+      const mark = () => {
+        loaded++;
+        if (onProgress) onProgress(loaded, total);
+      };
+      return Promise.all(
+        manifest.map((item) => {
+          let p;
+          if (item.type === 'atlas') p = this.loadAtlas(item.src);
+          else if (item.type === 'audio') p = Promise.resolve(audioSystem.load(item.src));
+          else p = this.loadImage(item.src);
+          return p.then(
+            (result) => {
+              mark();
+              return result;
+            },
+            (err) => {
+              mark();
+              throw err;
+            },
+          );
+        }),
+      );
+    }
 
-  // ── Liberar assets ──
-  // Un webp de 1920px pesa 200KB en disco pero ~7MB decodificado en RAM, y
-  // el cache de imágenes solo crece: un juego que carga por nivel/habitación
-  // termina con TODOS los fondos de la partida vivos a la vez. En un celular
-  // de 2GB eso hace que el sistema mate la pestaña sin ningún error visible.
-  //
-  // Soltar la referencia acá deja que el GC libere el bitmap decodificado
-  // (siempre que el juego tampoco se la esté guardando en otro lado). Usarlo
-  // para lo pesado y de un solo uso — fondos de sala, comics — y NO para
-  // sprites que se reusan en toda la partida: volver a cargarlos cuesta más
-  // de lo que ahorra.
-  //
-  //   Engine2D.clearImage(cfg.zoneImage);
-  //   Engine2D.clearImages(src => src.includes('/capitulo1/'));
-  function clearImage(src) {
-    delete images[src];
-    delete imagePromises[src];
-  }
-  function clearAtlas(src) { delete atlases[src]; delete atlasPromises[src]; }
-  function clearImages(predicate) {
-    for (const src in images) {
-      if (!predicate || predicate(src)) clearImage(src);
+    getImage(src) {
+      return this.#images[src];
+    }
+
+    getAtlas(src) {
+      return this.#atlases[src];
+    }
+
+    setImage(src, imgOrCanvas) {
+      this.#images[src] = imgOrCanvas;
+    }
+
+    clearImage(src) {
+      delete this.#images[src];
+      delete this.#imagePromises[src];
+    }
+
+    clearAtlas(src) {
+      delete this.#atlases[src];
+      delete this.#atlasPromises[src];
+    }
+
+    clearImages(predicate) {
+      for (const src in this.#images) {
+        if (!predicate || predicate(src)) this.clearImage(src);
+      }
     }
   }
-
-  // ─────────────────────────────────────
+  const assets = new AssetManager();
   // Audio — sistema de audio centralizado
-  // ─────────────────────────────────────
-  //
   // Categorías:
   //   music   — música de fondo (un solo tema a la vez, con loop por default).
   //   ambient — paisaje/ambiente sonoro (un solo canal a la vez).
   //   sfx     — efectos cortos (pueden solaparse entre sí).
-  //
-  // Resuelve de forma centralizada cosas como "cuando pierdo la música se
-  // detiene" (que Pixel Runner hoy maneja a mano con el bgMusic global de
-  // app.js). Acá playMusic() corta automáticamente el tema anterior y
-  // stopMusic()/stopAll() silencian sin dejar el audio sonando por atrás.
-  //
-  // Uso:
-  //   Engine2D.Audio.playMusic('boss.mp3');
-  //   Engine2D.Audio.playSFX('shoot.wav');
-  //   Engine2D.Audio.stopMusic();
-  //   Engine2D.Audio.stopAll();
-  //   Engine2D.Audio.setVolume(0.5);         // master (afecta a todo)
-  //   Engine2D.Audio.setMusicVolume(0.6);
-  //   Engine2D.Audio.setSfxVolume(0.8);
-  //   Engine2D.Audio.setAmbientVolume(0.4);
-  //   Engine2D.Audio.mute(); Engine2D.Audio.unmute(); Engine2D.Audio.isMuted();
-  //   Engine2D.Audio.pause(); Engine2D.Audio.resume();  // menú de pausa
-  //   Engine2D.Audio.unlock();               // dentro de un gesto del usuario
-  //
-  // Para pre-cargar pistas junto con el resto de assets del juego, agregalas
-  // al manifest de Engine2D.loadAll():
-  //   Engine2D.loadAll([
-  //     { type: 'image', src: 'boss.png' },
-  //     { type: 'audio', src: 'boss.mp3' },
-  //   ]);
-  //
-  // Autoplay: los navegadores bloquean la reproducción hasta el primer
-  // gesto del usuario. Si un play() es rechazado, el sistema arma solo un
-  // listener y reintenta con el primer click/tap/tecla — no hace falta que
-  // cada juego maneje eso por su cuenta.
-  //
-  // Nota: este módulo NO toca el sistema de audio global que ya usa app.js
-  // (bgMusic/setMusic/pageMusic) — conviven sin pisarse. Cada juego podrá
-  // migrar a Engine2D.Audio cuando quiera, sin romper a los demás.
+  
+  class AudioSystem extends EngineService {
+    static #SFX_MIN_GAP = 35; // ms mínimos entre dos disparos del MISMO sonido
+    static #SFX_MAX_PER_SRC = 4; // voces por sonido (calidad media/alta)
+    static #SFX_MAX_PER_SRC_LOW = 2; // voces por sonido en calidad baja
+    static #SFX_MAX_ACTIVE = 10; // voces totales sonando a la vez
+    // Estado interno (privado: no se puede leer ni modificar desde afuera)
+    #audioCache;
+    #channels;
+    #activeSfx;
+    #sfxPools;
+    #persistKeys;
+    #basePath;
+    #masterVolume;
+    #volumes;
+    #muted;
+    #unlocked;
+    #unlockArmed;
+    #wasPlaying;
+    constructor() {
+      super();
+      this.#audioCache = {}; // src -> HTMLAudioElement (reusado y pre-cargado)
+      this.#channels = {
+        music: null,
+        ambient: null,
+      }; // canal único por categoría continua
+      this.#activeSfx = new Set(); // efectos sonando en este momento
+      this.#sfxPools = {}; // src -> [HTMLAudioElement] reusables (ver playSFX)
+      this.#persistKeys = {
+        master: 'engine2d.masterVolume',
+        music: 'engine2d.musicVolume',
+        sfx: 'engine2d.sfxVolume',
+        ambient: 'engine2d.ambientVolume',
+      };
 
-  const _audioCache = {};       // src -> HTMLAudioElement (reusado y pre-cargado)
-  const _channels = { music: null, ambient: null }; // canal único por categoría continua
-  const _activeSfx = new Set(); // efectos sonando en este momento
-  const _sfxPools = {};          // src -> [HTMLAudioElement] reusables (ver playSFX)
-  const SFX_MIN_GAP = 35;        // ms mínimos entre dos disparos del MISMO sonido
-  const SFX_MAX_PER_SRC = 4;     // voces por sonido (calidad media/alta)
-  const SFX_MAX_PER_SRC_LOW = 2; // voces por sonido en calidad baja
-  const SFX_MAX_ACTIVE = 10;     // voces totales sonando a la vez
-  const _persistKeys = {
-    master:  'engine2d.masterVolume',
-    music:   'engine2d.musicVolume',
-    sfx:     'engine2d.sfxVolume',
-    ambient: 'engine2d.ambientVolume'
-  };
-
-  // Si un juego prefiere pasar solo el nombre del archivo (como en los
-  // ejemplos: Audio.playMusic('boss.mp3')), setea el base path una vez:
-  //   Engine2D.Audio.setBasePath('src/motor2d/games/pixel-runner/sounds/');
-  // Las rutas que ya vienen completas (con '/', 'http', 'data:') se usan
-  // tal cual. Por default está vacío.
-  let _basePath = '';
-
-  // Volúmenes — 0..1, persistidos en localStorage para recordarlos entre
-  // sesiones. La primera vez, si el usuario ya tenía volúmenes del sistema
-  // viejo de app.js (musicVolume/sfxVolume), se toman como valor inicial.
-  function _storedNum(key, fallback) {
-    try {
-      const raw = localStorage.getItem(key);
-      const n = raw !== null ? parseFloat(raw) : NaN;
-      return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
-    } catch { return fallback; }
-  }
-  function _store(key, v) { try { localStorage.setItem(key, String(v)); } catch {} }
-  function _legacyDefault(key, fallback) { return _storedNum(key, fallback); }
-
-  let _masterVolume = _storedNum(_persistKeys.master, 0.8);
-  const _volumes = {
-    music:   _storedNum(_persistKeys.music,   _legacyDefault('musicVolume', 0.5)),
-    sfx:     _storedNum(_persistKeys.sfx,     _legacyDefault('sfxVolume', 0.8)),
-    ambient: _storedNum(_persistKeys.ambient, 0.5)
-  };
-  let _muted = false;
-  let _unlocked = false;
-  let _unlockArmed = false;
-
-  function _clamp01(v) { return Math.min(1, Math.max(0, v)); }
-
-  // Resuelve una ruta: si ya parece completa la usa, si no le antepone el
-  // base path configurado (setBasePath). Así se pueden pasar nombres cortos.
-  function _resolve(src) {
-    if (!_basePath) return src;
-    if (/^(https?:)?\/\//.test(src) || src.startsWith('data:') || src.startsWith('assert/') || src.includes('/')) return src;
-    return _basePath + src;
-  }
-
-  function loadAudio(src) {
-    src = _resolve(src);
-    if (_audioCache[src]) return _audioCache[src];
-    const a = new Audio(src);
-    a.preload = 'auto';
-    a.muted = _muted;
-    _audioCache[src] = a;
-    return a;
-  }
-
-  // Aplica el volumen resultante (master × categoría) a lo que está sonando.
-  function _applyVolumes() {
-    const music = _channels.music, ambient = _channels.ambient;
-    if (music)   music.volume   = _masterVolume * _volumes.music;
-    if (ambient) ambient.volume = _masterVolume * _volumes.ambient;
-    _activeSfx.forEach(a => { a.volume = _masterVolume * _volumes.sfx * (a._baseVol ?? 1); });
-  }
-
-  // Los navegadores bloquean play() sin un gesto previo del usuario. Si un
-  // play falla, armamos un listener único que reintenta con el primer
-  // click/tap/tecla (misma idea que ya hacía app.js con attemptPlayMusic).
-  function _armUnlock() {
-    if (_unlockArmed) return;
-    _unlockArmed = true;
-    const onGesture = () => {
-      document.removeEventListener('pointerdown', onGesture);
-      document.removeEventListener('keydown', onGesture);
-      _unlockArmed = false;
-      _unlock();
-    };
-    document.addEventListener('pointerdown', onGesture, { once: true });
-    document.addEventListener('keydown', onGesture, { once: true });
-  }
-
-  function _play(a, restart) {
-    if (restart) a.currentTime = 0;
-    const p = a.play();
-    if (p && typeof p.catch === 'function') p.catch(() => _armUnlock());
-  }
-
-  // Desbloquea la reproducción (llamarla desde un gesto del usuario o la
-  // arma sola un play() fallido). Reintenta los canales de música/ambiente
-  // que quedaron "pendientes" de arrancar, sin reiniciarlos desde cero.
-  function _unlock() {
-    _unlocked = true;
-    for (const key of ['music', 'ambient']) {
-      const a = _channels[key];
-      if (a) { a.muted = _muted; _applyVolumes(); _play(a, false); }
+      this.#basePath = '';
+      this.#masterVolume = this.#storedNum(this.#persistKeys.master, 0.8);
+      this.#volumes = {
+        music: this.#storedNum(this.#persistKeys.music, this.#legacyDefault('musicVolume', 0.5)),
+        sfx: this.#storedNum(this.#persistKeys.sfx, this.#legacyDefault('sfxVolume', 0.8)),
+        ambient: this.#storedNum(this.#persistKeys.ambient, 0.5),
+      };
+      this.#muted = false;
+      this.#unlocked = false;
+      this.#unlockArmed = false;
     }
-  }
 
-  // Reproduce un canal continuo (music/ambient): corta el anterior, aplica
-  // loop/restart y guarda la referencia para poder pararlo después.
-  function _playChannel(key, src, opts) {
-    const prev = _channels[key];
-    const a = loadAudio(src);
-    if (prev && prev !== a) { prev.pause(); prev.currentTime = 0; }
-    a.loop = opts.loop !== false;
-    a.muted = _muted;
-    _channels[key] = a;
-    _applyVolumes();
-    _play(a, opts.restart !== false);
-    return a;
-  }
+    #storedNum(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        const n = raw !== null ? parseFloat(raw) : NaN;
+        return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
+      } catch {
+        return fallback;
+      }
+    }
 
-  function _stopChannel(key) {
-    const a = _channels[key];
-    if (a) { a.pause(); a.currentTime = 0; }
-    _channels[key] = null;
-  }
+    #store(key, v) {
+      try {
+        localStorage.setItem(key, String(v));
+      } catch {}
+    }
 
-  function _forEachAudio(fn) {
-    for (const k in _audioCache) fn(_audioCache[k]);
-    for (const k in _sfxPools) _sfxPools[k].forEach(fn);
-  }
+    #legacyDefault(key, fallback) {
+      return this.#storedNum(key, fallback);
+    }
 
-  const AudioSystem = {
+    #clamp01(v) {
+      return Math.min(1, Math.max(0, v));
+    }
+
+    // Resuelve una ruta: si ya parece completa la usa, si no le antepone el
+    // base path configurado (setBasePath). Así se pueden pasar nombres cortos.
+    #resolve(src) {
+      if (!this.#basePath) return src;
+      if (/^(https?:)?\/\//.test(src) || src.startsWith('data:') || src.startsWith('assert/') || src.includes('/'))
+        return src;
+      return this.#basePath + src;
+    }
+
+    #loadAudio(src) {
+      src = this.#resolve(src);
+      if (this.#audioCache[src]) return this.#audioCache[src];
+      const a = new Audio(src);
+      a.preload = 'auto';
+      a.muted = this.#muted;
+      this.#audioCache[src] = a;
+      return a;
+    }
+
+    // Aplica el volumen resultante (master × categoría) a lo que está sonando.
+    #applyVolumes() {
+      const music = this.#channels.music,
+        ambient = this.#channels.ambient;
+      if (music) music.volume = this.#masterVolume * this.#volumes.music;
+      if (ambient) ambient.volume = this.#masterVolume * this.#volumes.ambient;
+      this.#activeSfx.forEach((a) => {
+        a.volume = this.#masterVolume * this.#volumes.sfx * (a._baseVol ?? 1);
+      });
+    }
+
+    // Los navegadores bloquean play() sin un gesto previo del usuario. Si un
+    // play falla, armamos un listener único que reintenta con el primer
+    // click/tap/tecla (misma idea que ya hacía app.js con attemptPlayMusic).
+    #armUnlock() {
+      if (this.#unlockArmed) return;
+      this.#unlockArmed = true;
+      const onGesture = () => {
+        document.removeEventListener('pointerdown', onGesture);
+        document.removeEventListener('keydown', onGesture);
+        this.#unlockArmed = false;
+        this.#unlock();
+      };
+      document.addEventListener('pointerdown', onGesture, {
+        once: true,
+      });
+      document.addEventListener('keydown', onGesture, {
+        once: true,
+      });
+    }
+
+    #play(a, restart) {
+      if (restart) a.currentTime = 0;
+      const p = a.play();
+      if (p && typeof p.catch === 'function') p.catch(() => this.#armUnlock());
+    }
+
+    // Desbloquea la reproducción (llamarla desde un gesto del usuario o la
+    // arma sola un play() fallido). Reintenta los canales de música/ambiente
+    // que quedaron "pendientes" de arrancar, sin reiniciarlos desde cero.
+    #unlock() {
+      this.#unlocked = true;
+      for (const key of ['music', 'ambient']) {
+        const a = this.#channels[key];
+        if (a) {
+          a.muted = this.#muted;
+          this.#applyVolumes();
+          this.#play(a, false);
+        }
+      }
+    }
+
+    // Reproduce un canal continuo (music/ambient): corta el anterior, aplica
+    // loop/restart y guarda la referencia para poder pararlo después.
+    #playChannel(key, src, opts) {
+      const prev = this.#channels[key];
+      const a = this.#loadAudio(src);
+      if (prev && prev !== a) {
+        prev.pause();
+        prev.currentTime = 0;
+      }
+      a.loop = opts.loop !== false;
+      a.muted = this.#muted;
+      this.#channels[key] = a;
+      this.#applyVolumes();
+      this.#play(a, opts.restart !== false);
+      return a;
+    }
+
+    #stopChannel(key) {
+      const a = this.#channels[key];
+      if (a) {
+        a.pause();
+        a.currentTime = 0;
+      }
+      this.#channels[key] = null;
+    }
+
+    #forEachAudio(fn) {
+      for (const k in this.#audioCache) fn(this.#audioCache[k]);
+      for (const k in this.#sfxPools) this.#sfxPools[k].forEach(fn);
+    }
+
     // Carga y cachea una pista sin reproducirla (para pre-cargar).
-    load(src) { return loadAudio(src); },
+    load(src) {
+      return this.#loadAudio(src);
+    }
 
     // Base path para pasar nombres cortos de archivo (ver _basePath).
-    setBasePath(path) { _basePath = String(path || ''); },
-    getBasePath() { return _basePath; },
+    setBasePath(path) {
+      this.#basePath = String(path || '');
+    }
+
+    getBasePath() {
+      return this.#basePath;
+    }
 
     // Música de fondo: un solo tema a la vez — el anterior se corta solo.
-    playMusic(src, opts = {}) { return _playChannel('music', src, opts); },
+    playMusic(src, opts = {}) {
+      return this.#playChannel('music', src, opts);
+    }
 
     // Ambiente: un solo canal, separado de la música.
-    playAmbient(src, opts = {}) { return _playChannel('ambient', src, opts); },
+    playAmbient(src, opts = {}) {
+      return this.#playChannel('ambient', src, opts);
+    }
 
-    // Efecto corto: puede solaparse con otros efectos. Devolvemos el
-    // elemento por si el juego quiere escuchar cuándo termina ('ended').
-    // opts: { volume: 0..1, rate: playbackRate }
-    // PERF: antes hacía cloneNode() en CADA disparo → un <audio> nuevo por
-    // bala/moneda/golpe, cada uno con su decoder. En gama baja eso es de lo
-    // que más tirones mete. Ahora hay un pool chico por archivo que se
-    // reusa, un tope de voces simultáneas y un anti-spam del mismo sonido.
     playSFX(src, opts = {}) {
-      const key = _resolve(src);
+      const key = this.#resolve(src);
       const now = performance.now();
-      const pool = _sfxPools[key] || (_sfxPools[key] = []);
-      // Mismo sonido pedido hace < SFX_MIN_GAP ms: se ignora (no se oye la
-      // diferencia y ahorra un play()). Devuelve el último para no romper
-      // a quien encadene .addEventListener sobre el retorno.
-      if (pool._last && now - pool._lastAt < SFX_MIN_GAP) return pool._last;
+      const pool = this.#sfxPools[key] || (this.#sfxPools[key] = []);
 
+      if (pool._last && now - pool._lastAt < AudioSystem.#SFX_MIN_GAP) return pool._last;
       let a = null;
-      for (const el of pool) { if (el.paused || el.ended) { a = el; break; } }
+      for (const el of pool) {
+        if (el.paused || el.ended) {
+          a = el;
+          break;
+        }
+      }
       if (!a) {
-        const maxVoices = Quality.below('medium') ? SFX_MAX_PER_SRC_LOW : SFX_MAX_PER_SRC;
+        const maxVoices = Quality.below('medium') ? AudioSystem.#SFX_MAX_PER_SRC_LOW : AudioSystem.#SFX_MAX_PER_SRC;
         if (pool.length < maxVoices) {
-          a = loadAudio(src).cloneNode(true);
+          a = this.#loadAudio(src).cloneNode(true);
           a.preload = 'auto';
-          a.addEventListener('ended', () => _activeSfx.delete(a));
-          a.addEventListener('error', () => _activeSfx.delete(a));
+          a.addEventListener('ended', () => this.#activeSfx.delete(a));
+          a.addEventListener('error', () => this.#activeSfx.delete(a));
           pool.push(a);
         } else {
           // Pool lleno: se reinicia la voz más vieja en vez de crear otra.
@@ -392,98 +387,130 @@ const Engine2D = (function () {
         }
       }
       // Tope global de voces: si hay demasiadas sonando, no suma otra.
-      if (!_activeSfx.has(a) && _activeSfx.size >= SFX_MAX_ACTIVE) return a;
-
-      a.muted = _muted;
-      a._baseVol = _clamp01(opts.volume ?? 1);
-      a.volume = _masterVolume * _volumes.sfx * a._baseVol;
+      if (!this.#activeSfx.has(a) && this.#activeSfx.size >= AudioSystem.#SFX_MAX_ACTIVE) return a;
+      a.muted = this.#muted;
+      a._baseVol = this.#clamp01(opts.volume ?? 1);
+      a.volume = this.#masterVolume * this.#volumes.sfx * a._baseVol;
       a.playbackRate = opts.rate || 1;
-      _activeSfx.add(a);
+      this.#activeSfx.add(a);
       pool._last = a;
       pool._lastAt = now;
-      _play(a, true);
+      this.#play(a, true);
       return a;
-    },
+    }
 
-    stopMusic()   { _stopChannel('music'); },
-    stopAmbient() { _stopChannel('ambient'); },
+    stopMusic() {
+      this.#stopChannel('music');
+    }
+
+    stopAmbient() {
+      this.#stopChannel('ambient');
+    }
+
     // Corta música + ambiente (los SFX son one-shot y mueren solos).
-    stopAll() { _stopChannel('music'); _stopChannel('ambient'); },
+    stopAll() {
+      this.#stopChannel('music');
+      this.#stopChannel('ambient');
+    }
 
     // Volumen master — afecta a las tres categorías a la vez.
     setVolume(v) {
-      _masterVolume = _clamp01(v);
-      _store(_persistKeys.master, _masterVolume);
-      _applyVolumes();
-    },
-    setMusicVolume(v)   { _volumes.music   = _clamp01(v); _store(_persistKeys.music,   _volumes.music);   _applyVolumes(); },
-    setSfxVolume(v)     { _volumes.sfx     = _clamp01(v); _store(_persistKeys.sfx,     _volumes.sfx);     _applyVolumes(); },
-    setAmbientVolume(v) { _volumes.ambient = _clamp01(v); _store(_persistKeys.ambient, _volumes.ambient); _applyVolumes(); },
-    getVolume()         { return _masterVolume; },
-    getMusicVolume()    { return _volumes.music; },
-    getSfxVolume()      { return _volumes.sfx; },
-    getAmbientVolume()  { return _volumes.ambient; },
+      this.#masterVolume = this.#clamp01(v);
+      this.#store(this.#persistKeys.master, this.#masterVolume);
+      this.#applyVolumes();
+    }
+
+    setMusicVolume(v) {
+      this.#volumes.music = this.#clamp01(v);
+      this.#store(this.#persistKeys.music, this.#volumes.music);
+      this.#applyVolumes();
+    }
+
+    setSfxVolume(v) {
+      this.#volumes.sfx = this.#clamp01(v);
+      this.#store(this.#persistKeys.sfx, this.#volumes.sfx);
+      this.#applyVolumes();
+    }
+
+    setAmbientVolume(v) {
+      this.#volumes.ambient = this.#clamp01(v);
+      this.#store(this.#persistKeys.ambient, this.#volumes.ambient);
+      this.#applyVolumes();
+    }
+
+    getVolume() {
+      return this.#masterVolume;
+    }
+
+    getMusicVolume() {
+      return this.#volumes.music;
+    }
+
+    getSfxVolume() {
+      return this.#volumes.sfx;
+    }
+
+    getAmbientVolume() {
+      return this.#volumes.ambient;
+    }
 
     // Silencia todo sin cortar la reproducción (vuelve con unmute()).
-    mute()   { _muted = true;  _forEachAudio(a => { a.muted = true; }); },
-    unmute() { _muted = false; _forEachAudio(a => { a.muted = false; }); _applyVolumes(); },
-    toggleMute() { return this.isMuted() ? this.unmute() : this.mute(); },
-    isMuted() { return _muted; },
+    mute() {
+      this.#muted = true;
+      this.#forEachAudio((a) => {
+        a.muted = true;
+      });
+    }
+
+    unmute() {
+      this.#muted = false;
+      this.#forEachAudio((a) => {
+        a.muted = false;
+      });
+      this.#applyVolumes();
+    }
+
+    toggleMute() {
+      return this.isMuted() ? this.unmute() : this.mute();
+    }
+
+    isMuted() {
+      return this.#muted;
+    }
 
     // Pausa/Resume — útil para el menú de pausa del juego. Guarda qué
     // canales estaban sonando para volver exactamente a ese estado.
     pause() {
-      this._wasPlaying = {
-        music:   !!_channels.music   && !_channels.music.paused,
-        ambient: !!_channels.ambient && !_channels.ambient.paused
+      this.#wasPlaying = {
+        music: !!this.#channels.music && !this.#channels.music.paused,
+        ambient: !!this.#channels.ambient && !this.#channels.ambient.paused,
       };
-      if (_channels.music)   _channels.music.pause();
-      if (_channels.ambient) _channels.ambient.pause();
-    },
+      if (this.#channels.music) this.#channels.music.pause();
+      if (this.#channels.ambient) this.#channels.ambient.pause();
+    }
+
     resume() {
-      if (this._wasPlaying) {
-        if (this._wasPlaying.music   && _channels.music)   _play(_channels.music, false);
-        if (this._wasPlaying.ambient && _channels.ambient) _play(_channels.ambient, false);
-        this._wasPlaying = null;
+      if (this.#wasPlaying) {
+        if (this.#wasPlaying.music && this.#channels.music) this.#play(this.#channels.music, false);
+        if (this.#wasPlaying.ambient && this.#channels.ambient) this.#play(this.#channels.ambient, false);
+        this.#wasPlaying = null;
       }
-    },
+    }
 
     // Desbloquea el audio (llamar dentro de un gesto del usuario, ej. el
     // primer click). También se arma solo si un play() falla antes.
-    unlock() { _unlock(); },
-    get unlocked() { return _unlocked; }
-  };
+    unlock() {
+      this.#unlock();
+    }
 
-  // ─────────────────────────────────────
+    get unlocked() {
+      return this.#unlocked;
+    }
+  }
+  const audioSystem = new AudioSystem();
+
   // Quality — calidad gráfica (bajo / medio / alto)
-  // ─────────────────────────────────────
-  //
-  // Un solo lugar donde vive la decisión de "cuánto efecto visual hago por
-  // frame". No toca assets (no hay sprites en baja resolución): lo que
-  // cambia son los EFECTOS que se calculan/dibujan cada frame, que es lo
-  // que realmente cuesta en gama baja (globalAlpha, gradientes armados por
-  // frame, shadowBlur, capas extra de drawImage).
-  //
-  // El motor lo aplica SOLO donde es dueño de lo que dibuja:
-  //   · Partículas   → menos cantidad, sin glow, tope más bajo.
-  //   · GameLoop     → mide FPS reales para el modo adaptativo.
-  // Todo lo demás (cielo, parallax, auras, sombras) lo decide cada juego
-  // preguntando por los flags. El motor NO sabe qué es un "shimmer de
-  // escudo", así que no puede sacarlo solo — pero sí le da al juego una
-  // única fuente de verdad para preguntarlo.
-  //
-  // Uso en un juego:
-  //
-  //   const Q = Engine2D.Quality;
-  //
-  //   if (Q.fx.gradients) { ...gradiente día/noche... } else { ...color plano... }
-  //   if (Q.fx.shimmer)   drawShieldAura(ctx, player);
-  //   const nubes = Q.pick({ low: 0, medium: 4, high: 10 });
-  //   if (!Q.fx.transitions) groundBlend = 0;
-  //
-  //   // rearmar caches (StaticLayer, gradientes cacheados) al cambiar:
-  //   Q.onChange(level => { skyCache = null; rebuildLayers(); });
-  //
+
   // Flags disponibles (Q.fx.*) — alto / medio / bajo:
   //   gradients      degradados de fondo          ✓ ✓ ✗   (bajo = color plano)
   //   transitions    crossfade/interpolado x frame ✓ ✗ ✗   (día-noche, groundBlend)
@@ -500,102 +527,183 @@ const Engine2D = (function () {
   //   particles      multiplicador de `amount` en Particles.emit()
   //   maxParticles   tope duro de partículas vivas
   //   render         resolución de render (ver Quality.fitCanvas / sizeCanvas)
-  //
-  // El nivel se guarda en localStorage. La primera vez se adivina según el
-  // dispositivo (detect()) en vez de asumir "alto" y que el celular viejo
-  // arranque a 20fps.
-  // ── Tamaño de canvas sin trabajo de más ──
-  // Asignar canvas.width/height (aunque sea el MISMO valor) borra el canvas,
-  // resetea TODO el estado del contexto (imageSmoothingEnabled incluido) y
-  // hace que el navegador realoque el buffer en la GPU. Si un juego llama a
-  // fitCanvas en cada resize (o peor, en cada frame), eso se paga caro. Acá
-  // solo se toca si cambió de verdad, y se re-aplica el pixel-art.
-  function _setCssSize(canvas, w, h) {
-    const cw = Math.max(1, Math.floor(w)) + 'px';
-    const ch = Math.max(1, Math.floor(h)) + 'px';
-    if (canvas.style.width !== cw) canvas.style.width = cw;
-    if (canvas.style.height !== ch) canvas.style.height = ch;
-  }
-  function _setBackingSize(canvas, w, h) {
-    const bw = Math.max(1, Math.floor(w));
-    const bh = Math.max(1, Math.floor(h));
-    if (canvas.width === bw && canvas.height === bh) return false;
-    canvas.width = bw;
-    canvas.height = bh;
-    if (canvas._e2dPixelArt) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.imageSmoothingEnabled = false;
+
+  class CanvasUtils {
+    static _setCssSize(canvas, w, h) {
+      const cw = Math.max(1, Math.floor(w)) + 'px';
+      const ch = Math.max(1, Math.floor(h)) + 'px';
+      if (canvas.style.width !== cw) canvas.style.width = cw;
+      if (canvas.style.height !== ch) canvas.style.height = ch;
     }
-    return true;
-  }
 
-  // Contexto 2D "bien configurado" para un juego. LLAMARLO ANTES que
-  // cualquier otro canvas.getContext('2d') sobre ese canvas (las opciones
-  // solo cuentan en la primera llamada).
-  //   const ctx = Engine2D.getContext(canvas);                  // pixel art
-  //   const ctx = Engine2D.getContext(canvas, { alpha: false }); // si el canvas
-  //         tapa todo lo de atrás (NO usar si se ve un fondo CSS por debajo)
-  function getContext(canvas, opts = {}) {
-    const ctx = canvas.getContext('2d', {
-      alpha: opts.alpha !== false,
-      desynchronized: !!opts.desynchronized
-    });
-    canvas._e2dPixelArt = opts.pixelArt !== false;
-    if (ctx && canvas._e2dPixelArt) ctx.imageSmoothingEnabled = false;
-    return ctx;
-  }
-
-  const Quality = (function () {
-    const LEVELS = ['low', 'medium', 'high'];
-    const KEY = 'engine2d.quality';
-    const KEY_PINNED = 'engine2d.qualityPinned';
-
-    // Presets base. Un juego puede retocarlos con Quality.configure()
-    // (ej. un juego sin partículas puede subir el render en bajo).
-    const PRESETS = {
-      low: {
-        fx: {
-          gradients: false, transitions: false, parallax: false,
-          ambientSprites: false, shimmer: false, glow: false,
-          shadows: false, particles: true, screenShake: false, smoothCamera: false,
-          roundParticles: false
-        },
-        // fpsCap: tope de FPS del GameLoop (0 = sin tope). En bajo lo que
-        // más rinde es la resolución (render: 0.6), no capar a 30: 30 fijos
-        // se ven entrecortados. Si una máquina muy justa igual no llega,
-        // poner 30 acá es la palanca más fuerte que queda.
-        scale: { particles: 0.35, maxParticles: 250, render: 0.6, fpsCap: 60 }
-      },
-      medium: {
-        fx: {
-          gradients: true, transitions: false, parallax: true,
-          ambientSprites: false, shimmer: false, glow: false,
-          shadows: true, particles: true, screenShake: true, smoothCamera: true,
-          roundParticles: true
-        },
-        scale: { particles: 0.7, maxParticles: 1000, render: 0.85, fpsCap: 60 }
-      },
-      high: {
-        fx: {
-          gradients: true, transitions: true, parallax: true,
-          ambientSprites: true, shimmer: true, glow: true,
-          shadows: true, particles: true, screenShake: true, smoothCamera: true,
-          roundParticles: true
-        },
-        // 60 también en alto: en monitores de 120/144Hz el juego hacía el
-        // doble de trabajo sin que se note (la lógica ya va por dt).
-        scale: { particles: 1, maxParticles: 3000, render: 1, fpsCap: 60 }
+    static _setBackingSize(canvas, w, h) {
+      const bw = Math.max(1, Math.floor(w));
+      const bh = Math.max(1, Math.floor(h));
+      if (canvas.width === bw && canvas.height === bh) return false;
+      canvas.width = bw;
+      canvas.height = bh;
+      if (canvas._e2dPixelArt) {
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.imageSmoothingEnabled = false;
       }
-    };
+      return true;
+    }
 
-    const LABELS = { low: 'Bajo', medium: 'Medio', high: 'Alto' };
+    static getContext(canvas, opts = {}) {
+      const ctx = canvas.getContext('2d', {
+        alpha: opts.alpha !== false,
+        desynchronized: !!opts.desynchronized,
+      });
+      canvas._e2dPixelArt = opts.pixelArt !== false;
+      if (ctx && canvas._e2dPixelArt) ctx.imageSmoothingEnabled = false;
+      return ctx;
+    }
+  }
+  // Clase QualityManager: Calidad gráfica bajo / medio / alto: presets de efectos y escalas, modo adaptativo y selector de UI.
+  class QualityManager extends EngineService {
+    // Estado interno (privado: no se puede leer ni modificar desde afuera)
+    #KEY;
+    #KEY_PINNED;
+    #PRESETS;
+    #LABELS;
+    #listeners;
+    #index;
+    #pinned;
+    #adaptive;
+    #aOpts;
+    #accT;
+    #frames;
+    #lowStreak;
+    #highStreak;
+    #warm;
+    constructor() {
+      super();
+      const self = this;
+      this.LEVELS = ['low', 'medium', 'high'];
+      this.#KEY = 'engine2d.quality';
+      this.#KEY_PINNED = 'engine2d.qualityPinned';
+      // Presets base. Un juego puede retocarlos con Quality.configure()
+      // (ej. un juego sin partículas puede subir el render en bajo).
+      this.#PRESETS = {
+        low: {
+          fx: {
+            gradients: false,
+            transitions: false,
+            parallax: false,
+            ambientSprites: false,
+            shimmer: false,
+            glow: false,
+            shadows: false,
+            particles: true,
+            screenShake: false,
+            smoothCamera: false,
+            roundParticles: false,
+          },
+          // fpsCap: tope de FPS del GameLoop (0 = sin tope). En bajo lo que
+          // más rinde es la resolución (render: 0.6), no capar a 30: 30 fijos
+          // se ven entrecortados. Si una máquina muy justa igual no llega,
+          // poner 30 acá es la palanca más fuerte que queda.
+          scale: {
+            particles: 0.35,
+            maxParticles: 250,
+            render: 0.6,
+            fpsCap: 60,
+          },
+        },
+        medium: {
+          fx: {
+            gradients: true,
+            transitions: false,
+            parallax: true,
+            ambientSprites: false,
+            shimmer: false,
+            glow: false,
+            shadows: true,
+            particles: true,
+            screenShake: true,
+            smoothCamera: true,
+            roundParticles: true,
+          },
+          scale: {
+            particles: 0.7,
+            maxParticles: 1000,
+            render: 0.85,
+            fpsCap: 60,
+          },
+        },
+        high: {
+          fx: {
+            gradients: true,
+            transitions: true,
+            parallax: true,
+            ambientSprites: true,
+            shimmer: true,
+            glow: true,
+            shadows: true,
+            particles: true,
+            screenShake: true,
+            smoothCamera: true,
+            roundParticles: true,
+          },
+          // 60 también en alto: en monitores de 120/144Hz el juego hacía el
+          // doble de trabajo sin que se note (la lógica ya va por dt).
+          scale: {
+            particles: 1,
+            maxParticles: 3000,
+            render: 1,
+            fpsCap: 60,
+          },
+        },
+      };
+      this.#LABELS = {
+        low: 'Bajo',
+        medium: 'Medio',
+        high: 'Alto',
+      };
+      this.#listeners = new Set();
+      this.#index = 2;
+      this.#pinned = false;
+      // ── Estado inicial: lo guardado, o lo detectado ──
+      (function init() {
+        let stored = null,
+          pinned = false;
+        try {
+          stored = localStorage.getItem(self.#KEY);
+          pinned = localStorage.getItem(self.#KEY_PINNED) === '1';
+        } catch {}
+        const i = self.#norm(stored);
+        if (i !== null) {
+          self.#index = i;
+          self.#pinned = pinned;
+        } else {
+          self.#index = self.#norm(self.detect());
+          self.#pinned = false;
+        }
+      })();
+      // ── Modo adaptativo ──
+      // Mide FPS reales (el GameLoop le pasa cada dt) y baja un escalón si el
+      // juego viene sostenidamente lento. Nunca pisa una elección manual del
+      // usuario: si tocó el selector de Ajustes, manda él.
+      //
+      //   Engine2D.Quality.setAdaptive(true);
+      //   Engine2D.Quality.setAdaptive(true, { downFps: 40, seconds: 4, allowUp: true });
+      this.#adaptive = false;
+      this.#aOpts = {
+        downFps: 45,
+        upFps: 58,
+        seconds: 3,
+        allowUp: false,
+        warmup: 2000,
+      };
+      this.#accT = 0;
+      this.#frames = 0;
+      this.#lowStreak = 0;
+      this.#highStreak = 0;
+      this.#warm = 0;
+    }
 
-    const listeners = new Set();
-    let _index = 2;
-    let _pinned = false;   // true = lo eligió el usuario a mano → el auto no lo pisa
-
-    function _norm(level) {
-      const i = LEVELS.indexOf(String(level));
+    #norm(level) {
+      const i = this.LEVELS.indexOf(String(level));
       return i === -1 ? null : i;
     }
 
@@ -604,14 +712,13 @@ const Engine2D = (function () {
     // móvil, poca RAM o pocos núcleos bajan el puntaje; un equipo grande lo
     // sube. prefers-reduced-motion también baja, porque el usuario ya pidió
     // menos movimiento a nivel sistema.
-    function detect() {
+    detect() {
       let score = 2;
       const nav = typeof navigator !== 'undefined' ? navigator : {};
       const ua = nav.userAgent || '';
       const mem = typeof nav.deviceMemory === 'number' ? nav.deviceMemory : null;
       const cores = typeof nav.hardwareConcurrency === 'number' ? nav.hardwareConcurrency : null;
       const mobile = /Android|iPhone|iPad|iPod|Mobile|Silk/i.test(ua);
-
       if (mobile) score -= 1;
       if (mem !== null && mem <= 4) score -= 1;
       if (cores !== null && cores <= 4) score -= 1;
@@ -619,230 +726,253 @@ const Engine2D = (function () {
       try {
         if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) score -= 1;
       } catch {}
-
-      return LEVELS[Math.min(2, Math.max(0, score))];
+      return this.LEVELS[Math.min(2, Math.max(0, score))];
     }
 
-    // ── Estado inicial: lo guardado, o lo detectado ──
-    (function init() {
-      let stored = null, pinned = false;
-      try {
-        stored = localStorage.getItem(KEY);
-        pinned = localStorage.getItem(KEY_PINNED) === '1';
-      } catch {}
-      const i = _norm(stored);
-      if (i !== null) { _index = i; _pinned = pinned; }
-      else { _index = _norm(detect()); _pinned = false; }
-    })();
-
-    function _notify(opts) {
-      const level = LEVELS[_index];
-      for (const cb of listeners) {
-        try { cb(level, opts); } catch (e) { console.error('[Engine2D.Quality] listener:', e); }
+    #notify(opts) {
+      const level = this.LEVELS[this.#index];
+      for (const cb of this.#listeners) {
+        try {
+          cb(level, opts);
+        } catch (e) {
+          console.error('[Engine2D.Quality] listener:', e);
+        }
       }
     }
 
     // set(level, { user:true })  → lo eligió la persona: se fija y el modo
     //                              adaptativo deja de tocarlo.
     // set(level, { auto:true })  → lo bajó el motor por FPS: no se fija.
-    function set(level, opts = {}) {
-      const i = _norm(level);
-      if (i === null) return LEVELS[_index];
-      const changed = i !== _index;
-      _index = i;
-      if (opts.user) _pinned = true;
+    set(level, opts = {}) {
+      const i = this.#norm(level);
+      if (i === null) return this.LEVELS[this.#index];
+      const changed = i !== this.#index;
+      this.#index = i;
+      if (opts.user) this.#pinned = true;
       try {
-        localStorage.setItem(KEY, LEVELS[_index]);
-        localStorage.setItem(KEY_PINNED, _pinned ? '1' : '0');
+        localStorage.setItem(this.#KEY, this.LEVELS[this.#index]);
+        localStorage.setItem(this.#KEY_PINNED, this.#pinned ? '1' : '0');
       } catch {}
-      if (changed) _notify(opts);
-      return LEVELS[_index];
+      if (changed) this.#notify(opts);
+      return this.LEVELS[this.#index];
     }
 
-    function get() { return LEVELS[_index]; }
-    function is(level) { return _norm(level) === _index; }
-    function atLeast(level) { const i = _norm(level); return i !== null && _index >= i; }
-    function below(level) { const i = _norm(level); return i !== null && _index < i; }
+    get() {
+      return this.LEVELS[this.#index];
+    }
+
+    is(level) {
+      return this.#norm(level) === this.#index;
+    }
+
+    atLeast(level) {
+      const i = this.#norm(level);
+      return i !== null && this.#index >= i;
+    }
+
+    below(level) {
+      const i = this.#norm(level);
+      return i !== null && this.#index < i;
+    }
 
     // pick({ low: 0, medium: 4, high: 10 }) → el valor del nivel actual.
     // Si falta el nivel actual, cae al más cercano hacia abajo.
-    function pick(map = {}) {
-      for (let i = _index; i >= 0; i--) {
-        if (map[LEVELS[i]] !== undefined) return map[LEVELS[i]];
+    pick(map = {}) {
+      for (let i = this.#index; i >= 0; i--) {
+        if (map[this.LEVELS[i]] !== undefined) return map[this.LEVELS[i]];
       }
-      for (let i = _index + 1; i < LEVELS.length; i++) {
-        if (map[LEVELS[i]] !== undefined) return map[LEVELS[i]];
+      for (let i = this.#index + 1; i < this.LEVELS.length; i++) {
+        if (map[this.LEVELS[i]] !== undefined) return map[this.LEVELS[i]];
       }
       return map.default;
     }
 
     // Retoca los presets para un juego puntual, sin pisar el resto:
     //   Engine2D.Quality.configure({ low: { fx: { shadows: true } } });
-    function configure(overrides = {}) {
+    configure(overrides = {}) {
       for (const lvl in overrides) {
-        if (!PRESETS[lvl]) continue;
+        if (!this.#PRESETS[lvl]) continue;
         const o = overrides[lvl];
-        if (o.fx) Object.assign(PRESETS[lvl].fx, o.fx);
-        if (o.scale) Object.assign(PRESETS[lvl].scale, o.scale);
+        if (o.fx) Object.assign(this.#PRESETS[lvl].fx, o.fx);
+        if (o.scale) Object.assign(this.#PRESETS[lvl].scale, o.scale);
       }
-      _notify({ configure: true });
-      return api;
+      this.#notify({
+        configure: true,
+      });
+      return this;
     }
 
-    function onChange(cb) {
+    onChange(cb) {
       if (typeof cb !== 'function') return () => {};
-      listeners.add(cb);
-      return () => listeners.delete(cb);
+      this.#listeners.add(cb);
+      return () => this.#listeners.delete(cb);
     }
 
-    function reset() {
-      _pinned = false;
-      try { localStorage.removeItem(KEY); localStorage.removeItem(KEY_PINNED); } catch {}
-      set(detect(), { auto: true });
-      return get();
+    reset() {
+      this.#pinned = false;
+      try {
+        localStorage.removeItem(this.#KEY);
+        localStorage.removeItem(this.#KEY_PINNED);
+      } catch {}
+      this.set(this.detect(), {
+        auto: true,
+      });
+      return this.get();
     }
 
-    // ── Modo adaptativo ──
-    // Mide FPS reales (el GameLoop le pasa cada dt) y baja un escalón si el
-    // juego viene sostenidamente lento. Nunca pisa una elección manual del
-    // usuario: si tocó el selector de Ajustes, manda él.
-    //
-    //   Engine2D.Quality.setAdaptive(true);
-    //   Engine2D.Quality.setAdaptive(true, { downFps: 40, seconds: 4, allowUp: true });
-    let _adaptive = false;
-    let _aOpts = { downFps: 45, upFps: 58, seconds: 3, allowUp: false, warmup: 2000 };
-    let _accT = 0, _frames = 0, _lowStreak = 0, _highStreak = 0, _warm = 0;
-
-    function setAdaptive(on = true, opts = {}) {
-      _adaptive = !!on;
-      Object.assign(_aOpts, opts);
-      _accT = _frames = _lowStreak = _highStreak = _warm = 0;
-      return api;
+    setAdaptive(on = true, opts = {}) {
+      this.#adaptive = !!on;
+      Object.assign(this.#aOpts, opts);
+      this.#accT = this.#frames = this.#lowStreak = this.#highStreak = this.#warm = 0;
+      return this;
     }
 
     // Lo llama GameLoop._tick — no hace falta llamarlo a mano.
-    function _sampleFrame(dt) {
-      if (!_adaptive || _pinned) return;
-      if (_warm < _aOpts.warmup) { _warm += dt; return; } // ignorar el arranque (decodificar assets, JIT)
-      _accT += dt; _frames++;
-      if (_accT < 1000) return;
-      const fps = (_frames * 1000) / _accT;
-      _accT = 0; _frames = 0;
-      if (fps < _aOpts.downFps) { _lowStreak++; _highStreak = 0; }
-      else if (fps > _aOpts.upFps) { _highStreak++; _lowStreak = 0; }
-      else { _lowStreak = 0; _highStreak = 0; }
-
-      if (_lowStreak >= _aOpts.seconds && _index > 0) {
-        _lowStreak = 0;
-        set(LEVELS[_index - 1], { auto: true, reason: 'fps' });
-      } else if (_aOpts.allowUp && _highStreak >= _aOpts.seconds * 2 && _index < LEVELS.length - 1) {
-        _highStreak = 0;
-        set(LEVELS[_index + 1], { auto: true, reason: 'fps' });
+    _sampleFrame(dt) {
+      if (!this.#adaptive || this.#pinned) return;
+      if (this.#warm < this.#aOpts.warmup) {
+        this.#warm += dt;
+        return;
+      } // ignorar el arranque (decodificar assets, JIT)
+      this.#accT += dt;
+      this.#frames++;
+      if (this.#accT < 1000) return;
+      const fps = (this.#frames * 1000) / this.#accT;
+      this.#accT = 0;
+      this.#frames = 0;
+      if (fps < this.#aOpts.downFps) {
+        this.#lowStreak++;
+        this.#highStreak = 0;
+      } else if (fps > this.#aOpts.upFps) {
+        this.#highStreak++;
+        this.#lowStreak = 0;
+      } else {
+        this.#lowStreak = 0;
+        this.#highStreak = 0;
+      }
+      if (this.#lowStreak >= this.#aOpts.seconds && this.#index > 0) {
+        this.#lowStreak = 0;
+        this.set(this.LEVELS[this.#index - 1], {
+          auto: true,
+          reason: 'fps',
+        });
+      } else if (
+        this.#aOpts.allowUp &&
+        this.#highStreak >= this.#aOpts.seconds * 2 &&
+        this.#index < this.LEVELS.length - 1
+      ) {
+        this.#highStreak = 0;
+        this.set(this.LEVELS[this.#index + 1], {
+          auto: true,
+          reason: 'fps',
+        });
       }
     }
 
     // ── Resolución de render ──
     // Bajar la resolución del canvas y dejar que el navegador lo escale con
-    // CSS es lo que más rinde en gama baja, y en pixel art muchas veces
-    // queda hasta mejor (menos ruido). El tamaño CSS no cambia: cambia el
-    // backing store.
-    //
-    // OJO: sirve si el juego dibuja RELATIVO a canvas.width/height (como
-    // hacen Pixel Runner y el resto acá). Si usás píxeles lógicos fijos,
-    // multiplicalos por Quality.scale.render o usá una versión con
-    // ctx.setTransform propia.
-    //
-    //   Engine2D.Quality.fitCanvas(canvas, 480, 270);        // reemplaza a Engine2D.fitCanvas
-    //   Engine2D.Quality.sizeCanvas(canvas, cssW, cssH);     // para canvas responsive
-    function fitCanvas(canvas, width, height) {
-      const s = PRESETS[LEVELS[_index]].scale.render;
+    // CSS es lo que más rinde en gama baja.
+
+    fitCanvas(canvas, width, height) {
+      const s = this.#PRESETS[this.LEVELS[this.#index]].scale.render;
       const parent = canvas.parentElement;
       const pW = parent && parent.clientWidth ? parent.clientWidth : window.innerWidth;
       const pH = parent && parent.clientHeight ? parent.clientHeight : window.innerHeight;
       const fit = Math.min(pW / width, pH / height);
       // El tamaño CSS es el de siempre (mismo criterio que Engine2D.fitCanvas);
       // lo único que baja es el backing store del canvas.
-      _setCssSize(canvas, width * fit, height * fit);
-      _setBackingSize(canvas, width * s, height * s);
+      CanvasUtils._setCssSize(canvas, width * fit, height * fit);
+      CanvasUtils._setBackingSize(canvas, width * s, height * s);
       return fit;
     }
 
-    function sizeCanvas(canvas, cssW, cssH) {
-      const s = PRESETS[LEVELS[_index]].scale.render;
-      _setCssSize(canvas, cssW, cssH);
-      _setBackingSize(canvas, cssW * s, cssH * s);
+    sizeCanvas(canvas, cssW, cssH) {
+      const s = this.#PRESETS[this.LEVELS[this.#index]].scale.render;
+      CanvasUtils._setCssSize(canvas, cssW, cssH);
+      CanvasUtils._setBackingSize(canvas, cssW * s, cssH * s);
       return s;
     }
 
-    // ── Selector para el cartel de Ajustes ──
-    // Devuelve un <div> listo para meter dentro de .game-settings-content,
-    // con la misma pinta que las filas de slider (usa .game-slider-row).
-    // Se mantiene solo sincronizado si el nivel cambia desde otro lado
-    // (modo adaptativo, otro menú).
-    //
-    //   const row = Engine2D.Quality.createRow({ label: 'Gráficos' });
-    //   document.querySelector('.game-settings-content').appendChild(row);
-    //   // al cerrar/destruir el menú: row.destroy();
-    function createRow(opts = {}) {
+
+    createRow(opts = {}) {
+      const self = this;
       const row = document.createElement('div');
       row.className = 'game-slider-row game-quality-row';
-
       const label = document.createElement('label');
       label.textContent = opts.label || 'Gráficos';
       row.appendChild(label);
-
       const group = document.createElement('div');
       group.className = 'game-quality-options';
       group.setAttribute('role', 'group');
       row.appendChild(group);
-
       const btns = {};
-      for (const lvl of LEVELS) {
+      for (const lvl of this.LEVELS) {
         const b = document.createElement('button');
         b.type = 'button';
         b.className = 'game-quality-btn';
         b.dataset.level = lvl;
-        b.textContent = (opts.labels && opts.labels[lvl]) || LABELS[lvl];
+        b.textContent = (opts.labels && opts.labels[lvl]) || this.#LABELS[lvl];
         b.addEventListener('click', () => {
-          set(lvl, { user: true });
+          this.set(lvl, {
+            user: true,
+          });
           if (typeof opts.onChange === 'function') opts.onChange(lvl);
         });
         group.appendChild(b);
         btns[lvl] = b;
       }
-
       function sync() {
-        const cur = get();
-        for (const lvl of LEVELS) {
+        const cur = self.get();
+        for (const lvl of self.LEVELS) {
           btns[lvl].classList.toggle('active', lvl === cur);
           btns[lvl].setAttribute('aria-pressed', lvl === cur ? 'true' : 'false');
         }
       }
       sync();
-
-      const unsub = onChange(sync);
-      row.destroy = () => { unsub(); if (row.parentNode) row.parentNode.removeChild(row); };
+      const unsub = this.onChange(sync);
+      row.destroy = () => {
+        unsub();
+        if (row.parentNode) row.parentNode.removeChild(row);
+      };
       row.sync = sync;
       return row;
     }
 
-    const api = {
-      LEVELS,
-      get, set, is, atLeast, below, pick, configure, onChange, reset, detect,
-      setAdaptive, createRow, fitCanvas, sizeCanvas,
-      get level() { return LEVELS[_index]; },
-      set level(v) { set(v, { user: true }); },
-      get index() { return _index; },
-      get label() { return LABELS[LEVELS[_index]]; },
-      get pinned() { return _pinned; },
-      get fx() { return PRESETS[LEVELS[_index]].fx; },
-      get scale() { return PRESETS[LEVELS[_index]].scale; },
-      get renderScale() { return PRESETS[LEVELS[_index]].scale.render; },
-      _sampleFrame
-    };
-    return api;
-  })();
+    get level() {
+      return this.LEVELS[this.#index];
+    }
 
+    set level(v) {
+      this.set(v, {
+        user: true,
+      });
+    }
+
+    get index() {
+      return this.#index;
+    }
+
+    get label() {
+      return this.#LABELS[this.LEVELS[this.#index]];
+    }
+
+    get pinned() {
+      return this.#pinned;
+    }
+
+    get fx() {
+      return this.#PRESETS[this.LEVELS[this.#index]].fx;
+    }
+
+    get scale() {
+      return this.#PRESETS[this.LEVELS[this.#index]].scale;
+    }
+
+    get renderScale() {
+      return this.#PRESETS[this.LEVELS[this.#index]].scale.render;
+    }
+  }
+  const Quality = new QualityManager();
   // ─────────────────────────────────────
   // Partículas — efectos visuales sin sprites
   // ─────────────────────────────────────
@@ -850,25 +980,7 @@ const Engine2D = (function () {
   // Sistema global de partículas para explosiones, humo, polvo al saltar,
   // chispas, impactos, monedas, magia, fuego... sin tener que crear sprites
   // por cada efecto.
-  //
-  // Uso:
-  //   // en el update del juego (recibe el dt del GameLoop, en ms):
-  //   Engine2D.Particles.update(dt);
-  //   // en el draw (pasale la cámara si el mundo tiene una):
-  //   Engine2D.Particles.draw(ctx, camera);
-  //
-  //   Engine2D.Particles.emit({
-  //     x: player.x, y: player.y,
-  //     amount: 15,
-  //     life: 400
-  //   });
-  //   Engine2D.Particles.explosion(enemy.x, enemy.y, { amount: 24 });
-  //   Engine2D.Particles.sparks(hitX, hitY, { amount: 12 });
-  //   Engine2D.Particles.dust(player.x, player.y + player.h);
-  //   Engine2D.Particles.coins(coin.x, coin.y);
-  //   Engine2D.Particles.magic(tx, ty);
-  //   Engine2D.Particles.fire(torchX, torchY);
-  //
+
   // Opciones de emit() (todas opcionales salvo x/y):
   //   x, y        — punto de origen (coordenadas de mundo)
   //   amount      — cantidad de partículas (default 10)
@@ -889,37 +1001,44 @@ const Engine2D = (function () {
   //   fade        — true = se desvanece el alpha al final de la vida (default true)
   //   glow        — px de shadowBlur para brillo (costoso, usarlo con moderación)
   //   onUpdate    — callback por partícula (p, dtMs) para física custom (magia, fuego)
-  //
-  // El sistema dibuja agrupando por color para no cambiar fillStyle por
-  // partícula (mucho más rápido con cientos de partículas), recicla las
-  // partículas muertas y tiene tope de seguridad para no degradar el juego.
-
-  const Particles = (function () {
-    const pool = [];      // partículas activas
-    const free = [];      // partículas reutilizables
-    const MAX_PARTICLES = 3000;
-    let count = 0;
+  class ParticleSystem extends EngineService {
+    // Estado interno (privado: no se puede leer ni modificar desde afuera)
+    #pool;
+    #free;
+    #MAX_PARTICLES;
+    #count;
+    #buckets;
+    constructor() {
+      super();
+      this.#pool = [];
+      this.#free = [];
+      this.#MAX_PARTICLES = 3000;
+      this.#count = 0;
+      // Buckets por color reusados entre frames: antes se armaba un Map y un
+      // array por color EN CADA FRAME (basura para el GC → tirones periódicos).
+      this.#buckets = new Map();
+    }
 
     // Si el valor es un número lo usa; si es [min,max] elige al azar.
-    function _rand(v, def) {
+    #rand(v, def) {
       if (v === undefined || v === null) return def;
       if (Array.isArray(v)) return v[0] + Math.random() * (v[1] - v[0]);
       return v;
     }
 
-    function _newParticle() {
+    #newParticle() {
       // El tope efectivo es el menor entre el tope duro del motor y el del
       // nivel de calidad. Se chequea ANTES de reusar del pool libre: si no,
       // al bajar la calidad las partículas recicladas se saltarían el tope.
-      const cap = Math.min(MAX_PARTICLES, Quality.scale.maxParticles);
-      if (pool.length >= cap) return null;
-      if (free.length) return free.pop();
-      if (count >= MAX_PARTICLES) return null;
-      count++;
+      const cap = Math.min(this.#MAX_PARTICLES, Quality.scale.maxParticles);
+      if (this.#pool.length >= cap) return null;
+      if (this.#free.length) return this.#free.pop();
+      if (this.#count >= this.#MAX_PARTICLES) return null;
+      this.#count++;
       return {};
     }
 
-    function emit(opts = {}) {
+    emit(opts = {}) {
       // La calidad gráfica recorta cantidad y glow sin que el juego tenga
       // que preguntar nada. Un efecto que SÍ o SÍ tiene que verse igual
       // (ej. el feedback de un golpe que no se entiende sin partículas)
@@ -936,15 +1055,17 @@ const Engine2D = (function () {
       if (!amount) return this;
       const baseAngle = ((opts.angle ?? 0) * Math.PI) / 180;
       const spreadRad = ((opts.spread ?? 360) * Math.PI) / 180;
-      const x = opts.x ?? 0, y = opts.y ?? 0;
-      const vx0 = opts.vx ?? 0, vy0 = opts.vy ?? 0;
+      const x = opts.x ?? 0,
+        y = opts.y ?? 0;
+      const vx0 = opts.vx ?? 0,
+        vy0 = opts.vy ?? 0;
       const colors = Array.isArray(opts.colors) && opts.colors.length ? opts.colors : ['#ffffff'];
       const shape = opts.shape === 'circle' ? 'circle' : 'square';
       const fade = opts.fade !== false;
-      const glow = (q && !q.fx.glow) ? 0 : (opts.glow ?? 0);
+      const glow = q && !q.fx.glow ? 0 : (opts.glow ?? 0);
       const gravity = opts.gravity ?? 0;
       const drag = opts.drag ?? 0;
-      const startSize = _rand(opts.size, 4);
+      const startSize = this.#rand(opts.size, 4);
       let endSize;
       if (opts.endSize !== undefined) endSize = opts.endSize;
       else if (opts.shrink) endSize = startSize * 0.15;
@@ -952,16 +1073,16 @@ const Engine2D = (function () {
       const onUpdate = typeof opts.onUpdate === 'function' ? opts.onUpdate : null;
       const rotationSpeed = opts.rotationSpeed ?? 0;
       const rotation0 = opts.rotation ?? 0;
-
       for (let i = 0; i < amount; i++) {
-        const p = _newParticle();
+        const p = this.#newParticle();
         if (!p) break; // tope de partículas alcanzado
         const a = spreadRad > 0 ? baseAngle + (Math.random() * 2 - 1) * spreadRad : baseAngle;
-        const speed = _rand(opts.speed, 100);
-        p.x = x; p.y = y;
+        const speed = this.#rand(opts.speed, 100);
+        p.x = x;
+        p.y = y;
         p.vx = Math.cos(a) * speed + vx0;
         p.vy = Math.sin(a) * speed + vy0;
-        p.life = _rand(opts.life, 400);
+        p.life = this.#rand(opts.life, 400);
         p.maxLife = p.life > 0 ? p.life : 1;
         p.startSize = startSize;
         p.endSize = endSize;
@@ -976,27 +1097,28 @@ const Engine2D = (function () {
         p.rotation = rotation0;
         p.rotationSpeed = rotationSpeed;
         p.onUpdate = onUpdate;
-        pool.push(p);
+        this.#pool.push(p);
       }
       return this;
     }
 
-    function update(dt) {
+    update(dt) {
       const sec = dt / 1000;
-      for (let i = pool.length - 1; i >= 0; i--) {
-        const p = pool[i];
+      for (let i = this.#pool.length - 1; i >= 0; i--) {
+        const p = this.#pool[i];
         p.life -= dt;
         if (p.life <= 0) {
-          pool[i] = pool[pool.length - 1];
-          pool.pop();
-          free.push(p);
+          this.#pool[i] = this.#pool[this.#pool.length - 1];
+          this.#pool.pop();
+          this.#free.push(p);
           continue;
         }
         if (p.onUpdate) p.onUpdate(p, dt);
         p.vy += p.gravity * sec;
         if (p.drag > 0) {
           const d = Math.max(0, 1 - p.drag * sec);
-          p.vx *= d; p.vy *= d;
+          p.vx *= d;
+          p.vy *= d;
         }
         p.x += p.vx * sec;
         p.y += p.vy * sec;
@@ -1007,38 +1129,42 @@ const Engine2D = (function () {
       }
     }
 
-    // Buckets por color reusados entre frames: antes se armaba un Map y un
-    // array por color EN CADA FRAME (basura para el GC → tirones periódicos).
-    const _buckets = new Map();
-
-    function draw(ctx, camera) {
-      if (!pool.length) return;
+    draw(ctx, camera) {
+      if (!this.#pool.length) return;
       // Recorte a lo visible (con margen): una explosión fuera de pantalla no
       // tiene por qué costar fillRects.
-      let minX = -Infinity, minY = -Infinity, maxX = Infinity, maxY = Infinity;
+      let minX = -Infinity,
+        minY = -Infinity,
+        maxX = Infinity,
+        maxY = Infinity;
       if (camera) {
         const z = camera.zoom || 1;
-        const vw = camera.width / z, vh = camera.height / z;
-        const cx = camera.x + camera.width / 2, cy = camera.y + camera.height / 2;
-        minX = cx - vw / 2 - 32; maxX = cx + vw / 2 + 32;
-        minY = cy - vh / 2 - 32; maxY = cy + vh / 2 + 32;
+        const vw = camera.width / z,
+          vh = camera.height / z;
+        const cx = camera.x + camera.width / 2,
+          cy = camera.y + camera.height / 2;
+        minX = cx - vw / 2 - 32;
+        maxX = cx + vw / 2 + 32;
+        minY = cy - vh / 2 - 32;
+        maxY = cy + vh / 2 + 32;
       }
-
-      for (const b of _buckets.values()) b.length = 0;
+      for (const b of this.#buckets.values()) b.length = 0;
       let anyGlow = false;
-      for (let i = 0; i < pool.length; i++) {
-        const p = pool[i];
+      for (let i = 0; i < this.#pool.length; i++) {
+        const p = this.#pool[i];
         if (p.x < minX || p.x > maxX || p.y < minY || p.y > maxY) continue;
-        let b = _buckets.get(p.color);
-        if (!b) { b = []; _buckets.set(p.color, b); }
+        let b = this.#buckets.get(p.color);
+        if (!b) {
+          b = [];
+          this.#buckets.set(p.color, b);
+        }
         b.push(p);
         if (p.glow > 0) anyGlow = true;
       }
       // Evita que el Map crezca sin límite si un juego usa colores random.
-      if (_buckets.size > 64) {
-        for (const [k, b] of _buckets) if (!b.length) _buckets.delete(k);
+      if (this.#buckets.size > 64) {
+        for (const [k, b] of this.#buckets) if (!b.length) this.#buckets.delete(k);
       }
-
       const round = Quality.fx.roundParticles !== false;
       ctx.save();
       // Transformación mundo → pantalla (cámara opcional, con zoom centrado).
@@ -1053,15 +1179,22 @@ const Engine2D = (function () {
         }
       }
       ctx.shadowBlur = 0;
-      let curAlpha = -1, curBlur = 0;
-      for (const [color, items] of _buckets) {
+      let curAlpha = -1,
+        curBlur = 0;
+      for (const [color, items] of this.#buckets) {
         if (!items.length) continue;
         ctx.fillStyle = color;
         if (anyGlow) ctx.shadowColor = color;
         for (let i = 0; i < items.length; i++) {
           const p = items[i];
-          if (p.alpha !== curAlpha) { ctx.globalAlpha = p.alpha; curAlpha = p.alpha; }
-          if (anyGlow && p.glow !== curBlur) { ctx.shadowBlur = p.glow; curBlur = p.glow; }
+          if (p.alpha !== curAlpha) {
+            ctx.globalAlpha = p.alpha;
+            curAlpha = p.alpha;
+          }
+          if (anyGlow && p.glow !== curBlur) {
+            ctx.shadowBlur = p.glow;
+            curBlur = p.glow;
+          }
           const s = p.size;
           if (p.shape === 'circle' && round) {
             ctx.beginPath();
@@ -1085,298 +1218,386 @@ const Engine2D = (function () {
       ctx.restore();
     }
 
-    function clear() {
-      for (let i = 0; i < pool.length; i++) free.push(pool[i]);
-      pool.length = 0;
+    clear() {
+      for (let i = 0; i < this.#pool.length; i++) this.#free.push(this.#pool[i]);
+      this.#pool.length = 0;
     }
 
     // ── Atajos para efectos comunes ──
-    function burst(x, y, opts = {}) {
-      return emit(Object.assign({ x, y, amount: 10, spread: 360 }, opts));
-    }
-    function explosion(x, y, opts = {}) {
-      return emit(Object.assign({
-        x, y, amount: 24, life: 500, speed: 220, size: 6, spread: 360,
-        gravity: 200, drag: 0.4, glow: 8,
-        colors: ['#ff6b35', '#ffd23f', '#ff9f1c', '#ffffff']
-      }, opts));
-    }
-    function sparks(x, y, opts = {}) {
-      return emit(Object.assign({
-        x, y, amount: 12, life: 300, speed: 320, size: 2.5, spread: 360,
-        gravity: 600, drag: 0.2, glow: 4,
-        colors: ['#ffe08a', '#ffffff', '#ffcf3f']
-      }, opts));
-    }
-    function dust(x, y, opts = {}) {
-      return emit(Object.assign({
-        x, y, amount: 8, life: 450, speed: 60, size: 5, spread: 180,
-        angle: 270, gravity: -40, drag: 0.6,
-        colors: ['#d7cfc0', '#b9b1a3', '#f0e9dd']
-      }, opts));
-    }
-    function coins(x, y, opts = {}) {
-      return emit(Object.assign({
-        x, y, amount: 8, life: 700, speed: 160, size: 5, spread: 360,
-        gravity: 350, drag: 0.3, glow: 6,
-        colors: ['#fde047', '#facc15', '#fef9c3']
-      }, opts));
-    }
-    function magic(x, y, opts = {}) {
-      return emit(Object.assign({
-        x, y, amount: 16, life: 800, speed: 90, size: 4, spread: 360,
-        gravity: -120, drag: 0.05, glow: 10, shape: 'circle',
-        colors: ['#a78bfa', '#c4b5fd', '#e9d5ff', '#ffffff']
-      }, opts));
-    }
-    function fire(x, y, opts = {}) {
-      return emit(Object.assign({
-        x, y, amount: 12, life: 500, speed: 50, size: 7, spread: 40,
-        angle: 270, gravity: -80, drag: 0.1, glow: 8, shape: 'circle',
-        colors: ['#ff6b35', '#ffd23f', '#ef4444', '#ff9f1c']
-      }, opts));
+    burst(x, y, opts = {}) {
+      return this.emit(
+        Object.assign(
+          {
+            x,
+            y,
+            amount: 10,
+            spread: 360,
+          },
+          opts,
+        ),
+      );
     }
 
-    return {
-      emit, update, draw, clear,
-      burst, explosion, sparks, dust, coins, magic, fire,
-      get count() { return pool.length; }
-    };
-  })();
+    explosion(x, y, opts = {}) {
+      return this.emit(
+        Object.assign(
+          {
+            x,
+            y,
+            amount: 24,
+            life: 500,
+            speed: 220,
+            size: 6,
+            spread: 360,
+            gravity: 200,
+            drag: 0.4,
+            glow: 8,
+            colors: ['#ff6b35', '#ffd23f', '#ff9f1c', '#ffffff'],
+          },
+          opts,
+        ),
+      );
+    }
 
+    sparks(x, y, opts = {}) {
+      return this.emit(
+        Object.assign(
+          {
+            x,
+            y,
+            amount: 12,
+            life: 300,
+            speed: 320,
+            size: 2.5,
+            spread: 360,
+            gravity: 600,
+            drag: 0.2,
+            glow: 4,
+            colors: ['#ffe08a', '#ffffff', '#ffcf3f'],
+          },
+          opts,
+        ),
+      );
+    }
+
+    dust(x, y, opts = {}) {
+      return this.emit(
+        Object.assign(
+          {
+            x,
+            y,
+            amount: 8,
+            life: 450,
+            speed: 60,
+            size: 5,
+            spread: 180,
+            angle: 270,
+            gravity: -40,
+            drag: 0.6,
+            colors: ['#d7cfc0', '#b9b1a3', '#f0e9dd'],
+          },
+          opts,
+        ),
+      );
+    }
+
+    coins(x, y, opts = {}) {
+      return this.emit(
+        Object.assign(
+          {
+            x,
+            y,
+            amount: 8,
+            life: 700,
+            speed: 160,
+            size: 5,
+            spread: 360,
+            gravity: 350,
+            drag: 0.3,
+            glow: 6,
+            colors: ['#fde047', '#facc15', '#fef9c3'],
+          },
+          opts,
+        ),
+      );
+    }
+
+    magic(x, y, opts = {}) {
+      return this.emit(
+        Object.assign(
+          {
+            x,
+            y,
+            amount: 16,
+            life: 800,
+            speed: 90,
+            size: 4,
+            spread: 360,
+            gravity: -120,
+            drag: 0.05,
+            glow: 10,
+            shape: 'circle',
+            colors: ['#a78bfa', '#c4b5fd', '#e9d5ff', '#ffffff'],
+          },
+          opts,
+        ),
+      );
+    }
+
+    fire(x, y, opts = {}) {
+      return this.emit(
+        Object.assign(
+          {
+            x,
+            y,
+            amount: 12,
+            life: 500,
+            speed: 50,
+            size: 7,
+            spread: 40,
+            angle: 270,
+            gravity: -80,
+            drag: 0.1,
+            glow: 8,
+            shape: 'circle',
+            colors: ['#ff6b35', '#ffd23f', '#ef4444', '#ff9f1c'],
+          },
+          opts,
+        ),
+      );
+    }
+
+    get count() {
+      return this.#pool.length;
+    }
+  }
+  const Particles = new ParticleSystem();
   // ─────────────────────────────────────
   // Utilidades numéricas
   // ─────────────────────────────────────
-  function randRange(range) {
-    if (!range) return 0;
-    return range[0] + Math.random() * (range[1] - range[0]);
-  }
-
-  // Zona jugable: piso = mitad inferior del canvas (u otro ratio), con
-  // margen inferior. Mismo criterio que usaban rpg.js/Pixel Runner a mano.
-  function floorBounds(canvas, topRatio = 0.5, bottomMargin = 0.06) {
-    return {
-      top: canvas.height * topRatio,
-      bottom: canvas.height * (1 - bottomMargin)
-    };
-  }
-
-  // ─────────────────────────────────────
-  // Config — configuración por juego
-  // ─────────────────────────────────────
-  // Cada minijuego define un `config` arriba y el motor lo usa (física,
-  // tamaño, debug) sin que los juegos pisen nada del motor:
-  //
-  //   const config = Engine2D.createConfig({
-  //     width: 480, height: 270, gravity: 0.6, playerSpeed: 4, debug: false
-  //   }, {
-  //     gravity: 0.09, playerSpeed: 5   // overrides de ESTE juego
-  //   });
-  //
-  // createConfig mezcla defaults + overrides (se puede pasar más de un
-  // objeto override), valida los numéricos (positivos; width/height ≥ 1
-  // enteros) y devuelve un objeto CONGELADO — nadie lo puede mutar a mitad
-  // de partida por accidente.
-  //
-  // Los niveles pueden override el config base sin tocarlo: la física del
-  // Scene lo resuelve con config.merge(levelCfg) → OTRO objeto congelado.
-  function createConfig(defaults = {}, ...overrides) {
-    const out = {};
-    for (const k in defaults) out[k] = defaults[k];
-    for (const ov of overrides) {
-      if (!ov) continue;
-      for (const k in ov) out[k] = ov[k];
+  // Clase EngineUtils: Utilidades generales: azar, límites de piso, configuración por juego, canvas ajustado y overlay de debug.
+  class EngineUtils {
+    static randRange(range) {
+      if (!range) return 0;
+      return range[0] + Math.random() * (range[1] - range[0]);
     }
-    for (const k in out) {
-      const v = out[k];
-      if (typeof v === 'number' && isFinite(v)) {
-        if (k === 'width' || k === 'height') out[k] = Math.max(1, Math.floor(v));
-        else if (k !== 'debug') out[k] = Math.max(0, v);
+
+    // Zona jugable: piso = mitad inferior del canvas (u otro ratio), con
+    // margen inferior. Mismo criterio que usaban rpg.js/Pixel Runner a mano.
+    static floorBounds(canvas, topRatio = 0.5, bottomMargin = 0.06) {
+      return {
+        top: canvas.height * topRatio,
+        bottom: canvas.height * (1 - bottomMargin),
+      };
+    }
+
+    // Config — configuración por juego
+  
+    // Cada minijuego define un `config` arriba y el motor lo usa (física,
+    // tamaño, debug) sin que los juegos pisen nada del motor:
+
+    static createConfig(defaults = {}, ...overrides) {
+      const out = {};
+      for (const k in defaults) out[k] = defaults[k];
+      for (const ov of overrides) {
+        if (!ov) continue;
+        for (const k in ov) out[k] = ov[k];
       }
-    }
-    return Object.freeze(out);
-  }
-
-  // Mezcla el config base con un override (ej. de nivel/habitación) y
-  // devuelve otro objeto congelado, sin mutar el original.
-  function mergeConfig(base = {}, overrides = {}) {
-    return createConfig(base, overrides);
-  }
-
-  // Ajusta el canvas a un tamaño lógico (config.width × config.height)
-  // manteniendo la relación de aspecto dentro de su contenedor. Devuelve
-  // el factor de escala aplicado. Opt-in: solo se usa si el juego lo llama.
-  function fitCanvas(canvas, width, height) {
-    const parent = canvas.parentElement;
-    const pW = parent && parent.clientWidth ? parent.clientWidth : window.innerWidth;
-    const pH = parent && parent.clientHeight ? parent.clientHeight : window.innerHeight;
-    const scale = Math.min(pW / width, pH / height);
-    _setCssSize(canvas, width * scale, height * scale);
-    _setBackingSize(canvas, width, height);
-    return scale;
-  }
-
-  // ─────────────────────────────────────
-  // Overlay de debug — ver qué pasa bajo el capó
-  // ─────────────────────────────────────
-  // Panel con FPS + valores del config, hitboxes de entidades y zonas de
-  // trigger. Se llama SOLO si el juego tiene config.debug = true (lo
-  // dibuja el Scene.drawDebug() automáticamente); no afecta la jugabilidad.
-  //
-  //   Engine2D.drawDebugOverlay(ctx, {
-  //     camera, config,
-  //     hitboxes: [player, ...entities],
-  //     triggers: triggers.zones,
-  //     fps, lines: ['vida: 3']
-  //   });
-  function drawDebugOverlay(ctx, opts = {}) {
-    const camera = opts.camera;
-    ctx.save();
-    // ── hitboxes y triggers en coordenadas de mundo ──
-    if (camera) {
-      ctx.translate(-camera.x, -camera.y);
-      if (camera.zoom !== 1) {
-        const cx = camera.x + camera.width / 2;
-        const cy = camera.y + camera.height / 2;
-        ctx.translate(cx, cy);
-        ctx.scale(camera.zoom, camera.zoom);
-        ctx.translate(-cx, -cy);
+      for (const k in out) {
+        const v = out[k];
+        if (typeof v === 'number' && isFinite(v)) {
+          if (k === 'width' || k === 'height') out[k] = Math.max(1, Math.floor(v));
+          else if (k !== 'debug') out[k] = Math.max(0, v);
+        }
       }
+      return Object.freeze(out);
     }
-    ctx.globalAlpha = 0.55;
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(0,255,120,0.9)';
-    for (const e of opts.hitboxes || []) {
-      if (!e || e.dead) continue;
-      if (e.r != null) { ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.stroke(); }
-      if (e.w != null && e.h != null) ctx.strokeRect(e.x, e.y, e.w, e.h);
-    }
-    for (const z of opts.triggers || []) {
-      if (!z.enabled) continue;
-      ctx.fillStyle = z.color;
-      ctx.fillRect(z.x, z.y, z.w, z.h);
-      ctx.strokeStyle = z.borderColor;
-      ctx.strokeRect(z.x, z.y, z.w, z.h);
-      if (z.id) {
-        ctx.fillStyle = z.borderColor;
-        ctx.font = '10px monospace';
-        ctx.fillText(z.id, z.x + 3, z.y + 11);
-      }
-    }
-    ctx.restore();
-    // ── panel de info en coordenadas de pantalla ──
-    const lines = [];
-    if (opts.fps !== undefined) lines.push('FPS: ' + Math.round(opts.fps));
-    for (const k in (opts.config || {})) lines.push(k + ': ' + opts.config[k]);
-    for (const l of opts.lines || []) lines.push(String(l));
-    if (!lines.length) return;
-    const x = opts.x ?? 8, y = opts.y ?? 8;
-    ctx.save();
-    ctx.font = '11px monospace';
-    const panelW = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0) + 14;
-    ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillRect(x, y, panelW, lines.length * 14 + 8);
-    ctx.fillStyle = '#7CFC00';
-    lines.forEach((l, i) => ctx.fillText(l, x + 6, y + 17 + i * 14));
-    ctx.restore();
-  }
 
-  // ─────────────────────────────────────
+    // Mezcla el config base con un override (ej. de nivel/habitación) y
+    // devuelve otro objeto congelado, sin mutar el original.
+    static mergeConfig(base = {}, overrides = {}) {
+      return EngineUtils.createConfig(base, overrides);
+    }
+
+    // Ajusta el canvas a un tamaño lógico (config.width × config.height)
+    // manteniendo la relación de aspecto dentro de su contenedor. Devuelve
+    // el factor de escala aplicado. Opt-in: solo se usa si el juego lo llama.
+    static fitCanvas(canvas, width, height) {
+      const parent = canvas.parentElement;
+      const pW = parent && parent.clientWidth ? parent.clientWidth : window.innerWidth;
+      const pH = parent && parent.clientHeight ? parent.clientHeight : window.innerHeight;
+      const scale = Math.min(pW / width, pH / height);
+      CanvasUtils._setCssSize(canvas, width * scale, height * scale);
+      CanvasUtils._setBackingSize(canvas, width, height);
+      return scale;
+    }
+
+    
+    // Overlay de debug — ver qué pasa bajo el capó
+    
+    // Panel con FPS + valores del config, hitboxes de entidades y zonas de
+    // trigger. Se llama SOLO si el juego tiene config.debug = true 
+    static drawDebugOverlay(ctx, opts = {}) {
+      const camera = opts.camera;
+      ctx.save();
+      // ── hitboxes y triggers en coordenadas de mundo ──
+      if (camera) {
+        ctx.translate(-camera.x, -camera.y);
+        if (camera.zoom !== 1) {
+          const cx = camera.x + camera.width / 2;
+          const cy = camera.y + camera.height / 2;
+          ctx.translate(cx, cy);
+          ctx.scale(camera.zoom, camera.zoom);
+          ctx.translate(-cx, -cy);
+        }
+      }
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(0,255,120,0.9)';
+      for (const e of opts.hitboxes || []) {
+        if (!e || e.dead) continue;
+        if (e.r != null) {
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        if (e.w != null && e.h != null) ctx.strokeRect(e.x, e.y, e.w, e.h);
+      }
+      for (const z of opts.triggers || []) {
+        if (!z.enabled) continue;
+        ctx.fillStyle = z.color;
+        ctx.fillRect(z.x, z.y, z.w, z.h);
+        ctx.strokeStyle = z.borderColor;
+        ctx.strokeRect(z.x, z.y, z.w, z.h);
+        if (z.id) {
+          ctx.fillStyle = z.borderColor;
+          ctx.font = '10px monospace';
+          ctx.fillText(z.id, z.x + 3, z.y + 11);
+        }
+      }
+      ctx.restore();
+      // ── panel de info en coordenadas de pantalla ──
+      const lines = [];
+      if (opts.fps !== undefined) lines.push('FPS: ' + Math.round(opts.fps));
+      for (const k in opts.config || {}) lines.push(k + ': ' + opts.config[k]);
+      for (const l of opts.lines || []) lines.push(String(l));
+      if (!lines.length) return;
+      const x = opts.x ?? 8,
+        y = opts.y ?? 8;
+      ctx.save();
+      ctx.font = '11px monospace';
+      const panelW = lines.reduce((m, l) => Math.max(m, ctx.measureText(l).width), 0) + 14;
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(x, y, panelW, lines.length * 14 + 8);
+      ctx.fillStyle = '#7CFC00';
+      lines.forEach((l, i) => ctx.fillText(l, x + 6, y + 17 + i * 14));
+      ctx.restore();
+    }
+  }
   // Dibujo — helpers con drawImage
-  // ─────────────────────────────────────
 
   // Dibuja un frame de spritesheet de grilla uniforme (como sprites.js),
   // anclado en (x,y) = punto de los pies, escalado a targetH manteniendo
   // el aspect ratio de la celda.
-  function drawFrame(ctx, img, rowData, frameIndex, x, y, targetH, flip) {
-    const sx = frameIndex * rowData.cellWidth;
-    const sy = rowData.y;
-    const sw = rowData.cellWidth;
-    const sh = rowData.cellHeight;
-    const dh = targetH;
-    const dw = dh * (sw / sh);
-    _blit(ctx, img, sx, sy, sw, sh, x, y, Math.trunc(-dw / 2), Math.trunc(-dh), Math.trunc(dw), Math.trunc(dh), flip);
-  }
-
-  // PERF: los helpers de sprites hacían save()/restore() por CADA sprite
-  // (save copia todo el estado del contexto). Sin flip se dibuja directo;
-  // con flip se aplica y se deshace la transformación a mano, que da el
-  // mismo resultado (enteros y ±1 son exactos) y cuesta bastante menos.
-  function _blit(ctx, img, sx, sy, sw, sh, x, y, ox, oy, dw, dh, flip) {
-    const tx = Math.trunc(x), ty = Math.trunc(y);
-    if (!flip) {
-      ctx.drawImage(img, sx, sy, sw, sh, tx + ox, ty + oy, dw, dh);
-      return;
+  // Clase Draw: Helpers de dibujo con drawImage (frames de grilla, atlas, íconos, cover).
+  class Draw {
+    static drawFrame(ctx, img, rowData, frameIndex, x, y, targetH, flip) {
+      const sx = frameIndex * rowData.cellWidth;
+      const sy = rowData.y;
+      const sw = rowData.cellWidth;
+      const sh = rowData.cellHeight;
+      const dh = targetH;
+      const dw = dh * (sw / sh);
+      Draw._blit(
+        ctx,
+        img,
+        sx,
+        sy,
+        sw,
+        sh,
+        x,
+        y,
+        Math.trunc(-dw / 2),
+        Math.trunc(-dh),
+        Math.trunc(dw),
+        Math.trunc(dh),
+        flip,
+      );
     }
-    ctx.translate(tx, ty);
-    ctx.scale(-1, 1);
-    ctx.drawImage(img, sx, sy, sw, sh, ox, oy, dw, dh);
-    ctx.scale(-1, 1);
-    ctx.translate(-tx, -ty);
-  }
 
-  // Dibuja un frame por NOMBRE desde un atlas JSON
-  // ({frameSize, frames:{nombre:{x,y,w,h}}}) — para sheets con poses
-  // discretas (dash, ataques) en vez de un ciclo de caminata uniforme.
-  function drawAtlasFrame(ctx, img, atlas, frameName, x, y, targetH, flip, centered) {
-    const f = atlas.frames[frameName];
-    if (!f) return;
-    const dh = targetH;
-    const dw = dh * (f.w / f.h);
-    const oy = centered ? Math.trunc(-dh / 2) : Math.trunc(-dh);
-    _blit(ctx, img, f.x, f.y, f.w, f.h, x, y, Math.trunc(-dw / 2), oy, Math.trunc(dw), Math.trunc(dh), flip);
-  }
-
-  // Dibuja un ícono recortado a mano por coordenadas fijas {x,y,w,h}
-  // (balas, pociones, proyectiles sueltos en una hoja compartida).
-  // opts: { rotation, flip, centered }
-  function drawIconRect(ctx, img, rect, x, y, targetH, opts = {}) {
-    const dh = targetH;
-    const dw = dh * (rect.w / rect.h);
-    if (!opts.rotation && !opts.flip) {
-      const oy = opts.centered ? -dh / 2 : -dh;
-      ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h, x - dw / 2, y + oy, dw, dh);
-      return;
+    static _blit(ctx, img, sx, sy, sw, sh, x, y, ox, oy, dw, dh, flip) {
+      const tx = Math.trunc(x),
+        ty = Math.trunc(y);
+      if (!flip) {
+        ctx.drawImage(img, sx, sy, sw, sh, tx + ox, ty + oy, dw, dh);
+        return;
+      }
+      ctx.translate(tx, ty);
+      ctx.scale(-1, 1);
+      ctx.drawImage(img, sx, sy, sw, sh, ox, oy, dw, dh);
+      ctx.scale(-1, 1);
+      ctx.translate(-tx, -ty);
     }
-    ctx.save();
-    ctx.translate(x, y);
-    if (opts.rotation) ctx.rotate(opts.rotation);
-    if (opts.flip) ctx.scale(-1, 1);
-    if (opts.centered) {
-      ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h, -dw / 2, -dh / 2, dw, dh);
-    } else {
-      ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h, -dw / 2, -dh, dw, dh);
-    }
-    ctx.restore();
-  }
 
-  // Dibuja `img` cubriendo todo el rect destino (equivalente a
-  // background-size: cover) — para fondos de zona/escena.
-  function drawCover(ctx, img, dx, dy, dw, dh) {
-    const ir = img.width / img.height;
-    const dr = dw / dh;
-    let sx, sy, sw, sh;
-    if (ir > dr) {
-      sh = img.height; sw = sh * dr; sx = (img.width - sw) / 2; sy = 0;
-    } else {
-      sw = img.width; sh = sw / dr; sx = 0; sy = (img.height - sh) / 2;
+    // Dibuja un frame por NOMBRE desde un atlas JSON
+    // ({frameSize, frames:{nombre:{x,y,w,h}}}) — para sheets con poses
+    // discretas (dash, ataques) en vez de un ciclo de caminata uniforme.
+    static drawAtlasFrame(ctx, img, atlas, frameName, x, y, targetH, flip, centered) {
+      const f = atlas.frames[frameName];
+      if (!f) return;
+      const dh = targetH;
+      const dw = dh * (f.w / f.h);
+      const oy = centered ? Math.trunc(-dh / 2) : Math.trunc(-dh);
+      Draw._blit(ctx, img, f.x, f.y, f.w, f.h, x, y, Math.trunc(-dw / 2), oy, Math.trunc(dw), Math.trunc(dh), flip);
     }
-    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
-  }
 
-  // ─────────────────────────────────────
+    // Dibuja un ícono recortado a mano por coordenadas fijas {x,y,w,h}
+    // (balas, pociones, proyectiles sueltos en una hoja compartida).
+    // opts: { rotation, flip, centered }
+    static drawIconRect(ctx, img, rect, x, y, targetH, opts = {}) {
+      const dh = targetH;
+      const dw = dh * (rect.w / rect.h);
+      if (!opts.rotation && !opts.flip) {
+        const oy = opts.centered ? -dh / 2 : -dh;
+        ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h, x - dw / 2, y + oy, dw, dh);
+        return;
+      }
+      ctx.save();
+      ctx.translate(x, y);
+      if (opts.rotation) ctx.rotate(opts.rotation);
+      if (opts.flip) ctx.scale(-1, 1);
+      if (opts.centered) {
+        ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h, -dw / 2, -dh / 2, dw, dh);
+      } else {
+        ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h, -dw / 2, -dh, dw, dh);
+      }
+      ctx.restore();
+    }
+
+    // Dibuja `img` cubriendo todo el rect destino (equivalente a
+    // background-size: cover) — para fondos de zona/escena.
+    static drawCover(ctx, img, dx, dy, dw, dh) {
+      const ir = img.width / img.height;
+      const dr = dw / dh;
+      let sx, sy, sw, sh;
+      if (ir > dr) {
+        sh = img.height;
+        sw = sh * dr;
+        sx = (img.width - sw) / 2;
+        sy = 0;
+      } else {
+        sw = img.width;
+        sh = sw / dr;
+        sx = 0;
+        sy = (img.height - sh) / 2;
+      }
+      ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    }
+  }
   // GameLoop — requestAnimationFrame con dt normalizado a "frames" de 60fps
-  // ─────────────────────────────────────
+  
   class GameLoop {
-    // opts: { update(dt, step), draw(), maxDt=50, maxFps }
-    // step = dt/16.6, para mover cosas en unidades "por frame a 60fps"
-    // sin depender del refresh rate real de la pantalla (mismo criterio
-    // que ya usaba rpgUpdate).
-    //
-    // maxFps: tope de cuadros por segundo. Si no se pasa, lo decide
-    // Engine2D.Quality (scale.fpsCap: 30 en bajo, 60 en medio/alto).
-    // 0 = sin tope. Como la lógica ya va por dt/step, capar NO cambia la
-    // velocidad del juego, solo cuántas veces por segundo se calcula/dibuja.
+
     constructor({ update, draw, maxDt = 50, maxFps }) {
       this.updateFn = update;
       this.drawFn = draw;
@@ -1387,39 +1608,38 @@ const Engine2D = (function () {
       this.lastTs = 0;
       this._tick = this._tick.bind(this);
     }
+
     start() {
-      // OJO: stop() antes de prender running=true — si se llama al revés,
-      // un start() inmediatamente seguido de lógica que llame stop() apaga
-      // el loop recién prendido y nunca vuelve a correr (bug real que tuvo
-      // rpg.js con rpgBeginCombat/rpgStopLoop).
+
       this.stop();
       this.running = true;
       this.lastTs = 0;
       this._nextAt = 0;
       this.raf = requestAnimationFrame(this._tick);
     }
+
     stop() {
       this.running = false;
-      if (this.raf) { cancelAnimationFrame(this.raf); this.raf = null; }
+      if (this.raf) {
+        cancelAnimationFrame(this.raf);
+        this.raf = null;
+      }
     }
+
     _tick(ts) {
       if (!this.running) return;
       // Se pide el próximo frame primero: si update/draw tiran un error, el
       // loop no queda muerto en silencio.
       this.raf = requestAnimationFrame(this._tick);
-
-      const cap = this.maxFps !== undefined ? this.maxFps : (Quality.scale.fpsCap || 0);
+      const cap = this.maxFps !== undefined ? this.maxFps : Quality.scale.fpsCap || 0;
       if (cap > 0) {
         // Reloj de "próximo frame permitido" (no distancia al anterior): así
         // en 144Hz con tope 60 da ~60 reales y no 48. Con tolerancia del 20%
         // porque rAF nunca llega exacto y no queremos saltear frames de más.
         const interval = 1000 / cap;
         if (this._nextAt && ts < this._nextAt - interval * 0.2) return;
-        this._nextAt = (this._nextAt && ts - this._nextAt < interval)
-          ? this._nextAt + interval
-          : ts + interval; // arranque o se atrasó mucho: re-sincroniza
+        this._nextAt = this._nextAt && ts - this._nextAt < interval ? this._nextAt + interval : ts + interval; // arranque o se atrasó mucho: re-sincroniza
       }
-
       const dt = this.lastTs ? Math.min(ts - this.lastTs, this.maxDt) : 16;
       this.lastTs = ts;
       const step = dt / 16.6;
@@ -1431,21 +1651,8 @@ const Engine2D = (function () {
     }
   }
 
-  // ─────────────────────────────────────
   // Input — teclado
-  // ─────────────────────────────────────
-  // keyMap: { ArrowUp:'up', KeyW:'up', Space:'fire', ... } → nombres de
-  // acción, no códigos de tecla, así el juego no vuelve a repetir el if
-  // gigante de e.code === 'ArrowUp' || e.code === 'KeyW' que tenía rpg.js.
-  //
-  // opts:
-  //   activeCheck: () => boolean   — para no reaccionar si la sección/juego
-  //                                  no está visible (RPG usaba esto para
-  //                                  chequear .classList.contains('active'))
-  //   onDown(action, e), onUp(action, e) — callbacks opcionales, ej. para
-  //                                  recalcular "facing" o disparar
-  //   preventDefaultFor: Set(['ArrowUp',...]) — códigos a los que hacerles
-  //                                  preventDefault (evita scroll de página)
+ 
   class KeyboardInput {
     constructor(keyMap, opts = {}) {
       this.keyMap = keyMap;
@@ -1453,24 +1660,51 @@ const Engine2D = (function () {
       this.opts = opts;
       this._down = this._down.bind(this);
       this._up = this._up.bind(this);
+      this._blur = this._blur.bind(this);
     }
+
     attach() {
       this.detach();
       document.addEventListener('keydown', this._down);
       document.addEventListener('keyup', this._up);
+      window.addEventListener('blur', this._blur);
     }
+
     detach() {
       document.removeEventListener('keydown', this._down);
       document.removeEventListener('keyup', this._up);
+      window.removeEventListener('blur', this._blur);
     }
+
     _down(e) {
       if (this.opts.activeCheck && !this.opts.activeCheck()) return;
       const action = this.keyMap[e.code];
       if (!action) return;
       this.state[action] = true;
+      // preventDefault también en las repeticiones: si no, mantener una
+      // flecha apretada scrollea la página.
       if (this.opts.preventDefaultFor && this.opts.preventDefaultFor.has(e.code)) e.preventDefault();
+      // Mantener una tecla apretada hace que el sistema operativo repita el
+      // keydown (unas 30 veces por segundo, según la configuración de cada
+      // PC). onDown es para acciones puntuales (saltar, disparar, reintentar):
+      // se avisa solo la primera vez. El estado "mantenida" ya está en state.
+      if (e.repeat) return;
       if (this.opts.onDown) this.opts.onDown(action, e);
     }
+
+    // La ventana perdió el foco (alt-tab, un confirm(), click en otra
+    // ventana): el keyup de las teclas apretadas nunca va a llegar, y sin
+    // esto el personaje sigue caminando solo al volver. Se sueltan todas y se
+    // avisa por onUp, para que los juegos que copian el estado a su propio
+    // objeto (ej. Castle Escape con this.keys) también se enteren.
+    _blur() {
+      for (const action of Object.keys(this.state)) {
+        if (!this.state[action]) continue;
+        this.state[action] = false;
+        if (this.opts.onUp) this.opts.onUp(action, null);
+      }
+    }
+
     _up(e) {
       const action = this.keyMap[e.code];
       if (!action) return;
@@ -1478,47 +1712,13 @@ const Engine2D = (function () {
       if (this.opts.onUp) this.opts.onUp(action, e);
     }
   }
-
   // Nota sobre controles táctiles: en este proyecto los botones táctiles
   // se cablean directo en el HTML con onpointerdown/onpointerup llamando
-  // funciones globales del juego (ver rpgMove/rpgBlock/rpgFire en
-  // rpg.js + index.html). El motor no fuerza otra convención encima de
-  // eso — cada juego simplemente hace que esas funciones globales toquen
-  // el mismo `KeyboardInput.state` (o su propio estado) que ya usa para
-  // teclado, para no duplicar lógica de movimiento entre los dos modos.
+  // funciones globales del juego
 
-  // ─────────────────────────────────────
   // Animation / Animator — ciclos de sprites con FPS propio, loop opcional
   // y transición automática de una animación a otra
-  // ─────────────────────────────────────
-  //
-  // Animation = UN ciclo (ej. "walk"): una lista de frames + a qué
-  // velocidad se reproducen. `frames` puede ser nombres de atlas (para
-  // usar con Engine2D.drawAtlasFrame) o índices numéricos (para
-  // Engine2D.drawFrame con una grilla) — a la clase no le importa el
-  // contenido, solo el orden y el timing.
-  //
-  // Uso solo:
-  //   const walk = new Engine2D.Animation({ frames: ['walk_0','walk_1','walk_2'], fps: 10 });
-  //   // en el update: walk.update(dt);
-  //   // en el draw:   Engine2D.drawAtlasFrame(ctx, img, atlas, walk.currentFrame, x, y, h, flip);
-  //
-  // opts:
-  //   frames: array de nombres o índices (obligatorio)
-  //   fps: cuadros por segundo de la animación (no confundir con el fps
-  //        del juego — cada Animation tiene el suyo)
-  //   loop: true = vuelve al frame 0 al terminar (ciclos como idle/walk).
-  //         false = se queda clavada en el último frame (ataques, dash,
-  //         muerte — cosas que pasan una vez)
-  //   onComplete: se llama UNA sola vez, justo cuando una animación con
-  //         loop:false termina (nunca se llama en animaciones con loop).
-  //         Pensada para "terminó el ataque, ahora sí puedo pegar otro" o
-  //         "terminó la animación de muerte, mostrar game over".
-  //   next: nombre de OTRA animación (dentro del mismo Animator) a la que
-  //         saltar automáticamente apenas esta termina — solo tiene efecto
-  //         con loop:false y si esta Animation vive dentro de un Animator
-  //         (ver más abajo). Así "attack" puede volver solo a "idle" sin
-  //         que el juego tenga que acordarse de hacerlo a mano cada vez.
+
   class Animation {
     constructor({ frames, fps = 10, loop = true, onComplete = null, next = null }) {
       this.frames = frames;
@@ -1530,6 +1730,7 @@ const Engine2D = (function () {
       this._elapsedMs = 0; // ms acumulados dentro del frame actual
       this.finished = false; // true cuando una animación loop:false llegó al último frame
     }
+
     // Vuelve al frame 0 — se llama sola al hacer Animator.play(), pero
     // también sirve para reiniciar un ciclo a mano (ej. un dash que se
     // puede volver a disparar antes de que "termine" visualmente).
@@ -1538,6 +1739,7 @@ const Engine2D = (function () {
       this._elapsedMs = 0;
       this.finished = false;
     }
+
     update(dt) {
       if (this.finished) return; // clavada en el último frame, no consume más tiempo
       this._elapsedMs += dt;
@@ -1559,31 +1761,12 @@ const Engine2D = (function () {
         }
       }
     }
-    get currentFrame() { return this.frames[this.frameIndex]; }
-  }
 
-  // Animator = varias Animation con nombre ("idle","walk","attack",...)
-  // más el control de cuál está sonando ahora — esto es lo que en general
-  // va a guardar cada entidad, no una Animation suelta.
-  //
-  // Uso:
-  //   const anim = new Engine2D.Animator({
-  //     idle:   new Engine2D.Animation({ frames: ['idle_0','idle_1'], fps: 4 }),
-  //     walk:   new Engine2D.Animation({ frames: ['walk_0','walk_1','walk_2','walk_3'], fps: 10 }),
-  //     attack: new Engine2D.Animation({ frames: ['atk_0','atk_1','atk_2'], fps: 14, loop: false, next: 'idle' }),
-  //     hurt:   new Engine2D.Animation({ frames: ['hurt_0'], fps: 6, loop: false, next: 'idle' }),
-  //     death:  new Engine2D.Animation({ frames: ['death_0','death_1','death_2'], fps: 8, loop: false }),
-  //   }, 'idle');
-  //
-  //   // en el update de la entidad:
-  //   anim.play(moving ? 'walk' : 'idle');   // no reinicia si ya estaba en esa
-  //   anim.update(dt);
-  //
-  //   // al atacar (ej. al tocar el botón de ataque):
-  //   anim.play('attack', true); // force:true para que SIEMPRE arranque de 0
-  //
-  //   // en el draw:
-  //   Engine2D.drawAtlasFrame(ctx, img, atlas, anim.frameName, x, y, h, facing < 0);
+    get currentFrame() {
+      return this.frames[this.frameIndex];
+    }
+  }
+  
   class Animator {
     constructor(animations = {}, initial = null) {
       this.animations = animations; // { nombre: Animation }
@@ -1591,12 +1774,8 @@ const Engine2D = (function () {
       this.currentName = null;
       if (initial) this.play(initial, true);
     }
-    // Cambia a la animación `name`. Por default, si ya está reproduciendo
-    // esa misma animación NO la reinicia — evita el típico bug de "el
-    // personaje tiembla" al llamar play('walk') en cada frame mientras
-    // caminás. Pasar force:true cuando sí hace falta arrancar de cero
-    // (un ataque nuevo, un hit que interrumpe lo que sea que estuviera
-    // pasando).
+
+
     play(name, force = false) {
       if (this.currentName === name && !force) return;
       const anim = this.animations[name];
@@ -1605,9 +1784,13 @@ const Engine2D = (function () {
       this.current = anim;
       this.currentName = name;
     }
+
     // Agrega o reemplaza una animación por nombre (por si el set de
     // animaciones de una entidad no está completo desde el arranque).
-    set(name, animation) { this.animations[name] = animation; }
+    set(name, animation) {
+      this.animations[name] = animation;
+    }
+
     update(dt) {
       if (!this.current) return;
       this.current.update(dt);
@@ -1618,54 +1801,36 @@ const Engine2D = (function () {
         this.play(this.current.next);
       }
     }
-    get frameName() { return this.current ? this.current.currentFrame : null; }
-    get finished() { return this.current ? this.current.finished : true; }
-    isPlaying(name) { return this.currentName === name; }
+
+    get frameName() {
+      return this.current ? this.current.currentFrame : null;
+    }
+
+    get finished() {
+      return this.current ? this.current.finished : true;
+    }
+
+    isPlaying(name) {
+      return this.currentName === name;
+    }
   }
 
-  // ─────────────────────────────────────
   // Entidad / Escena
-  // ─────────────────────────────────────
-  // Clase base opcional — un juego puede usar objetos planos si prefiere
-  // el estilo que ya tenía rpg.js (RPG.player como objeto suelto). Sirve
-  // sobre todo para juegos con varios enemigos/proyectiles a la vez, donde
-  // antes había arrays sueltos (RPG.bullets, RPG.potions, ...) cada uno
-  // con su propio forEach de update y de draw.
+
   class Entity {
-    constructor(props = {}) { Object.assign(this, props); }
+    constructor(props = {}) {
+      Object.assign(this, props);
+    }
+
     update(dt, step, scene) {}
     draw(ctx, scene) {}
     // Poner en true para que Scene.update() la saque sola del array
     // (reemplaza los "RPG.bullets = RPG.bullets.filter(...)" a mano).
     dead = false;
   }
-
-  // ─────────────────────────────────────
+ 
   // StateMachine — máquina de estados para entidades
-  // ─────────────────────────────────────
-  // En vez de un `if (attacking) ... else if (blocking) ... else if (hurt) ...`
-  // gigante, cada estado (IDLE, WALK, ATTACK, BLOCK, HURT, DASH, DEAD...)
-  // se define como { enter, update, exit } y el motor decide cuál corre.
-  //
-  //   const fsm = new Engine2D.StateMachine({
-  //     IDLE:   { update(dt, fsm) { if (quiereMoverse) return fsm.changeTo('WALK'); } },
-  //     WALK:   { update(dt, fsm) { mover(); if (!quiereMoverse) return fsm.changeTo('IDLE'); } },
-  //     ATTACK: { enter(fsm) { fsm.timer = 0; },
-  //               update(dt, fsm) { if ((fsm.timer += dt) > 300) return fsm.changeTo('IDLE'); } },
-  //     HURT:   { enter(fsm) { fsm.timer = 0; },
-  //               update(dt, fsm) { if ((fsm.timer += dt) > 200) return fsm.changeTo('IDLE'); } },
-  //     DEAD:   { enter() { /* terminal: no se sale de acá solo */ } }
-  //   }, 'IDLE', player);   // owner = la entidad que usa la máquina
-  //
-  //   player.fsm.update(dt);          // cada frame
-  //   player.fsm.changeTo('HURT');    // cuando recibe daño, desde cualquier lado
-  //   player.fsm.is('ATTACK', 'DASH');// para elegir frame de sprite / colisiones
-  //
-  // Dentro de enter/update/exit, `this` es la entidad dueña (owner), así que
-  // se usa this.x, this.hp, etc. directo. `fsm.time` = ms en el estado actual
-  // (para timers). changeTo() al MISMO estado no hace nada (no re-entra).
-  // Los argumentos extra de changeTo() llegan a enter()/exit(); los de
-  // update() llegan al update() del estado.
+  
   class StateMachine {
     constructor(states = {}, initial = null, owner = null) {
       this.states = states;
@@ -1675,7 +1840,9 @@ const Engine2D = (function () {
       if (initial) this.changeTo(initial);
     }
 
-    get name() { return this.current; }
+    get name() {
+      return this.current;
+    }
 
     // Cambia de estado: ejecuta exit() del anterior y enter() del nuevo.
     changeTo(name, ...args) {
@@ -1701,45 +1868,30 @@ const Engine2D = (function () {
     }
 
     // ¿Está en alguno de estos estados? is('IDLE') / is('ATTACK', 'DASH')
-    is(...names) { return names.includes(this.current); }
+    is(...names) {
+      return names.includes(this.current);
+    }
 
     // Alias por si se prefiere setState en lugar de changeTo.
-    setState(name, ...args) { return this.changeTo(name, ...args); }
+    setState(name, ...args) {
+      return this.changeTo(name, ...args);
+    }
   }
 
-  // ─────────────────────────────────────
   // Trigger zones — zonas invisibles que ejecutan algo cuando algo entra
-  // ─────────────────────────────────────
-  // Pensadas para juegos por habitaciones (Castle Escape): "ENTRA → aparece
-  // enemigo / cambia habitación / inicia diálogo / activa trampa / termina
-  // nivel". La zona es un AABB invisible; el motor detecta entrada/salida
-  // contra las entidades que se le pasan (por lo general el jugador) y
-  // dispara los callbacks. Con config.debug = true se dibujan.
-  //
-  //   const zone = new Engine2D.TriggerZone(160, 0, 40, 270, {
-  //     id: 'spawn1',
-  //     once: true,
-  //     onEnter(player) {
-  //       spawnEnemy();
-  //       Engine2D.Particles.explosion(player.x, player.y);
-  //     },
-  //     onExit(player) { /* ... */ }
-  //   });
-  //   triggers.add(zone);                 // o triggers.add({x,y,w,h,onEnter...})
-  //   triggers.update(player);            // cada frame (una entidad o un array)
-  //   triggers.draw(ctx, camera);         // solo debug / visualización
-  //
-  // Opciones: once (se desactiva sola tras el primer onEnter), enabled
-  // (arranca apagada), id (etiqueta para el debug), color/borderColor.
+  
   class TriggerZone {
     constructor(x, y, w, h, opts = {}) {
-      this.x = x; this.y = y; this.w = w; this.h = h;
+      this.x = x;
+      this.y = y;
+      this.w = w;
+      this.h = h;
       this.id = opts.id || null;
       this.onEnter = typeof opts.onEnter === 'function' ? opts.onEnter : null;
       this.onExit = typeof opts.onExit === 'function' ? opts.onExit : null;
       this.once = !!opts.once;
       this.enabled = opts.enabled !== false;
-      this.inside = new Set();   // entidades dentro ahora mismo (para onExit)
+      this.inside = new Set(); // entidades dentro ahora mismo (para onExit)
       this.color = opts.color || 'rgba(0,200,255,0.22)';
       this.borderColor = opts.borderColor || 'rgba(0,200,255,0.9)';
     }
@@ -1750,8 +1902,7 @@ const Engine2D = (function () {
       const list = Array.isArray(targets) ? targets : [targets];
       for (const e of list) {
         if (!e || e.dead) continue;
-        const inside = e.x < this.x + this.w && e.x + e.w > this.x &&
-                       e.y < this.y + this.h && e.y + e.h > this.y;
+        const inside = e.x < this.x + this.w && e.x + e.w > this.x && e.y < this.y + this.h && e.y + e.h > this.y;
         const was = this.inside.has(e);
         if (inside && !was) {
           this.inside.add(e);
@@ -1792,30 +1943,40 @@ const Engine2D = (function () {
       ctx.restore();
     }
   }
-
   // Gestor simple de zonas por juego/escena.
-  const Triggers = {
-    zones: [],
+  // Clase Triggers: solo métodos static (se usa como Engine2D.Triggers.metodo()).
+  class Triggers {
+    static zones = [];
     // add(zona) o add({x,y,w,h,onEnter...}) — en el segundo caso construye
     // la TriggerZone sola. Devuelve la zona creada.
-    add(z) {
-      const zone = z instanceof TriggerZone
-        ? z
-        : new TriggerZone(z.x || 0, z.y || 0, z.w || 0, z.h || 0, z);
+    static add(z) {
+      const zone = z instanceof TriggerZone ? z : new TriggerZone(z.x || 0, z.y || 0, z.w || 0, z.h || 0, z);
       this.zones.push(zone);
       return zone;
-    },
-    remove(z) {
+    }
+
+    static remove(z) {
       const i = this.zones.indexOf(z);
       if (i >= 0) this.zones.splice(i, 1);
       return z;
-    },
-    clear() { this.zones.length = 0; },
-    update(targets) { for (const z of this.zones) z.update(targets); },
-    draw(ctx, camera) { for (const z of this.zones) z.draw(ctx, camera); },
-    get count() { return this.zones.length; }
-  };
+    }
 
+    static clear() {
+      this.zones.length = 0;
+    }
+
+    static update(targets) {
+      for (const z of this.zones) z.update(targets);
+    }
+
+    static draw(ctx, camera) {
+      for (const z of this.zones) z.draw(ctx, camera);
+    }
+
+    static get count() {
+      return this.zones.length;
+    }
+  }
   class Scene {
     constructor(opts = {}) {
       this.entities = [];
@@ -1824,18 +1985,42 @@ const Engine2D = (function () {
       this.triggers = opts.triggers || null;
       this.debug = !!this.config.debug;
     }
-    add(entity) { this.entities.push(entity); return entity; }
+
+    add(entity) {
+      this.entities.push(entity);
+      return entity;
+    }
+
     remove(entity) {
+      // Durante update() no se puede hacer splice: el for va por índice y la
+      // entidad siguiente quedaría sin actualizarse ese frame. Se marca como
+      // muerta y la compactación del final de update() la saca.
+      if (this._updating) {
+        entity.dead = true;
+        return;
+      }
       const i = this.entities.indexOf(entity);
       if (i >= 0) this.entities.splice(i, 1);
     }
-    clear() { this.entities.length = 0; }
+
+    clear() {
+      this.entities.length = 0;
+    }
+
     update(dt, step) {
       const list = this.entities;
       // Largo fijado antes: lo que se agregue durante el update arranca el
       // frame que viene (mismo comportamiento que tenía el forEach).
       const n = list.length;
-      for (let i = 0; i < n; i++) list[i].update(dt, step, this);
+      this._updating = true;
+      try {
+        for (let i = 0; i < n; i++) {
+          const e = list[i];
+          if (!e.dead) e.update(dt, step, this); // la pudo sacar otra entidad este mismo frame
+        }
+      } finally {
+        this._updating = false;
+      }
       // Zonas de trigger (aparece enemigo, cambia habitación, activa trampa...)
       if (this.triggers) this.triggers.update(list);
       // Limpieza de entidades muertas (bala que salió de pantalla,
@@ -1848,55 +2033,33 @@ const Engine2D = (function () {
       }
       list.length = w;
     }
+
     draw(ctx) {
       const list = this.entities;
       for (let i = 0; i < list.length; i++) list[i].draw(ctx, this);
     }
+
     // Filtra por un campo, ej: scene.byType('bullet')
-    byType(type) { return this.entities.filter(e => e.type === type); }
+    byType(type) {
+      return this.entities.filter((e) => e.type === type);
+    }
 
     // Overlay de debug cuando config.debug = true: panel con FPS + valores
     // del config, hitboxes de las entidades y zonas de trigger. Llamar
     // después del draw() normal.
     drawDebug(ctx, camera, extra = {}) {
-      drawDebugOverlay(ctx, {
+      EngineUtils.drawDebugOverlay(ctx, {
         camera,
         config: this.config,
         hitboxes: this.entities,
         triggers: this.triggers ? this.triggers.zones : null,
         fps: extra.fps,
-        lines: extra.lines || []
+        lines: extra.lines || [],
       });
     }
   }
-
-  // ─────────────────────────────────────
   // StaticLayer — cache de dibujo estático en un canvas oculto
-  // ─────────────────────────────────────
-  // Para toda esa parte de una escena que NUNCA cambia mientras dura el
-  // nivel/habitación (el piso, las paredes, decoración fija) pero que hoy
-  // se vuelve a pintar entera en cada frame (60 veces por segundo) solo
-  // porque comparte el mismo <canvas> que lo que sí se mueve. StaticLayer
-  // separa esas dos cosas: el dibujo pesado (fillRect por bloque,
-  // gradientes, drawImage tile por tile, etc) se hace UNA sola vez con
-  // bake(), sobre un canvas que vive en memoria (nunca se agrega al DOM),
-  // y después cada frame se vuelca con un solo drawImage (draw()) en vez
-  // de repetir toda esa lógica.
-  //
-  // Uso típico (al cargar el nivel/habitación, NO adentro del loop de dibujo):
-  //   const layer = new Engine2D.StaticLayer(levelWidth, levelHeight);
-  //   layer.bake(bctx => {
-  //     drawFloor(bctx);   // acá va todo el dibujo de lo que no cambia
-  //     drawWalls(bctx);
-  //   });
-  //
-  // Y en el draw() de cada frame, en vez de repetir drawFloor/drawWalls:
-  //   layer.draw(ctx);                     // pinta la capa entera en (0,0)
-  //   layer.draw(ctx, -camera.x, -camera.y); // si hace falta desplazarla a mano
-  //
-  // Si algo del "mapa estático" cambia igual (ej: se rompe un bloque), se
-  // vuelve a llamar bake() con el dibujo actualizado — no hace falta crear
-  // un StaticLayer nuevo cada vez.
+ 
   class StaticLayer {
     constructor(width, height) {
       this.width = Math.max(1, Math.ceil(width));
@@ -1937,27 +2100,14 @@ const Engine2D = (function () {
     }
   }
 
-  // ─────────────────────────────────────
   // TileMap — mundo en grilla (tipo Terraria/plataformas)
-  // ─────────────────────────────────────
-  // data: array plano de largo cols*rows, un id numérico por celda.
-  // 0 = aire (vacío) por convención — cualquier otro id se busca en el
-  // tileset. solidIds: Set de ids que bloquean movimiento (ej. tierra,
-  // piedra sí; una antorcha de fondo no).
-  //
-  // PERF (versión por chunks): antes el mapa entero se horneaba en UN solo
-  // canvas. En un mundo de 200x200 tiles eso es un canvas de 3200x3200 (o
-  // 6400x6400 con tiles de 32) → 40-160MB de RAM/VRAM y, en GPUs integradas
-  // viejas (textura máx. 4096), el navegador lo pasa a software y SUBE la
-  // textura a la GPU en cada frame. Ahora el mapa se divide en chunks de
-  // ~512px que se hornean recién cuando entran en cámara, se reparan solo
-  // en la zona tocada y se descartan (LRU) cuando quedan lejos.
+
   class TileMap {
     constructor({ cols, rows, tileSize, tilesetSrc, tilesetCols, solidIds = new Set(), data = null, chunkTiles }) {
       this.cols = cols;
       this.rows = rows;
       this.tileSize = tileSize;
-      this.tilesetSrc = tilesetSrc;   // src ya cargado con Engine2D.loadImage
+      this.tilesetSrc = tilesetSrc; // src ya cargado con Engine2D.loadImage
       this.tilesetCols = tilesetCols; // columnas del tileset (grilla uniforme, id-1 = índice)
       this.solidIds = solidIds;
       this.data = data || new Uint16Array(cols * rows); // 0 = aire
@@ -1966,9 +2116,9 @@ const Engine2D = (function () {
       this.chunkPx = this.chunkTiles * tileSize;
       this.chunksX = Math.ceil(cols / this.chunkTiles);
       this.chunksY = Math.ceil(rows / this.chunkTiles);
-      this._chunks = new Map();  // key -> { canvas, ctx, dirty:{minCol,...}|null }
+      this._chunks = new Map(); // key -> { canvas, ctx, dirty:{minCol,...}|null }
       this._dataRef = this.data; // si el juego reemplaza .data, se invalida todo
-      this._dirty = false;       // compat: ya no hace falta, se deja por si alguien lo lee
+      this._dirty = false; // compat: ya no hace falta, se deja por si alguien lo lee
     }
 
     inBounds(col, row) {
@@ -1991,7 +2141,13 @@ const Engine2D = (function () {
       const ch = this._chunks.get(key);
       if (!ch) return;
       const r = ch.dirty;
-      if (!r) ch.dirty = { minCol: col, maxCol: col, minRow: row, maxRow: row };
+      if (!r)
+        ch.dirty = {
+          minCol: col,
+          maxCol: col,
+          minRow: row,
+          maxRow: row,
+        };
       else {
         if (col < r.minCol) r.minCol = col;
         if (col > r.maxCol) r.maxCol = col;
@@ -2013,17 +2169,28 @@ const Engine2D = (function () {
 
     // Coordenadas de mundo (px) → celda de la grilla.
     worldToTile(x, y) {
-      return { col: Math.floor(x / this.tileSize), row: Math.floor(y / this.tileSize) };
+      return {
+        col: Math.floor(x / this.tileSize),
+        row: Math.floor(y / this.tileSize),
+      };
     }
 
     // Celda → esquina superior-izquierda en coordenadas de mundo (px).
     tileToWorld(col, row) {
-      return { x: col * this.tileSize, y: row * this.tileSize };
+      return {
+        x: col * this.tileSize,
+        y: row * this.tileSize,
+      };
     }
 
     // AABB en mundo de una celda — usado por la física para resolver colisiones.
     tileWorldBox(col, row) {
-      return { x: col * this.tileSize, y: row * this.tileSize, w: this.tileSize, h: this.tileSize };
+      return {
+        x: col * this.tileSize,
+        y: row * this.tileSize,
+        w: this.tileSize,
+        h: this.tileSize,
+      };
     }
 
     // Picar: vacía la celda y devuelve el id que había (para sumarlo al
@@ -2046,7 +2213,10 @@ const Engine2D = (function () {
     // Pinta celdas [c0..c1] x [r0..r1] (inclusive) sobre bctx, desplazadas
     // por (ox, oy) — el origen del chunk en coordenadas de mundo.
     _paintCells(bctx, img, c0, c1, r0, r1, ox = 0, oy = 0) {
-      const ts = this.tileSize, cols = this.cols, tc = this.tilesetCols, data = this.data;
+      const ts = this.tileSize,
+        cols = this.cols,
+        tc = this.tilesetCols,
+        data = this.data;
       for (let row = r0; row <= r1; row++) {
         const base = row * cols;
         const dy = row * ts - oy;
@@ -2054,8 +2224,7 @@ const Engine2D = (function () {
           const id = data[base + col];
           if (id === 0) continue; // aire, no dibuja nada
           const tileIndex = id - 1; // id 1 = primer tile del tileset
-          bctx.drawImage(img, (tileIndex % tc) * ts, ((tileIndex / tc) | 0) * ts, ts, ts,
-            col * ts - ox, dy, ts, ts);
+          bctx.drawImage(img, (tileIndex % tc) * ts, ((tileIndex / tc) | 0) * ts, ts, ts, col * ts - ox, dy, ts, ts);
         }
       }
     }
@@ -2065,25 +2234,38 @@ const Engine2D = (function () {
     _getChunk(cx, cy, img) {
       const key = cy * this.chunksX + cx;
       let ch = this._chunks.get(key);
-      const ct = this.chunkTiles, ts = this.tileSize;
-      const c0 = cx * ct, r0 = cy * ct;
+      const ct = this.chunkTiles,
+        ts = this.tileSize;
+      const c0 = cx * ct,
+        r0 = cy * ct;
       const c1 = Math.min(this.cols - 1, c0 + ct - 1);
       const r1 = Math.min(this.rows - 1, r0 + ct - 1);
-      const ox = c0 * ts, oy = r0 * ts;
+      const ox = c0 * ts,
+        oy = r0 * ts;
       if (!ch) {
         const canvas = document.createElement('canvas');
         canvas.width = (c1 - c0 + 1) * ts;
         canvas.height = (r1 - r0 + 1) * ts;
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false;
-        ch = { canvas, ctx, dirty: null, ox, oy };
+        ch = {
+          canvas,
+          ctx,
+          dirty: null,
+          ox,
+          oy,
+        };
         this._paintCells(ctx, img, c0, c1, r0, r1, ox, oy);
       } else {
         this._chunks.delete(key); // re-insertar = marcar como usado (LRU)
         if (ch.dirty) {
           const d = ch.dirty;
-          ch.ctx.clearRect(d.minCol * ts - ox, d.minRow * ts - oy,
-            (d.maxCol - d.minCol + 1) * ts, (d.maxRow - d.minRow + 1) * ts);
+          ch.ctx.clearRect(
+            d.minCol * ts - ox,
+            d.minRow * ts - oy,
+            (d.maxCol - d.minCol + 1) * ts,
+            (d.maxRow - d.minRow + 1) * ts,
+          );
           this._paintCells(ch.ctx, img, d.minCol, d.maxCol, d.minRow, d.maxRow, ox, oy);
           ch.dirty = null;
         }
@@ -2094,14 +2276,13 @@ const Engine2D = (function () {
 
     // Dibuja solo lo que ve la cámara: un drawImage por chunk visible.
     draw(ctx, camera) {
-      const img = getImage(this.tilesetSrc);
+      const img = assets.getImage(this.tilesetSrc);
       // Puede estar a mitad de cargar o rota: dibujarla tira InvalidStateError.
       // Acepta <img> ya cargada o <canvas> (tileset generado por código,
       // ver Engine2D.setImage): un canvas no tiene complete/naturalWidth.
       const isCanvas = typeof HTMLCanvasElement !== 'undefined' && img instanceof HTMLCanvasElement;
-      if (!img || (isCanvas ? !img.width : (!img.complete || !img.naturalWidth))) return;
+      if (!img || (isCanvas ? !img.width : !img.complete || !img.naturalWidth)) return;
       if (this.data !== this._dataRef) this.invalidate();
-
       const mapW = this.cols * this.tileSize;
       const mapH = this.rows * this.tileSize;
       const sx = Math.max(0, Math.floor(camera.x));
@@ -2109,23 +2290,25 @@ const Engine2D = (function () {
       const sw = Math.max(0, Math.min(mapW - sx, Math.ceil(camera.width)));
       const sh = Math.max(0, Math.min(mapH - sy, Math.ceil(camera.height)));
       if (sw === 0 || sh === 0) return;
-
       const cp = this.chunkPx;
-      const cx0 = Math.floor(sx / cp), cx1 = Math.floor((sx + sw - 1) / cp);
-      const cy0 = Math.floor(sy / cp), cy1 = Math.floor((sy + sh - 1) / cp);
+      const cx0 = Math.floor(sx / cp),
+        cx1 = Math.floor((sx + sw - 1) / cp);
+      const cy0 = Math.floor(sy / cp),
+        cy1 = Math.floor((sy + sh - 1) / cp);
       for (let cy = cy0; cy <= cy1; cy++) {
         for (let cx = cx0; cx <= cx1; cx++) {
           const ch = this._getChunk(cx, cy, img);
           // Intersección chunk ∩ vista, en coordenadas de mundo.
-          const ix0 = Math.max(sx, ch.ox), iy0 = Math.max(sy, ch.oy);
+          const ix0 = Math.max(sx, ch.ox),
+            iy0 = Math.max(sy, ch.oy);
           const ix1 = Math.min(sx + sw, ch.ox + ch.canvas.width);
           const iy1 = Math.min(sy + sh, ch.oy + ch.canvas.height);
-          const iw = ix1 - ix0, ih = iy1 - iy0;
+          const iw = ix1 - ix0,
+            ih = iy1 - iy0;
           if (iw <= 0 || ih <= 0) continue;
           ctx.drawImage(ch.canvas, ix0 - ch.ox, iy0 - ch.oy, iw, ih, ix0 - sx, iy0 - sy, iw, ih);
         }
       }
-
       // LRU: se guardan el doble de los chunks visibles (mínimo 16) para que
       // ir y volver no obligue a re-hornear, sin acumular el mundo entero.
       const keep = Math.max(16, (cx1 - cx0 + 1) * (cy1 - cy0 + 1) * 2);
@@ -2134,7 +2317,6 @@ const Engine2D = (function () {
       }
     }
   }
-
   // ─────────────────────────────────────
   // Camera — sigue a un objetivo y traduce mundo → pantalla
   // ─────────────────────────────────────
@@ -2162,20 +2344,23 @@ const Engine2D = (function () {
   //   // (se pisarían con el paneo). Al terminar, retomar el seguimiento normal.
   class Camera {
     constructor({ x = 0, y = 0, width, height, worldWidth = Infinity, worldHeight = Infinity }) {
-      this.x = x; this.y = y;
-      this.width = width; this.height = height;
-      this.worldWidth = worldWidth; this.worldHeight = worldHeight;
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
+      this.worldWidth = worldWidth;
+      this.worldHeight = worldHeight;
       // Zoom (1 = normal, >1 = acercar). Se anima solo con zoomTo().
       this.zoom = 1;
       this._zoomTarget = 1;
       this._zoomSpeed = 0; // por ms — 0 = sin animación en curso
+
       // Shake (temblor). Se dispara con shake() y decae solo.
       this._shakeIntensity = 0;
       this._shakeElapsed = 0;
       this._shakeDuration = 0;
       this._shakeOffsetX = 0;
       this._shakeOffsetY = 0;
-
       // Límites explícitos opcionales — ver setBounds(). null = usar el
       // clamp de siempre contra worldWidth/worldHeight.
       this._bounds = null; // {minX, minY, maxX, maxY}
@@ -2183,20 +2368,17 @@ const Engine2D = (function () {
       // Suavizado para followSmooth() — 0 = corte instantáneo, 0.85-0.95 =
       // bien "amortiguado", 0.6-0.8 = sutil. No afecta a follow().
       this.smoothing = 0;
-
       // Deadzone para followSmooth() — {width,height} en px de mundo,
       // rectángulo centrado en la cámara donde el objetivo puede moverse
       // sin que la cámara reaccione. null = sin deadzone (sigue siempre).
       this.deadzone = null;
       this._followX = null;
       this._followY = null;
-
       // lookAt() en curso (paneo animado independiente de follow/followSmooth).
       this._panTargetX = null;
       this._panTargetY = null;
       this._panSpeedX = 0;
       this._panSpeedY = 0;
-
       // Cola de transición/cinemática — ver sequence().
       this._queue = [];
       this._queueStep = null;
@@ -2235,7 +2417,15 @@ const Engine2D = (function () {
     // la cámara dentro de la arena de un jefe mientras dura el combate).
     // Llamar con null para volver a clampear contra worldWidth/worldHeight.
     setBounds(minX, minY, maxX, maxY) {
-      this._bounds = (minX == null) ? null : { minX, minY, maxX, maxY };
+      this._bounds =
+        minX == null
+          ? null
+          : {
+              minX,
+              minY,
+              maxX,
+              maxY,
+            };
     }
 
     // Seguimiento con suavizado + deadzone opcional. A diferencia de
@@ -2258,9 +2448,11 @@ const Engine2D = (function () {
       const destX = targetX - this.width / 2;
       const destY = targetY - this.height / 2;
       if (instant || durationMs <= 0) {
-        this.x = destX; this.y = destY;
+        this.x = destX;
+        this.y = destY;
         this._clamp();
-        this._panTargetX = null; this._panTargetY = null;
+        this._panTargetX = null;
+        this._panTargetY = null;
         return;
       }
       this._panTargetX = destX;
@@ -2320,8 +2512,19 @@ const Engine2D = (function () {
       // 'wait' no dispara nada acá — solo consume tiempo en update().
     }
 
-    worldToScreen(x, y) { return { x: x - this.x, y: y - this.y }; }
-    screenToWorld(x, y) { return { x: x + this.x, y: y + this.y }; }
+    worldToScreen(x, y) {
+      return {
+        x: x - this.x,
+        y: y - this.y,
+      };
+    }
+
+    screenToWorld(x, y) {
+      return {
+        x: x + this.x,
+        y: y + this.y,
+      };
+    }
 
     // Sacudida: un golpe de jefe, un impacto, un dash que conecta. Se
     // llama una vez al momento del golpe (ej. en rpg.js sería en el punto
@@ -2352,9 +2555,10 @@ const Engine2D = (function () {
         this._shakeElapsed += dt;
         if (this._shakeElapsed >= this._shakeDuration) {
           this._shakeDuration = 0;
-          this._shakeOffsetX = 0; this._shakeOffsetY = 0;
+          this._shakeOffsetX = 0;
+          this._shakeOffsetY = 0;
         } else {
-          const remaining = 1 - (this._shakeElapsed / this._shakeDuration);
+          const remaining = 1 - this._shakeElapsed / this._shakeDuration;
           const mag = this._shakeIntensity * remaining;
           this._shakeOffsetX = (Math.random() * 2 - 1) * mag;
           this._shakeOffsetY = (Math.random() * 2 - 1) * mag;
@@ -2366,7 +2570,6 @@ const Engine2D = (function () {
         const overshot = this._zoomSpeed > 0 ? this.zoom >= this._zoomTarget : this.zoom <= this._zoomTarget;
         if (overshot) this.zoom = this._zoomTarget;
       }
-
       // lookAt() en curso: paneo a velocidad constante hacia el destino.
       // Tiene prioridad sobre followSmooth (mientras dura, followSmooth no
       // se aplica este frame) — así una cinemática no compite con el
@@ -2381,21 +2584,26 @@ const Engine2D = (function () {
         if (doneX) this.x = this._panTargetX;
         if (doneY) this.y = this._panTargetY;
         this._clamp();
-        if (doneX && doneY) { this._panTargetX = null; this._panTargetY = null; }
+        if (doneX && doneY) {
+          this._panTargetX = null;
+          this._panTargetY = null;
+        }
       }
-
       // followSmooth(): lerp exponencial e independiente de dt (misma idea
       // que el "step" de dt/16.6 que ya usa el resto del motor) hacia el
       // objetivo — o hacia el borde de la deadzone si hay una configurada.
       if (!panning && this._followX != null) {
-        let tx = this._followX, ty = this._followY;
+        let tx = this._followX,
+          ty = this._followY;
         if (this.deadzone) {
           const cx = this.x + this.width / 2;
           const cy = this.y + this.height / 2;
           const halfW = this.deadzone.width / 2;
           const halfH = this.deadzone.height / 2;
-          const dx = tx - cx, dy = ty - cy;
-          let pushX = 0, pushY = 0;
+          const dx = tx - cx,
+            dy = ty - cy;
+          let pushX = 0,
+            pushY = 0;
           if (dx > halfW) pushX = dx - halfW;
           else if (dx < -halfW) pushX = dx + halfW;
           if (dy > halfH) pushY = dy - halfH;
@@ -2415,7 +2623,6 @@ const Engine2D = (function () {
         }
         this._clamp();
       }
-
       // Cola de sequence(): esperar a que termine el paso actual y pasar al
       // siguiente. zoom/lookAt/shake ya se evalúan arriba en este mismo update.
       if (this._queueStep) {
@@ -2438,19 +2645,19 @@ const Engine2D = (function () {
     begin(ctx) {
       ctx.save();
       if (this.zoom !== 1) {
-        const cx = this.width / 2, cy = this.height / 2;
+        const cx = this.width / 2,
+          cy = this.height / 2;
         ctx.translate(cx, cy);
         ctx.scale(this.zoom, this.zoom);
         ctx.translate(-cx, -cy);
       }
-      ctx.translate(
-        -Math.round(this.x - this._shakeOffsetX),
-        -Math.round(this.y - this._shakeOffsetY)
-      );
+      ctx.translate(-Math.round(this.x - this._shakeOffsetX), -Math.round(this.y - this._shakeOffsetY));
     }
-    end(ctx) { ctx.restore(); }
-  }
 
+    end(ctx) {
+      ctx.restore();
+    }
+  }
   // ─────────────────────────────────────
   // Physics — gravedad + colisión AABB contra el TileMap
   // ─────────────────────────────────────
@@ -2459,26 +2666,28 @@ const Engine2D = (function () {
   // vx,vy su velocidad en px/step. Es la convención estándar para física
   // de plataformas; si tu sprite se dibuja anclado en los pies, restale
   // el offset al dibujar (no acá).
-  const Physics = {
-    gravity: 0.6,       // px/step² — ajustar según qué tan "flotante" se sienta el salto
-    maxFallSpeed: 12,    // px/step — terminal velocity, evita atravesar tiles finos a alta velocidad
-
+  // Clase Physics: solo métodos static (se usa como Engine2D.Physics.metodo()).
+  class Physics {
+    static gravity = 0.6;
+    // px/step² — ajustar según qué tan "flotante" se sienta el salto
+    static maxFallSpeed = 12;
+    // px/step — terminal velocity, evita atravesar tiles finos a alta velocidad
     // Física ligada a un config (por juego o por nivel). Cada juego puede
     // tener su gravedad/velocidad sin pisar el singleton global:
     //   const physics = Engine2D.Physics.create(config);
     //   physics.applyGravity(player, step);
     // Crea un objeto que hereda los métodos y solo sobreescribe los valores
     // del config (gravity, maxFallSpeed).
-    create(config = {}) {
+    static create(config = {}) {
       return Object.assign(Object.create(this), {
         gravity: config.gravity ?? this.gravity,
-        maxFallSpeed: config.maxFallSpeed ?? this.maxFallSpeed
+        maxFallSpeed: config.maxFallSpeed ?? this.maxFallSpeed,
       });
-    },
+    }
 
-    applyGravity(entity, step) {
+    static applyGravity(entity, step) {
       entity.vy = Math.min(entity.vy + this.gravity * step, this.maxFallSpeed);
-    },
+    }
 
     // Mueve la entidad y resuelve colisión contra tilemap, eje por eje
     // (primero X, después Y) — separar los ejes evita que se "trabe" en
@@ -2491,9 +2700,10 @@ const Engine2D = (function () {
     // Con step, la velocidad es la misma a cualquier FPS. Si el paso es
     // grande (frame lento) se parte en sub-pasos de ≤ medio tile para no
     // atravesar el piso.
-    resolveTileCollisions(entity, tilemap, step = 1) {
+    static resolveTileCollisions(entity, tilemap, step = 1) {
       const ts = tilemap.tileSize;
-      const dx = entity.vx * step, dy = entity.vy * step;
+      const dx = entity.vx * step,
+        dy = entity.vy * step;
       const n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / (ts * 0.5)));
       const sub = step / n;
       entity.grounded = false;
@@ -2510,14 +2720,18 @@ const Engine2D = (function () {
         // ── Eje Y ──
         entity.y += entity.vy * sub;
         this._forEachOverlappingSolid(entity, tilemap, (tileBox) => {
-          if (entity.vy > 0) { entity.y = tileBox.y - entity.h; entity.grounded = true; }
-          else if (entity.vy < 0) { entity.y = tileBox.y + tileBox.h; }
+          if (entity.vy > 0) {
+            entity.y = tileBox.y - entity.h;
+            entity.grounded = true;
+          } else if (entity.vy < 0) {
+            entity.y = tileBox.y + tileBox.h;
+          }
           entity.vy = 0;
         });
       }
-    },
+    }
 
-    _forEachOverlappingSolid(entity, tilemap, cb) {
+    static _forEachOverlappingSolid(entity, tilemap, cb) {
       const ts = tilemap.tileSize;
       let changed = true;
       let guard = 0; // corta si algo queda inconsistente, nunca debería llegar
@@ -2537,8 +2751,7 @@ const Engine2D = (function () {
         }
       }
     }
-  };
-
+  }
   // ─────────────────────────────────────
   // Collisions — entidad contra entidad (jugador↔enemigo, bala↔enemigo,
   // pickup↔jugador, etc). Para colisión contra el mundo/tilemap usar
@@ -2553,29 +2766,31 @@ const Engine2D = (function () {
   // Cualquier entidad del juego (jugador, bala, enemigo...) sirve tal cual
   // como "forma" siempre que tenga esos campos — no hace falta envolverla
   // en un objeto aparte.
-  const Collisions = {
+  // Clase Collisions: solo métodos static (se usa como Engine2D.Collisions.metodo()).
+  class Collisions {
     // Rectángulo vs rectángulo.
-    rectOverlap(a, b) {
-      return a.x < b.x + b.w && a.x + a.w > b.x &&
-             a.y < b.y + b.h && a.y + a.h > b.y;
-    },
+    static rectOverlap(a, b) {
+      return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    }
 
     // Círculo vs círculo.
-    circleOverlap(a, b) {
-      const dx = a.x - b.x, dy = a.y - b.y;
+    static circleOverlap(a, b) {
+      const dx = a.x - b.x,
+        dy = a.y - b.y;
       const rr = a.r + b.r;
-      return (dx * dx + dy * dy) <= rr * rr;
-    },
+      return dx * dx + dy * dy <= rr * rr;
+    }
 
     // Círculo vs rectángulo (ej. una bala redonda contra la caja de un
     // enemigo) — busca el punto del rect más cercano al centro del
     // círculo y mide distancia contra eso.
-    circleRectOverlap(circle, rect) {
+    static circleRectOverlap(circle, rect) {
       const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.w));
       const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.h));
-      const dx = circle.x - closestX, dy = circle.y - closestY;
-      return (dx * dx + dy * dy) <= circle.r * circle.r;
-    },
+      const dx = circle.x - closestX,
+        dy = circle.y - closestY;
+      return dx * dx + dy * dy <= circle.r * circle.r;
+    }
 
     // Detección genérica: infiere el tipo de cada forma por sus campos
     // (tiene `.r` → círculo; si no → rectángulo AABB) así no hay que
@@ -2583,13 +2798,14 @@ const Engine2D = (function () {
     // mano según el caso — esto es lo que en general conviene usar.
     //   Engine2D.Collisions.overlap(player, enemy)
     //   Engine2D.Collisions.overlap(bullet, enemy)   // bullet con {x,y,r}
-    overlap(a, b) {
-      const aCircle = a.r != null, bCircle = b.r != null;
+    static overlap(a, b) {
+      const aCircle = a.r != null,
+        bCircle = b.r != null;
       if (aCircle && bCircle) return this.circleOverlap(a, b);
       if (aCircle && !bCircle) return this.circleRectOverlap(a, b);
       if (!aCircle && bCircle) return this.circleRectOverlap(b, a);
       return this.rectOverlap(a, b);
-    },
+    }
 
     // Recorre listA × listB (cualquiera de las dos puede ser una sola
     // entidad suelta, no hace falta envolverla en array) y llama cb(a, b)
@@ -2604,7 +2820,7 @@ const Engine2D = (function () {
     //   Engine2D.Collisions.forEachOverlap(player, enemies, (player, enemy) => {
     //     player.hp -= enemy.damage;
     //   });
-    forEachOverlap(listA, listB, cb) {
+    static forEachOverlap(listA, listB, cb) {
       const arrA = Array.isArray(listA) ? listA : [listA];
       const arrB = Array.isArray(listB) ? listB : [listB];
       for (const a of arrA) {
@@ -2614,16 +2830,15 @@ const Engine2D = (function () {
           if (this.overlap(a, b)) cb(a, b);
         }
       }
-    },
+    }
 
     // Distancia entre dos puntos/centros {x,y} — útil para rangos de
     // ataque circulares o IA de enemigos ("si distance(this, player) < 40
     // atacar") sin tener que armar un objeto {r} truco para eso.
-    distance(a, b) {
+    static distance(a, b) {
       return Math.hypot(a.x - b.x, a.y - b.y);
     }
-  };
-
+  }
   // ─────────────────────────────────────
   // TouchControls — joystick/botones DENTRO del canvas (no HTML aparte)
   // ─────────────────────────────────────
@@ -2653,9 +2868,10 @@ const Engine2D = (function () {
   class TouchControls {
     constructor(canvas, opts = {}) {
       this.canvas = canvas;
-      this.zones = [];      // [{id,type,x,y,radius,label}]
-      this.state = {};      // { move:{x,y}, jump:true/false, ... }
+      this.zones = []; // [{id,type,x,y,radius,label}]
+      this.state = {}; // { move:{x,y}, jump:true/false, ... }
       this.visible = opts.visible !== false; // por si querés ocultarlos en desktop
+
       // Coordenadas en las que se definen las zonas (addJoystick/addButton)
       // y en las que se dibujan. Por defecto es el buffer real del canvas
       // (canvas.width/height) — pero si el juego escala ese buffer por
@@ -2674,13 +2890,31 @@ const Engine2D = (function () {
     }
 
     addButton({ id, x, y, radius = 24, label = '', color = null }) {
-      this.zones.push({ id, type: 'button', x, y, radius, label, color });
+      this.zones.push({
+        id,
+        type: 'button',
+        x,
+        y,
+        radius,
+        label,
+        color,
+      });
       this.state[id] = false;
     }
 
     addJoystick({ id, x, y, radius = 32, color = null }) {
-      this.zones.push({ id, type: 'joystick', x, y, radius, color });
-      this.state[id] = { x: 0, y: 0 };
+      this.zones.push({
+        id,
+        type: 'joystick',
+        x,
+        y,
+        radius,
+        color,
+      });
+      this.state[id] = {
+        x: 0,
+        y: 0,
+      };
     }
 
     attach() {
@@ -2691,7 +2925,9 @@ const Engine2D = (function () {
       this.canvas.addEventListener('pointermove', this._onMove);
       this.canvas.addEventListener('pointerup', this._onUp);
       this.canvas.addEventListener('pointercancel', this._onUp);
-      this.canvas.addEventListener('pointerleave', this._onUp);
+      // Sin 'pointerleave': el dedo que activó una zona queda capturado (ver
+      // _onDown), así que salirse del canvas arrastrando el joystick ya no lo
+      // suelta. pointerup/pointercancel siguen llegando igual.
     }
 
     detach() {
@@ -2699,6 +2935,7 @@ const Engine2D = (function () {
       this.canvas.removeEventListener('pointermove', this._onMove);
       this.canvas.removeEventListener('pointerup', this._onUp);
       this.canvas.removeEventListener('pointercancel', this._onUp);
+      // Por si quedó enganchado de una versión anterior que sí lo escuchaba.
       this.canvas.removeEventListener('pointerleave', this._onUp);
     }
 
@@ -2718,7 +2955,10 @@ const Engine2D = (function () {
       const refH = this.logicalHeight || this.canvas.height;
       const scaleX = refW / rect.width;
       const scaleY = refH / rect.height;
-      return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY,
+      };
     }
 
     _onDown(e) {
@@ -2726,11 +2966,22 @@ const Engine2D = (function () {
       const pos = this._canvasPos(e, true);
       for (const zone of this.zones) {
         if (this._active.has(zone.id)) continue; // ya usado por otro dedo
-        const dx = pos.x - zone.x, dy = pos.y - zone.y;
+        const dx = pos.x - zone.x,
+          dy = pos.y - zone.y;
         // Radio de toque más grande que el dibujado (más fácil de acertar en celular)
         if (dx * dx + dy * dy <= (zone.radius * 1.6) ** 2) {
           e.preventDefault();
-          this._active.set(zone.id, { pointerId: e.pointerId, zone });
+          this._active.set(zone.id, {
+            pointerId: e.pointerId,
+            zone,
+          });
+          // El canvas sigue recibiendo pointermove/pointerup de este dedo
+          // aunque salga del canvas (se libera solo al levantarlo).
+          try {
+            this.canvas.setPointerCapture(e.pointerId);
+          } catch {
+            /* navegador sin soporte: se juega igual, sin la captura */
+          }
           this._updateZone(zone, pos);
           break; // un dedo activa una sola zona
         }
@@ -2757,17 +3008,32 @@ const Engine2D = (function () {
       if (zone.type === 'button') {
         this.state[zone.id] = true;
       } else if (zone.type === 'joystick') {
-        let dx = pos.x - zone.x, dy = pos.y - zone.y;
+        let dx = pos.x - zone.x,
+          dy = pos.y - zone.y;
         const dist = Math.hypot(dx, dy);
-        if (dist > zone.radius) { dx = (dx / dist) * zone.radius; dy = (dy / dist) * zone.radius; }
-        this.state[zone.id] = { x: dx / zone.radius, y: dy / zone.radius }; // normalizado -1..1
-        zone._stickX = dx; zone._stickY = dy; // para dibujar
+        if (dist > zone.radius) {
+          dx = (dx / dist) * zone.radius;
+          dy = (dy / dist) * zone.radius;
+        }
+        this.state[zone.id] = {
+          x: dx / zone.radius,
+          y: dy / zone.radius,
+        }; // normalizado -1..1
+        zone._stickX = dx;
+        zone._stickY = dy; // para dibujar
       }
     }
 
     _resetZone(zone) {
       if (zone.type === 'button') this.state[zone.id] = false;
-      else { this.state[zone.id] = { x: 0, y: 0 }; zone._stickX = 0; zone._stickY = 0; }
+      else {
+        this.state[zone.id] = {
+          x: 0,
+          y: 0,
+        };
+        zone._stickX = 0;
+        zone._stickY = 0;
+      }
     }
 
     // Dibujar SIEMPRE al final, después del mundo/entidades, para que
@@ -2775,7 +3041,7 @@ const Engine2D = (function () {
     draw(ctx) {
       if (!this.visible) return;
       ctx.save();
-      this.zones.forEach(zone => {
+      this.zones.forEach((zone) => {
         const active = this._isZoneActive(zone);
         // zone.color: string "R,G,B" (ej. '185,28,28' para rojo) — opcional,
         // tiñe el botón/joystick para diferenciarlos a simple vista (fuego
@@ -2791,7 +3057,6 @@ const Engine2D = (function () {
           ctx.strokeStyle = 'rgba(0,0,0,0.45)';
           ctx.lineWidth = 3;
           ctx.stroke();
-
           ctx.beginPath();
           ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${rgb},${active ? 0.55 : 0.32})`;
@@ -2813,7 +3078,6 @@ const Engine2D = (function () {
           ctx.strokeStyle = 'rgba(0,0,0,0.45)';
           ctx.lineWidth = 3;
           ctx.stroke();
-
           ctx.beginPath();
           ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
           ctx.fillStyle = `rgba(${rgb},0.18)`;
@@ -2841,41 +3105,39 @@ const Engine2D = (function () {
       return false;
     }
   }
-
   // ─────────────────────────────────────
   // Fullscreen — helper chico sobre la Fullscreen API del navegador
   // ─────────────────────────────────────
   // Pedile fullscreen al contenedor del juego (ej. .rpg-container), no al
   // canvas solo — así el HUD/overlay que están afuera del canvas pero
   // adentro del contenedor siguen viéndose.
-  const Fullscreen = {
-    isSupported() {
-      return !!(document.fullscreenEnabled ||
-        document.webkitFullscreenEnabled ||
-        document.msFullscreenEnabled);
-    },
-    isActive() {
+  // Clase Fullscreen: solo métodos static (se usa como Engine2D.Fullscreen.metodo()).
+  class Fullscreen {
+    static isSupported() {
+      return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled);
+    }
+
+    static isActive() {
       return !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
-    },
+    }
+
     // Si ya está en fullscreen, sale; si no, entra en `el`.
-    toggle(el) {
+    static toggle(el) {
       if (this.isActive()) {
-        (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen)
-          .call(document);
+        (document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen).call(document);
       } else {
-        (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen)
-          .call(el);
+        (el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen).call(el);
       }
-    },
+    }
+
     // cb() se llama cada vez que se entra o sale de fullscreen (por ejemplo
     // para cambiar el ícono del botón, o para recalcular tamaño del canvas).
-    onChange(cb) {
+    static onChange(cb) {
       document.addEventListener('fullscreenchange', cb);
       document.addEventListener('webkitfullscreenchange', cb);
       document.addEventListener('MSFullscreenChange', cb);
     }
-  };
-
+  }
   // ─────────────────────────────────────
   // DialogueBox — cinemática con retrato + texto (estilo Deltarune/Undertale)
   // ─────────────────────────────────────
@@ -2895,20 +3157,31 @@ const Engine2D = (function () {
   //   // en el draw, AL FINAL (encima de todo): if (box.active) box.draw(ctx);
   //   // en el input (tecla/click/botón táctil): box.advance();
   class DialogueBox {
-    constructor({ x, y, width, height, portraitSize = 56, charsPerSecond = 40, font = '12px sans-serif', padding = 10 }) {
-      this.x = x; this.y = y; this.width = width; this.height = height;
+    constructor({
+      x,
+      y,
+      width,
+      height,
+      portraitSize = 56,
+      charsPerSecond = 40,
+      font = '12px sans-serif',
+      padding = 10,
+    }) {
+      this.x = x;
+      this.y = y;
+      this.width = width;
+      this.height = height;
       this.portraitSize = portraitSize;
       this.charsPerSecond = charsPerSecond;
       this.font = font;
       this.padding = padding;
-
-      this.queue = [];       // líneas pendientes, cada una {text, speaker, portraitSrc}
-      this.current = null;   // línea que se está mostrando ahora
+      this.queue = []; // líneas pendientes, cada una {text, speaker, portraitSrc}
+      this.current = null; // línea que se está mostrando ahora
       this.visibleChars = 0; // cuántos caracteres del texto ya se revelaron (typewriter)
-      this.active = false;   // false = la cinemática terminó / no empezó
+      this.active = false; // false = la cinemática terminó / no empezó
 
-      this._wrapped = null;      // líneas de `text` ya cortadas al ancho de la caja
-      this._totalChars = 0;      // suma de caracteres de _wrapped (para saber cuándo terminó de tipear)
+      this._wrapped = null; // líneas de `text` ya cortadas al ancho de la caja
+      this._totalChars = 0; // suma de caracteres de _wrapped (para saber cuándo terminó de tipear)
     }
 
     // Arranca (o reemplaza) la cola de diálogo. `lines` puede ser un solo
@@ -2974,7 +3247,6 @@ const Engine2D = (function () {
     draw(ctx) {
       if (!this.active || !this.current) return;
       const { x, y, width, height, padding, portraitSize } = this;
-
       // Caja de fondo
       ctx.save();
       ctx.fillStyle = 'rgba(10,10,15,0.88)';
@@ -2982,7 +3254,6 @@ const Engine2D = (function () {
       ctx.lineWidth = 2;
       ctx.fillRect(x, y, width, height);
       ctx.strokeRect(x, y, width, height);
-
       // Retrato — arriba a la izquierda adentro de la caja, como el
       // recuadro de cara en Deltarune. Si no hay portraitSrc o todavía no
       // cargó la imagen, se deja el espacio vacío (no rompe el layout).
@@ -2990,7 +3261,7 @@ const Engine2D = (function () {
       // spritesheet de expresiones en vez de usar la imagen completa.
       const textX = x + padding + (this.current.portraitSrc ? portraitSize + padding : 0);
       if (this.current.portraitSrc) {
-        const img = getImage(this.current.portraitSrc);
+        const img = assets.getImage(this.current.portraitSrc);
         if (img && img.complete) {
           const rect = this.current.portraitRect;
           if (rect) {
@@ -3000,7 +3271,6 @@ const Engine2D = (function () {
           }
         }
       }
-
       // Nombre del que habla, arriba del texto
       let textY = y + padding;
       if (this.current.speaker) {
@@ -3011,7 +3281,6 @@ const Engine2D = (function () {
         ctx.fillText(this.current.speaker, textX, textY);
         textY += 16;
       }
-
       // Texto — se envuelve una sola vez (cacheado) y se revela letra por
       // letra según visibleChars.
       const maxTextWidth = x + width - padding - textX;
@@ -3029,7 +3298,6 @@ const Engine2D = (function () {
         remaining -= line.length;
         textY += 16;
       }
-
       // Indicador de "seguir" — parpadea solo cuando ya terminó de tipear,
       // así el jugador sabe que puede avanzar (y no que está trabado).
       if (!this.isTyping()) {
@@ -3046,7 +3314,6 @@ const Engine2D = (function () {
       ctx.restore();
     }
   }
-
   // ─────────────────────────────────────
   // LoadingBar — barra de progreso para la carga de assets
   // ─────────────────────────────────────
@@ -3065,28 +3332,25 @@ const Engine2D = (function () {
   class LoadingBar {
     constructor({ container, label = 'Cargando…' } = {}) {
       this.container = container || document.body;
-
       this.root = document.createElement('div');
-      this.root.style.cssText = 'position:absolute;inset:0;display:flex;flex-direction:column;' +
+      this.root.style.cssText =
+        'position:absolute;inset:0;display:flex;flex-direction:column;' +
         'align-items:center;justify-content:center;gap:10px;background:rgba(0,0,0,0.75);' +
         'color:#fff;font:14px sans-serif;z-index:9999;';
-
       this.labelEl = document.createElement('div');
       this.labelEl.textContent = label;
       this.root.appendChild(this.labelEl);
-
       const track = document.createElement('div');
-      track.style.cssText = 'width:70%;max-width:260px;height:10px;border-radius:6px;' +
+      track.style.cssText =
+        'width:70%;max-width:260px;height:10px;border-radius:6px;' +
         'background:rgba(255,255,255,0.15);overflow:hidden;';
       this.fill = document.createElement('div');
       this.fill.style.cssText = 'height:100%;width:0%;background:#4ade80;transition:width 120ms linear;';
       track.appendChild(this.fill);
       this.root.appendChild(track);
-
       this.pctEl = document.createElement('div');
       this.pctEl.textContent = '0%';
       this.root.appendChild(this.pctEl);
-
       // El overlay es position:absolute — necesita que el contenedor sea
       // un ancestro posicionado (relative/absolute) para quedar recortado
       // a su tamaño en vez de taparle la pantalla entera a todo lo demás.
@@ -3106,40 +3370,64 @@ const Engine2D = (function () {
       if (this.root.parentNode) this.root.parentNode.removeChild(this.root);
     }
   }
-
   return {
     // assets
-    loadImage, loadAtlas, loadAll, loadAllWithProgress, getImage, setImage, getAtlas,
-    getContext,
+    loadImage: assets.loadImage,
+    loadAtlas: assets.loadAtlas,
+    loadAll: assets.loadAll,
+    loadAllWithProgress: assets.loadAllWithProgress,
+    getImage: assets.getImage,
+    setImage: assets.setImage,
+    getAtlas: assets.getAtlas,
+    getContext: CanvasUtils.getContext,
     // liberar assets pesados de un solo uso (fondos por sala/nivel)
-    clearImage, clearAtlas, clearImages,
+    clearImage: assets.clearImage,
+    clearAtlas: assets.clearAtlas,
+    clearImages: assets.clearImages,
     // barra de carga autocontenida (usar junto con loadAllWithProgress)
     LoadingBar,
     // cache de dibujo estático en un canvas oculto (piso/paredes que no cambian)
     StaticLayer,
     // audio centralizado (música / efectos / ambiente)
-    Audio: AudioSystem,
+    Audio: audioSystem,
     // partículas — efectos visuales sin sprites
     Particles,
     // calidad gráfica bajo/medio/alto (flags de efectos + escalas)
     Quality,
     // utils
-    randRange, floorBounds,
+    randRange: EngineUtils.randRange,
+    floorBounds: EngineUtils.floorBounds,
     // configuración por juego + canvas ajustado + overlay de debug
-    createConfig, mergeConfig, fitCanvas, drawDebugOverlay,
+    createConfig: EngineUtils.createConfig,
+    mergeConfig: EngineUtils.mergeConfig,
+    fitCanvas: EngineUtils.fitCanvas,
+    drawDebugOverlay: EngineUtils.drawDebugOverlay,
     // dibujo
-    drawFrame, drawAtlasFrame, drawIconRect, drawCover,
+    drawFrame: Draw.drawFrame,
+    drawAtlasFrame: Draw.drawAtlasFrame,
+    drawIconRect: Draw.drawIconRect,
+    drawCover: Draw.drawCover,
     // loop / input / animación / entidades
-    GameLoop, KeyboardInput, Animation, Animator, Entity, Scene, StateMachine,
+    GameLoop,
+    KeyboardInput,
+    Animation,
+    Animator,
+    Entity,
+    Scene,
+    StateMachine,
     // trigger zones — zonas invisibles con onEnter/onExit
-    TriggerZone, Triggers,
+    TriggerZone,
+    Triggers,
     // mundo tipo Terraria: tiles, cámara y física
-    TileMap, Camera, Physics,
+    TileMap,
+    Camera,
+    Physics,
     // colisiones entidad-contra-entidad (jugador↔enemigo, bala↔enemigo, etc)
     Collisions,
     // controles táctiles dentro del canvas + pantalla completa
-    TouchControls, Fullscreen,
+    TouchControls,
+    Fullscreen,
     // cinemáticas con retrato + texto
-    DialogueBox
+    DialogueBox,
   };
 })();
