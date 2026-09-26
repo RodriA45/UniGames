@@ -16,6 +16,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { SurviConfig } from './survi_config.js';
+import { BiomasCueva } from './survi_cuevas.js';
 import { CapaFluidos } from './survi_fluidos.js';
 
 export class GeneradorMundo {
@@ -65,7 +66,7 @@ export class GeneradorMundo {
 
   // ─── Mapa de biomas: regiones de ancho variable sorteadas con el seed,
   // sin repetir dos iguales pegadas. ───
-  static buildBiomeMap(rnd) {
+  static buildBiomeMap(rnd, seed = 0) {
     const map = new Array(SurviConfig.COLS);
     let col = 0,
       prev = null;
@@ -76,7 +77,11 @@ export class GeneradorMundo {
       } while (name === prev);
       prev = name;
       const width = Math.round(28 + rnd() * 34);
-      for (let k = 0; k < width && col < SurviConfig.COLS; k++, col++) map[col] = name;
+      // Bosque oscuro: algunos bosques se vuelven oscuros. Se decide con un
+      // hash de la semilla y la columna (NO con rnd), así el resto del mundo
+      // sale igual que antes y los mundos guardados no cambian de bioma.
+      const oscuro = name === 'bosque' && GeneradorMundo.hash2(col, 777, seed) < SurviConfig.BOSQUE_OSCURO_CHANCE;
+      for (let k = 0; k < width && col < SurviConfig.COLS; k++, col++) map[col] = oscuro ? 'oscuro' : name;
     }
     return map;
   }
@@ -94,31 +99,50 @@ export class GeneradorMundo {
     if (topRow < 6) return;
     // tronco
     set(col, surfaceRow - 1, P('TRUNK_BASE'));
-    for (let k = 2; k <= h - 1; k++) {
-      const r = rnd();
-      set(col, surfaceRow - k, r < 0.2 ? P('TRUNK_K') : P('TRUNK'));
-    }
-    // ramas (nunca en los dos primeros tiles, para que se vea el tronco)
-    const branches = 1 + Math.floor(rnd() * 3);
-    for (let b = 0; b < branches; b++) {
-      const r = surfaceRow - (3 + Math.floor(rnd() * Math.max(1, h - 3)));
-      const dc = rnd() < 0.5 ? -1 : 1;
-      if (get(col + dc, r) !== 0) continue;
-      const kind = rnd();
-      if (kind < 0.45) {
-        set(col + dc, r, dc < 0 ? P('LARM_L') : P('LARM_R')); // rama con follaje
-      } else if (kind < 0.75) {
-        set(col + dc, r, P('BRANCH_H'));
-        if (get(col + 2 * dc, r) === 0) {
-          set(col + 2 * dc, r, rnd() < 0.5 ? P('LBLOB') : P('BRANCH_S'));
+    for (let k = 2; k <= h - 1; k++) set(col, surfaceRow - k, rnd() < 0.2 ? P('TRUNK_K') : P('TRUNK'));
+
+    // ── Ramas ──
+    // Reglas para que no se vean mal:
+    //  • van en filas del tronco con al menos 1 fila de aire entre la rama
+    //    y la copa (antes se metían adentro de las hojas);
+    //  • como mucho una por lado, y en filas separadas (nunca dos pegadas);
+    //  • la salida del tronco es la del lado correcto (TRUNK_L / TRUNK_R) y
+    //    el muñón y la rama con matita tienen su versión izquierda y derecha
+    //    (antes las izquierdas usaban piezas de la derecha y quedaban cortadas).
+    const filaMin = topRow + 2, filaMax = surfaceRow - 3;
+    const nidos = []; // celdas donde puede ir un nido (arriba de una rama)
+    if (filaMax >= filaMin) {
+      const cantidad = rnd() < 0.2 ? 0 : rnd() < 0.55 ? 1 : 2;
+      const lados = rnd() < 0.5 ? [-1, 1] : [1, -1];
+      const usadas = [];
+      for (let b = 0; b < cantidad; b++) {
+        const dc = lados[b];
+        let r = -1;
+        for (let t = 0; t < 6 && r < 0; t++) {
+          const f = filaMin + Math.floor(rnd() * (filaMax - filaMin + 1));
+          if (usadas.every((u) => Math.abs(u - f) >= 2)) r = f;
         }
-      } else {
-        set(col + dc, r, P('STUB')); // muñón corto
+        if (r < 0 || get(col + dc, r) !== 0) continue;
+        const tipo = rnd();
+        if (tipo < 0.4) {
+          set(col + dc, r, dc < 0 ? P('LARM_L') : P('LARM_R')); // rama con follaje
+        } else if (tipo < 0.72 && get(col + 2 * dc, r) === 0) {
+          set(col + dc, r, P('BRANCH_H')); // rama larga
+          set(col + 2 * dc, r, rnd() < 0.35 ? P('LBLOB') : dc > 0 ? P('BRANCH_S') : P('BRANCH_SL'));
+          nidos.push([col + dc, r]); // el tramo del medio puede llevar nido
+        } else {
+          set(col + dc, r, dc > 0 ? P('STUB_R') : P('STUB_L')); // muñón
+        }
+        set(col, r, dc > 0 ? P('TRUNK_R') : P('TRUNK_L'));
+        usadas.push(r);
       }
-      // el tronco muestra la salida: a la derecha tiene pieza propia, para
-      // los dos lados se usa la de ramas dobles.
-      set(col, r, dc > 0 && rnd() < 0.6 ? P('TRUNK_R') : P('TRUNK_BR'));
     }
+    // algunos árboles tienen un nido sobre la rama larga (suelta huevos)
+    if (nidos.length && rnd() < SurviConfig.NIDO_CHANCE) {
+      const [nc, nr] = nidos[Math.floor(rnd() * nidos.length)];
+      set(nc, nr, P('NEST'));
+    }
+
     // copa: el tile por donde entra el tronco + un blob elíptico de hojas.
     // Se pintan todas con LC y la pasada de autotile les pone los bordes.
     set(col, topRow, P('LCAN'));
@@ -281,7 +305,7 @@ export class GeneradorMundo {
     const rnd = GeneradorMundo.mulberry32(seed);
     const data = new Uint16Array(SurviConfig.COLS * SurviConfig.ROWS);
     const surfaceByCol = new Int16Array(SurviConfig.COLS);
-    const biomeByCol = GeneradorMundo.buildBiomeMap(rnd);
+    const biomeByCol = GeneradorMundo.buildBiomeMap(rnd, seed);
     const phaseX = rnd() * 1000;
     const caveSeedA = Math.floor(rnd() * 1e9);
     const caveSeedB = Math.floor(rnd() * 1e9);
@@ -366,7 +390,25 @@ export class GeneradorMundo {
         data[idx(col, row)] = id;
       }
     }
-    // ─── Pasada 2: vegetación ───
+    // ─── Pasada 2a: vetas (cada mineral suelto crece a 2-5 bloques) ───
+    GeneradorMundo.growOreVeins(data, rnd);
+    // ─── Pasada 2b: gusanos (túneles serpenteantes) ───
+    GeneradorMundo.carveWorms(data, surfaceByCol, rnd);
+    // ─── Pasada 2b': cavernas grandes + regiones de cueva (musgo, hielo, goteo) ───
+    const fbm = (x, y, s) => GeneradorMundo.fbm(x, y, s);
+    const grande = BiomasCueva.tallarCavernas(data, surfaceByCol, rnd, fbm, caveSeedA ^ 0x5bd1);
+    const regionCueva = BiomasCueva.mapaRegiones(surfaceByCol, biomeByCol, fbm, caveSeedB ^ 0x3c6e);
+    // ─── Pasada 2c: agua y lava (lagos en la superficie, pozos en cuevas) ───
+    const fluidos = CapaFluidos.generar(data, surfaceByCol, biomeByCol, rnd, SurviConfig.FAMILIES.sand.pieces.C);
+    // ─── Pasada 2c': minas abandonadas con cofres (en las cuevas) ───
+    const cofres = GeneradorMundo.generarMinas(data, surfaceByCol, fluidos, rnd);
+    // ─── Pasada 2c'': paredes y decoración de cada región de cueva ───
+    BiomasCueva.decorar(data, fluidos, surfaceByCol, regionCueva, grande, rnd);
+    // ─── Pasada 2d: vegetación ───
+    // Va DESPUÉS de los lagos: antes se plantaban primero y el lago se cavaba
+    // debajo, así que quedaban árboles flotando arriba del agua. Ahora un
+    // lago ya bajó el suelo (y tiene arena, que no es la tapa del bioma), así
+    // que ahí no sale nada; igual se chequea que no haya agua encima.
     // Los árboles piden 3 columnas de separación para que no salga una pared
     // de troncos pegados.
     let lastTree = -10;
@@ -374,7 +416,8 @@ export class GeneradorMundo {
       const name = biomeByCol[col];
       const b = SurviConfig.BIOMES[name];
       const surfaceRow = surfaceByCol[col];
-      const onTop = SurviConfig.FAMILIES[b.fam].ids.has(data[idx(col, surfaceRow)]);
+      const seco = !fluidos.tipo(col, surfaceRow - 1) && !fluidos.tipo(col - 1, surfaceRow - 1) && !fluidos.tipo(col + 1, surfaceRow - 1);
+      const onTop = seco && SurviConfig.FAMILIES[b.fam].ids.has(data[idx(col, surfaceRow)]);
       if (b.tree && onTop && col - lastTree >= 3 && rnd() < b.treeChance) {
         GeneradorMundo.plantTree(set, get, col, surfaceRow, b.tree, rnd);
         lastTree = col;
@@ -383,15 +426,29 @@ export class GeneradorMundo {
         for (let k = 1; k <= h; k++) set(col, surfaceRow - k, SurviConfig.TID.cactus);
       }
     }
+    // ─── Pasada 2e: pasto alto, flores y arbustos secos ───
+    // Decoración no sólida arriba del suelo: se pasa por delante, se rompe al
+    // toque y no suelta nada. Solo en celdas de aire sin agua.
+    for (let col = 2; col < SurviConfig.COLS - 2; col++) {
+      const deco = GeneradorMundo.DECO_POR_BIOMA[biomeByCol[col]];
+      if (!deco) continue;
+      const s = surfaceByCol[col];
+      const top = data[idx(col, s)];
+      if (!SurviConfig.FAMILIES[SurviConfig.BIOMES[biomeByCol[col]].fam].ids.has(top)) continue;
+      if (data[idx(col, s - 1)] !== 0 || fluidos.tipo(col, s - 1)) continue;
+      const r = rnd();
+      let acum = 0;
+      for (const [k, p] of deco) {
+        acum += p;
+        if (r < acum) {
+          data[idx(col, s - 1)] = SurviConfig.TID[k];
+          break;
+        }
+      }
+    }
     // ─── Pasada 3: autotile ───
     // Recién acá el pasto queda arriba, la tierra expuesta a los costados y
     // las copas de los árboles redondeadas.
-    // ─── Pasada 2a: vetas (cada mineral suelto crece a 2-5 bloques) ───
-    GeneradorMundo.growOreVeins(data, rnd);
-    // ─── Pasada 2b: gusanos (túneles serpenteantes) ───
-    GeneradorMundo.carveWorms(data, surfaceByCol, rnd);
-    // ─── Pasada 2c: agua y lava (lagos en la superficie, pozos en cuevas) ───
-    const fluidos = CapaFluidos.generar(data, surfaceByCol, biomeByCol, rnd, SurviConfig.FAMILIES.sand.pieces.C);
     const out = new Uint16Array(data);
     for (let row = 0; row < SurviConfig.ROWS; row++) {
       for (let col = 0; col < SurviConfig.COLS; col++) {
@@ -406,8 +463,138 @@ export class GeneradorMundo {
       surfaceByCol,
       biomeByCol,
       fluidos,
+      cofres, // contenido de los cofres de las minas: { "col,row": { id: cantidad } }
+      regionCueva, // región de cada celda bajo tierra (SurviConfig.REGION_CUEVA)
     };
   }
+
+  // ══════════════════════════════════════════════════════════════
+  //  Minas abandonadas
+  //
+  //  Cada mina es un pasillo principal (3 de alto) con 1 o 2 ramales que
+  //  suben o bajan por una escalera. El piso es de tablones donde falta
+  //  suelo (puentes sobre los huecos), cada 4 columnas hay un marco (poste +
+  //  tablones de techo), hay rieles en el piso, alguna telaraña en el techo
+  //  y cofres con botín (SurviConfig.BOTIN_MINA). Todo oscuro: ahí aparecen
+  //  zombies y esqueletos.
+  // ══════════════════════════════════════════════════════════════
+  static generarMinas(data, surfaceByCol, fluidos, rnd) {
+    const COLS = SurviConfig.COLS, ROWS = SurviConfig.ROWS, TID = SurviConfig.TID;
+    const idx = (c, r) => r * COLS + c;
+    const cofres = {};
+    const cantidad = Math.round(4 * ((COLS * ROWS) / (500 * 250))) + Math.floor(rnd() * 3); // 4 a 6
+    const dentro = (c, r) => c >= 2 && c < COLS - 2 && r >= 4 && r < ROWS - 5; // nunca toca la roca madre
+
+    // Un tramo de pasillo: `cols` = [{ c, piso }] (piso = fila del aire donde se para).
+    const tallar = (cols) => {
+      for (const { c, piso } of cols) {
+        for (let r = piso - 2; r <= piso; r++) {
+          data[idx(c, r)] = 0;
+          fluidos.set(c, r, 0, 0);
+        }
+        if (!SurviConfig.SOLID_IDS.has(data[idx(c, piso + 1)])) {
+          data[idx(c, piso + 1)] = TID.planks; // puente
+          fluidos.set(c, piso + 1, 0, 0);
+        }
+      }
+    };
+    const decorar = (cols) => {
+      cols.forEach(({ c, piso }, i) => {
+        if (i % 4 === 0) {
+          // marco: poste + tablones de techo (3 de ancho)
+          data[idx(c, piso)] = TID.beam;
+          data[idx(c, piso - 1)] = TID.beam;
+          for (const dc of [-1, 0, 1]) if (dentro(c + dc, piso - 2)) data[idx(c + dc, piso - 2)] = TID.planks;
+        } else {
+          if (rnd() < 0.7 && data[idx(c, piso)] === 0) data[idx(c, piso)] = TID.rail;
+          if (rnd() < 0.07 && data[idx(c, piso - 2)] === 0) data[idx(c, piso - 2)] = TID.cobweb;
+        }
+      });
+    };
+    const ponerCofre = (cols, chance) => {
+      if (rnd() >= chance) return;
+      const libres = cols.filter(({ c, piso }, i) => i % 4 !== 0 && i > 1 && SurviConfig.SOLID_IDS.has(data[idx(c, piso + 1)]));
+      if (!libres.length) return;
+      const { c, piso } = libres[Math.floor(rnd() * libres.length)];
+      data[idx(c, piso)] = TID.chest;
+      cofres[`${c},${piso}`] = GeneradorMundo.botinMina(rnd);
+    };
+    // pasillo recto de `largo` columnas hacia `dir`
+    const pasillo = (x, piso, dir, largo) => {
+      const cols = [];
+      for (let i = 0; i < largo; i++) {
+        const c = x + dir * i;
+        if (!dentro(c, piso - 2) || !dentro(c, piso + 1) || piso - 2 <= surfaceByCol[c] + 20) break;
+        cols.push({ c, piso });
+      }
+      return cols;
+    };
+    // escalera: sube/baja 1 fila por columna hasta cambiar `dy` filas
+    const escalera = (x, piso, dir, dy) => {
+      const cols = [];
+      const paso = Math.sign(dy);
+      for (let i = 0; i < Math.abs(dy); i++) {
+        const c = x + dir * i, p = piso + paso * (i + 1);
+        if (!dentro(c, p - 2) || !dentro(c, p + 1) || p - 2 <= surfaceByCol[c] + 20) break;
+        cols.push({ c, piso: p });
+      }
+      return cols;
+    };
+
+    for (let m = 0; m < cantidad; m++) {
+      for (let intento = 0; intento < 30; intento++) {
+        const x = 30 + Math.floor(rnd() * (COLS - 60));
+        const desde = surfaceByCol[x] + 45, hasta = ROWS - 14;
+        if (desde >= hasta) continue;
+        const piso = desde + Math.floor(rnd() * (hasta - desde));
+        const dir = rnd() < 0.5 ? -1 : 1;
+        const principal = pasillo(x, piso, dir, 24 + Math.floor(rnd() * 26));
+        if (principal.length < 16) continue;
+        const tramos = [principal];
+        // 1 o 2 ramales desde un punto del pasillo principal
+        const ramales = 1 + Math.floor(rnd() * 2);
+        for (let k = 0; k < ramales; k++) {
+          const base = principal[4 + Math.floor(rnd() * (principal.length - 8))];
+          const rdir = rnd() < 0.5 ? -1 : 1;
+          const dy = (rnd() < 0.5 ? -1 : 1) * (4 + Math.floor(rnd() * 4));
+          const esc = escalera(base.c + rdir, base.piso, rdir, dy);
+          if (esc.length < Math.abs(dy)) continue;
+          const fin = esc[esc.length - 1];
+          const ram = pasillo(fin.c + rdir, fin.piso, rdir, 10 + Math.floor(rnd() * 16));
+          tramos.push(esc, ram);
+        }
+        for (const t of tramos) tallar(t);
+        for (const t of tramos) decorar(t);
+        ponerCofre(principal, 0.75);
+        for (let k = 2; k < tramos.length; k += 2) ponerCofre(tramos[k], 0.4);
+        break;
+      }
+    }
+    return cofres;
+  }
+
+  // Contenido al azar de un cofre de mina: { id: cantidad }.
+  static botinMina(rnd) {
+    for (let tirada = 0; tirada < 3; tirada++) {
+      const cofre = {};
+      for (const [id, p, min, max] of SurviConfig.BOTIN_MINA) {
+        if (rnd() < p) cofre[id] = (cofre[id] || 0) + min + Math.floor(rnd() * (max - min + 1));
+      }
+      if (Object.keys(cofre).length >= SurviConfig.BOTIN_MINA_MIN_ITEMS) return cofre;
+    }
+    return { [SurviConfig.MAT.coal]: 4, [SurviConfig.TID.torch]: 3, [SurviConfig.MAT.ironIngot]: 2 };
+  }
+
+  // Qué decoración sale arriba del suelo de cada bioma: [tile, probabilidad por columna].
+  static DECO_POR_BIOMA = {
+    bosque: [['tallgrass', 0.35], ['tallgrass2', 0.15], ['flower_red', 0.05], ['flower_yellow', 0.05], ['flower_blue', 0.03]],
+    // la sandía es un bloque sólido (no decoración): solo sale al crear el mundo
+    pradera: [['melon', 0.025], ['tallgrass', 0.32], ['tallgrass2', 0.12], ['flower_red', 0.08], ['flower_yellow', 0.09], ['flower_blue', 0.06]],
+    jungla: [['tallgrass2', 0.3], ['tallgrass', 0.2], ['flower_red', 0.04], ['flower_blue', 0.03]],
+    desierto: [['deadbush', 0.04]],
+    nieve: [['snowgrass', 0.25], ['snowpile', 0.14]],
+    oscuro: [['tallgrass2', 0.3], ['tallgrass', 0.2], ['flower_blue', 0.03]],
+  };
 
   // ─── Punto de aparición ALEATORIO pero válido ───
   // Válido = columna cuyo tile de superficie es pisable (cualquier variante
@@ -425,10 +612,11 @@ export class GeneradorMundo {
       const top = data[idx(col, s)];
       if (!SurviConfig.SPAWN_TOP_IDS.has(top)) return false;
       if (strict && SurviConfig.FAMILIES.sand.ids.has(top)) return false;
-      for (let k = 1; k <= 3; k++) if (data[idx(col, s - k)] !== 0) return false;
+      for (let k = 1; k <= 3; k++) if (!SurviConfig.esAire(data[idx(col, s - k)])) return false; // el pasto no molesta
       if (world.fluidos) for (let k = 0; k <= 3; k++) if (world.fluidos.tipo(col, s - k)) return false; // ni en un lago
-      const leftFree = data[idx(col - 1, s - 1)] === 0 && data[idx(col - 1, s - 2)] === 0;
-      const rightFree = data[idx(col + 1, s - 1)] === 0 && data[idx(col + 1, s - 2)] === 0;
+      const aire = (c, r) => SurviConfig.esAire(data[idx(c, r)]);
+      const leftFree = aire(col - 1, s - 1) && aire(col - 1, s - 2);
+      const rightFree = aire(col + 1, s - 1) && aire(col + 1, s - 2);
       return leftFree || rightFree;
     };
     for (const strict of [true, false]) {

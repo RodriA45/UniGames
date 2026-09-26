@@ -31,7 +31,7 @@ const JUEGOS_CON_TEMATICA = {
 // De los juegos con temática, cuáles además aceptan "normal" (sin
 // temática, tematica_id = NULL) como opción — igual que en modo libre.
 // Por ahora solo Ahorcado tiene ese modo "sin temática".
-const JUEGOS_TEMATICA_NORMAL = { ahorcado: true };
+const JUEGOS_TEMATICA_NORMAL = { ahorcado: true, sopa: true };
 
 const TEMATICAS_VALIDAS = [1, 2, 3, 4];
 

@@ -304,6 +304,7 @@
 .survi-worlds-list .survi-world-card[data-biome="desierto"] { --accent: #e0b85a; }
 .survi-worlds-list .survi-world-card[data-biome="nieve"]    { --accent: #bfe3f5; }
 .survi-worlds-list .survi-world-card[data-biome="jungla"]   { --accent: #1fbf6a; }
+.survi-worlds-list .survi-world-card[data-biome="oscuro"]   { --accent: #7c8f86; }
 .survi-worlds-list .survi-world-card.hardcore { border-color: rgba(224, 86, 58, 0.35); }
 
 .survi-worlds-list .survi-world-card:hover {
@@ -734,37 +735,209 @@
   font-weight: 700;
 }
 
-/* ─── Controles táctiles ─── */
+/* ─── Controles táctiles y pantalla completa ─── */
+/* ═══════════ Celular / tablet (.survi-movil, ver survi_tactil.js) ═══════════
+   En PC nada de lo táctil se ve. Por defecto se juega DENTRO de la sección
+   (como el RPG); la pantalla completa es opcional desde Ajustes (.survi-fs). */
+.survi-root:not(.survi-movil) .survi-solo-movil,
+.survi-root:not(.survi-movil) .survi-touch,
+.survi-root:not(.survi-movil) .survi-girar,
+.survi-root:not(.survi-fs) .survi-solo-fs { display: none !important; }
+
+/* Los controles se miden contra el tamaño del juego (cqw/cqh), así entran
+   igual dentro de la sección que en pantalla completa. */
+.survi-root.survi-movil { container-type: size; }
+
+/* ── Pantalla completa (PC y celular): tapa todo, como una app ── */
+.survi-root.survi-fs {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  max-width: none;
+  aspect-ratio: auto;
+  margin: 0;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.survi-fs .survi-canvas { flex: 0 0 auto; }
+.survi-movil .survi-canvas { cursor: default; }
+html.survi-fs-abierto,
+html.survi-fs-abierto body { overflow: hidden; }
+
+/* HUD con márgenes seguros (notch y barra de gestos) en pantalla completa */
+.survi-fs.survi-movil .survi-hud {
+  padding: max(0.6rem, env(safe-area-inset-top)) max(0.9rem, env(safe-area-inset-right))
+    max(0.5rem, env(safe-area-inset-bottom)) max(0.9rem, env(safe-area-inset-left));
+}
+.survi-hud-izq { display: flex; gap: 0.5rem; }
+/* Coordenadas al lado de la pausa (y del zoom en celular) */
+.survi-coords {
+  align-self: center;
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.25rem 0.55rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--game-radius-sm, 8px);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.5rem;
+  color: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  white-space: nowrap;
+}
+.survi-coords b { color: #fff; font-weight: 400; display: inline-block; min-width: 3ch; }
+.survi-movil .survi-coords { font-size: min(0.5rem, 3cqh); }
+.survi-zoom-btn { pointer-events: auto; }
+.survi-movil .survi-hud-top .game-icon-btn {
+  width: min(2.6rem, 13cqh);
+  height: min(2.6rem, 13cqh);
+  font-size: min(1rem, 6cqh);
+}
+.survi-movil .survi-slot { width: var(--slot); height: var(--slot); }
+.survi-movil {
+  /* slot de la hotbar: que las 8 + el botón entren entre las dos zonas */
+  --slot: min(2.3rem, 11cqh, 5.4cqw);
+}
+
+/* Fila de la hotbar: la hotbar queda centrada y el botón de colocar/usar
+   va pegado a su derecha (en absoluto, para no correrla del centro). */
+.survi-hotbar-fila { position: relative; display: flex; justify-content: center; }
+.survi-btn-colocar {
+  position: absolute;
+  left: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-left: 0.6rem;
+  width: calc(var(--slot, 2.3rem) * 1.3);
+  height: calc(var(--slot, 2.3rem) * 1.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  touch-action: none;
+  font-size: calc(var(--slot, 2.3rem) * 0.5);
+  background: rgba(40, 90, 200, 0.55);
+  border-color: rgba(150, 190, 255, 0.7);
+}
+.survi-btn-colocar:hover { transform: translateY(-50%); }
+.survi-btn-colocar.activo { background: rgba(245, 197, 24, 0.85); border-color: #f5c518; color: #1a1a1a; }
+
+/* Zonas de toque: abajo a cada lado, sin pisar la hotbar ni el botón.
+   El joystick aparece donde ponés el dedo (survi_tactil.js); en reposo se
+   ve apagado en su lugar de siempre, como referencia. */
 .survi-touch {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  display: none;
-  align-items: flex-end;
-  justify-content: space-between;
-  padding: 0.6rem;
-  box-sizing: border-box;
   z-index: 11;
+  --stick: min(7.5rem, 38cqh, 20cqw);
+  --borde-x: min(1.6rem, 4cqw);
+  --borde-y: min(1.4rem, 5cqh);
+  /* mitad de la hotbar (8 slots + 7 huecos de 0.3rem) + un margen */
+  --media-hotbar: calc(var(--slot) * 4 + 1.05rem + 0.6rem);
 }
-
-@media (hover: none) and (pointer: coarse) {
-  .survi-touch:not(.hidden) { display: flex; }
-}
-
-.survi-touch-move,
-.survi-touch-right {
+.survi-zona {
+  position: absolute;
+  bottom: 0;
+  height: 58%;
   pointer-events: auto;
+  touch-action: none;
+}
+.survi-zona-mover { left: 0; width: calc(50% - var(--media-hotbar)); }
+/* a la derecha además deja lugar para el botón de colocar */
+.survi-zona-mira { right: 0; width: calc(50% - var(--media-hotbar) - var(--slot) * 1.3 - 1.2rem); }
+
+.survi-stick {
+  position: absolute;
+  width: var(--stick);
+  height: var(--stick);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  box-sizing: border-box;
+  pointer-events: none; /* toca la zona, no la base */
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
+/* lugar de reposo */
+.survi-zona-mover .survi-stick {
+  left: calc(var(--borde-x) + env(safe-area-inset-left));
+  bottom: calc(var(--borde-y) + env(safe-area-inset-bottom));
+}
+.survi-zona-mira .survi-stick {
+  right: calc(var(--borde-x) + env(safe-area-inset-right));
+  bottom: calc(var(--borde-y) + env(safe-area-inset-bottom));
+}
+.survi-stick-palanca {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44%;
+  height: 44%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(255, 255, 255, 0.55);
   display: flex;
-  gap: 0.5rem;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: center;
+  color: rgba(0, 0, 0, 0.55);
+  transition: transform 0.08s ease-out;
+}
+.survi-stick-mira .survi-stick-palanca { background: rgba(255, 140, 110, 0.65); }
+.survi-stick.activo {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.42);
+  border-color: rgba(255, 255, 255, 0.65);
+  transition: none;
+}
+.survi-stick.activo .survi-stick-palanca { transition: none; }
+
+/* Pantallas chicas en horizontal (la mayoría de los celulares) */
+@media (max-height: 430px) {
+  .survi-touch { --borde-x: min(1.2rem, 3cqw); --borde-y: min(1rem, 4cqh); }
+  .survi-movil { --slot: min(2.1rem, 11cqh, 5.4cqw); }
 }
 
-.survi-touch-move button,
-.survi-touch-right button {
-  width: 2.6rem;
-  height: 2.6rem;
-  font-size: 1.1rem;
+/* Celular en vertical EN PANTALLA COMPLETA: se pide girarlo (el juego se
+   pausa solo). Dentro de la sección se juega como venga. */
+.survi-girar { display: none; }
+@media (orientation: portrait) and (max-width: 599px) {
+  .survi-fs.survi-movil .survi-girar {
+    display: flex;
+    position: absolute;
+    inset: 0;
+    z-index: 60;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: rgba(8, 10, 20, 0.94);
+    color: #fff;
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.7rem;
+    line-height: 1.6;
+  }
+  .survi-fs.survi-movil .survi-girar svg { animation: survi-girar 1.8s ease-in-out infinite; color: var(--yellow, #f5c518); }
 }
+@keyframes survi-girar {
+  0%, 25% { transform: rotate(0deg); }
+  55%, 100% { transform: rotate(-90deg); }
+}
+
+/* Carteles (inventario, crafteo, pausa…) en celular: usan todo el ancho y
+   si no entran en alto, scrollean (arrancan arriba, no se cortan). */
+.survi-movil .modal-game {
+  align-items: flex-start;
+  padding: max(0.6rem, env(safe-area-inset-top)) max(0.8rem, env(safe-area-inset-right))
+    max(0.6rem, env(safe-area-inset-bottom)) max(0.8rem, env(safe-area-inset-left));
+  -webkit-overflow-scrolling: touch;
+}
+.survi-movil .modal-game-box { max-width: min(46rem, 100%); }
 
 @media (max-width: 480px) {
   .survi-slot { width: 1.9rem; height: 1.9rem; }
@@ -866,6 +1039,27 @@
 }
 .survi-dura > span { display: block; height: 100%; }
 
+/* ── Efectos (veneno…) arriba de la vida ── */
+.survi-efectos { display: flex; gap: 0.3rem; pointer-events: none; }
+.survi-efecto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #d8ffb0;
+  background: rgba(40, 70, 10, 0.75);
+  border: 1px solid rgba(160, 220, 80, 0.6);
+}
+.survi-efecto b { font-family: 'Press Start 2P', monospace; font-size: 0.5rem; font-weight: 400; }
+.survi-efecto-veneno .survi-ico { color: #8fd13a; }
+.survi-efecto-enredado { color: #f0f0f0; background: rgba(60, 60, 60, 0.8); border-color: rgba(220, 220, 220, 0.6); }
+.survi-efecto-congelado { color: #dff2ff; background: rgba(20, 60, 110, 0.8); border-color: rgba(140, 200, 255, 0.7); }
+.survi-efecto-congelado .survi-ico { color: #9fd8ff; }
+.survi-efecto.hidden { display: none; }
+
 /* ── Aire bajo el agua: 10 burbujas arriba de la vida ── */
 .survi-air {
   display: flex;
@@ -912,3 +1106,158 @@
 }
 /* el arco sin flechas: el número en rojo */
 .survi-slot-count.survi-sin-flechas { color: #ff6b6b; }
+
+/* El contador del título ("(3/10)") comparte clase con el número de cada
+   ítem, que va en absoluto: en el título tiene que ir en línea. */
+.modal-game-title .survi-inv-count { position: static; margin-left: 0.4em; }
+
+/* Inventario en celular horizontal (~390 px de alto): más compacto, y
+   "Cerrar" arriba a la derecha para que todo entre sin scrollear. */
+.survi-movil .survi-inv-box > [data-act='close-inv'] {
+  position: absolute;
+  top: max(0.6rem, env(safe-area-inset-top));
+  right: max(0.8rem, env(safe-area-inset-right));
+  width: auto;
+  margin: 0;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+}
+@media (max-height: 430px) {
+  .survi-movil .modal-game-box { gap: 0.45rem; }
+  .survi-movil .modal-game-title { font-size: 12px; margin: 0.2rem 0 0; }
+  .survi-movil .survi-inv-grid { grid-template-columns: repeat(auto-fill, minmax(4.4rem, 1fr)); max-height: none; }
+  .survi-movil .survi-inv-cell { padding: 0.25rem 0.15rem; }
+  .survi-movil .survi-inv-cell-empty { min-height: 2.9rem; }
+  .survi-movil .survi-inv-hotbar { margin-top: 0.2rem; padding-top: 0.45rem; }
+  .survi-movil .survi-inv-hint { font-size: 0.62rem; }
+  .survi-movil .survi-inv-actions button { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
+}
+/* Tablets (pantallas altas): joysticks más grandes */
+@media (min-height: 700px) {
+  .survi-touch { --stick: min(9rem, 38cqh, 20cqw); --borde-x: min(2.2rem, 4cqw); --borde-y: min(2rem, 5cqh); }
+}
+
+/* ═══════════ Nuevo mundo (nombre, modo, dificultad) ═══════════ */
+.survi-crear-box { max-width: 440px; gap: 0.55rem; align-items: stretch; text-align: left; }
+.survi-crear-head { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.2rem; }
+.survi-crear-head .modal-game-title { flex: 1; text-align: center; margin-right: 2rem; }
+.survi-screen .modal-game-box button.survi-crear-volver { width: 2rem; max-width: 2rem; display: flex; align-items: center; justify-content: center; }
+.survi-crear-label {
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 0.3rem;
+}
+.survi-crear-nombre {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  font: 700 0.95rem 'Nunito', sans-serif;
+  outline: none;
+  user-select: text;
+  -webkit-user-select: text;
+  touch-action: auto;
+  transition: border-color 0.15s ease;
+}
+.survi-crear-nombre:focus { border-color: var(--yellow, #f5c518); }
+.survi-opciones { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+.survi-opciones-dif { grid-template-columns: repeat(4, 1fr); }
+.survi-screen .modal-game-box button.survi-opcion {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  padding: 0.55rem 0.3rem;
+  border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.8);
+  font: 800 0.8rem 'Nunito', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.survi-screen .modal-game-box button.survi-opcion:hover:not(:disabled):not(.active) { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.survi-screen .modal-game-box button.survi-opcion.active { background: var(--yellow, #f5c518); border-color: var(--yellow, #f5c518); color: #1a1a1a; }
+.survi-screen .modal-game-box button.survi-opcion-hard.active { background: #e0563a; border-color: #e0563a; color: #fff; }
+.survi-opciones.apagado { opacity: 0.35; }
+.survi-screen .modal-game-box button.survi-opcion:disabled { cursor: not-allowed; }
+.survi-crear-desc {
+  min-height: 2.6em;
+  margin: 0.2rem 0 0.3rem;
+  font-size: 0.74rem;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.7);
+}
+/* "Crear mundo" al final, centrado */
+.survi-screen .modal-game-box button.survi-crear-btn { align-self: center; display: inline-flex; align-items: center; justify-content: center; gap: 0.4em; }
+@media (max-width: 480px), (max-height: 430px) {
+  .survi-opciones-dif { grid-template-columns: repeat(2, 1fr); }
+  .survi-crear-box { gap: 0.35rem; }
+}
+
+/* ═══════════ Creativo / espectador ═══════════ */
+.survi-hud-top { position: relative; }
+.survi-hud-modo {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+.survi-hud-modo .game-icon-btn { pointer-events: auto; display: flex; align-items: center; justify-content: center; }
+.survi-hud-modo .game-icon-btn.activo { background: var(--yellow, #f5c518); color: #1a1a1a; border-color: var(--yellow, #f5c518); }
+.survi-modo-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.55rem;
+  color: #fff;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  background: rgba(120, 60, 200, 0.7);
+  border: 1px solid rgba(220, 190, 255, 0.6);
+  white-space: nowrap;
+}
+.survi-espectador .survi-modo-label { background: rgba(40, 60, 90, 0.8); border-color: rgba(160, 200, 255, 0.6); }
+.survi-movil .survi-hud-modo .game-icon-btn { width: min(2.6rem, 13cqh); height: min(2.6rem, 13cqh); }
+/* inmortal: sin barras de vida ni hambre */
+.survi-creativo .survi-health,
+.survi-creativo .survi-hunger,
+.survi-espectador .survi-health,
+.survi-espectador .survi-hunger,
+.survi-espectador .survi-air { display: none !important; }
+/* el espectador no usa ítems */
+.survi-espectador .survi-hotbar-fila,
+.survi-espectador .survi-inv-btn { visibility: hidden; }
+.survi-root:not(.survi-creativo) .survi-solo-creativo { display: none !important; }
+.survi-tag.tag-creativo { background: rgba(140, 80, 220, 0.28); color: #dcc4ff; }
+
+/* Catálogo del creativo */
+.survi-catalogo-box { max-width: 560px; }
+.survi-catalogo-grid {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.5rem;
+  max-height: 38vh;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  justify-content: center;
+}
+.survi-movil .survi-catalogo-grid { max-height: none; }
+
+.survi-catalogo-box .survi-inv-actions { max-width: 360px; }
+.survi-catalogo-box .survi-inv-actions button { white-space: nowrap; font-size: 0.85rem; padding: 0.5rem 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.35em; }

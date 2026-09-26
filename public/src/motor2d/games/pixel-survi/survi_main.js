@@ -15,6 +15,7 @@
 // ══════════════════════════════════════════════════════════════
 
 import { ServiciosApp } from '../servicios_app.js';
+import { ControlesTactiles } from './survi_tactil.js';
 import { SurviGame } from './survi_game.js';
 import { GestorGuardado } from './survi_save.js';
 import { SurviUI } from './survi_ui.js';
@@ -23,16 +24,22 @@ export class SurviApp {
   static ROOT_ID = 'survi-root';
   constructor(root) {
     // Composición: la app crea las piezas y se las pasa al juego.
-    this.ui = new SurviUI(root);
+    // Celular / tablet: joysticks (en PC no se crean, ver survi_tactil.js).
+    // La pantalla completa es opcional, desde Ajustes, en los dos.
+    this.movil = ControlesTactiles.esDispositivoTactil();
+    this.ui = new SurviUI(root, { movil: this.movil });
     this.servicios = new ServiciosApp();
     // Mundos por usuario (ver ServiciosApp.claveUsuario).
     this.guardado = new GestorGuardado((base) => this.servicios.claveUsuario(base));
-    this.game = new SurviGame(this.ui, this.guardado);
+    this.game = new SurviGame(this.ui, this.guardado, { movil: this.movil });
+    this.tactil = this.movil ? new ControlesTactiles(this.ui, this.game) : null;
     this.pickedSlot = null; // { slot, exists, mode, ... } elegido en la lista
     this.settingsFrom = 'cover'; // a qué pantalla vuelve el botón Volver de Ajustes
     this.qualityRowAdded = false;
+    this.fsReal = false; // true si se entró con la Fullscreen API (no el modo CSS de iPhone)
     this.wireActions();
     this.wireSettings();
+    this.#escucharPantallaCompleta();
   }
 
   // ─── Entrada: al entrar (o volver) a la sección siempre se arranca desde
@@ -45,6 +52,7 @@ export class SurviApp {
   // quede el requestAnimationFrame corriendo de fondo. ───
   detener() {
     if (this.game.running) this.game.stop(); // stop() guarda antes de cortar
+    this.salirPantallaCompleta(); // que no quede tapando el resto del sitio
   }
 
   // ═══════════ Cableado de botones ═══════════
@@ -74,22 +82,45 @@ export class SurviApp {
         case 'settings-back':
           ui.showScreen(this.settingsFrom);
           break;
+        case 'salir':
+          // (pantalla completa) el juego tapa todo: este botón vuelve al sitio
+          this.salirPantallaCompleta();
+          this.servicios.irASeccion('juegos');
+          break;
         case 'back-cover':
           ui.showScreen('cover');
           break;
         case 'back-worlds':
           this.openWorlds();
           break;
-        // ── modo ──
-        case 'mode-normal':
-          this.startWorld('normal');
+        // ── crear mundo ──
+        case 'crear-mundo':
+          this.crearMundo();
           break;
-        case 'mode-hardcore':
-          this.startWorld('hardcore');
+        // ── creativo / espectador ──
+        case 'volar':
+          game.alternarVuelo();
+          break;
+        case 'espectador':
+          game.alternarEspectador();
+          break;
+        case 'open-catalogo':
+          ui.renderCatalogo(game);
+          ui.showScreen('catalogo');
+          break;
+        case 'catalogo-back':
+          ui.showScreen('inv');
+          ui.renderInventory(game);
+          break;
+        case 'vaciar-inv':
+          if (confirm('¿Vaciar todo el inventario?')) game.vaciarInventario();
+          break;
+        case 'espectar':
+          game.verComoEspectador();
           break;
         // ── en partida ──
         case 'fullscreen':
-          if (typeof Engine2D !== 'undefined') Engine2D.Fullscreen.toggle(ui.root);
+          this.alternarPantallaCompleta();
           break;
         case 'resume':
           game.setPaused(false);
@@ -135,6 +166,87 @@ export class SurviApp {
     });
   }
 
+  // ═══════════ Pantalla completa (opcional, desde Ajustes) ═══════════
+  // Por defecto se juega dentro de la sección, como el RPG. Al activarla:
+  //   • la clase .survi-fs hace que el juego tape toda la pantalla (ver CSS)
+  //     y el juego ensancha la vista (ver SurviGame._fit);
+  //   • si el navegador tiene la Fullscreen API se pide también (se van las
+  //     barras del navegador) y en celular se traba en horizontal.
+  // En iPhone no hay Fullscreen API: queda solo la clase, y en vertical el
+  // juego pide girarlo.
+  get pantallaCompleta() {
+    return this.ui.root.classList.contains('survi-fs');
+  }
+
+  static elementoFs() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  alternarPantallaCompleta() {
+    if (this.pantallaCompleta) this.salirPantallaCompleta();
+    else this.entrarPantallaCompleta();
+  }
+
+  // Tiene que llamarse dentro del toque/clic del jugador (el navegador no
+  // deja pedir pantalla completa sin un gesto).
+  entrarPantallaCompleta() {
+    this.#fijarPantallaCompleta(true);
+    const el = this.ui.root;
+    const pedir = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (!pedir || SurviApp.elementoFs()) return;
+    try {
+      const p = pedir.call(el, { navigationUI: 'hide' });
+      const alEntrar = () => {
+        this.fsReal = true;
+        try {
+          if (this.movil && screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+        } catch {
+          /* sin bloqueo de orientación: se gira a mano */
+        }
+      };
+      if (p && p.then) p.then(alEntrar).catch(() => {});
+      else alEntrar();
+    } catch {
+      /* sin Fullscreen API: queda el modo CSS */
+    }
+  }
+
+  salirPantallaCompleta() {
+    if (!this.pantallaCompleta && !SurviApp.elementoFs()) return;
+    this.#fijarPantallaCompleta(false);
+    this.fsReal = false;
+    try {
+      if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+    } catch {}
+    try {
+      if (SurviApp.elementoFs()) {
+        const salir = document.exitFullscreen || document.webkitExitFullscreen;
+        const p = salir && salir.call(document);
+        if (p && p.catch) p.catch(() => {});
+      }
+    } catch {}
+  }
+
+  #fijarPantallaCompleta(activa) {
+    this.ui.root.classList.toggle('survi-fs', activa);
+    document.documentElement.classList.toggle('survi-fs-abierto', activa); // sin scroll de la página atrás
+    this.ui.mostrarPantallaCompleta(activa);
+    // el contenedor cambió de tamaño: vista y canvas de nuevo (al frame siguiente, ya con el CSS aplicado)
+    requestAnimationFrame(() => this.game._fit());
+  }
+
+  // Si se sale con Esc o con el botón "atrás" del celular, se vuelve a la sección.
+  #escucharPantallaCompleta() {
+    const alCambiar = () => {
+      if (this.fsReal && !SurviApp.elementoFs()) {
+        this.fsReal = false;
+        this.#fijarPantallaCompleta(false);
+      }
+    };
+    document.addEventListener('fullscreenchange', alCambiar);
+    document.addEventListener('webkitfullscreenchange', alCambiar);
+  }
+
   static flashBtn(btn, text) {
     const original = btn.dataset.label || btn.textContent;
     btn.dataset.label = original;
@@ -147,13 +259,13 @@ export class SurviApp {
   // ═══════════ Mundos ═══════════
   openWorlds() {
     this.ui.renderWorlds(this.guardado.listarSlots(), {
-      // Mundo ya creado: se continúa directo en su modo (ya lo elegiste al
-      // crearlo). Solo un espacio vacío pregunta normal / hardcore.
+      // Mundo ya creado: se continúa directo con lo que elegiste al crearlo.
+      // Un espacio vacío abre la pantalla de "Nuevo mundo".
       onPick: (s) => {
         if (s.exists) {
           this.pickedSlot = s;
-          this.startWorld(s.mode === 'hardcore' ? 'hardcore' : 'normal');
-        } else this.openMode(s);
+          this.startWorld();
+        } else this.openCrear(s);
       },
       onDelete: (s) => {
         if (confirm(`¿Borrar el Mundo ${s.slot}? No se puede recuperar.`)) {
@@ -165,22 +277,51 @@ export class SurviApp {
     this.ui.showScreen('worlds');
   }
 
-  // Solo para espacios vacíos: un mundo que ya existe se continúa directo en
-  // su modo (ver onPick en openWorlds), así que acá no hay partida que avisar.
-  openMode(slotInfo) {
+  // ═══════════ Nuevo mundo ═══════════
+  // Pantalla dentro del juego: nombre, modo (supervivencia / creativo) y
+  // dificultad (fácil / normal / difícil / hardcore). Solo para espacios vacíos.
+  openCrear(slotInfo) {
     this.pickedSlot = slotInfo;
-    this.ui.modeTitle.textContent = `Mundo ${slotInfo.slot}`;
-    const sub = this.ui.screens.mode.querySelector('.modal-game-sub');
-    sub.textContent = 'Mundo vacío: se genera uno nuevo con aparición al azar en la superficie.';
-    this.ui.showScreen('mode');
+    this.eleccion = { modo: 'supervivencia', dificultad: 'normal' };
+    const ui = this.ui;
+    ui.crearNombre.value = `Mundo ${slotInfo.slot}`;
+    if (!this.crearCableado) {
+      this.crearCableado = true;
+      ui.screens.crear.addEventListener('click', (e) => {
+        const m = e.target.closest('[data-modo]'), d = e.target.closest('[data-dif]');
+        if (m) this.eleccion.modo = m.dataset.modo;
+        else if (d && !d.disabled) this.eleccion.dificultad = d.dataset.dif;
+        else return;
+        ui.mostrarCrear(this.eleccion);
+      });
+      // Enter en el nombre = crear
+      ui.crearNombre.addEventListener('keydown', (e) => {
+        e.stopPropagation(); // que las teclas no las agarre el juego
+        if (e.key === 'Enter') this.crearMundo();
+      });
+    }
+    ui.mostrarCrear(this.eleccion);
+    ui.showScreen('crear');
+    // en PC, listo para escribir (en celular no, para que no salte el teclado)
+    if (!this.movil) setTimeout(() => ui.crearNombre.select(), 50);
   }
 
-  async startWorld(mode) {
+  crearMundo() {
+    const info = this.pickedSlot;
+    if (!info || info.exists) return;
+    const nombre = this.ui.crearNombre.value.trim().slice(0, 24) || `Mundo ${info.slot}`;
+    const { modo, dificultad } = this.eleccion;
+    this.startWorld({ nombre, modo, dificultad: modo === 'creativo' ? 'normal' : dificultad });
+  }
+
+  // nuevo: { nombre, modo, dificultad } si se está creando; si no, se carga
+  // el mundo guardado con lo que tenía.
+  async startWorld(nuevo = null) {
     const info = this.pickedSlot;
     if (!info) return;
-    // Mundo existente: se carga (siempre en su propio modo, ver onPick).
-    // Si la meta existe pero los datos no se pueden leer, se avisa en vez de
-    // generar uno nuevo en silencio que después pisaría el guardado.
+    // Mundo existente: se carga. Si la meta existe pero los datos no se
+    // pueden leer, se avisa en vez de generar uno nuevo en silencio que
+    // después pisaría el guardado.
     let save = null;
     if (info.exists) {
       save = this.guardado.cargarMundo(info.slot);
@@ -195,8 +336,10 @@ export class SurviApp {
     this.ui.showScreen(null);
     await this.game.start({
       slot: info.slot,
-      mode,
       save,
+      nombre: save ? info.nombre : nuevo.nombre,
+      modo: save ? info.modo : nuevo.modo,
+      dificultad: save ? info.dificultad : nuevo.dificultad,
     });
   }
 
@@ -237,10 +380,9 @@ export class SurviApp {
       );
       this.qualityRowAdded = true;
     }
-    // Pantalla completa: si el navegador no lo soporta, se oculta la fila.
-    if (E && E.Fullscreen && !E.Fullscreen.isSupported()) {
-      ui.root.querySelector('.survi-fullscreen-row').classList.add('hidden');
-    }
+    // Pantalla completa: la fila se muestra siempre (sin Fullscreen API, como
+    // en iPhone, igual tapa toda la pantalla con CSS).
+    ui.mostrarPantallaCompleta(this.pantallaCompleta);
   }
 
   // ─── Instancia única + entrada/salida que llama app2.js ───

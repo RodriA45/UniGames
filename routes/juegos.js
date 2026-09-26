@@ -170,8 +170,10 @@ router.get('/ahorcado/palabra', async (req, res) => {
         let sql = `SELECT palabra FROM palabras_ahorcado`;
         let params = [];
 
+        // 'normal' = palabras sin temática (las mismas que usa Sopa en modo
+        // Normal). Un número = el id de la temática.
         if (tematica === 'normal') {
-            // 'normal' pick any word from any theme
+            sql += ` WHERE tematica_id IS NULL`;
         } else if (tematica !== undefined && /^\d+$/.test(tematica)) {
             sql += ` WHERE tematica_id = ?`;
             params.push(Number(tematica));
@@ -179,7 +181,12 @@ router.get('/ahorcado/palabra', async (req, res) => {
 
         sql += ` ORDER BY RANDOM() LIMIT 1`;
 
-        const row = (await db.query(sql, params)).rows[0];
+        let row = (await db.query(sql, params)).rows[0];
+        // Si todavía no hay palabras "Normal" cargadas, cualquier palabra
+        // (antes Normal era eso: una de cualquier temática).
+        if (!row && tematica === 'normal') {
+            row = (await db.query(`SELECT palabra FROM palabras_ahorcado ORDER BY RANDOM() LIMIT 1`)).rows[0];
+        }
         if (row) {
             res.json({ palabra: row.palabra });
         } else {
@@ -249,8 +256,8 @@ router.get('/sopa/palabras', async (req, res) => {
         const conditions = [];
         const params = [];
 
-        // Mismo criterio de "tematica" que /ahorcado/palabra: 'normal'
-        // son las palabras sin temática asignada, un número es el id.
+        // Mismo criterio de "tematica" que /ahorcado/palabra: 'normal' son
+        // las palabras sin temática asignada, un número es el id.
         if (tematica === 'normal') {
             conditions.push(`tematica_id IS NULL`);
         } else if (tematica !== undefined && /^\d+$/.test(tematica)) {

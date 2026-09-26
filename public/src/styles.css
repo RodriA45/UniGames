@@ -296,6 +296,62 @@ header {
   line-height: 0;
 }
 
+/* Apariencia (tema) al pie del menú izquierdo */
+.nav-tema {
+  margin-top: auto; /* queda abajo de todo */
+  padding: 1rem 1.25rem 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.nav-tema-titulo {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--gray-mid);
+  margin-bottom: 0.55rem;
+}
+
+.nav-tema-botones {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+}
+
+.nav-tema-btn {
+  padding: 0.55rem 0.3rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: var(--white);
+  font: 700 0.82rem 'Nunito', sans-serif;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.nav-tema-btn:hover,
+.nav-tema-btn.active {
+  background: rgba(37, 99, 235, 0.4);
+  border-color: var(--yellow);
+}
+
+.nav-tema-reset {
+  margin-top: 0.55rem;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--gray-mid);
+  font: 600 0.78rem 'Nunito', sans-serif;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+body.theme-light .nav-tema { border-top-color: rgba(0, 0, 0, 0.12); }
+body.theme-light .nav-tema-btn { color: var(--text-dark); border-color: rgba(0, 0, 0, 0.15); }
+body.theme-light .nav-tema-btn:hover,
+body.theme-light .nav-tema-btn.active { background: rgba(37, 99, 235, 0.1); }
+
 /* ─── Menú lateral derecho: cuenta ─── */
 .account-drawer {
   position: fixed;

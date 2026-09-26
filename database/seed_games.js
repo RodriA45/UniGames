@@ -15,6 +15,15 @@ async function seed() {
             ON CONFLICT DO NOTHING;
         `);
 
+        // 1.b Palabras "Normal" (sin temática): las usan Ahorcado y Sopa de
+        // Letras en su modo Normal. Las que cargue el admin con "Normal (sin
+        // temática)" también van acá.
+        await db.query(`
+            INSERT INTO palabras_ahorcado (palabra, tematica_id) VALUES
+            ('CASA', NULL), ('PERRO', NULL), ('GATO', NULL), ('ARBOL', NULL), ('SOL', NULL), ('LUNA', NULL), ('ESCUELA', NULL), ('LIBRO', NULL), ('MESA', NULL), ('SILLA', NULL), ('VENTANA', NULL), ('PUERTA', NULL), ('CIELO', NULL), ('RIO', NULL), ('PLAYA', NULL), ('MANZANA', NULL), ('NARANJA', NULL), ('CAMISA', NULL), ('ZAPATO', NULL), ('RELOJ', NULL), ('TREN', NULL), ('AVION', NULL), ('BARCO', NULL), ('FLOR', NULL), ('JARDIN', NULL), ('CIUDAD', NULL), ('CAMINO', NULL), ('AMIGO', NULL), ('FAMILIA', NULL), ('MUSICA', NULL), ('PELOTA', NULL), ('LAPIZ', NULL), ('CUADERNO', NULL), ('GUITARRA', NULL), ('ESTRELLA', NULL), ('NUBE', NULL), ('LLUVIA', NULL), ('VIENTO', NULL), ('FUEGO', NULL), ('MONTE', NULL)
+            ON CONFLICT DO NOTHING;
+        `);
+
         // 2. Preguntados
         await db.query(`
             INSERT INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta) VALUES

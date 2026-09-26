@@ -469,9 +469,17 @@ class AuthManager extends Modulo {
     if (antes !== despues) {
       const activa = document.querySelector('.section.active');
       const juegos2D = ['sec-runner', 'sec-castle_escape', 'sec-rpg_pixel', 'sec-pixel_survi'];
-      if (activa && juegos2D.includes(activa.id) && typeof window.goTo === 'function') window.goTo('juegos');
+      // Un duelo a medio jugar se cierra con lo que se llevaba hecho (con la
+      // cuenta que lo estaba jugando, antes de cambiar de usuario).
+      if (app.duelos.dueloEnPantalla()) {
+        app.duelos.abandonarDuelo();
+        app.navegacion.goTo('juegos', { forzar: true });
+      } else if (activa && juegos2D.includes(activa.id)) {
+        app.navegacion.goTo('juegos');
+      }
     }
     this.currentUser = usuario;
+    if (app.tema) app.tema.aplicarTemaEfectivo();
   }
 
   logout() {
@@ -1358,9 +1366,11 @@ class DuelosManager extends Modulo {
   };
   // De los que piden temática, cuáles además aceptan "Normal" (sin
   // temática) como opción, igual que en modo libre (debe reflejar
-  // JUEGOS_TEMATICA_NORMAL de routes/duelos.js). Por ahora solo Ahorcado.
+  // JUEGOS_TEMATICA_NORMAL de routes/duelos.js). Ahorcado y Sopa comparten
+  // el banco de palabras "Normal".
   static DUELO_TEMATICA_NORMAL = {
     ahorcado: true,
+    sopa: true,
   };
   // De los que piden temática, cuáles además piden elegir la duración
   // (debe reflejar JUEGOS_CON_DURACION de routes/duelos.js).
@@ -1667,6 +1677,121 @@ class DuelosManager extends Modulo {
     } else {
       app.utils.mostrarToast('Ese juego todavía no tiene modo duelo.', 'error');
     }
+  }
+
+  // ─── Salir en medio de un duelo ───
+  // Duelo que se está jugando en pantalla ({ id, juego }) o null. Cuenta solo
+  // si la sección visible es la del juego del duelo y el juego todavía no
+  // reportó el puntaje (cada juego pone su xxxDuelo en null al terminar).
+  dueloEnPantalla() {
+    const d = this.dueloActivo;
+    if (!d) return null;
+    const activa = document.querySelector('.section.active');
+    if (!activa || activa.id !== 'sec-' + d.juego) return null;
+    if (d.juego === 'runner') return d;
+    const estado = DuelosManager.estadoDuelo(d.juego);
+    return estado && estado.activo ? d : null;
+  }
+
+  static estadoDuelo(juego) {
+    switch (juego) {
+      case 'ahorcado': return app.ahorcado.ahorcadoDuelo;
+      case 'wordle': return app.wordle.wordleDuelo;
+      case 'preguntados': return app.preguntados.pregDuelo;
+      case 'sopa': return app.sopa.sopaDuelo;
+      case 'termina': return app.termina.terminaDuelo;
+      case 'adivina': return app.adivina.adivinaDuelo;
+      default: return null;
+    }
+  }
+
+  // Lo que el jugador lleva hecho en el duelo. Wordle y Termina son una sola
+  // palabra: sin resolverla todavía, 0.
+  static puntajeParcial(juego) {
+    switch (juego) {
+      case 'ahorcado': return (app.ahorcado.ahorcadoDuelo && app.ahorcado.ahorcadoDuelo.puntosTotal) || 0;
+      case 'preguntados': return ((app.preguntados.pregState && app.preguntados.pregState.score) || 0) * 150;
+      case 'sopa': return (app.sopa.sopaState && app.sopa.sopaState.score) || 0;
+      case 'adivina': return (app.adivina.adivinaState && app.adivina.adivinaState.score) || 0;
+      case 'runner': return typeof runnerPuntajeActual === 'function' ? runnerPuntajeActual() : 0;
+      default: return 0;
+    }
+  }
+
+  // Termina el duelo en pantalla con el puntaje que se llevaba: corta el
+  // juego (timers, loop) para que no reporte por su cuenta después.
+  abandonarDuelo() {
+    const d = this.dueloEnPantalla();
+    if (!d) return;
+    const puntos = DuelosManager.puntajeParcial(d.juego);
+    switch (d.juego) {
+      case 'ahorcado': app.ahorcado.ahorcadoDuelo = null; break;
+      case 'wordle': app.wordle.wordleDuelo = null; break;
+      case 'termina': app.termina.terminaDuelo = null; break;
+      case 'adivina': app.adivina.adivinaDuelo = null; break;
+      case 'preguntados':
+        app.preguntados.pregDuelo = null;
+        if (app.preguntados.pregState) clearInterval(app.preguntados.pregState.timer);
+        break;
+      case 'sopa':
+        app.sopa.sopaDuelo = null;
+        if (app.sopa.sopaState) clearInterval(app.sopa.sopaState.timer);
+        break;
+      case 'runner':
+        if (typeof stopRunner === 'function') stopRunner();
+        break;
+    }
+    this.finalizarDueloConPuntaje(d.id, puntos);
+  }
+
+  // Si hay un duelo en juego y se quiere ir a otra sección, muestra el
+  // cartel de confirmación y devuelve true (goTo no sigue). Si confirma, se
+  // manda el puntaje que llevaba y recién ahí navega.
+  pedirConfirmacionSalida(destino) {
+    const d = this.dueloEnPantalla();
+    if (!d || destino === d.juego) return false;
+    // El runner sigue corriendo atrás del cartel: se pausa mientras decide.
+    const pausamosRunner =
+      d.juego === 'runner' && typeof runnerEnPausa === 'function' && !runnerEnPausa() && typeof pauseRunner === 'function';
+    if (pausamosRunner) pauseRunner();
+    this.mostrarConfirmacionSalida(
+      () => {
+        this.abandonarDuelo(); // si el juego terminó mientras decidía, no hace nada
+        app.navegacion.goTo(destino, { forzar: true });
+      },
+      () => {
+        if (pausamosRunner && typeof resumeRunner === 'function') resumeRunner();
+      },
+    );
+    return true;
+  }
+
+  mostrarConfirmacionSalida(alSalir, alQuedarse) {
+    let overlay = document.getElementById('dueloSalirOverlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'dueloSalirOverlay';
+      overlay.className = 'duelo-overlay';
+      overlay.innerHTML = `
+      <div class="modal-bg-blur"></div>
+      <div class="duelo-card duelo-result-card">
+        <div class="duelo-result-title">¿Salir del duelo?</div>
+        <p class="duelo-result-desc">Si salís ahora, el duelo termina y se envía el puntaje que llevás hasta este momento.</p>
+        <div class="duelo-result-buttons">
+          <button class="btn-play duelo-btn-secondary" data-accion="quedarse">Seguir jugando</button>
+          <button class="btn-play" data-accion="salir">Salir</button>
+        </div>
+      </div>`;
+      document.body.appendChild(overlay);
+    }
+    overlay.onclick = (e) => {
+      const accion = e.target.closest('[data-accion]')?.dataset.accion;
+      if (!accion) return;
+      overlay.classList.remove('show');
+      if (accion === 'salir') alSalir();
+      else alQuedarse();
+    };
+    overlay.classList.add('show');
   }
 
   // Manda el puntaje final de un duelo al backend y muestra el resultado
@@ -2702,7 +2827,6 @@ class PerfilManager extends Modulo {
   constructor() {
     super();
     // Perfil propio (GET/PATCH /api/perfil) y de otros (GET /api/usuarios/:id/perfil).
-    // Los puntajes máximos son de ejemplo: no hay endpoint todavía.
     // perfilContexto: { modo: 'propio' | 'otro', id, data }
     this.perfilContexto = {
       modo: 'propio',
@@ -2711,21 +2835,17 @@ class PerfilManager extends Modulo {
     };
   }
 
-  // PRNG simple y determinístico (mismo id/seed siempre da el mismo resultado),
-  // así los datos de ejemplo no cambian en cada render.
-  seededRandom(seed) {
-    const x = Math.sin(seed * 999.7) * 10000;
-    return x - Math.floor(x);
-  }
+  // Id de cada juego en la tabla `juegos` del backend (RPG Pixel no guarda puntaje).
+  static JUEGO_ID = { sopa: 1, preguntados: 2, termina: 3, ahorcado: 4, adivina: 5, wordle: 6, runner: 7, castle_escape: 8 };
 
-  // Puntaje máximo "de ejemplo" por juego. TODO (backend): reemplazar por
-  // GET /api/usuarios/:id/puntajes-maximos cuando exista ese endpoint.
-  getPuntajesMaximosMock(seedBase) {
-    const juegos = LogrosManager.LOGROS_JUEGOS.filter((j) => j.id !== 'general');
+  // Puntaje máximo de la cuenta en cada juego, a partir de los puntajes que
+  // manda el backend con el perfil (u.puntajes = [{ juego_id, puntos }]).
+  // '—' si nunca jugó ese juego (o si no guarda puntaje).
+  puntajesMaximos(u) {
+    const porId = {};
+    for (const p of u.puntajes || []) porId[p.juego_id] = p.puntos;
     const map = {};
-    juegos.forEach((j, i) => {
-      map[j.id] = Math.floor(this.seededRandom(seedBase + i * 13.3) * 900) + 100;
-    });
+    for (const [clave, id] of Object.entries(PerfilManager.JUEGO_ID)) map[clave] = porId[id] ?? '—';
     return map;
   }
 
@@ -2880,8 +3000,7 @@ class PerfilManager extends Modulo {
     const iconoAMostrar = u.icono || PerfilManager.PERFIL_ICONO_DEFAULT;
     const avatarHTML = app.amigos.avatarValueHTML(iconoAMostrar, u.username);
 
-    // ─ Puntajes máximos por juego (mock, sin endpoint propio todavía) ─
-    const scores = this.getPuntajesMaximosMock(u.id || 1);
+    const scores = this.puntajesMaximos(u);
     const juegos = LogrosManager.LOGROS_JUEGOS.filter((j) => j.id !== 'general');
     box.innerHTML = `
     <div class="profile-header">
@@ -2974,7 +3093,7 @@ class PerfilManager extends Modulo {
         <div class="profile-score-card">
           <div class="profile-score-emoji">${app.utils.gameIconSVG(j.id, 26)}</div>
           <div class="profile-score-name">${j.nombre}</div>
-          <div class="profile-score-value">${scores[j.id]}</div>
+          <div class="profile-score-value">${scores[j.id] ?? '—'}</div>
         </div>
       `,
         )
@@ -3103,7 +3222,11 @@ class Navegacion extends Modulo {
     });
   }
 
-  goTo(section) {
+  // opciones.forzar: navega sin preguntar (lo usan la confirmación de salida
+  // del duelo y el cambio de usuario).
+  goTo(section, opciones = {}) {
+    // Duelo en juego: primero se pregunta; si confirma, se vuelve a llamar con forzar.
+    if (!opciones.forzar && app.duelos.pedirConfirmacionSalida(section)) return;
     if (typeof stopRunner === 'function') stopRunner();
     if (typeof stopTrampas === 'function') stopTrampas();
     if (typeof rpgStopLoop === 'function') rpgStopLoop();
@@ -3227,6 +3350,73 @@ class Navegacion extends Modulo {
     }
   }
 
+}
+
+// TemaUsuario — Tema visual (oscuro / claro / rojo): el admin fija el del sitio y cada usuario puede elegir el suyo. (app.tema)
+class TemaUsuario extends Modulo {
+  static TEMAS = ['dark', 'light', 'red'];
+  static CLAVE = 'unigames_tema';
+
+  constructor() {
+    super();
+    this.temaSitio = 'dark'; // el que eligió el admin en Config (configuracion_global.color_tema)
+  }
+
+  iniciar() {
+    this.aplicarTemaEfectivo(); // lo antes posible, para que no parpadee el tema por defecto
+  }
+
+  // Preferencia guardada en este navegador para el usuario actual (o para
+  // el invitado). Cada cuenta tiene la suya, igual que el progreso de los juegos.
+  claveTema() {
+    const u = app.auth.currentUser;
+    return u && u.id != null ? TemaUsuario.CLAVE + '@u' + u.id : TemaUsuario.CLAVE;
+  }
+
+  temaElegido() {
+    try {
+      const t = localStorage.getItem(this.claveTema());
+      return TemaUsuario.TEMAS.includes(t) ? t : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Lo que se ve: la elección del usuario si tiene una; si no, la del sitio.
+  temaEfectivo() {
+    return this.temaElegido() || this.temaSitio;
+  }
+
+  // La llama InfoModal al leer la configuración del sitio.
+  setTemaSitio(tema) {
+    if (TemaUsuario.TEMAS.includes(tema)) this.temaSitio = tema;
+    this.aplicarTemaEfectivo();
+  }
+
+  // Botones de "Apariencia" del menú lateral. '' = volver al tema del sitio.
+  elegirTema(tema) {
+    try {
+      if (TemaUsuario.TEMAS.includes(tema)) localStorage.setItem(this.claveTema(), tema);
+      else localStorage.removeItem(this.claveTema());
+    } catch {
+      /* sin localStorage: se aplica igual, solo que no se recuerda */
+    }
+    this.aplicarTemaEfectivo(TemaUsuario.TEMAS.includes(tema) ? tema : null);
+  }
+
+  aplicarTemaEfectivo(forzado) {
+    const tema = forzado || this.temaEfectivo();
+    app.navegacion.applyTheme(tema);
+    // botones del menú: marcar el activo y mostrar "usar el del sitio" solo si hay preferencia propia
+    const propio = forzado || this.temaElegido();
+    document.querySelectorAll('.nav-tema-btn').forEach((b) => {
+      const activo = b.dataset.tema === tema;
+      b.classList.toggle('active', activo);
+      b.setAttribute('aria-pressed', activo ? 'true' : 'false');
+    });
+    const reset = document.getElementById('navTemaReset');
+    if (reset) reset.hidden = !propio;
+  }
 }
 
 // CargadorModulos — Carga diferida de scripts/CSS de cada juego y selector de calidad. (app.cargador)
@@ -4598,9 +4788,28 @@ class Preguntados extends Modulo {
 // SopaDeLetras — Minijuego Sopa de Letras (normal y duelo). (app.sopa)
 class SopaDeLetras extends Modulo {
   static SOPA_GRID = 12;
+
+  static nombreTematica(tematicaId) {
+    return tematicaId === 'normal' ? 'Normal' : Preguntados.TEMATICA_NAMES[tematicaId] || '';
+  }
+
   static SOPA_TIME = 120;
   // Palabras de respaldo por si falla /api/sopa/palabras.
   static SOPA_WORDS = {
+    normal: [
+      'CASA',
+      'PERRO',
+      'GATO',
+      'ARBOL',
+      'SOL',
+      'LUNA',
+      'ESCUELA',
+      'LIBRO',
+      'MESA',
+      'SILLA',
+      'VENTANA',
+      'PUERTA',
+    ],
     1: [
       'POKEMON',
       'MINECRAFT',
@@ -4672,11 +4881,12 @@ class SopaDeLetras extends Modulo {
     app.navegacion.goTo('sopa');
     const overlay = document.getElementById('sopaStartOverlay');
     if (overlay) overlay.style.display = 'none';
-    this.initSopa(tematicaId || 1, duracionSegundos || SopaDeLetras.SOPA_TIME);
+    this.initSopa(tematicaId || 'normal', duracionSegundos || SopaDeLetras.SOPA_TIME);
   }
 
   async initSopa(tematicaId, duracionSegundosDuelo) {
-    tematicaId = Number(tematicaId) || this.sopaState.tematicaId || 1;
+    // 'normal' = palabras sin temática (las mismas que Ahorcado en modo Normal)
+    tematicaId = tematicaId === 'normal' ? 'normal' : Number(tematicaId) || this.sopaState.tematicaId || 1;
     // Fuera de duelo siempre se juega con el tiempo estándar (SOPA_TIME);
     // el parámetro de duración solo se usa cuando initSopa lo llama
     // iniciarSopaDuelo con la duración elegida al mandar el reto.
@@ -4704,7 +4914,7 @@ class SopaDeLetras extends Modulo {
     // set hardcodeado como red de contención (mejor jugar con las palabras
     // viejas que dejar la sopa sin arrancar).
     if (!Array.isArray(palabras) || palabras.filter((w) => w.length <= maxLargo).length < 4) {
-      palabras = SopaDeLetras.SOPA_WORDS[tematicaId] || SopaDeLetras.SOPA_WORDS[1];
+      palabras = SopaDeLetras.SOPA_WORDS[tematicaId] || SopaDeLetras.SOPA_WORDS.normal;
     }
     const candidatos = [...new Set(palabras.map((w) => w.toUpperCase()).filter((w) => w.length <= maxLargo))];
     const shuffled = [...candidatos].sort(() => Math.random() - 0.5).slice(0, 8);
@@ -4726,8 +4936,8 @@ class SopaDeLetras extends Modulo {
     };
     app.nucleo.APP_EL.sopaThemeLabel.textContent =
       this.sopaDuelo && this.sopaDuelo.activo
-        ? `⚔️ Duelo · ${Preguntados.TEMATICA_NAMES[tematicaId] || ''}`
-        : Preguntados.TEMATICA_NAMES[tematicaId] || '';
+        ? `⚔️ Duelo · ${SopaDeLetras.nombreTematica(tematicaId)}`
+        : SopaDeLetras.nombreTematica(tematicaId);
     this.renderSopa();
     this.startSopaTimer();
   }
@@ -4826,7 +5036,7 @@ class SopaDeLetras extends Modulo {
     <div class="game-screen-header">
       <button class="btn-back" onclick="clearInterval(sopaState.timer); goTo('juegos')">← Volver a Juegos</button>
       <div class="game-screen-title"><span>${app.utils.gameIconSVG('sopa', 22)}</span> Sopa de Letras</div>
-      <div class="game-screen-theme" id="sopa-theme-label">${Preguntados.TEMATICA_NAMES[this.sopaState.tematicaId] || ''}</div>
+      <div class="game-screen-theme" id="sopa-theme-label">${SopaDeLetras.nombreTematica(this.sopaState.tematicaId)}</div>
     </div>
     <div class="sopa-wrap">
       <div class="sopa-info">
@@ -4995,7 +5205,8 @@ class SopaDeLetras extends Modulo {
       app.duelos.finalizarDueloConPuntaje(dueloId, pts);
       return;
     }
-    app.puntuaciones.guardarPuntaje(1, pts, this.sopaState.tematicaId); // juego_id=1 Sopa
+    const tematicaPuntaje = this.sopaState.tematicaId === 'normal' ? null : this.sopaState.tematicaId;
+    app.puntuaciones.guardarPuntaje(1, pts, tematicaPuntaje); // juego_id=1 Sopa
     app.logros.registrarProgresoJuego('sopa', {
       sopa_racha: won,
       sopa_maxScore_best: pts,
@@ -5032,7 +5243,7 @@ class SopaDeLetras extends Modulo {
       <p class="preg-result-title">${won ? '¡Encontraste todas!' : '¡Tiempo agotado!'}</p>
       <p class="preg-result-score">${found} / ${total} palabras encontradas</p>
       <p class="preg-result-pts">+${pts} puntos</p>
-      <button class="btn-play" style="max-width:240px;margin:0 auto;" onclick="initSopa(${this.sopaState.tematicaId})"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Jugar de nuevo</button>
+      <button class="btn-play" style="max-width:240px;margin:0 auto;" onclick="initSopa('${this.sopaState.tematicaId}')"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>Jugar de nuevo</button>
       <button class="btn-back" style="margin:0 auto;" onclick="goTo('juegos')">← Volver a Juegos</button>
     </div>`;
   }
@@ -5798,7 +6009,7 @@ class InfoModal extends Modulo {
     fetch('/api/admin/config')
       .then((r) => r.json())
       .then((c) => {
-        if (c.color_tema) app.navegacion.applyTheme(c.color_tema);
+        if (c.color_tema) app.tema.setTemaSitio(c.color_tema);
 
         const banner = document.getElementById('systemBanner');
         const bannerText = document.getElementById('systemBannerText');
@@ -6356,7 +6567,7 @@ class LanzadorJuegos extends Modulo {
       app.wordle.initWordle(raw);
     }
     if (gameKey === 'sopa') {
-      const tId = raw && /^\d+$/.test(raw) ? Number(raw) : Preguntados.TEMATICA_MAP[theme] || 1;
+      const tId = raw === 'normal' ? 'normal' : raw && /^\d+$/.test(raw) ? Number(raw) : Preguntados.TEMATICA_MAP[theme] || 1;
       app.sopa.initSopa(tId);
     }
     if (gameKey === 'preguntados') {
@@ -6670,6 +6881,7 @@ class AdminPanel extends Modulo {
     if (tabId === 'avisos') app.avisos.loadAdminAvisos();
     if (tabId === 'juegos') app.adminJuegos.loadAdminJuegos();
     if (tabId === 'config') this.loadAdminConfig();
+    if (tabId === 'reportes') app.reportes.abrirReportes();
   }
 
   async loadAdminDashboard() {
@@ -6738,6 +6950,247 @@ class AdminPanel extends Modulo {
   }
 }
 
+// ReportesAdmin — Reportes del panel admin: se ven en pantalla y se exportan a CSV o PDF. (app.reportes)
+class ReportesAdmin extends Modulo {
+  // Cada reporte: de dónde salen los datos (routes/reportes.js) y qué columnas
+  // se muestran, en orden: [campo del JSON, título de la columna].
+  static REPORTES = {
+    usuarios: {
+      titulo: 'Usuarios registrados',
+      url: '/api/admin/reportes/usuarios',
+      horizontal: true, // muchas columnas: el PDF va apaisado
+      columnas: [
+        ['id', 'ID'],
+        ['nombre_usuario', 'Usuario'],
+        ['email', 'Email'],
+        ['rol', 'Rol'],
+        ['estado', 'Estado'],
+        ['fecha_registro', 'Registro'],
+        ['juegos_jugados', 'Juegos jugados'],
+        ['logros', 'Logros'],
+        ['amigos', 'Amigos'],
+      ],
+    },
+    ranking: {
+      titulo: 'Ranking por juego (top 10)',
+      url: '/api/admin/reportes/ranking',
+      columnas: [
+        ['juego', 'Juego'],
+        ['posicion', 'Puesto'],
+        ['jugador', 'Jugador'],
+        ['puntos', 'Puntos'],
+        ['fecha', 'Fecha'],
+      ],
+    },
+    actividad: {
+      titulo: 'Actividad por juego',
+      url: '/api/admin/reportes/actividad',
+      columnas: [
+        ['juego', 'Juego'],
+        ['jugadores', 'Jugadores'],
+        ['promedio', 'Puntaje promedio'],
+        ['maximo', 'Puntaje máximo'],
+        ['duelos', 'Duelos'],
+        ['duelos_finalizados', 'Duelos finalizados'],
+      ],
+    },
+  };
+
+  // Juegos con puntaje (ids de la tabla `juegos`), para filtrar el ranking.
+  static JUEGOS = [
+    [1, 'Sopa de Letras'],
+    [2, 'Preguntados'],
+    [3, 'Termina la Palabra'],
+    [4, 'Ahorcado'],
+    [5, 'Adivina la Cosa'],
+    [6, 'Adivina la Palabra'],
+    [7, 'Pixel Runner'],
+    [8, 'Castle Escape'],
+  ];
+
+  static CAMPOS_FECHA = new Set(['fecha_registro', 'fecha']);
+
+  // jsPDF + autotable (~400KB) se bajan recién al exportar el primer PDF.
+  static JSPDF_URL = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
+  static AUTOTABLE_URL = 'https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.4/dist/jspdf.plugin.autotable.min.js';
+
+  constructor() {
+    super();
+    this.reporteTipo = 'usuarios';
+    this.reporteFilas = [];
+    this.jsPdfCargando = null;
+  }
+
+  // Al abrir la pestaña Reportes del panel admin.
+  abrirReportes() {
+    const sel = document.getElementById('reporteJuego');
+    if (sel && sel.options.length <= 1) {
+      sel.innerHTML += ReportesAdmin.JUEGOS.map(([id, nombre]) => `<option value="${id}">${nombre}</option>`).join('');
+    }
+    this.cargarReporte();
+  }
+
+  cambiarTipoReporte(tipo) {
+    if (!ReportesAdmin.REPORTES[tipo]) return;
+    this.reporteTipo = tipo;
+    // el filtro por juego solo aplica al ranking
+    document.getElementById('reporteJuegoGrupo').style.visibility = tipo === 'ranking' ? 'visible' : 'hidden';
+    this.cargarReporte();
+  }
+
+  juegoFiltrado() {
+    const sel = document.getElementById('reporteJuego');
+    return this.reporteTipo === 'ranking' && sel && sel.value ? sel.value : '';
+  }
+
+  async cargarReporte() {
+    const def = ReportesAdmin.REPORTES[this.reporteTipo];
+    const estado = document.getElementById('reporteEstado');
+    const juego = this.juegoFiltrado();
+    const url = def.url + (juego ? '?juego_id=' + encodeURIComponent(juego) : '');
+    estado.textContent = 'Cargando…';
+    this.reporteFilas = [];
+    this.renderReporte();
+    try {
+      this.reporteFilas = await app.api.apiFetch(url);
+      estado.textContent = this.reporteFilas.length + (this.reporteFilas.length === 1 ? ' registro' : ' registros');
+    } catch (err) {
+      estado.textContent = 'No se pudo cargar el reporte: ' + err.message;
+    }
+    this.renderReporte();
+  }
+
+  // Valor de una celda, igual en pantalla, CSV y PDF (fechas en formato argentino).
+  static valorCelda(fila, campo) {
+    const v = fila[campo];
+    if (v === null || v === undefined) return '';
+    if (ReportesAdmin.CAMPOS_FECHA.has(campo)) {
+      const d = new Date(v);
+      return isNaN(d) ? String(v) : d.toLocaleDateString('es-AR');
+    }
+    return String(v);
+  }
+
+  renderReporte() {
+    const tabla = document.getElementById('reporteTabla');
+    if (!tabla) return;
+    const { columnas } = ReportesAdmin.REPORTES[this.reporteTipo];
+    const esc = app.utils.sanitizeHTML;
+    const cabecera = '<thead><tr>' + columnas.map(([, t]) => `<th>${esc(t)}</th>`).join('') + '</tr></thead>';
+    const cuerpo = this.reporteFilas.length
+      ? this.reporteFilas
+          .map((f) => '<tr>' + columnas.map(([c]) => `<td>${esc(ReportesAdmin.valorCelda(f, c))}</td>`).join('') + '</tr>')
+          .join('')
+      : `<tr><td colspan="${columnas.length}" class="admin-reporte-vacio">Sin datos</td></tr>`;
+    tabla.innerHTML = cabecera + '<tbody>' + cuerpo + '</tbody>';
+  }
+
+  // "unigames_ranking_juego7_2026-09-25.pdf"
+  nombreArchivoReporte(extension) {
+    const hoy = new Date();
+    const fecha = [hoy.getFullYear(), String(hoy.getMonth() + 1).padStart(2, '0'), String(hoy.getDate()).padStart(2, '0')].join('-');
+    const juego = this.juegoFiltrado();
+    return `unigames_${this.reporteTipo}${juego ? '_juego' + juego : ''}_${fecha}.${extension}`;
+  }
+
+  hayDatosParaExportar() {
+    if (this.reporteFilas.length) return true;
+    app.utils.mostrarToast('No hay datos para exportar.', 'error');
+    return false;
+  }
+
+  // ─── CSV (se abre con Excel) ───
+  // Separador ";" y BOM UTF-8: así Excel en español lo abre en columnas y con
+  // los acentos bien. Los valores que empiezan con = + - @ se anteponen con '
+  // para que Excel no los ejecute como fórmula (inyección de CSV).
+  static celdaCSV(valor) {
+    let s = String(valor);
+    if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+    if (/[;"\n\r]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+
+  exportarReporteCSV() {
+    if (!this.hayDatosParaExportar()) return;
+    const { columnas } = ReportesAdmin.REPORTES[this.reporteTipo];
+    const lineas = [columnas.map(([, t]) => ReportesAdmin.celdaCSV(t)).join(';')];
+    for (const f of this.reporteFilas) {
+      lineas.push(columnas.map(([c]) => ReportesAdmin.celdaCSV(ReportesAdmin.valorCelda(f, c))).join(';'));
+    }
+    const blob = new Blob(['\uFEFF' + lineas.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    this.descargarArchivoReporte(blob, this.nombreArchivoReporte('csv'));
+  }
+
+  descargarArchivoReporte(blob, nombre) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  // ─── PDF ───
+  cargarJsPdf() {
+    if (!this.jsPdfCargando) {
+      this.jsPdfCargando = app.cargador
+        .loadClassicScript(ReportesAdmin.JSPDF_URL)
+        .then(() => app.cargador.loadClassicScript(ReportesAdmin.AUTOTABLE_URL)); // el plugin necesita jsPDF antes
+      this.jsPdfCargando.catch(() => (this.jsPdfCargando = null)); // si falla, se reintenta la próxima vez
+    }
+    return this.jsPdfCargando;
+  }
+
+  async exportarReportePDF() {
+    if (!this.hayDatosParaExportar()) return;
+    try {
+      await this.cargarJsPdf();
+    } catch {
+      app.utils.mostrarToast('No se pudo cargar el generador de PDF. Revisá la conexión.', 'error');
+      return;
+    }
+    const def = ReportesAdmin.REPORTES[this.reporteTipo];
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: def.horizontal ? 'landscape' : 'portrait', unit: 'pt', format: 'a4' });
+    const ancho = doc.internal.pageSize.getWidth();
+
+    // Encabezado: título, filtro y quién y cuándo lo generó
+    const juego = this.juegoFiltrado();
+    const nombreJuego = juego ? (ReportesAdmin.JUEGOS.find(([id]) => String(id) === juego) || [])[1] : '';
+    doc.setFontSize(16);
+    doc.text('UniGames — ' + def.titulo + (nombreJuego ? ' · ' + nombreJuego : ''), 40, 45);
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    const usuario = app.auth.currentUser ? app.auth.currentUser.username : '';
+    doc.text(
+      `Generado el ${new Date().toLocaleString('es-AR')}${usuario ? ' por ' + usuario : ''} · ${this.reporteFilas.length} ${this.reporteFilas.length === 1 ? 'registro' : 'registros'}`,
+      40,
+      62,
+    );
+
+    doc.autoTable({
+      startY: 75,
+      head: [def.columnas.map(([, t]) => t)],
+      body: this.reporteFilas.map((f) => def.columnas.map(([c]) => ReportesAdmin.valorCelda(f, c))),
+      styles: { fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: [37, 99, 235] },
+      alternateRowStyles: { fillColor: [241, 245, 249] },
+      margin: { left: 40, right: 40 },
+      // pie con el número de página en cada hoja
+      didDrawPage: () => {
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text('Página ' + doc.internal.getNumberOfPages(), ancho - 40, doc.internal.pageSize.getHeight() - 20, {
+          align: 'right',
+        });
+      },
+    });
+    doc.save(this.nombreArchivoReporte('pdf'));
+  }
+}
+
 // AdminContenidoJuegos — Admin del contenido de los juegos (palabras, preguntas, objetos). (app.adminJuegos)
 class AdminContenidoJuegos extends Modulo {
   iniciar() {
@@ -6791,14 +7244,19 @@ class AdminContenidoJuegos extends Modulo {
     return window.__jgTematicas;
   }
 
-  jgPoblarSelectFiltro() {
+  // Solo el banco de Ahorcado (que también usa Sopa) admite palabras sin
+  // temática ("Normal"). El backend lo filtra con ?tematica_id=normal.
+  jgPoblarSelectFiltro(tipo) {
     const sel = document.getElementById('juegosTematicaFiltro');
     if (!sel) return;
     const valorActual = sel.value;
+    const conNormal = this.jgFormFamily(tipo || 'ahorcado') === 'ahorcado';
     sel.innerHTML =
       '<option value="">Todas las temáticas</option>' +
-      window.__jgTematicas.map((t) => `<option value="${t.id}">${t.nombre}</option>`).join('');
-    if (valorActual) sel.value = valorActual;
+      (conNormal ? '<option value="normal">Normal (sin temática)</option>' : '') +
+      window.__jgTematicas.map((t) => `<option value="${t.id}">${app.utils.sanitizeHTML(t.nombre)}</option>`).join('');
+    // si el filtro elegido no existe para este juego (ej. "Normal" en Wordle), vuelve a "Todas"
+    sel.value = [...sel.options].some((o) => o.value === valorActual) ? valorActual : '';
   }
 
   jgOpcionesTematica(incluirNormal) {
@@ -6889,7 +7347,6 @@ class AdminContenidoJuegos extends Modulo {
 
   async loadAdminJuegos() {
     await this.jgFetchTematicas();
-    this.jgPoblarSelectFiltro();
     const tipoSelect = document.getElementById('juegosTipoSelect');
     this.switchJuegoTipo(tipoSelect ? tipoSelect.value : 'ahorcado');
   }
@@ -6898,6 +7355,7 @@ class AdminContenidoJuegos extends Modulo {
     window.__jgEditingId = null;
     this.jgResetBotones();
     await this.jgFetchTematicas();
+    this.jgPoblarSelectFiltro(tipo);
     this.jgActualizarNotaCompartida(tipo);
     this.renderJuegoForm(tipo);
     this.loadJuegosContenidoList();
@@ -7081,7 +7539,7 @@ class AdminContenidoJuegos extends Modulo {
     listBox.innerHTML =
       '<div style="text-align:center; color:#94A3B8; font-size:12px; padding:10px;">Cargando...</div>';
     let url = '/api/admin/' + this.jgEndpoint(tipo);
-    if (tematicaFiltro) url += '?tematica_id=' + tematicaFiltro;
+    if (tematicaFiltro) url += '?tematica_id=' + encodeURIComponent(tematicaFiltro);
     try {
       const res = await app.api.authFetch(url);
       if (!res.ok) {
@@ -7110,8 +7568,8 @@ class AdminContenidoJuegos extends Modulo {
           return `
                 <div style="background:rgba(0,0,0,0.3); border-radius:6px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;">
                     <div style="flex:1; min-width:0;">
-                        <div style="font-size:13px; color:#F1F5F9; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${titulo}</div>
-                        <div style="font-size:10px; color:#94A3B8;">Temática: ${temaNombre(item.tematica_id)}</div>
+                        <div style="font-size:13px; color:#F1F5F9; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${app.utils.sanitizeHTML(titulo)}</div>
+                        <div style="font-size:10px; color:#94A3B8;">Temática: ${app.utils.sanitizeHTML(temaNombre(item.tematica_id))}</div>
                     </div>
                     <div style="display:flex; gap:6px; flex-shrink:0;">
                         <button class="admin-btn-small" style="background:#2563eb;" onclick="editarContenidoJuegoPorId('${tipo}', ${item.id})">Editar</button>
@@ -7139,6 +7597,7 @@ class App extends Modulo {
     this.logros = new LogrosManager();
     this.perfil = new PerfilManager();
     this.navegacion = new Navegacion();
+    this.tema = new TemaUsuario();
     this.cargador = new CargadorModulos();
     this.runner = new RunnerUI();
     this.ahorcado = new Ahorcado();
@@ -7156,11 +7615,13 @@ class App extends Modulo {
     this.notificaciones = new Notificaciones();
     this.admin = new AdminPanel();
     this.adminJuegos = new AdminContenidoJuegos();
+    this.reportes = new ReportesAdmin();
     this.exponerGlobales();
     this.nucleo.iniciar();
     this.audio.iniciar();
     this.cargador.iniciar();
     this.navegacion.iniciar();
+    this.tema.iniciar();
     this.runner.iniciar();
     this.iniciar();
     this.auth.iniciar();
@@ -7182,6 +7643,7 @@ class App extends Modulo {
       this.logros,
       this.perfil,
       this.navegacion,
+      this.tema,
       this.cargador,
       this.runner,
       this.ahorcado,
@@ -7199,6 +7661,7 @@ class App extends Modulo {
       this.notificaciones,
       this.admin,
       this.adminJuegos,
+      this.reportes,
       this,
     ];
   }
@@ -7262,6 +7725,7 @@ class App extends Modulo {
         const savedToken = localStorage.getItem('unigames_token');
         if (savedUser && savedToken) {
           app.auth.currentUser = JSON.parse(savedUser);
+          app.tema.aplicarTemaEfectivo();
           app.logros.sincronizarLogrosConBackend();
         }
       } catch (e) {

@@ -310,3 +310,15 @@ select.auth-input option { background-color: #1E293B; color: #F1F5F9; }
 .notif-item-del:hover { color: #ef4444; }
 
 .notif-empty { text-align:center; color:#94A3B8; font-size:12px; padding: 26px 10px; }
+
+/* ─── Panel de administración: reportes ─── */
+.admin-reporte-barra { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.admin-reporte-estado { font-size: 12px; color: var(--text-muted, #94a3b8); }
+.admin-reporte-botones { display: flex; gap: 8px; flex-wrap: wrap; }
+.admin-reporte-botones .auth-btn-submit { width: auto; margin-top: 0; padding: 9px 14px; font-size: 13px; }
+.admin-reporte-scroll { max-height: 360px; overflow: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; }
+.admin-reporte-tabla { width: 100%; border-collapse: collapse; font-size: 12px; color: #E2E8F0; }
+.admin-reporte-tabla th { position: sticky; top: 0; background: #1e293b; color: #e2e8f0; text-align: left; font-weight: 700; padding: 8px 10px; white-space: nowrap; }
+.admin-reporte-tabla td { padding: 7px 10px; border-top: 1px solid rgba(255,255,255,0.06); white-space: nowrap; color: #E2E8F0; }
+.admin-reporte-tabla tbody tr:nth-child(even) td { background: rgba(255,255,255,0.03); }
+.admin-reporte-vacio { text-align: center; color: var(--text-muted, #94a3b8); padding: 18px; }

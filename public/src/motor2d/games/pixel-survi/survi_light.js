@@ -27,6 +27,7 @@ export class LightMap {
     this.skyRow = new Int16Array(SurviConfig.COLS); // primer sólido de cada columna (desde arriba)
     this.grid = null;
     this.queue = null;
+    this.margen = LightMap.MARGIN; // tiles de más alrededor de la vista (menos en gama baja)
     this.c0 = 0;
     this.r0 = 0;
     this.w = 0;
@@ -61,16 +62,11 @@ export class LightMap {
   // points: [{x, y, power}] en px de mundo (visión del personaje, etc.).
   // luzExtra(col, row): luz propia de la celda (ej. la lava), o null.
   compute(get, camera, sun, points, luzExtra = null) {
-    const c0 = Math.max(0, Math.floor(camera.x / SurviConfig.TILE) - LightMap.MARGIN);
-    const r0 = Math.max(0, Math.floor(camera.y / SurviConfig.TILE) - LightMap.MARGIN);
-    const c1 = Math.min(
-      SurviConfig.COLS - 1,
-      Math.ceil((camera.x + camera.width) / SurviConfig.TILE) + LightMap.MARGIN,
-    );
-    const r1 = Math.min(
-      SurviConfig.ROWS - 1,
-      Math.ceil((camera.y + camera.height) / SurviConfig.TILE) + LightMap.MARGIN,
-    );
+    const M = this.margen;
+    const c0 = Math.max(0, Math.floor(camera.x / SurviConfig.TILE) - M);
+    const r0 = Math.max(0, Math.floor(camera.y / SurviConfig.TILE) - M);
+    const c1 = Math.min(SurviConfig.COLS - 1, Math.ceil((camera.x + camera.width) / SurviConfig.TILE) + M);
+    const r1 = Math.min(SurviConfig.ROWS - 1, Math.ceil((camera.y + camera.height) / SurviConfig.TILE) + M);
     const w = c1 - c0 + 1,
       h = r1 - r0 + 1;
     this._ensure(w, h);
@@ -97,8 +93,9 @@ export class LightMap {
         const id = get(c0 + x, r0 + y);
         const i = y * w + x;
         S[i] = SurviConfig.SOLID_IDS.has(id) ? 1 : 0;
-        if (id === SurviConfig.T.TORCH) seed(i, SurviConfig.TORCH_LIGHT);
+        if (SurviConfig.TORCH_IDS.has(id)) seed(i, SurviConfig.TORCH_LIGHT); // en el piso o en la pared
         else if (id === SurviConfig.T.FURNACE_ON) seed(i, LightMap.FURNACE_LIGHT); // horno prendido: luz más chica
+        else if (SurviConfig.LUZ_TILES[id]) seed(i, SurviConfig.LUZ_TILES[id]); // hongo brillante, …
         else if (luzExtra) {
           const e = luzExtra(c0 + x, r0 + y);
           if (e) seed(i, e);

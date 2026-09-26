@@ -11,6 +11,7 @@ const compression = require('compression');
 const authRoutes = require('./routes/auth');
 const juegosRoutes = require('./routes/juegos');
 const adminRoutes = require('./routes/admin');
+const reportesRoutes = require('./routes/reportes');
 const perfilRoutes = require('./routes/perfil');
 const amigosRoutes = require('./routes/amigos');
 const logrosRoutes = require('./routes/logros');
@@ -19,6 +20,10 @@ const duelosRouter = require('./routes/duelos');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Render pone un proxy adelante: sin esto req.ip es la IP del proxy para
+// todos los usuarios y el rate limit los cuenta como uno solo.
+app.set('trust proxy', 1);
 
 // Configuración
 app.use(cors());
@@ -158,6 +163,7 @@ app.get('/api/config', (req, res) => {
     });
 });
 
+app.use('/api/admin/reportes', reportesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', authRoutes);
 app.use('/api', juegosRoutes);
@@ -174,7 +180,7 @@ app.use((req, res) => sendIndex(res));
 // Función para inicializar DB y Servidor
 async function startServer() {
     try {
-        await getDb(); // Inicializa SQLite y comprueba errores antes de abrir el puerto
+        await getDb(); // Conecta a PostgreSQL y comprueba errores antes de abrir el puerto
         app.listen(PORT, () => {
             console.log(`🚀 Servidor corriendo en el puerto ${PORT} (build ${BUILD_ID})`);
         });

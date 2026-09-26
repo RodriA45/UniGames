@@ -295,6 +295,9 @@ export class CapaFluidos {
     const libre = (c, r) => CapaFluidos.#dentro(c, r) && data[idx(c, r)] === 0;
     const escala = (COLS * ROWS) / (200 * 200);
 
+    // ── Lagos grandes y hondos (para pescar): 1 o 2 por mundo ──
+    CapaFluidos.#lagosGrandes(capa, data, surfaceByCol, biomeByCol, rnd, arena);
+
     // ── Lagos de superficie (no en desierto ni nieve) ──
     const nLagos = Math.round(3 * (COLS / 200));
     for (let k = 0; k < nLagos * 4 && capa.#lagos < nLagos; k++) {
@@ -357,4 +360,48 @@ export class CapaFluidos {
   }
 
   #lagos = 0;
+  lagosGrandes = []; // [{ c, w, nivel }] (los usa la pesca / el debug)
+
+  // Lago grande: 22 a 50 bloques de ancho y 8 a 16 de hondo, con forma de
+  // cuenco. Se aplana lo que haya arriba del nivel del agua, el fondo y las
+  // paredes son de arena (tapan túneles de abajo para que no se vacíe) y las
+  // orillas también. Se hace antes que los árboles, así no quedan encima.
+  static #lagosGrandes(capa, data, surfaceByCol, biomeByCol, rnd, arena) {
+    const COLS = SurviConfig.COLS, ROWS = SurviConfig.ROWS, L = SurviConfig.LAGOS_GRANDES;
+    const idx = (c, r) => r * COLS + c;
+    const cantidad = L.min + Math.floor(rnd() * (L.max - L.min + 1));
+    const hechos = [];
+    for (let k = 0; k < 40 && hechos.length < cantidad; k++) {
+      const w = L.anchoMin + Math.floor(rnd() * (L.anchoMax - L.anchoMin + 1));
+      const c = 25 + Math.floor(rnd() * (COLS - w - 50));
+      // ni en el desierto, ni encima de otro lago grande
+      let ok = true;
+      for (let x = c - 3; x <= c + w + 2; x++) if (biomeByCol[x] === 'desierto') ok = false;
+      for (const h of hechos) if (c < h.c + h.w + 20 && c + w + 20 > h.c) ok = false;
+      if (!ok) continue;
+      // el agua llega hasta la orilla más baja (así no se derrama)
+      const nivel = Math.max(surfaceByCol[c - 1], surfaceByCol[c + w]);
+      const hondo = L.hondoMin + Math.floor(rnd() * (L.hondoMax - L.hondoMin + 1));
+      if (nivel + hondo + 6 >= SurviConfig.DEEP_STONE_ROW) continue;
+      let fondoMax = nivel;
+      for (let i = 0; i < w; i++) {
+        const x = c + i;
+        const d = Math.max(2, Math.round(hondo * Math.pow(Math.sin((Math.PI * (i + 0.5)) / w), 0.6)));
+        const fondo = nivel + d;
+        fondoMax = Math.max(fondoMax, fondo);
+        for (let r = 0; r < fondo; r++) data[idx(x, r)] = 0; // se aplana y se cava
+        for (let r = nivel; r < fondo; r++) capa.celdas[idx(x, r)] = (CapaFluidos.AGUA << 4) | CapaFluidos.LLENO;
+        for (let r = fondo; r < fondo + 3 && r < ROWS - 3; r++) data[idx(x, r)] = arena; // fondo de arena
+        surfaceByCol[x] = fondo;
+      }
+      // paredes: donde el agua toca aire afuera del lago (un túnel), arena
+      for (const x of [c - 2, c - 1, c + w, c + w + 1]) {
+        for (let r = nivel; r < fondoMax + 3 && r < ROWS - 3; r++) if (data[idx(x, r)] === 0) data[idx(x, r)] = arena;
+        // orilla de arena arriba
+        for (let r = surfaceByCol[x]; r < surfaceByCol[x] + 2; r++) if (data[idx(x, r)] !== 0) data[idx(x, r)] = arena;
+      }
+      hechos.push({ c, w, nivel });
+    }
+    capa.lagosGrandes = hechos;
+  }
 }

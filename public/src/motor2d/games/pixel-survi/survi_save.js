@@ -4,7 +4,7 @@
 //   localStorage. Es la ÚNICA clase que toca esas claves.
 //
 //   Cada mundo usa DOS claves:
-//     <prefijo>N.meta → { seed, mode, playedMs, savedAt, biome }  (chico)
+//     <prefijo>N.meta → { seed, nombre, modo, dificultad, muerto, playedMs, savedAt, biome }  (chico)
 //     <prefijo>N.data → { tiles, px, py, hp, inventory, ... }     (grande)
 //   El menú lista con la meta nomás: parsear los 40.000 tiles de los tres
 //   mundos solo para dibujar tres tarjetas era tirar medio segundo a la
@@ -64,13 +64,28 @@ export class GestorGuardado {
     return m;
   }
 
+  // Modo y dificultad de una meta. Los mundos de antes solo tenían `mode`
+  // ('normal' | 'hardcore'): pasan a supervivencia con esa dificultad.
+  static modoDe(meta) {
+    return meta && meta.modo === 'creativo' ? 'creativo' : 'supervivencia';
+  }
+
+  static dificultadDe(meta) {
+    if (!meta) return 'normal';
+    if (meta.dificultad) return meta.dificultad;
+    return meta.mode === 'hardcore' ? 'hardcore' : 'normal';
+  }
+
   listarSlots() {
     return GestorGuardado.SLOTS.map((slot) => {
       const meta = this.leerMeta(slot);
       return {
         slot,
         exists: !!meta,
-        mode: meta ? meta.mode : null,
+        nombre: meta && meta.nombre ? meta.nombre : `Mundo ${slot}`,
+        modo: GestorGuardado.modoDe(meta),
+        dificultad: GestorGuardado.dificultadDe(meta),
+        muerto: !!(meta && meta.muerto), // hardcore que ya murió: solo espectador
         playedMs: meta ? meta.playedMs || 0 : 0,
         savedAt: meta ? meta.savedAt : null,
         biome: meta ? meta.biome : null,
@@ -87,13 +102,15 @@ export class GestorGuardado {
     if (!data.tiles) return null; // datos dañados: el menú avisa en vez de pisarlos
     // agua y lava (un mundo de antes no las tiene: arranca sin fluidos)
     data.fluidos = data.fluidos ? GestorGuardado.decodificarTiles(data.fluidos) : null;
+    // capa de fondo (un mundo de antes no tiene: arranca vacía)
+    data.fondo = data.fondo ? GestorGuardado.decodificarTiles(data.fondo) : null;
     return {
       ...meta,
       ...data,
     };
   }
 
-  // payload: { seed, mode, playedMs, biome, tiles, px, py, hp, hunger, timeOfDay, inventory, hotbarSlots, selectedSlot, equipment, enemies, enemyTimer, animals, animalTimer, desgaste, desgasteEquipo }
+  // payload: { seed, nombre, modo, dificultad, muerto, playedMs, biome, tiles, px, py, hp, hunger, timeOfDay, inventory, hotbarSlots, selectedSlot, equipment, enemies, enemyTimer, animals, animalTimer, desgaste, desgasteEquipo }
   guardarMundo(slot, payload) {
     // ORDEN: primero los datos, la meta al final. La meta es la que dice "este
     // mundo existe" (listarSlots/leerMeta). Antes se escribía primero: si el
@@ -126,6 +143,12 @@ export class GestorGuardado {
           enemyTimer: payload.enemyTimer,
           animals: payload.animals || [], // animales vivos en el mapa
           animalTimer: payload.animalTimer,
+          clima: payload.clima || null, // { tipo, restanteMs }
+          fondo: payload.fondo ? GestorGuardado.codificarTiles(payload.fondo) : null, // paredes y ventanas
+          cama: payload.cama || null, // punto de reaparición
+          dias: payload.dias || 1, // días vividos
+          sueltos: payload.sueltos || [], // ítems tirados en el suelo
+          cultivos: payload.cultivos || {}, // "col,row" → ms que lleva creciendo
         }),
       );
       localStorage.setItem(
@@ -133,7 +156,10 @@ export class GestorGuardado {
         JSON.stringify({
           v: GestorGuardado.VERSION,
           seed: payload.seed,
-          mode: payload.mode,
+          nombre: payload.nombre,
+          modo: payload.modo,
+          dificultad: payload.dificultad,
+          muerto: !!payload.muerto,
           playedMs: payload.playedMs || 0,
           biome: payload.biome || null,
           savedAt: Date.now(),

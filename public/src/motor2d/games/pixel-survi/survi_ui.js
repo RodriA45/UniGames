@@ -22,7 +22,8 @@ export class SurviUI {
   static SCREENS = [
     'cover',
     'worlds',
-    'mode',
+    'crear',
+    'catalogo',
     'settings',
     'howto',
     'pause',
@@ -33,8 +34,10 @@ export class SurviUI {
     'furnace',
     'chest',
   ];
-  constructor(root) {
+  constructor(root, { movil = false } = {}) {
     root.classList.add('survi-root');
+    // Celular / tablet: joysticks (la pantalla completa es aparte: .survi-fs).
+    root.classList.toggle('survi-movil', movil);
     root.innerHTML = `
       <canvas class="survi-canvas"></canvas>
 
@@ -44,11 +47,29 @@ export class SurviUI {
       <!-- ── HUD en partida ── -->
       <div class="survi-hud hidden">
         <div class="survi-hud-top">
-          <button class="game-icon-btn survi-pause-btn" title="Pausa (Esc)">⏸</button>
+          <div class="survi-hud-izq">
+            <button class="game-icon-btn survi-pause-btn" title="Pausa (Esc)">⏸</button>
+            <button class="game-icon-btn survi-zoom-btn survi-solo-movil" title="Zoom (Z)">${Iconos.icon('zoomIn')}</button>
+            <div class="survi-coords" title="Coordenadas (X: 0 en el medio del mundo · Y: 0 al nivel del suelo, negativo bajo tierra)">
+              <span>X <b class="survi-coords-x">0</b></span>
+              <span>Y <b class="survi-coords-y">0</b></span>
+            </div>
+          </div>
+          <!-- modo creativo / espectador: [espectador] [etiqueta] [volar] -->
+          <div class="survi-hud-modo hidden">
+            <button class="game-icon-btn survi-btn-espectador" data-act="espectador" title="Modo espectador (V)">${Iconos.icon('eye')}</button>
+            <span class="survi-modo-label">Creativo</span>
+            <button class="game-icon-btn survi-btn-volar" data-act="volar" title="Volar (F)">${Iconos.icon('wind')}</button>
+          </div>
           <button class="game-icon-btn survi-inv-btn" title="Inventario (I)">I</button>
         </div>
         <div class="survi-hud-bottom">
           <div class="survi-air hidden" title="Aire"></div>
+          <div class="survi-efectos">
+            <span class="survi-efecto survi-efecto-veneno hidden" title="Envenenado">${Iconos.icon('droplet', { fill: true })} Veneno <b>10s</b></span>
+            <span class="survi-efecto survi-efecto-enredado hidden" title="Enredado en telaraña">${Iconos.icon('web')} Enredado <b>3s</b></span>
+            <span class="survi-efecto survi-efecto-congelado hidden" title="Congelado">${Iconos.icon('snowflake')} Congelado <b>3s</b></span>
+          </div>
           <div class="survi-health" title="Vida">
             <span class="survi-health-heart">${Iconos.icon('heart', {
               fill: true,
@@ -61,26 +82,31 @@ export class SurviUI {
             <div class="survi-hunger-bar"><i></i></div>
             <span class="survi-hunger-text">${SurviConfig.MAX_HUNGER}/${SurviConfig.MAX_HUNGER}</span>
           </div>
-          <div class="survi-hotbar"></div>
+          <!-- hotbar centrada; el botón de colocar/usar (solo celular) va pegado a su derecha -->
+          <div class="survi-hotbar-fila">
+            <div class="survi-hotbar"></div>
+            <button class="game-icon-btn survi-btn-colocar survi-solo-movil" title="Colocar / usar">${Iconos.icon('box')}</button>
+          </div>
         </div>
       </div>
 
-      <!-- ── Controles táctiles ── -->
+      <!-- ── Controles táctiles (solo celular / tablet, ver survi_tactil.js) ──
+           Cada zona es el área donde se puede tocar: el joystick aparece donde
+           ponés el dedo (en reposo se ve apagado en su lugar de siempre). -->
       <div class="survi-touch hidden">
-        <div class="survi-touch-move">
-          <button class="game-icon-btn" data-touch="left">${Iconos.icon('chevronLeft', {
-            stroke: 3,
-          })}</button>
-          <button class="game-icon-btn" data-touch="right">${Iconos.icon('chevronRight', {
-            stroke: 3,
-          })}</button>
+        <div class="survi-zona survi-zona-mover" aria-label="Mover">
+          <div class="survi-stick"><div class="survi-stick-palanca"></div></div>
         </div>
-        <div class="survi-touch-right">
-          <button class="game-icon-btn survi-touch-mode" title="Romper / Colocar">${Iconos.icon('pickaxe')}</button>
-          <button class="game-icon-btn survi-touch-jump" data-touch="jump">${Iconos.icon('arrowUp', {
-            stroke: 3,
-          })}</button>
+        <div class="survi-zona survi-zona-mira" aria-label="Apuntar y romper">
+          <div class="survi-stick survi-stick-mira">
+            <div class="survi-stick-palanca">${Iconos.icon('crosshair')}</div>
+          </div>
         </div>
+      </div>
+
+      <!-- ── Celular en vertical: se pide girarlo (el juego se pausa solo) ── -->
+      <div class="survi-girar">
+        <div>${Iconos.icon('smartphone', { size: 48 })}<p>Girá el celular para jugar</p></div>
       </div>
 
       <!-- ── Menú principal (portada) ── -->
@@ -96,6 +122,7 @@ export class SurviUI {
           <button class="btn-game-primary" data-act="play">Jugar</button>
           <button class="btn-game-secondary" data-act="settings">Ajustes</button>
           <button class="btn-game-secondary" data-act="howto">Cómo jugar</button>
+          <button class="btn-game-secondary survi-solo-fs" data-act="salir">Volver a Juegos</button>
         </div>
       </div>
 
@@ -108,20 +135,29 @@ export class SurviUI {
         </div>
       </div>
 
-      <!-- ── Modo de juego ── -->
-      <div class="modal-game survi-screen survi-mode hidden">
-        <div class="modal-game-box">
-          <h2 class="modal-game-title survi-mode-title">Mundo 1</h2>
-          <p class="modal-game-sub">¿Cómo querés jugar este mundo?</p>
-          <button class="btn-game-primary" data-act="mode-normal">
-            ${SurviConfig.MODES.normal.label}
-            <small>${SurviConfig.MODES.normal.desc}</small>
-          </button>
-          <button class="btn-game-secondary survi-hardcore-btn" data-act="mode-hardcore">
-            ${SurviConfig.MODES.hardcore.label}
-            <small>${SurviConfig.MODES.hardcore.desc}</small>
-          </button>
-          <button class="btn-game-secondary" data-act="back-worlds">Volver</button>
+      <!-- ── Crear mundo: nombre, modo y dificultad ── -->
+      <div class="modal-game survi-screen survi-crear hidden">
+        <div class="modal-game-box survi-crear-box">
+          <div class="survi-crear-head">
+            <button class="game-icon-btn survi-crear-volver" data-act="back-worlds" title="Volver">${Iconos.icon('chevronLeft')}</button>
+            <h2 class="modal-game-title">Nuevo mundo</h2>
+          </div>
+          <label class="survi-crear-label" for="surviNombreMundo">Nombre</label>
+          <input id="surviNombreMundo" class="survi-crear-nombre" type="text" maxlength="${SurviConfig.NOMBRE_MAX}" autocomplete="off" spellcheck="false">
+          <span class="survi-crear-label">Modo</span>
+          <div class="survi-opciones survi-opciones-modo">
+            ${Object.entries(SurviConfig.MODOS_JUEGO)
+              .map(([k, m]) => `<button type="button" class="survi-opcion" data-modo="${k}">${Iconos.icon(k === 'creativo' ? 'sparkles' : 'heart')} ${m.label}</button>`)
+              .join('')}
+          </div>
+          <span class="survi-crear-label">Dificultad</span>
+          <div class="survi-opciones survi-opciones-dif">
+            ${Object.entries(SurviConfig.DIFICULTADES)
+              .map(([k, d]) => `<button type="button" class="survi-opcion${k === 'hardcore' ? ' survi-opcion-hard' : ''}" data-dif="${k}">${d.label}</button>`)
+              .join('')}
+          </div>
+          <p class="survi-crear-desc"></p>
+          <button class="btn-game-primary survi-crear-btn" data-act="crear-mundo">${Iconos.icon('plus', { stroke: 3 })} Crear mundo</button>
         </div>
       </div>
 
@@ -144,7 +180,7 @@ export class SurviUI {
               <button class="game-fullscreen-btn survi-autosalto-btn" data-act="autosalto">${Iconos.icon('arrowUp')} Salto automático: <b class="survi-autosalto-val">Sí</b></button>
             </div>
             <div class="game-fullscreen-row survi-fullscreen-row">
-              <button class="game-fullscreen-btn survi-fullscreen-btn" data-act="fullscreen">${Iconos.icon('maximize')} Pantalla completa</button>
+              <button class="game-fullscreen-btn survi-fullscreen-btn" data-act="fullscreen">${Iconos.icon('maximize')} Pantalla completa: <b class="survi-fs-val">No</b></button>
             </div>
             <div class="survi-quality-slot"></div>
           </div>
@@ -161,16 +197,34 @@ export class SurviUI {
             <div class="game-info-row"><b>Espacio</b> o <b>W</b> — saltar</div>
             <div class="game-info-row"><b>Clic izquierdo</b> (mantenido) — romper bloques y atacar</div>
             <div class="game-info-row"><b>Clic derecho</b> — colocar el bloque del slot elegido</div>
-            <div class="game-info-row"><b>1 a 8</b> — elegir slot de la hotbar</div>
+            <div class="game-info-row"><b>1 a 8</b> o la <b>rueda del mouse</b> — elegir slot de la hotbar</div>
             <div class="game-info-row"><b>I</b> — abrir el inventario</div>
             <div class="game-info-row"><b>Esc</b> — pausa</div>
-            <div class="game-info-row">Caer de más de 4 bloques te saca vida. En <b>hardcore</b> la muerte borra el mundo.</div>
+            <div class="game-info-row">Caer de más de 4 bloques te saca vida. En <b>hardcore</b> tenés una sola vida: si morís, pasás a espectador. En <b>creativo</b> tenés todos los ítems (botón "Todos los ítems" del inventario), sos inmortal, los monstruos te ignoran, <b>F</b> vuela y <b>V</b> pasa a <b>espectador</b> (atravesás todo, ves todo iluminado y nadie te ve).</div>
+            <div class="game-info-row">${Iconos.icon('pickaxe')} Cada bloque tiene su herramienta: <b>pico</b> (piedra, minerales, horno), <b>hacha</b> (troncos, mesa, cofre) y <b>pala</b> (tierra, arena, grava). A mano o con otra cosa tarda mucho más (la tierra no tanto), y cuanto mejor el material de la herramienta, más rápido rompe.</div>
             <div class="game-info-row">Cualquier herramienta pega, pero la <b>espada</b> es la que más daño hace y más rápido pega.</div>
             <div class="game-info-row">Cada material es mejor que el anterior: <b>madera → piedra → cobre → hierro → oro → diamante → esmeralda</b>. Los minerales piden un pico del nivel de abajo o mejor: cobre (piedra), hierro (cobre), oro (hierro), diamante (oro), esmeralda (diamante). Con un pico peor se rompen pero no sueltan nada.</div>
             <div class="game-info-row">Desde el inventario solo se craftea lo simple (palos, antorchas, flechas, flint y la <b>mesa de crafteo</b>). Con <b>clic derecho</b> sobre la mesa se hace todo lo demás: herramientas, armas, armadura, mochilas, <b>horno</b> y <b>cofre</b>.</div>
             <div class="game-info-row">En el <b>horno</b> se funden los minerales crudos a lingote y se cocina la comida, usando carbón o madera como combustible. El <b>cofre</b> guarda hasta 16 tipos de ítem.</div>
             <div class="game-info-row">${Iconos.icon('drumstick')} El hambre baja solo. Rompé hojas para conseguir comida y comela con <b>clic derecho</b>. En 0 empieza a sacarte vida; bien alimentado, la regenerás de a poco.</div>
             <div class="game-info-row">De día aparecen <b>animales</b> en la superficie: la <b>vaca</b> da cuero y carne, el <b>cerdo</b> carne y la <b>gallina</b> huevos. No atacan: si les pegás, huyen. La carne y los huevos se cocinan en el horno; el cuero sirve para la armadura de cuero.</div>
+            <div class="game-info-row">${Iconos.icon('skull')} <b>Enemigos:</b> los <b>slimes</b> de día son pacíficos (si les pegás se enojan) y de noche atacan. De noche (o con lluvia) salen <b>zombies</b>. En las <b>cuevas</b> hay zombies y <b>esqueletos</b> con arco, que se quedan a distancia y te disparan: acercate rápido o cubrite detrás de un bloque. Zombies y esqueletos <b>se queman con el sol</b> (las antorchas no): si uno quemándose te pega, te prende fuego. Los zombies sueltan carne podrida y los esqueletos, flechas.</div>
+            <div class="game-info-row">Zombies y esqueletos <b>no aparecen donde hay luz</b>: cerca de una antorcha u horno prendido, o al sol de día. Iluminá tu casa y tus túneles. La antorcha se puede poner en el piso o <b>agarrada de una pared</b>.</div>
+            <div class="game-info-row">${Iconos.icon('droplet')} En el <b>desierto</b> hay <b>serpientes</b>: su mordida te <b>envenena</b> 10 segundos (te va sacando vida de a poco, sin matarte) y cada mordida vuelve a empezar el contador. Los <b>cactus</b> se pueden atravesar.</div>
+            <div class="game-info-row">${Iconos.icon('leaf')} De día hay <b>aves</b> (gorriones y cardenales) posadas en los árboles o en el suelo: si te acercás, salen volando.</div>
+            <div class="game-info-row">${Iconos.icon('pickaxe')} En las cuevas hay <b>minas abandonadas</b>: pasillos con tablones, rieles y telarañas, y <b>cofres con botín</b> (carbón, lingotes, comida, flechas… y con suerte diamantes o herramientas). Son oscuras, así que cuidado con los zombies y esqueletos. En la pradera hay <b>sandías</b>: rompelas (mejor con hacha) para sacar rodajas. Con 1 tronco hacés 4 <b>tablones</b>.</div>
+            <div class="game-info-row">${Iconos.icon('hammer')} <b>Tu casa:</b> 1 tronco da 2 <b>tablones</b>; con tablones hacés palos, la mesa de crafteo, la <b>cama</b> (4 tablones + 8 hilos), la <b>puerta</b> (4 tablones) y <b>paredes de fondo</b>. La puerta se abre sola al caminar hacia ella y se cierra cuando te alejás (o abrila/cerrala con clic derecho). En la cama (clic derecho) guardás tu <b>punto de reaparición</b> y, de noche, dormís hasta la mañana. Las <b>paredes</b> y <b>ventanas</b> van atrás: se pasan por delante y adentro de tu casa no aparecen monstruos; se sacan con pico o hacha. La <b>arena</b> en el horno da <b>vidrio</b>: 4 vidrios + 1 tablón = ventana.</div>
+            <div class="game-info-row"><b>Escalera</b> (7 palos = 3): subís con saltar, bajás con abajo (S / flecha abajo, o el joystick hacia abajo) y quedás agarrado si no tocás nada. Cada madera da tablones de su color: roble, <b>pino</b> (oscuro, en la nieve) y <b>gris</b> (en el bosque oscuro).</div>
+            <div class="game-info-row">${Iconos.icon('skull')} A partir del <b>día 10</b>, de noche aparecen <b>ojos voladores</b> (y ojos con boca, que pegan más fuerte). Te embisten volando y se van al amanecer. El día actual se ve en la pausa.</div>
+            <div class="game-info-row">${Iconos.icon('box')} Lo que rompés o lo que sueltan los mobs <b>cae al suelo</b>: pasá cerca y se junta solo (si hay lugar en el inventario). Las cosas tiradas duran <b>10 minutos</b> y titilan cuando están por desaparecer. Si <b>morís</b>, todo tu inventario y tu equipo quedan tirados donde caíste: ¡andá a buscarlos! Algunos árboles tienen <b>nidos</b> en las ramas: rompelos o tirales una flecha para sacar huevos.</div>
+            <div class="game-info-row"><b>Pesca:</b> con la <b>caña</b> (3 palos + 2 hilos, en la mesa) hacé clic derecho (o el botón de usar) para tirar la boya al agua. Cuando se hunde y aparece el <b>¡!</b>, recogela rápido para sacar pescado, salmón, calamar, anguila (más de noche)… o algún tesoro. En <b>agua profunda</b> y con lluvia pican más rápido. Hay <b>lagos grandes</b> en el mundo, ideales para pescar.</div>
+            <div class="game-info-row"><b>Cultivos:</b> hacé una <b>azada</b> (2 de material + 2 palos, en la mesa; de madera a esmeralda, las mejores duran más) y usala sobre tierra o pasto para ararla. Plantá encima <b>semillas de trigo</b> (salen del pasto alto), <b>semillas de sandía</b> (al romper una sandía), <b>zanahorias</b> o <b>papas</b> (solo de zombies o de los cofres de las minas). Crecen en 4 etapas; cerca del agua (4 bloques) y con lluvia crecen más rápido. Rompelos maduros para cosechar; el tallo de sandía maduro va dando <b>sandías</b> al costado. Con 3 <b>trigo</b> hacés <b>pan</b>.</div>
+            <div class="game-info-row"><b>Crianza:</b> hacé clic derecho a un animal con su comida (vaca: <b>trigo</b>; cerdo: <b>zanahoria</b> o <b>papa</b>; gallina: <b>semillas</b>). Queda <b>domesticado</b> (ya no desaparece) y le salen corazones: dos del mismo tipo con corazones se juntan y tienen una <b>cría</b>. Después tienen que esperar 5 minutos para otra. Las crías crecen solas (más rápido si les das de comer) y las gallinas tuyas ponen huevos. Con su comida en la mano, te siguen.</div>
+            <div class="game-info-row"><b>Cuevas:</b> abajo hay <b>cavernas grandes</b> y cuevas distintas: de <b>musgo</b> (pastito, enredaderas y <b>hongos brillantes</b> que dan luz; se pueden juntar y colocar), de <b>hielo</b> (debajo de la nieve, con carámbanos) y de <b>estalactitas</b>. Cada una tiene su color de fondo, y en la pausa dice en cuál estás.</div>
+            <div class="game-info-row"><b>Bichos de cueva:</b> la <b>araña</b> (cuevas de musgo) trepa paredes y te tira telaraña: quedás <b>enredado</b> (muy lento; el agua te la saca). El <b>yeti</b> (cuevas de hielo) tira bolas de nieve que empujan y te dejan <b>congelado</b> (el fuego te descongela). El <b>murciélago</b> duerme colgado del techo: si te acercás o picás cerca se despierta y te ataca en zigzag.</div>
+            <div class="game-info-row"><b>Noche en la superficie:</b> cuidado con el <b>hongo explosivo</b>: se acerca callado, se infla y <b>explota</b> (alejate cuando empieza a parpadear). Matalo antes para sacarle <b>pólvora</b>: con 5 pólvora + 4 arena hacés <b>TNT</b> en la mesa; se prende con clic derecho teniendo <b>flint</b> en la mano. En el desierto salen <b>momias</b>: no se queman al sol y sus golpes te dan hambre.</div>
+            <div class="game-info-row"><b>Sonido:</b> todos los efectos se generan en vivo (sin archivos). El volumen se ajusta desde los Ajustes de UniGames.</div>
+            <div class="game-info-row">${Iconos.icon('snowflake')} <b>Clima:</b> a veces <b>llueve</b> (tapa el sol y apaga el fuego). Muy de vez en cuando cae <b>lluvia ácida</b> (gotas verdes): lastima a todo lo que esté a cielo abierto menos a los slimes, y gasta la armadura el triple. Metete bajo techo o sumergite en el agua.</div>
             <div class="game-info-row">Hay <b>agua</b> (lagos y pozos en las cuevas) y <b>lava</b> (en lo más hondo). Adentro nadás: mantené <b>saltar</b> para subir. Bajo el agua se gasta el <b>aire</b>; sin aire te ahogás. La lava <b>quema</b> y te deja quemándote un rato (meterte al agua lo apaga). Con un <b>cubo</b> (3 lingotes de hierro, en la mesa) juntás agua o lava con clic derecho y la volcás en otro lado. Donde el agua toca lava, se forma piedra.</div>
             <div class="game-info-row"><b>Z</b> cambia el zoom (normal, cerca, lejos). En el <b>inventario (I)</b> arrastrá los ítems a la barra de abajo para usarlos, o entre huecos para ordenarlos.</div>
             <div class="game-info-row">Con un <b>arco</b> en la mano, clic izquierdo dispara hacia el mouse (cada tiro gasta una flecha). Hay 3 arcos: el mejor hace más daño, dispara más rápido y dura más. Las flechas que se clavan en un bloque se juntan pasando por encima. El <b>hilo</b> se hace con hojas.</div>
@@ -186,12 +240,27 @@ export class SurviUI {
           <h2 class="modal-game-title">Inventario <span class="survi-inv-count">(0/10)</span></h2>
           <div class="survi-inv-grid" data-drop="inv"></div>
           <div class="survi-inv-hotbar"></div>
-          <p class="survi-inv-hint">Arrastrá los ítems a la barra para usarlos, o entre huecos para ordenarlos. Tocar un ítem lo pone en el hueco #<span class="survi-inv-slot">1</span>.</p>
+          <p class="survi-inv-hint">Tocá un ítem para pasarlo a la barra (o de la barra al inventario), o arrastralo al hueco que quieras. <span class="survi-inv-slot hidden">1</span></p>
           <div class="survi-inv-actions">
             <button class="btn-game-secondary" data-act="open-equip">${Iconos.icon('shield')} Equipamiento</button>
             <button class="btn-game-secondary" data-act="open-craft">${Iconos.icon('hammer')} Craftear</button>
           </div>
+          <button class="btn-game-primary survi-solo-creativo" data-act="open-catalogo">${Iconos.icon('sparkles')} Todos los ítems</button>
           <button class="btn-game-primary" data-act="close-inv">Cerrar (I)</button>
+        </div>
+      </div>
+
+      <!-- ── Catálogo del modo creativo: todos los ítems ── -->
+      <div class="modal-game survi-screen survi-catalogo hidden">
+        <div class="modal-game-box survi-catalogo-box">
+          <h2 class="modal-game-title">Todos los ítems</h2>
+          <div class="survi-craft-tabs survi-catalogo-tabs"></div>
+          <div class="survi-catalogo-grid"></div>
+          <p class="survi-inv-hint">Tocá un ítem para agregarlo a tu inventario.</p>
+          <div class="survi-inv-actions">
+            <button class="btn-game-secondary" data-act="vaciar-inv">${Iconos.icon('trash')} Vaciar inventario</button>
+            <button class="btn-game-primary" data-act="catalogo-back">Volver</button>
+          </div>
         </div>
       </div>
 
@@ -281,6 +350,7 @@ export class SurviUI {
           <h2 class="modal-game-title survi-death-title">TE MORISTE</h2>
           <p class="modal-game-sub survi-death-time"></p>
           <button class="btn-game-primary" data-act="respawn">Respawn</button>
+          <button class="btn-game-primary hidden" data-act="espectar">${Iconos.icon('eye')} Ver como espectador</button>
           <button class="btn-game-secondary" data-act="to-menu">Volver al menú</button>
         </div>
       </div>
@@ -298,11 +368,15 @@ export class SurviUI {
       hungerBar: q('.survi-hunger-bar i'),
       hungerText: q('.survi-hunger-text'),
       touch: q('.survi-touch'),
-      touchMode: q('.survi-touch-mode'),
+      zonaMover: q('.survi-zona-mover'),
+      zonaMira: q('.survi-zona-mira'),
+      btnColocar: q('.survi-btn-colocar'),
+      btnZoom: q('.survi-zoom-btn'),
       screens: {
         cover: q('.survi-cover'),
         worlds: q('.survi-worlds'),
-        mode: q('.survi-mode'),
+        crear: q('.survi-crear'),
+        catalogo: q('.survi-catalogo'),
         settings: q('.survi-settings'),
         howto: q('.survi-howto'),
         inv: q('.survi-inv'),
@@ -314,7 +388,16 @@ export class SurviUI {
         death: q('.survi-death'),
       },
       worldsList: q('.survi-worlds-list'),
-      modeTitle: q('.survi-mode-title'),
+      crearNombre: q('#surviNombreMundo'),
+      crearDesc: q('.survi-crear-desc'),
+      crearBtn: q('.survi-crear-btn'),
+      catalogoTabs: q('.survi-catalogo-tabs'),
+      catalogoGrid: q('.survi-catalogo-grid'),
+      hudModo: q('.survi-hud-modo'),
+      modoLabel: q('.survi-modo-label'),
+      btnEspectador: q('.survi-btn-espectador'),
+      btnVolar: q('.survi-btn-volar'),
+      deathEspectar: q('[data-act="espectar"]'),
       invGrid: q('.survi-inv-grid'),
       invHotbar: q('.survi-inv-hotbar'),
       invSlotNum: q('.survi-inv-slot'),
@@ -344,7 +427,13 @@ export class SurviUI {
       deathRespawn: q('[data-act="respawn"]'),
       settingsContent: q('.survi-settings-content'),
       autoSaltoVal: q('.survi-autosalto-val'),
+      fsVal: q('.survi-fs-val'),
       aire: q('.survi-air'),
+      efectoVeneno: q('.survi-efecto-veneno'),
+      efectoEnredado: q('.survi-efecto-enredado'),
+      efectoCongelado: q('.survi-efecto-congelado'),
+      coordsX: q('.survi-coords-x'),
+      coordsY: q('.survi-coords-y'),
       qualitySlot: q('.survi-quality-slot'),
       musicRange: q('#surviMusicVol'),
       musicVal: q('.survi-music-val'),
@@ -371,6 +460,87 @@ export class SurviUI {
     this.craftCat = SurviConfig.CRAFT_CATS[0].key; // pestaña elegida en el crafteo
   }
 
+  // Texto del usuario (nombre del mundo) → seguro para meter en HTML.
+  static escapar(t) {
+    return String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  }
+
+  // ═══════════ Crear mundo ═══════════
+  // Marca el modo y la dificultad elegidos; en creativo la dificultad no
+  // aplica (se apaga).
+  mostrarCrear(elegido) {
+    const root = this.screens.crear;
+    root.querySelectorAll('[data-modo]').forEach((b) => b.classList.toggle('active', b.dataset.modo === elegido.modo));
+    const creativo = elegido.modo === 'creativo';
+    root.querySelectorAll('[data-dif]').forEach((b) => {
+      b.classList.toggle('active', !creativo && b.dataset.dif === elegido.dificultad);
+      b.disabled = creativo;
+    });
+    root.querySelector('.survi-opciones-dif').classList.toggle('apagado', creativo);
+    this.crearDesc.textContent = creativo
+      ? SurviConfig.MODOS_JUEGO.creativo.desc
+      : SurviConfig.DIFICULTADES[elegido.dificultad].desc;
+  }
+
+  // ═══════════ Modo creativo / espectador (HUD) ═══════════
+  // modo: { creativo, espectador, volando, puedeCambiar }
+  mostrarModo({ creativo, espectador, volando, puedeCambiar }) {
+    this.root.classList.toggle('survi-creativo', creativo);
+    this.root.classList.toggle('survi-espectador', espectador);
+    const visible = creativo || espectador;
+    this.hudModo.classList.toggle('hidden', !visible);
+    this.modoLabel.textContent = espectador ? 'Espectador' : 'Creativo';
+    this.btnEspectador.classList.toggle('hidden', !puedeCambiar);
+    this.btnEspectador.classList.toggle('activo', espectador);
+    this.btnVolar.classList.toggle('activo', volando);
+  }
+
+  // Catálogo del creativo: todos los ítems, por categoría.
+  static CATALOGO_CATS = [
+    { key: 'bloques', label: 'Bloques', es: (i) => i.place || i.fondo },
+    { key: 'herramientas', label: 'Herramientas', es: (i) => (i.tool && i.tool !== 'sword') || i.cubo !== undefined || i.cana || i.azada },
+    { key: 'combate', label: 'Combate', es: (i) => i.tool === 'sword' || i.arco || i.equip },
+    { key: 'comida', label: 'Comida', es: (i) => i.food },
+    { key: 'materiales', label: 'Materiales', es: () => true },
+  ];
+
+  static categoriaCatalogo(info) {
+    return SurviUI.CATALOGO_CATS.find((c) => c.es(info)).key;
+  }
+
+  renderCatalogo(game) {
+    this.catalogoCat = this.catalogoCat || 'bloques';
+    this.catalogoTabs.innerHTML = '';
+    for (const c of SurviUI.CATALOGO_CATS) {
+      const tab = document.createElement('button');
+      tab.className = 'survi-craft-tab' + (c.key === this.catalogoCat ? ' active' : '');
+      tab.textContent = c.label;
+      tab.addEventListener('click', () => {
+        this.catalogoCat = c.key;
+        this.renderCatalogo(game);
+      });
+      this.catalogoTabs.appendChild(tab);
+    }
+    this.catalogoGrid.innerHTML = '';
+    const ids = Object.keys(SurviConfig.ITEM_INFO)
+      .map(Number)
+      .filter((id) => SurviUI.categoriaCatalogo(SurviConfig.ITEM_INFO[id]) === this.catalogoCat)
+      .sort((a, b) => a - b);
+    for (const id of ids) {
+      const info = SurviConfig.ITEM_INFO[id];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'survi-sitem';
+      b.title = info.name;
+      b.innerHTML = SurviUI.iconMarkup(id, 28);
+      b.addEventListener('click', () => {
+        if (game.darItemCreativo(id)) this.showToast(`+ ${info.name}`);
+        else this.showToast('Inventario lleno');
+      });
+      this.catalogoGrid.appendChild(b);
+    }
+  }
+
   // Burbujas de aire (solo se ven mientras te falta aire bajo el agua).
   mostrarAire(llenas, total) {
     if (!this.aire) return;
@@ -378,6 +548,11 @@ export class SurviUI {
     let html = '';
     for (let i = 0; i < total; i++) html += `<i class="${i < llenas ? 'llena' : ''}"></i>`;
     this.aire.innerHTML = html;
+  }
+
+  // Ajustes: estado del botón de pantalla completa.
+  mostrarPantallaCompleta(activa) {
+    if (this.fsVal) this.fsVal.textContent = activa ? 'Sí' : 'No';
   }
 
   // Ajustes: estado del botón de salto automático.
@@ -407,7 +582,8 @@ export class SurviUI {
       name === 'craft' ||
       name === 'death' ||
       name === 'furnace' ||
-      name === 'chest';
+      name === 'chest' ||
+      name === 'catalogo';
     this.hud.classList.toggle('hidden', !inGame);
     this.touch.classList.toggle('hidden', name !== null);
   }
@@ -429,16 +605,22 @@ export class SurviUI {
     this.worldsList.innerHTML = '';
     for (const s of slots) {
       const card = document.createElement('div');
-      const hard = s.mode === 'hardcore';
-      card.className = 'survi-world-card' + (s.exists ? ' used' : ' empty') + (hard ? ' hardcore' : '');
+      const hard = s.dificultad === 'hardcore';
+      const creativo = s.modo === 'creativo';
+      card.className = 'survi-world-card' + (s.exists ? ' used' : ' empty') + (hard && !creativo ? ' hardcore' : '');
       if (s.exists && s.biome) card.dataset.biome = s.biome;
       let info;
       if (s.exists) {
         const biome = SurviConfig.BIOMES[s.biome];
         info = `
-          <b class="survi-world-name">Mundo ${s.slot}</b>
+          <b class="survi-world-name">${SurviUI.escapar(s.nombre)}</b>
           <span class="survi-world-tags">
-            <span class="survi-tag ${hard ? 'tag-hard' : 'tag-normal'}">${Iconos.icon(hard ? 'skull' : 'leaf')}${hard ? 'Hardcore' : 'Normal'}</span>
+            ${
+              creativo
+                ? `<span class="survi-tag tag-creativo">${Iconos.icon('sparkles')}Creativo</span>`
+                : `<span class="survi-tag ${hard ? 'tag-hard' : 'tag-normal'}">${Iconos.icon(hard ? 'skull' : 'leaf')}${SurviConfig.DIFICULTADES[s.dificultad] ? SurviConfig.DIFICULTADES[s.dificultad].label : 'Normal'}</span>`
+            }
+            ${s.muerto ? `<span class="survi-tag tag-hard">${Iconos.icon('eye')}Espectador</span>` : ''}
             ${biome ? `<span class="survi-tag tag-biome">${Iconos.icon(Iconos.BIOME_ICON[s.biome] || 'globe')}${biome.label}</span>` : ''}
           </span>
           <span class="survi-world-stats">
@@ -483,6 +665,7 @@ export class SurviUI {
   static itemIconStyle(itemId, px) {
     const info = SurviConfig.ITEM_INFO[itemId];
     if (!info) return '';
+    if (info.icono) return SpritesSurvi.tileIconStyle(info.icono, px); // ícono dibujado por código (cama, puerta, vidrio)
     if (info.sprite) return SpritesSurvi.itemSpriteStyle(info.sprite, px);
     return SpritesSurvi.tileIconStyle(info.place || itemId, px);
   }
@@ -586,8 +769,12 @@ export class SurviUI {
   #tocarItem(origen) {
     const game = this.juegoInv;
     if (!game) return;
-    if (origen.origen === 'hotbar') game.seleccionarSlot(origen.slot);
-    else if (origen.id !== null) game.ponerEnHotbar(origen.id, game.selectedSlot); // como antes: al hueco seleccionado
+    // Tocar pasa el ítem de un lado al otro: del inventario a la barra, y de
+    // la barra de vuelta al inventario. Tocar un hueco vacío lo selecciona.
+    if (origen.origen === 'hotbar') {
+      if (origen.id === null) game.seleccionarSlot(origen.slot);
+      else if (!game.sacarDeHotbar(origen.slot)) this.showToast('El inventario está lleno');
+    } else if (origen.id !== null) game.mandarAHotbar(origen.id);
   }
 
   // Inventario GENERAL: 10 huecos (14 con mochila puesta), aparte de los 8
@@ -620,7 +807,8 @@ export class SurviUI {
     if (this.invCount) this.invCount.textContent = `(${ids.length}/${cap})`;
     this.invGrid.innerHTML = '';
     if (!ids.length) {
-      this.invGrid.innerHTML = '<p class="survi-inv-empty">Vacío — rompé bloques con clic izquierdo.</p>';
+      const como = this.root.classList.contains('survi-movil') ? 'con el joystick derecho' : 'con clic izquierdo';
+      this.invGrid.innerHTML = `<p class="survi-inv-empty">Vacío — rompé bloques ${como}.</p>`;
     } else {
       // Primero las herramientas, después los bloques.
       ids.sort((a, b) => (SurviConfig.ITEM_INFO[b].tool ? 1 : 0) - (SurviConfig.ITEM_INFO[a].tool ? 1 : 0) || a - b);
