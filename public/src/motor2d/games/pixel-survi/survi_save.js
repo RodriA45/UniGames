@@ -104,6 +104,8 @@ export class GestorGuardado {
     data.fluidos = data.fluidos ? GestorGuardado.decodificarTiles(data.fluidos) : null;
     // capa de fondo (un mundo de antes no tiene: arranca vacía)
     data.fondo = data.fondo ? GestorGuardado.decodificarTiles(data.fondo) : null;
+    // mapa explorado (un mundo de antes no tiene: arranca en negro)
+    data.explorado = data.explorado ? GestorGuardado.decodificarTiles(data.explorado) : null;
     return {
       ...meta,
       ...data,
@@ -149,6 +151,7 @@ export class GestorGuardado {
           dias: payload.dias || 1, // días vividos
           sueltos: payload.sueltos || [], // ítems tirados en el suelo
           cultivos: payload.cultivos || {}, // "col,row" → ms que lleva creciendo
+          explorado: payload.explorado ? GestorGuardado.codificarTiles(payload.explorado) : null, // mapa: celdas vistas
         }),
       );
       localStorage.setItem(

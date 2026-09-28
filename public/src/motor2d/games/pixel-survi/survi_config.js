@@ -1901,6 +1901,14 @@ export class SurviConfig {
       key: 'mochilas',
       label: 'Mochilas',
     },
+    {
+      key: 'comida',
+      label: 'Comida',
+    },
+    {
+      key: 'otros',
+      label: 'Otros',
+    },
   ];
   static ingredientHave(inventory, ingredient) {
     if (ingredient.anyOf) return ingredient.anyOf.reduce((s, id) => s + (inventory[id] || 0), 0);
@@ -1992,7 +2000,7 @@ export class SurviConfig {
       SurviConfig.ITEM_INFO[id] = { name: `Azada de ${m.label}`, azada: true, mat, durabilidad: m.durabilidad, sprite: `hoe_${mat}` };
       SurviConfig.RECIPES.push({ cat: 'herramientas', id: `azada_${mat}`, result: id, resultQty: 1, inputs: [{ ...matAzada[mat], qty: 2 }, { id: M.sticks, qty: 2 }], station: 'table' });
     }
-    SurviConfig.RECIPES.push({ cat: 'basicos', id: 'pan', result: F.bread, resultQty: 1, inputs: [{ id: M.wheat, qty: 3 }], station: 'hand' });
+    SurviConfig.RECIPES.push({ cat: 'comida', id: 'pan', result: F.bread, resultQty: 1, inputs: [{ id: M.wheat, qty: 3 }], station: 'hand' });
     // qué suelta cada cultivo: maduro (etapa 3) o verde
     SurviConfig.COSECHA = {
       wheat: { madura: [[M.wheat, 1, 1], [M.seeds, 1, 3]], verde: [[M.seeds, 1, 1]] },
@@ -2065,7 +2073,7 @@ export class SurviConfig {
     SurviConfig.DROPS[T.tnt] = T.tnt;
     SurviConfig.ITEM_INFO[T.tnt] = { name: 'TNT', place: T.tnt };
     SurviConfig.RECIPES.push({
-      cat: 'estaciones',
+      cat: 'otros',
       id: 'tnt',
       result: T.tnt,
       resultQty: 1,

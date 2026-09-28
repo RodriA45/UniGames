@@ -18,6 +18,7 @@ import { Desgaste } from './survi_durabilidad.js';
 import { CapaFluidos } from './survi_fluidos.js';
 import { Iconos } from './survi_icons.js';
 import { LightMap } from './survi_light.js';
+import { MapaMundo, VistaMapa } from './survi_mapa.js';
 import { TilesetProcedural } from './survi_proc_tiles.js';
 import { GestorGuardado } from './survi_save.js';
 import { GeneradorMundo } from './survi_world.js';
@@ -221,13 +222,18 @@ export class SurviGame {
   _bindHudButtons() {
     this.ui.pauseBtn.addEventListener('click', () => {
       if (!this.running || this.dead) return;
-      if (this.invOpen) this.toggleInventory(false);
+      if (this.mapaOpen) this.toggleMapa(false);
+      else if (this.invOpen) this.toggleInventory(false);
       else this.setPaused(!this.paused);
     });
     this.ui.invBtn.addEventListener('click', () => {
-      if (!this.running || this.dead || this.paused) return;
+      if (!this.running || this.dead || this.paused || this.mapaOpen) return;
       this.toggleInventory();
     });
+    // Mapa: botón del HUD, la X de su pantalla y la vista (zoom / arrastrar)
+    this.vistaMapa = new VistaMapa(this.ui);
+    this.ui.mapaBtn.addEventListener('click', () => this.toggleMapa());
+    this.ui.mapaCerrar.addEventListener('click', () => this.toggleMapa(false));
   }
 
   // ═══════════ Arranque / parada ═══════════
@@ -320,6 +326,10 @@ export class SurviGame {
     this.light = new LightMap();
     this.light.margen = this.quality === 'low' ? 7 : LightMap.MARGIN;
     this.light.rebuildSky((c, r) => this.tilemap.get(c, r));
+    // Mapa: lo ya explorado (un mundo de antes arranca en negro)
+    this.mapa = MapaMundo.desde(save && save.explorado);
+    this.mapaOpen = false;
+    this._mapaFrame = 0;
     this._starveTimer = 0;
     this._regenTimer = 0;
     this._lastHungerShown = -1;
@@ -485,6 +495,8 @@ export class SurviGame {
     this.tilemap = null;
     this.world = null;
     this.light = null;
+    this.mapa = null;
+    this.mapaOpen = false;
     this.camera = null;
     this.enemies = [];
     this.animals = [];
@@ -569,6 +581,7 @@ export class SurviGame {
       dias: this.dias,
       sueltos: this.sueltos.map((s) => s.serializar()),
       cultivos: Object.fromEntries(this.cultivos),
+      explorado: this.mapa ? this.mapa.serializar() : null,
     });
   }
 
@@ -609,6 +622,24 @@ export class SurviGame {
     } else this.ui.showScreen(null);
   }
 
+  // Mapa (tecla M / botón del HUD). Mientras está abierto el mundo se frena,
+  // igual que con el inventario.
+  toggleMapa(force) {
+    if (this.dead || !this.running || !this.mapa) return;
+    const v = force === undefined ? !this.mapaOpen : force;
+    if (v && (this.paused || this.invOpen)) return;
+    this.mapaOpen = v;
+    this.pointer.down = false;
+    this._resetMine();
+    if (v) {
+      this.ui.showScreen('mapa');
+      this.vistaMapa.abrir(this);
+    } else {
+      this.vistaMapa.cerrar();
+      this.ui.showScreen(null);
+    }
+  }
+
   // ═══════════ Input ═══════════
   _attachInput() {
     if (this.input) this.input.detach();
@@ -634,6 +665,7 @@ export class SurviGame {
         Digit7: 'slot6',
         Digit8: 'slot7',
         KeyI: 'inv',
+        KeyM: 'mapa',
         KeyZ: 'zoom',
         KeyF: 'volar', // creativo / espectador
         KeyV: 'espectador', // creativo ⇄ espectador
@@ -644,15 +676,20 @@ export class SurviGame {
         preventDefaultFor: new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space']),
         onDown: (action) => {
           if (action === 'inv') {
-            if (!this.paused) this.toggleInventory();
+            if (!this.paused && !this.mapaOpen) this.toggleInventory();
+            return;
+          }
+          if (action === 'mapa') {
+            this.toggleMapa();
             return;
           }
           if (action === 'pause') {
-            if (this.invOpen) this.toggleInventory(false);
+            if (this.mapaOpen) this.toggleMapa(false);
+            else if (this.invOpen) this.toggleInventory(false);
             else this.setPaused(!this.paused);
             return;
           }
-          if (this.paused || this.invOpen) return;
+          if (this.paused || this.invOpen || this.mapaOpen) return;
           if (action === 'zoom') {
             this.cambiarZoom();
             return;
@@ -765,7 +802,12 @@ export class SurviGame {
   // mueve MIRA_SENSIBILIDAD veces el alcance). Así, al soltar y volver a
   // tocar, la mira no salta: sigue desde donde quedó. Mientras está
   // empujado, pega / rompe / dispara.
+  // Con la palanca al tope (más de MIRA_BORDE) la mira SIGUE avanzando sola
+  // hacia ese lado (MIRA_VEL_BORDE alcances por segundo), así no hay que
+  // soltar y volver a tocar para cruzar todo el círculo.
   static MIRA_SENSIBILIDAD = 0.8;
+  static MIRA_BORDE = 0.85;
+  static MIRA_VEL_BORDE = 1.6;
 
   empezarMiraTactil() {
     this._miraBase = this._miraOffset ? { ...this._miraOffset } : { x: 0, y: 0 };
@@ -773,28 +815,53 @@ export class SurviGame {
 
   apuntarTactil(x, y, activo) {
     if (!activo) {
+      this._miraStick = null;
       if (this.pointer.down && this.pointer.button === 0) {
         this.pointer.down = false;
         this._resetMine();
       }
       return;
     }
-    const base = this._miraBase || { x: 0, y: 0 };
-    const k = this.reachPx * SurviGame.MIRA_SENSIBILIDAD;
-    let ox = base.x + x * k,
-      oy = base.y + y * k;
-    // que no se salga del círculo de alcance
-    const largo = Math.hypot(ox, oy);
-    if (largo > this.reachPx) {
-      ox *= this.reachPx / largo;
-      oy *= this.reachPx / largo;
-    }
-    this._miraOffset = { x: ox, y: oy };
-    this._actualizarMira();
+    this._miraStick = { x, y };
+    if (!this._miraBase) this._miraBase = this._miraOffset ? { ...this._miraOffset } : { x: 0, y: 0 };
+    this._aplicarMira();
     if (!this._blocked()) {
       this.pointer.down = true;
       this.pointer.button = 0;
     }
+  }
+
+  // offset = base + palanca * k, dentro del círculo de alcance. Si el círculo
+  // la frena, la base se corre para que la mira quede ahí mismo: así, al
+  // mover la palanca para el otro lado, responde al instante (sin "zona
+  // muerta" hasta volver a entrar al círculo).
+  _aplicarMira() {
+    const s = this._miraStick, base = this._miraBase;
+    if (!s || !base) return;
+    const k = this.reachPx * SurviGame.MIRA_SENSIBILIDAD;
+    let ox = base.x + s.x * k,
+      oy = base.y + s.y * k;
+    const largo = Math.hypot(ox, oy);
+    if (largo > this.reachPx) {
+      ox *= this.reachPx / largo;
+      oy *= this.reachPx / largo;
+      base.x = ox - s.x * k;
+      base.y = oy - s.y * k;
+    }
+    this._miraOffset = { x: ox, y: oy };
+    this._actualizarMira();
+  }
+
+  // Por frame: con la palanca al tope, la base avanza hacia ese lado.
+  _empujarMiraBorde(dt) {
+    const s = this._miraStick;
+    if (!s || !this._miraBase) return;
+    const l = Math.hypot(s.x, s.y);
+    if (l <= SurviGame.MIRA_BORDE) return;
+    const f = ((l - SurviGame.MIRA_BORDE) / (1 - SurviGame.MIRA_BORDE)) * SurviGame.MIRA_VEL_BORDE * this.reachPx * (dt / 1000);
+    this._miraBase.x += (s.x / l) * f;
+    this._miraBase.y += (s.y / l) * f;
+    this._aplicarMira();
   }
 
   // Botón chico: colocar / interactuar. Mantenerlo apretado coloca seguido.
@@ -1105,7 +1172,7 @@ export class SurviGame {
   }
 
   _blocked() {
-    return !this.running || this.paused || this.invOpen || this.dead || !this.tilemap;
+    return !this.running || this.paused || this.invOpen || this.mapaOpen || this.dead || !this.tilemap;
   }
 
   // ═══════════ Modo de juego / dificultad ═══════════
@@ -3486,7 +3553,7 @@ export class SurviGame {
   _update(dt, step) {
     // los hornos siguen cocinando aunque tengas abierta su pantalla (o el inventario)
     if (this.player && !this.paused && !this.dead && this.furnaces) this._tickFurnaces(dt);
-    if (!this.player || this.paused || this.invOpen || this.dead) return;
+    if (!this.player || this.paused || this.invOpen || this.mapaOpen || this.dead) return;
     if (this.enVertical) return; // celular en vertical: esperando que lo giren
     this.playedMs += dt;
     if (this._attackCd > 0) this._attackCd -= dt;
@@ -3624,7 +3691,10 @@ export class SurviGame {
       this._anim.t = 0;
       this._anim.i = (this._anim.i + 1) % 2;
     }
-    if (this.tactil) this._actualizarMira();
+    if (this.tactil) {
+      this._empujarMiraBorde(dt);
+      this._actualizarMira();
+    }
     if (this.pointer.down) {
       if (this.pointer.button === 0) this._mineTick(dt);
       else if (this.pointer.button === 2) this._tryPlace();
@@ -3901,6 +3971,11 @@ export class SurviGame {
         ],
         (c, r) => this.fluidos.luz(c, r), // la lava ilumina
       );
+      // mapa: lo que se ve con luz queda explorado (cada ~8 cálculos de luz)
+      if (++this._mapaFrame >= 8 && this.mapa) {
+        this._mapaFrame = 0;
+        this.mapa.revelarLuz(this.light, this.camera, this.espectador);
+      }
     }
     if (!this.espectador) this.light.draw(ctx, this.camera); // espectador: ve todo iluminado
     // luna y estrellas: arriba de la oscuridad (si no, de noche no se verían)

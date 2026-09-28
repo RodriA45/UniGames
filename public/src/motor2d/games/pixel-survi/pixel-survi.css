@@ -1111,23 +1111,12 @@ html.survi-fs-abierto body { overflow: hidden; }
    ítem, que va en absoluto: en el título tiene que ir en línea. */
 .modal-game-title .survi-inv-count { position: static; margin-left: 0.4em; }
 
-/* Inventario en celular horizontal (~390 px de alto): más compacto, y
-   "Cerrar" arriba a la derecha para que todo entre sin scrollear. */
-.survi-movil .survi-inv-box > [data-act='close-inv'] {
-  position: absolute;
-  top: max(0.6rem, env(safe-area-inset-top));
-  right: max(0.8rem, env(safe-area-inset-right));
-  width: auto;
-  margin: 0;
-  padding: 0.45rem 0.9rem;
-  font-size: 0.8rem;
-}
+/* Inventario en celular horizontal (~390 px de alto): más compacto. */
 @media (max-height: 430px) {
   .survi-movil .modal-game-box { gap: 0.45rem; }
   .survi-movil .modal-game-title { font-size: 12px; margin: 0.2rem 0 0; }
   .survi-movil .survi-inv-grid { grid-template-columns: repeat(auto-fill, minmax(4.4rem, 1fr)); max-height: none; }
   .survi-movil .survi-inv-cell { padding: 0.25rem 0.15rem; }
-  .survi-movil .survi-inv-cell-empty { min-height: 2.9rem; }
   .survi-movil .survi-inv-hotbar { margin-top: 0.2rem; padding-top: 0.45rem; }
   .survi-movil .survi-inv-hint { font-size: 0.62rem; }
   .survi-movil .survi-inv-actions button { padding: 0.45rem 0.8rem; font-size: 0.85rem; }
@@ -1261,3 +1250,185 @@ html.survi-fs-abierto body { overflow: hidden; }
 
 .survi-catalogo-box .survi-inv-actions { max-width: 360px; }
 .survi-catalogo-box .survi-inv-actions button { white-space: nowrap; font-size: 0.85rem; padding: 0.5rem 0.8rem; display: inline-flex; align-items: center; justify-content: center; gap: 0.35em; }
+
+/* ═════════ Interfaz de ítems (inventario, crafteo, equipo) ═════════ */
+/* pestañas con ícono */
+.survi-craft-tab .survi-ico { width: 0.85rem; height: 0.85rem; flex: none; }
+.survi-inv-tabs { width: 100%; justify-content: flex-start; }
+.survi-screen .survi-craft-tabs button.survi-craft-tab.compacta { padding: 0.28rem 0.45rem; }
+.survi-craft-tab.compacta .survi-tab-label { display: none; }
+.survi-inv-box { max-width: 680px; }
+.survi-inv-main { display: flex; gap: 0.6rem; width: 100%; align-items: stretch; }
+.survi-inv-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.survi-inv-main .survi-item-info { flex: 0 0 13.5rem; align-self: stretch; }
+.survi-inv-main .survi-ficha { grid-template-columns: auto 1fr; }
+.survi-inv-main .survi-ficha-datos { grid-template-columns: 1fr; }
+.survi-ficha, .survi-craft-detail, .survi-item-info { text-align: left; }
+.survi-craft-ing-name { text-align: left; }
+@media (max-width: 600px) {
+  .survi-inv-main { flex-direction: column; }
+  .survi-inv-main .survi-item-info { flex: none; }
+  .survi-inv-main .survi-ficha-datos { grid-template-columns: 1fr 1fr; }
+}
+
+/* ficha de un ítem: ícono grande + nombre + categoría + datos */
+.survi-ficha {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.6rem;
+  align-items: center;
+  width: 100%;
+}
+.survi-ficha-icono {
+  display: flex; align-items: center; justify-content: center;
+  width: 3rem; height: 3rem;
+  border-radius: 10px;
+  background: radial-gradient(circle at 50% 40%, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.survi-ficha-txt { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.survi-ficha-nombre { font-size: 0.85rem; font-weight: 800; color: #fff; }
+.survi-ficha-nombre small { font-weight: 400; opacity: 0.7; }
+.survi-ficha-cat {
+  display: inline-flex; align-items: center; gap: 0.25rem; align-self: flex-start;
+  font-size: 0.6rem; font-weight: 700; letter-spacing: 0.02em;
+  padding: 0.1rem 0.45rem; border-radius: 999px;
+  background: rgba(245, 197, 24, 0.15); color: #f5c518;
+}
+.survi-ficha-cat .survi-ico { width: 0.75rem; height: 0.75rem; }
+.survi-ficha-datos {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.2rem 0.5rem;
+}
+.survi-ficha-dato {
+  display: flex; justify-content: space-between; align-items: center; gap: 0.4rem;
+  font-size: 0.66rem; color: rgba(255, 255, 255, 0.7);
+  padding: 0.18rem 0.4rem; border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+}
+.survi-ficha-dato > span { display: inline-flex; align-items: center; gap: 0.25rem; }
+.survi-ficha-dato .survi-ico { width: 0.8rem; height: 0.8rem; }
+.survi-ficha-dato b { color: #fff; font-weight: 800; }
+
+/* ficha abajo de la grilla del inventario */
+.survi-item-info {
+  width: 100%;
+  min-height: 3.4rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--game-radius-sm, 8px);
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-sizing: border-box;
+}
+.survi-item-info-vacio { margin: 0.6rem 0; font-size: 0.68rem; color: rgba(255, 255, 255, 0.5); text-align: center; }
+.survi-inv-cell .survi-slot-icon { filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.6)); }
+.survi-inv-extra { font-size: 0.55rem; color: #7ee08a; }
+
+/* equipo: resumen de defensa / huecos */
+.survi-equip-stats { display: flex; flex-direction: column; gap: 0.2rem; width: 100%; max-width: 14rem; }
+
+/* crafteo: detalle más completo */
+.survi-craft-box { max-width: 640px; }
+.survi-craft-detail { gap: 0.45rem; }
+.survi-craft-detail .survi-ficha-datos { grid-template-columns: 1fr 1fr; }
+.survi-craft-sub { margin: 0.1rem 0 -0.15rem; font-size: 0.62rem; font-weight: 700; color: rgba(255, 255, 255, 0.55); text-transform: uppercase; letter-spacing: 0.06em; }
+.survi-craft-ing { align-items: center; gap: 0.4rem; background: rgba(255, 255, 255, 0.04); padding: 0.2rem 0.35rem; }
+.survi-craft-ing-name { flex: 1; min-width: 0; }
+.survi-craft-ing-qty { font-weight: 800; }
+.survi-craft-ing .survi-slot-icon { flex: none; }
+.survi-craft-btns { display: flex; gap: 0.35rem; margin-top: auto; }
+.survi-craft-btns .survi-craft-btn { flex: 1; margin: 0; padding: 0.42rem 0.3rem; font-size: 0.72rem; line-height: 1.15; }
+.survi-craft-row { gap: 0.55rem; }
+.survi-craft-row .survi-slot-icon { flex: none; }
+.survi-craft-row.can-craft { border-color: rgba(126, 224, 138, 0.35); }
+.survi-craft-row.can-craft.selected, .survi-craft-row.selected { border-color: var(--yellow, #f5c518); opacity: 1; }
+@media (max-width: 640px), (max-height: 500px) {
+  .survi-ficha-datos, .survi-craft-detail .survi-ficha-datos { grid-template-columns: 1fr 1fr; }
+  .survi-ficha-icono { width: 2.4rem; height: 2.4rem; }
+  .survi-item-info { min-height: 0; padding: 0.3rem 0.45rem; }
+}
+
+/* ══ Inventario y mesa de crafteo: tamaño fijo, huecos cuadrados, botón X ══ */
+/* Tamaño fijo: no salta al cambiar de pestaña */
+.survi-craft-box,
+.survi-inv-box {
+  position: relative;
+  display: flex; flex-direction: column;
+  width: min(660px, 94vw); max-width: none;
+  height: min(440px, 88vh);
+}
+.survi-craft-layout, .survi-inv-main { flex: 1; min-height: 0; }
+.survi-craft-side, .survi-inv-col { min-height: 0; }
+.survi-craft-list, .survi-inv-grid { flex: 1; min-height: 0; max-height: none; overflow-y: auto; align-content: start; }
+.survi-craft-detail { flex: 0 0 15rem; overflow-y: auto; }
+.survi-craft .survi-craft-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.survi-craft .survi-craft-tabs::-webkit-scrollbar { display: none; }
+
+/* Inventario: huecos cuadrados, solo ícono (el nombre sale en la ficha) */
+.survi-inv-grid { grid-template-columns: repeat(auto-fill, 2.9rem); gap: 0.3rem; justify-content: start; }
+.survi-screen .modal-game-box .survi-inv-grid button.survi-inv-cell,
+.survi-inv-grid .survi-inv-cell-empty {
+  width: 2.9rem; height: 2.9rem; min-height: 0;
+  padding: 0; justify-content: center;
+}
+.survi-inv-grid .survi-inv-cell .survi-inv-count { top: auto; bottom: 1px; right: 3px; font-size: 0.6rem; opacity: 1; }
+
+/* Ficha más angosta */
+.survi-inv-main .survi-item-info { flex: 0 0 10.5rem; }
+.survi-inv-main .survi-ficha-icono { width: 2.3rem; height: 2.3rem; }
+.survi-inv-main .survi-ficha-nombre { font-size: 0.75rem; }
+
+/* Botón X (cerrar) arriba a la derecha */
+.survi-screen .modal-game-box button.survi-cerrar {
+  position: absolute; top: 0.6rem; right: 0.6rem; z-index: 2;
+  width: 2rem; height: 2rem; max-width: none; margin: 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06); color: #fff; cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.survi-screen .modal-game-box button.survi-cerrar:hover { background: #e0563a; border-color: #e0563a; }
+
+@media (max-width: 480px) {
+  .survi-craft-detail, .survi-inv-main .survi-item-info { flex: none; }
+}
+
+/* ══ Mapa (tecla M) ══ */
+.survi-hud-der { display: flex; gap: 0.35rem; pointer-events: none; }
+.survi-mapa-btn { pointer-events: auto; display: flex; align-items: center; justify-content: center; }
+.survi-mapa-btn .survi-ico { width: 1rem; height: 1rem; }
+.survi-movil .survi-mapa-btn .survi-ico { width: min(1.1rem, 6cqh); height: min(1.1rem, 6cqh); }
+.survi-mapa-box {
+  position: relative;
+  display: flex; flex-direction: column;
+  width: min(860px, 96vw); max-width: none;
+  height: min(560px, 92vh);
+}
+.survi-mapa-vista {
+  position: relative;
+  flex: 1; min-height: 0; width: 100%;
+  border-radius: 8px; overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: #000;
+}
+.survi-mapa-canvas {
+  display: block; width: 100%; height: 100%;
+  touch-action: none; cursor: grab;
+  image-rendering: pixelated;
+}
+.survi-mapa-canvas:active { cursor: grabbing; }
+.survi-mapa-ctrl {
+  position: absolute; right: 0.5rem; bottom: 0.5rem;
+  display: flex; flex-direction: column; gap: 0.3rem;
+}
+.survi-screen .modal-game-box .survi-mapa-ctrl button.game-icon-btn {
+  width: 2.1rem; height: 2.1rem; max-width: none; margin: 0; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.survi-mapa-info { margin: 0; font-size: 0.68rem; color: rgba(255, 255, 255, 0.7); text-align: center; }
+@media (max-height: 430px) {
+  .survi-mapa-box { height: 94vh; gap: 0.3rem; }
+  .survi-mapa-box .modal-game-title { font-size: 12px; margin: 0.2rem 0 0; }
+}

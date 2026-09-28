@@ -14,3 +14,6 @@ __pycache__/
 scratch/
 *.diff.txt
 .DS_Store
+
+
+.env

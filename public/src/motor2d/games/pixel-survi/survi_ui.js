@@ -33,6 +33,7 @@ export class SurviUI {
     'craft',
     'furnace',
     'chest',
+    'mapa',
   ];
   constructor(root, { movil = false } = {}) {
     root.classList.add('survi-root');
@@ -61,7 +62,10 @@ export class SurviUI {
             <span class="survi-modo-label">Creativo</span>
             <button class="game-icon-btn survi-btn-volar" data-act="volar" title="Volar (F)">${Iconos.icon('wind')}</button>
           </div>
-          <button class="game-icon-btn survi-inv-btn" title="Inventario (I)">I</button>
+          <div class="survi-hud-der">
+            <button class="game-icon-btn survi-mapa-btn" title="Mapa (M)" aria-label="Mapa">${Iconos.icon('map')}</button>
+            <button class="game-icon-btn survi-inv-btn" title="Inventario (I)">I</button>
+          </div>
         </div>
         <div class="survi-hud-bottom">
           <div class="survi-air hidden" title="Aire"></div>
@@ -237,8 +241,15 @@ export class SurviUI {
       <!-- ── Inventario ── -->
       <div class="modal-game survi-screen survi-inv hidden">
         <div class="modal-game-box survi-inv-box">
+          <button class="survi-cerrar" data-act="close-inv" title="Cerrar (I)" aria-label="Cerrar">${Iconos.icon('x', { size: 18 })}</button>
           <h2 class="modal-game-title">Inventario <span class="survi-inv-count">(0/10)</span></h2>
-          <div class="survi-inv-grid" data-drop="inv"></div>
+          <div class="survi-inv-main">
+            <div class="survi-inv-col">
+              <div class="survi-craft-tabs survi-inv-tabs"></div>
+              <div class="survi-inv-grid" data-drop="inv"></div>
+            </div>
+            <div class="survi-item-info"></div>
+          </div>
           <div class="survi-inv-hotbar"></div>
           <p class="survi-inv-hint">Tocá un ítem para pasarlo a la barra (o de la barra al inventario), o arrastralo al hueco que quieras. <span class="survi-inv-slot hidden">1</span></p>
           <div class="survi-inv-actions">
@@ -246,7 +257,6 @@ export class SurviUI {
             <button class="btn-game-secondary" data-act="open-craft">${Iconos.icon('hammer')} Craftear</button>
           </div>
           <button class="btn-game-primary survi-solo-creativo" data-act="open-catalogo">${Iconos.icon('sparkles')} Todos los ítems</button>
-          <button class="btn-game-primary" data-act="close-inv">Cerrar (I)</button>
         </div>
       </div>
 
@@ -271,6 +281,7 @@ export class SurviUI {
           <div class="survi-equip-layout">
             <div class="survi-equip-left">
               <div class="survi-equip-char"></div>
+              <div class="survi-equip-stats"></div>
               <div class="survi-equip-slots"></div>
             </div>
             <div class="survi-equip-right">
@@ -282,9 +293,27 @@ export class SurviUI {
         </div>
       </div>
 
+      <!-- ── Mapa ── -->
+      <div class="modal-game survi-screen survi-mapa hidden">
+        <div class="modal-game-box survi-mapa-box">
+          <button class="survi-cerrar survi-mapa-cerrar" title="Cerrar (M)" aria-label="Cerrar">${Iconos.icon('x', { size: 18 })}</button>
+          <h2 class="modal-game-title">Mapa</h2>
+          <div class="survi-mapa-vista">
+            <canvas class="survi-mapa-canvas"></canvas>
+            <div class="survi-mapa-ctrl">
+              <button class="game-icon-btn survi-mapa-mas" title="Acercar" aria-label="Acercar">${Iconos.icon('plus')}</button>
+              <button class="game-icon-btn survi-mapa-menos" title="Alejar" aria-label="Alejar">${Iconos.icon('minus')}</button>
+              <button class="game-icon-btn survi-mapa-centrar" title="Centrar en vos" aria-label="Centrar en vos">${Iconos.icon('crosshair')}</button>
+            </div>
+          </div>
+          <p class="survi-mapa-info"></p>
+        </div>
+      </div>
+
       <!-- ── Craftear ── -->
       <div class="modal-game survi-screen survi-craft hidden">
         <div class="modal-game-box survi-craft-box">
+          <button class="survi-cerrar" data-act="craft-back" title="Cerrar" aria-label="Cerrar">${Iconos.icon('x', { size: 18 })}</button>
           <h2 class="modal-game-title survi-craft-title">Craftear</h2>
           <p class="survi-craft-hint"></p>
           <div class="survi-craft-layout">
@@ -296,7 +325,6 @@ export class SurviUI {
               <p class="survi-craft-empty">Elegí algo de la lista para ver qué pide.</p>
             </div>
           </div>
-          <button class="btn-game-secondary" data-act="craft-back">Volver</button>
         </div>
       </div>
 
@@ -362,6 +390,13 @@ export class SurviUI {
       hud: q('.survi-hud'),
       pauseBtn: q('.survi-pause-btn'),
       invBtn: q('.survi-inv-btn'),
+      mapaBtn: q('.survi-mapa-btn'),
+      mapaCerrar: q('.survi-mapa-cerrar'),
+      mapaCanvas: q('.survi-mapa-canvas'),
+      mapaInfo: q('.survi-mapa-info'),
+      mapaMas: q('.survi-mapa-mas'),
+      mapaMenos: q('.survi-mapa-menos'),
+      mapaCentrar: q('.survi-mapa-centrar'),
       hotbar: q('.survi-hotbar'),
       hpBar: q('.survi-health-bar i'),
       hpText: q('.survi-health-text'),
@@ -384,6 +419,7 @@ export class SurviUI {
         craft: q('.survi-craft'),
         furnace: q('.survi-furnace'),
         chest: q('.survi-chest'),
+        mapa: q('.survi-mapa'),
         pause: q('.survi-pause'),
         death: q('.survi-death'),
       },
@@ -399,13 +435,16 @@ export class SurviUI {
       btnVolar: q('.survi-btn-volar'),
       deathEspectar: q('[data-act="espectar"]'),
       invGrid: q('.survi-inv-grid'),
+      invTabs: q('.survi-inv-tabs'),
+      itemInfo: q('.survi-item-info'),
+      equipStats: q('.survi-equip-stats'),
       invHotbar: q('.survi-inv-hotbar'),
       invSlotNum: q('.survi-inv-slot'),
       invCount: q('.survi-inv-count'),
       equipChar: q('.survi-equip-char'),
       equipSlots: q('.survi-equip-slots'),
       equipList: q('.survi-equip-list'),
-      craftTabs: q('.survi-craft-tabs'),
+      craftTabs: q('.survi-craft .survi-craft-tabs'), // (ojo: el catálogo también usa .survi-craft-tabs)
       craftList: q('.survi-craft-list'),
       craftDetail: q('.survi-craft-detail'),
       craftTitle: q('.survi-craft-title'),
@@ -495,14 +534,97 @@ export class SurviUI {
     this.btnVolar.classList.toggle('activo', volando);
   }
 
-  // Catálogo del creativo: todos los ítems, por categoría.
-  static CATALOGO_CATS = [
-    { key: 'bloques', label: 'Bloques', es: (i) => i.place || i.fondo },
-    { key: 'herramientas', label: 'Herramientas', es: (i) => (i.tool && i.tool !== 'sword') || i.cubo !== undefined || i.cana || i.azada },
-    { key: 'combate', label: 'Combate', es: (i) => i.tool === 'sword' || i.arco || i.equip },
-    { key: 'comida', label: 'Comida', es: (i) => i.food },
-    { key: 'materiales', label: 'Materiales', es: () => true },
+  // ═══════════ Categorías de ítems ═══════════
+  // Las mismas en el inventario, el catálogo del creativo y el crafteo.
+  // El orden importa: gana la primera que coincide.
+  static CATEGORIAS = [
+    { key: 'herramientas', label: 'Herramientas', icon: 'pickaxe', es: (i) => (i.tool && i.tool !== 'sword') || i.cubo !== undefined || !!i.cana || !!i.azada },
+    { key: 'armas', label: 'Armas', icon: 'sword', es: (i) => i.tool === 'sword' || !!i.arco },
+    { key: 'armadura', label: 'Armadura', icon: 'shield', es: (i) => !!i.equip },
+    { key: 'comida', label: 'Comida', icon: 'drumstick', es: (i) => !!i.food },
+    { key: 'bloques', label: 'Bloques', icon: 'layers', es: (i) => !!(i.place || i.fondo) },
+    { key: 'materiales', label: 'Materiales', icon: 'gem', es: () => true },
   ];
+  static CATALOGO_CATS = [
+    SurviUI.CATEGORIAS[4], // bloques primero
+    ...SurviUI.CATEGORIAS.filter((c) => c.key !== 'bloques'),
+  ];
+  // Íconos de las pestañas del crafteo (SurviConfig.CRAFT_CATS)
+  static CRAFT_ICON = {
+    basicos: 'hammer', estaciones: 'box', muebles: 'home', herramientas: 'pickaxe', armas: 'sword',
+    armadura: 'shield', mochilas: 'backpack', comida: 'drumstick', otros: 'flame',
+  };
+
+  static categoriaDe(id) {
+    const info = SurviConfig.ITEM_INFO[id];
+    return info ? SurviUI.CATEGORIAS.find((c) => c.es(info)) : SurviUI.CATEGORIAS[5];
+  }
+
+  // Pestaña chiquita con ícono + texto (+ número opcional).
+  // compacta: solo el ícono (el nombre aparece en la activa y al pasar el mouse)
+  static pestana(label, icon, activa, n = null, onClick = null, compacta = false) {
+    const tab = document.createElement('button');
+    tab.type = 'button';
+    tab.className = 'survi-craft-tab' + (activa ? ' active' : '') + (compacta ? ' compacta' : '');
+    tab.title = label;
+    tab.innerHTML = `${icon ? Iconos.icon(icon) : ''}<span class="survi-tab-label">${label}</span>${n ? `<span class="survi-craft-tab-n">${n}</span>` : ''}`;
+    if (onClick) tab.addEventListener('click', onClick);
+    return tab;
+  }
+
+  // Lo que dice cada ítem (daño, defensa, comida…): lista de [etiqueta, valor].
+  static detalleItem(id, frac = null) {
+    const info = SurviConfig.ITEM_INFO[id];
+    if (!info) return [];
+    const S = SurviConfig, d = [];
+    const HERR = { pickaxe: 'Pico', axe: 'Hacha', shovel: 'Pala' };
+    if (info.tool) {
+      const st = S.WEAPON_STATS[info.tool] || S.BARE_HAND_ATTACK;
+      const danio = S.ATTACK_DMG * st.dmgMult + (info.tool === 'sword' ? info.power * 2 : 0);
+      d.push(['Daño', danio.toFixed(1).replace('.0', '')]);
+      if (info.tool !== 'sword') d.push(['Velocidad', `×${(1 + info.power).toFixed(1)}`]);
+      if (info.tool === 'pickaxe') d.push(['Nivel de pico', String(info.tier)]);
+      d.push(['Golpes por segundo', (1000 / st.cooldown).toFixed(1)]);
+    }
+    if (info.arco) {
+      d.push(['Daño por flecha', String(info.arco.danio)]);
+      d.push(['Tiros por segundo', (1000 / info.arco.cadenciaMs).toFixed(1)]);
+    }
+    if (info.defense) d.push(['Defensa', `+${info.defense}`]);
+    if (info.bonusSlots) d.push(['Huecos extra', `+${info.bonusSlots}`]);
+    if (info.food) d.push(['Llena', `${info.food} de hambre`]);
+    if (info.planta) d.push(['Se planta', 'en tierra arada']);
+    if (info.azada) d.push(['Uso', 'ara tierra y pasto']);
+    if (info.cana) d.push(['Uso', 'pescar (clic derecho)']);
+    if (info.cubo !== undefined) d.push(['Uso', info.cubo ? 'volcar (clic derecho)' : 'juntar agua o lava']);
+    if (info.place && S.TOOL_FOR[info.place]) d.push(['Se rompe con', HERR[S.TOOL_FOR[info.place]] || S.TOOL_FOR[info.place]]);
+    if (info.fondo) d.push(['Va', 'en la pared de fondo']);
+    if (S.LUZ_TILES && S.LUZ_TILES[info.place]) d.push(['Da luz', 'sí']);
+    if (info.durabilidad) {
+      const quedan = frac === null || frac === undefined ? info.durabilidad : Math.round(frac * info.durabilidad);
+      d.push(['Durabilidad', `${quedan}/${info.durabilidad}`]);
+    }
+    return d;
+  }
+
+  // Ficha de un ítem: ícono grande, nombre, categoría y sus datos.
+  static fichaItem(id, { frac = null, cantidad = null, px = 36 } = {}) {
+    const info = SurviConfig.ITEM_INFO[id];
+    if (!info) return '';
+    const cat = SurviUI.categoriaDe(id);
+    const datos = SurviUI.detalleItem(id, frac)
+      .map(([k, v]) => `<span class="survi-ficha-dato"><span>${k}</span><b>${v}</b></span>`)
+      .join('');
+    return `
+      <div class="survi-ficha">
+        <div class="survi-ficha-icono">${SurviUI.iconMarkup(id, px)}</div>
+        <div class="survi-ficha-txt">
+          <span class="survi-ficha-nombre">${info.name}${cantidad > 1 ? ` <small>×${cantidad}</small>` : ''}</span>
+          <span class="survi-ficha-cat">${Iconos.icon(cat.icon)} ${cat.label}</span>
+        </div>
+        ${datos ? `<div class="survi-ficha-datos">${datos}</div>` : ''}
+      </div>`;
+  }
 
   static categoriaCatalogo(info) {
     return SurviUI.CATALOGO_CATS.find((c) => c.es(info)).key;
@@ -512,14 +634,12 @@ export class SurviUI {
     this.catalogoCat = this.catalogoCat || 'bloques';
     this.catalogoTabs.innerHTML = '';
     for (const c of SurviUI.CATALOGO_CATS) {
-      const tab = document.createElement('button');
-      tab.className = 'survi-craft-tab' + (c.key === this.catalogoCat ? ' active' : '');
-      tab.textContent = c.label;
-      tab.addEventListener('click', () => {
-        this.catalogoCat = c.key;
-        this.renderCatalogo(game);
-      });
-      this.catalogoTabs.appendChild(tab);
+      this.catalogoTabs.appendChild(
+        SurviUI.pestana(c.label, c.icon, c.key === this.catalogoCat, null, () => {
+          this.catalogoCat = c.key;
+          this.renderCatalogo(game);
+        }),
+      );
     }
     this.catalogoGrid.innerHTML = '';
     const ids = Object.keys(SurviConfig.ITEM_INFO)
@@ -583,6 +703,7 @@ export class SurviUI {
       name === 'death' ||
       name === 'furnace' ||
       name === 'chest' ||
+      name === 'mapa' ||
       name === 'catalogo';
     this.hud.classList.toggle('hidden', !inGame);
     this.touch.classList.toggle('hidden', name !== null);
@@ -799,43 +920,84 @@ export class SurviUI {
         this.invHotbar.appendChild(slot);
       }
     }
-    const ids = Object.keys(game.inventory)
+    const todos = Object.keys(game.inventory)
       .map(Number)
       .filter((id) => (game.inventory[id] || 0) > 0 && SurviConfig.ITEM_INFO[id] && !game.hotbarSlots.includes(id));
     this.invSlotNum.textContent = String(game.selectedSlot + 1);
     const cap = game.generalSlotCap;
-    if (this.invCount) this.invCount.textContent = `(${ids.length}/${cap})`;
+    if (this.invCount) this.invCount.textContent = `(${todos.length}/${cap})`;
+    // pestañas: Todo + las categorías que tenés
+    this.invCat = this.invCat || 'todo';
+    const porCat = {};
+    for (const id of todos) porCat[SurviUI.categoriaDe(id).key] = (porCat[SurviUI.categoriaDe(id).key] || 0) + 1;
+    if (this.invCat !== 'todo' && !porCat[this.invCat]) this.invCat = 'todo';
+    if (this.invTabs) {
+      this.invTabs.innerHTML = '';
+      const tab = (key, label, icon, n) =>
+        this.invTabs.appendChild(
+          SurviUI.pestana(label, icon, this.invCat === key, n, () => {
+            this.invCat = key;
+            this.renderInventory(game);
+          }),
+        );
+      tab('todo', 'Todo', 'grid', null);
+      for (const c of SurviUI.CATEGORIAS) if (porCat[c.key]) tab(c.key, c.label, c.icon, porCat[c.key]);
+    }
+    // ordenados por categoría (herramientas, armas, armadura, comida, bloques, materiales)
+    const orden = (id) => SurviUI.CATEGORIAS.indexOf(SurviUI.categoriaDe(id));
+    const ids = todos.filter((id) => this.invCat === 'todo' || SurviUI.categoriaDe(id).key === this.invCat).sort((a, b) => orden(a) - orden(b) || a - b);
     this.invGrid.innerHTML = '';
-    if (!ids.length) {
+    if (!todos.length) {
       const como = this.root.classList.contains('survi-movil') ? 'con el joystick derecho' : 'con clic izquierdo';
       this.invGrid.innerHTML = `<p class="survi-inv-empty">Vacío — rompé bloques ${como}.</p>`;
     } else {
-      // Primero las herramientas, después los bloques.
-      ids.sort((a, b) => (SurviConfig.ITEM_INFO[b].tool ? 1 : 0) - (SurviConfig.ITEM_INFO[a].tool ? 1 : 0) || a - b);
       for (const id of ids) {
         const info = SurviConfig.ITEM_INFO[id];
         const cell = document.createElement('button');
-        cell.className = 'survi-inv-cell' + (game.hotbarSlots[game.selectedSlot] === id ? ' selected' : '');
+        cell.className = 'survi-inv-cell' + (this.infoId === id ? ' selected' : '');
         const frac = game.durabilidadInventario(id);
         cell.title = SurviUI.tituloItem(id, frac);
         cell.innerHTML = `
-          ${SurviUI.iconMarkup(id, 26)}
-          <span class="survi-inv-name">${info.name}</span>
+          ${SurviUI.iconMarkup(id, 28)}
           ${info.tool || info.arco ? '' : `<span class="survi-inv-count">${game.inventory[id]}</span>`}
           ${SurviUI.barraDurabilidad(frac)}
         `;
         cell.dataset.dragId = String(id); // se agarra con Arrastre (ver #soltarItem / #tocarItem)
         cell.dataset.origen = 'inv';
+        // pasar el mouse (o tocar) muestra su ficha abajo
+        cell.addEventListener('pointerenter', () => this.mostrarInfoItem(game, id));
+        cell.addEventListener('focus', () => this.mostrarInfoItem(game, id));
         this.invGrid.appendChild(cell);
       }
     }
-    // Huecos vacíos: así se ve de un vistazo cuánto cupo queda, no solo el
-    // número del contador de arriba.
-    for (let i = ids.length; i < cap; i++) {
-      const empty = document.createElement('div');
-      empty.className = 'survi-inv-cell survi-inv-cell-empty';
-      this.invGrid.appendChild(empty);
+    // Huecos vacíos (solo en "Todo"): así se ve de un vistazo cuánto cupo queda.
+    if (this.invCat === 'todo') {
+      for (let i = todos.length; i < cap; i++) {
+        const empty = document.createElement('div');
+        empty.className = 'survi-inv-cell survi-inv-cell-empty';
+        this.invGrid.appendChild(empty);
+      }
     }
+    // la hotbar también muestra su ficha al pasar el mouse
+    if (this.invHotbar) {
+      this.invHotbar.querySelectorAll('.survi-slot').forEach((slot, i) => {
+        slot.addEventListener('pointerenter', () => game.hotbarSlots[i] && this.mostrarInfoItem(game, game.hotbarSlots[i]));
+      });
+    }
+    const vigente = this.infoId && (game.inventory[this.infoId] || 0) > 0 ? this.infoId : game.hotbarSlots[game.selectedSlot];
+    this.mostrarInfoItem(game, vigente || null);
+  }
+
+  // Ficha del ítem abajo de la grilla del inventario.
+  mostrarInfoItem(game, id) {
+    if (!this.itemInfo) return;
+    if (!id || !SurviConfig.ITEM_INFO[id]) {
+      this.infoId = null;
+      this.itemInfo.innerHTML = '<p class="survi-item-info-vacio">Pasá el mouse (o tocá) un ítem para ver sus datos.</p>';
+      return;
+    }
+    this.infoId = id;
+    this.itemInfo.innerHTML = SurviUI.fichaItem(id, { frac: game.durabilidadInventario(id), cantidad: game.inventory[id] || 0 });
   }
 
   // ═══════════ Equipamiento ═══════════
@@ -844,6 +1006,15 @@ export class SurviUI {
   // pueden equipar (los que tienen ITEM_INFO[id].equip), para tocar y
   // mandarlos a su hueco. Tocar un hueco ya ocupado lo desequipa.
   renderEquip(game) {
+    if (this.equipStats) {
+      const def = SurviConfig.totalDefense(game.equipment);
+      const red = Math.round(SurviConfig.armorReduction(def) * 100);
+      const bag = game.equipment.bag ? SurviConfig.ITEM_INFO[game.equipment.bag] : null;
+      this.equipStats.innerHTML = `
+        <span class="survi-ficha-dato"><span>${Iconos.icon('shield')} Defensa</span><b>${def}</b></span>
+        <span class="survi-ficha-dato"><span>Daño que recibís</span><b>−${red}%</b></span>
+        <span class="survi-ficha-dato"><span>${Iconos.icon('backpack')} Huecos</span><b>${game.generalSlotCap}${bag ? ` (+${bag.bonusSlots})` : ''}</b></span>`;
+    }
     this.equipSlots.innerHTML = '';
     for (const s of SurviConfig.EQUIP_SLOTS) {
       const id = game.equipment[s.key];
@@ -879,7 +1050,8 @@ export class SurviUI {
       cell.className = 'survi-inv-cell';
       const frac = game.durabilidadInventario(id);
       cell.title = `Equipar ${SurviUI.tituloItem(id, frac)}`;
-      cell.innerHTML = `${SurviUI.iconMarkup(id, 26)}<span class="survi-inv-name">${info.name}</span>${SurviUI.barraDurabilidad(frac)}`;
+      const extra = info.defense ? `+${info.defense} def.` : info.bonusSlots ? `+${info.bonusSlots} huecos` : '';
+      cell.innerHTML = `${SurviUI.iconMarkup(id, 26)}<span class="survi-inv-name">${info.name}</span>${extra ? `<span class="survi-inv-extra">${extra}</span>` : ''}${SurviUI.barraDurabilidad(frac)}`;
       cell.addEventListener('click', () => {
         game.equipItem(id);
         this.renderEquip(game);
@@ -920,16 +1092,15 @@ export class SurviUI {
     if (!cats.some((c) => c.key === this.craftCat)) this.craftCat = cats[0].key;
     this.craftTabs.innerHTML = '';
     for (const c of cats) {
-      const tab = document.createElement('button');
       const n = available.filter((r) => r.cat === c.key && SurviConfig.canCraft(game.inventory, r)).length;
-      tab.className = 'survi-craft-tab' + (c.key === this.craftCat ? ' active' : '');
-      tab.innerHTML = `${c.label}${n ? `<span class="survi-craft-tab-n">${n}</span>` : ''}`;
-      tab.addEventListener('click', () => {
-        this.craftCat = c.key;
-        this.craftDetail.innerHTML = '<p class="survi-craft-empty">Elegí algo de la lista para ver qué pide.</p>';
-        this.renderCraft(game);
-      });
-      this.craftTabs.appendChild(tab);
+      this.craftTabs.appendChild(
+        SurviUI.pestana(c.label, SurviUI.CRAFT_ICON[c.key], c.key === this.craftCat, n, () => {
+          this.craftCat = c.key;
+          this.craftSel = null;
+          this.craftDetail.innerHTML = '<p class="survi-craft-empty">Elegí algo de la lista para ver qué pide.</p>';
+          this.renderCraft(game);
+        }, true),
+      );
     }
     this.craftList.innerHTML = '';
     const list = available
@@ -941,7 +1112,7 @@ export class SurviUI {
       .sort((a, b) => b.ok - a.ok);
     for (const { r: recipe, ok } of list) {
       const row = document.createElement('button');
-      row.className = 'survi-craft-row' + (ok ? ' can-craft' : '');
+      row.className = 'survi-craft-row' + (ok ? ' can-craft' : '') + (this.craftSel === recipe.id ? ' selected' : '');
       row.innerHTML = `
         ${SurviUI.iconMarkup(recipe.result, 26)}
         <span class="survi-craft-row-info">
@@ -952,10 +1123,27 @@ export class SurviUI {
       row.addEventListener('click', () => {
         this.craftList.querySelectorAll('.survi-craft-row').forEach((r) => r.classList.remove('selected'));
         row.classList.add('selected');
+        this.craftSel = recipe.id;
         this.renderCraftDetail(game, recipe);
       });
       this.craftList.appendChild(row);
     }
+    // sin nada elegido: la primera que se puede hacer (o la primera)
+    if (!this.craftSel || !list.some(({ r }) => r.id === this.craftSel)) {
+      const primera = list[0];
+      if (primera) {
+        this.craftSel = primera.r.id;
+        this.craftList.firstElementChild.classList.add('selected');
+        this.renderCraftDetail(game, primera.r);
+      }
+    }
+  }
+
+  // ¿Cuántas veces se puede hacer la receta con lo que tenés?
+  static vecesCrafteable(inventory, recipe) {
+    let n = Infinity;
+    for (const ing of recipe.inputs) n = Math.min(n, Math.floor(SurviConfig.ingredientHave(inventory, ing) / ing.qty));
+    return n === Infinity ? 0 : n;
   }
 
   // ═══════════ Horno / cofre ═══════════
@@ -1030,36 +1218,50 @@ export class SurviUI {
         const have = SurviConfig.ingredientHave(game.inventory, ing);
         const enough = have >= ing.qty;
         const ids = ing.anyOf || [ing.id];
+        // ícono: el que más tenés de los que sirven
+        const icono = ids.reduce((m, id) => ((game.inventory[id] || 0) > (game.inventory[m] || 0) ? id : m), ids[0]);
         const names =
           ing.label ||
           ids.map((id) => (SurviConfig.ITEM_INFO[id] ? SurviConfig.ITEM_INFO[id].name : `#${id}`)).join(' / ');
         return `
         <div class="survi-craft-ing ${enough ? 'have' : 'missing'}">
+          ${SurviUI.iconMarkup(icono, 18)}
           <span class="survi-craft-ing-name">${names}</span>
           <span class="survi-craft-ing-qty">${have}/${ing.qty}</span>
         </div>
       `;
       })
       .join('');
-    const ok = SurviConfig.canCraft(game.inventory, recipe);
+    const veces = SurviUI.vecesCrafteable(game.inventory, recipe);
+    const ok = veces > 0;
+    const cantidades = [1, 5, 'max'].filter((c) => c === 1 || (c === 'max' ? veces > 1 : veces >= c));
     this.craftDetail.innerHTML = `
-      <div class="survi-craft-detail-head">
-        ${SurviUI.iconMarkup(recipe.result, 32)}
-        <span class="survi-craft-detail-name">${SurviUI.recipeResultName(recipe)}</span>
-      </div>
+      ${SurviUI.fichaItem(recipe.result, { cantidad: recipe.resultQty || 1, px: 40 })}
+      <p class="survi-craft-sub">Necesitás</p>
       <div class="survi-craft-ings">${rows}</div>
-      <button class="btn-game-primary survi-craft-btn" ${ok ? '' : 'disabled'}>Craftear</button>
+      <div class="survi-craft-btns">
+        ${cantidades
+          .map(
+            (c) =>
+              `<button class="btn-game-primary survi-craft-btn" data-veces="${c}" ${ok ? '' : 'disabled'}>${
+                c === 'max' ? `Craftear todo (${veces})` : c === 1 ? 'Craftear' : `×${c}`
+              }</button>`,
+          )
+          .join('')}
+      </div>
     `;
-    const btn = this.craftDetail.querySelector('.survi-craft-btn');
-    btn.addEventListener('click', () => {
-      const res = game.craftItem(recipe.id);
-      if (res.ok) {
-        this.renderCraftDetail(game, recipe); // refresca cantidades tras gastar materiales
-        this.renderCraft(game); // refresca la lista (por si ahora falta/alcanza otra receta)
-        if (this.showToast) this.showToast(`Crafteaste: ${SurviUI.recipeResultName(recipe)}`);
-      } else if (res.reason === 'full' && this.showToast) {
-        this.showToast('Inventario lleno — no entra el resultado');
-      }
-    });
+    this.craftDetail.querySelectorAll('.survi-craft-btn').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const pedido = btn.dataset.veces === 'max' ? veces : Number(btn.dataset.veces);
+        let hechas = 0, res = { ok: true };
+        while (hechas < pedido && (res = game.craftItem(recipe.id)).ok) hechas++;
+        this.renderCraft(game); // refresca la lista y el detalle (cantidades nuevas)
+        if (hechas && this.showToast) {
+          const total = hechas * (recipe.resultQty || 1);
+          this.showToast(`Crafteaste: ${SurviUI.recipeResultName(recipe)}${total > 1 ? ` ×${total}` : ''}`);
+        }
+        if (!res.ok && res.reason === 'full' && this.showToast) this.showToast('Inventario lleno — no entra el resultado');
+      }),
+    );
   }
 }
