@@ -113,7 +113,7 @@ export class SurviApp {
           ui.renderInventory(game);
           break;
         case 'vaciar-inv':
-          if (confirm('¿Vaciar todo el inventario?')) game.vaciarInventario();
+          ui.confirmar('¿Vaciar todo el inventario?', { si: 'Vaciar', peligro: true }).then((ok) => ok && game.vaciarInventario());
           break;
         case 'espectar':
           game.verComoEspectador();
@@ -126,7 +126,7 @@ export class SurviApp {
           game.setPaused(false);
           break;
         case 'save':
-          SurviApp.flashBtn(btn, game.save() ? 'Guardado ✓' : 'No se pudo guardar');
+          SurviApp.flashBtn(btn, game.save() ? 'Guardado' : 'No se pudo guardar');
           break;
         case 'close-inv':
           game.toggleInventory(false);
@@ -268,10 +268,14 @@ export class SurviApp {
         } else this.openCrear(s);
       },
       onDelete: (s) => {
-        if (confirm(`¿Borrar el Mundo ${s.slot}? No se puede recuperar.`)) {
-          this.guardado.borrarMundo(s.slot);
-          this.openWorlds();
-        }
+        // cartel dentro del juego (antes era un confirm() del navegador)
+        this.ui
+          .confirmar(`¿Borrar "${s.nombre || `Mundo ${s.slot}`}"? No se puede recuperar.`, { si: 'Borrar', peligro: true })
+          .then((ok) => {
+            if (!ok) return;
+            this.guardado.borrarMundo(s.slot);
+            this.openWorlds();
+          });
       },
     });
     this.ui.showScreen('worlds');
@@ -375,7 +379,7 @@ export class SurviApp {
     if (E && E.Quality && !this.qualityRowAdded) {
       ui.qualitySlot.appendChild(
         E.Quality.createRow({
-          label: '🖼️ Gráficos',
+          label: 'Gráficos',
         }),
       );
       this.qualityRowAdded = true;

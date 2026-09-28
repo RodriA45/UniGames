@@ -108,7 +108,7 @@ export class SpritesSurvi {
     src: SpritesSurvi.ASSETS.items,
     cell: 32,
     cols: 16,
-    rows: 7,
+    rows: 8, // (fila 7: ítems especiales; el PNG ahora es 512x256)
     index: {
       string: [0, 4, 4, 23, 23],
       leaves: [1, 5, 4, 22, 23],
@@ -215,6 +215,21 @@ export class SpritesSurvi {
       bread: [102, 0, 4, 31, 23],
       watermelon_slice: [103, 2, 1, 28, 29],
       carrot: [104, 1, 1, 29, 29],
+      // ── ítems especiales (fila 6-7) ──
+      slime_ball: [105, 2, 2, 28, 28],
+      slime_mutant: [106, 2, 2, 27, 28],
+      feather: [107, 3, 2, 26, 28],
+      key_iron: [108, 8, 2, 15, 28],
+      key_gold: [109, 8, 2, 15, 28],
+      key_diamond: [110, 8, 2, 16, 28],
+      key_emerald: [111, 9, 2, 14, 28],
+      miner_helmet: [112, 4, 2, 24, 28],
+      heart_blue: [113, 2, 2, 28, 27],
+      heart_red: [114, 2, 2, 28, 27],
+      eye_mutant: [115, 2, 2, 27, 28],
+      spider_head: [116, 2, 3, 28, 25],
+      wings: [117, 1, 7, 30, 18],
+      gunpowder: [118, 2, 4, 28, 24],
     },
   };
   // Celda en el atlas + recorte del dibujo (px del atlas).

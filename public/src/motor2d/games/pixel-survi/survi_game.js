@@ -140,10 +140,15 @@ export class SurviGame {
     this.nombre = 'Mundo 1';
     this.espectador = false; // atravesás todo, ves todo iluminado, nadie te ve
     this.volando = false; // creativo / espectador
+    this.durmiendo = null; // { col, row } de la cama donde estás acostado
+    this.lunaSangre = false; // esta noche es luna de sangre
+    this._eraNoche = false;
+    this._saltoPrev = false; // para detectar cada vez que se APRIETA saltar
+    this._ultimoSaltoMs = -1e9; // (doble salto = volar, en creativo)
     this.muertoHardcore = false; // hardcore que ya murió: espectador para siempre
     this.playedMs = 0;
     this.reachPx = SurviConfig.REACH_TILES * SurviConfig.TILE;
-    this.hp = SurviConfig.MAX_HP;
+    this.hp = this.maxHp;
     this.hunger = SurviConfig.MAX_HUNGER;
     this._starveTimer = 0;
     this._regenTimer = 0;
@@ -312,7 +317,9 @@ export class SurviGame {
       data: save ? Uint16Array.from(save.tiles) : this.world.data,
     });
     this.player = new Jugador(save ? save.px : this.spawn.x, save ? save.py : this.spawn.y);
-    this.hp = save && save.hp ? Math.min(SurviConfig.MAX_HP, save.hp) : SurviConfig.MAX_HP;
+    // corazones de vida usados (cada uno suma vida máxima para siempre)
+    this.corazones = save && Number.isFinite(save.corazones) ? Math.max(0, Math.min(SurviConfig.CORAZON_VIDA.max, save.corazones)) : 0;
+    this.hp = save && save.hp ? Math.min(this.maxHp, save.hp) : this.maxHp;
     this.hunger = save && save.hunger != null ? Math.min(SurviConfig.MAX_HUNGER, save.hunger) : SurviConfig.MAX_HUNGER;
     this.timeOfDay = save && save.timeOfDay != null ? save.timeOfDay : SurviConfig.START_TIME_OF_DAY;
     // hornos y cofres colocados: estado por posición "col,row"
@@ -400,6 +407,14 @@ export class SurviGame {
     // Clima (lluvia / lluvia ácida, ver survi_clima.js). Un mundo de antes arranca despejado.
     this.clima = new Clima(save && save.clima);
     this._acidoMs = 0;
+    this._sangreMs = 0;
+    // Luna de sangre: sigue si guardaste en medio de una (y todavía es de noche).
+    this._eraNoche = this.esNoche;
+    this.lunaSangre = !!(save && save.lunaSangre) && this._eraNoche;
+    this.durmiendo = null;
+    this._saltoPrev = false;
+    this._ultimoSaltoMs = -1e9;
+    this._aplicarLunaSangre();
     this._fallFromY = null;
     this.invulnMs = 0;
     this.camera = new (SurviGame.E2D().Camera)({
@@ -495,6 +510,7 @@ export class SurviGame {
     this.tilemap = null;
     this.world = null;
     this.light = null;
+    if (this.mapaOpen && this.vistaMapa) this.vistaMapa.cerrar(); // salir con el mapa abierto
     this.mapa = null;
     this.mapaOpen = false;
     this.camera = null;
@@ -582,6 +598,8 @@ export class SurviGame {
       sueltos: this.sueltos.map((s) => s.serializar()),
       cultivos: Object.fromEntries(this.cultivos),
       explorado: this.mapa ? this.mapa.serializar() : null,
+      lunaSangre: this.lunaSangre,
+      corazones: this.corazones,
     });
   }
 
@@ -599,7 +617,8 @@ export class SurviGame {
       const lugar = bajoTierra ? SurviConfig.CUEVA_INFO[this._regionCueva(pc, pr)].label : biome && biome.label;
       this.ui.pauseInfo.textContent =
         `${this.nombre} · ${this.creativo ? 'Creativo' : this.dif.label}${this.espectador ? ' · Espectador' : ''} · Día ${this.dias} · ${GestorGuardado.fmtTime(this.playedMs)}` +
-        (lugar ? ` · ${lugar}` : '');
+        (lugar ? ` · ${lugar}` : '') +
+        (this.lunaSangre ? ' · Luna de sangre' : '');
       this.save();
       this.ui.showScreen('pause');
     } else {
@@ -1172,7 +1191,7 @@ export class SurviGame {
   }
 
   _blocked() {
-    return !this.running || this.paused || this.invOpen || this.mapaOpen || this.dead || !this.tilemap;
+    return !this.running || this.paused || this.invOpen || this.mapaOpen || this.dead || !!this.durmiendo || !this.tilemap;
   }
 
   // ═══════════ Modo de juego / dificultad ═══════════
@@ -1200,7 +1219,7 @@ export class SurviGame {
   }
 
   alternarVuelo() {
-    if (!this.invisible || this.dead) return;
+    if ((!this.invisible && !this.tieneAlas) || this.dead) return;
     this.volando = !this.volando;
     this.player.vy = 0;
     this._fallFromY = null;
@@ -1212,7 +1231,18 @@ export class SurviGame {
   alternarEspectador() {
     if (!this.creativo || this.muertoHardcore || this.dead) return;
     this.espectador = !this.espectador;
-    if (this.espectador) this.volando = true; // espectador arranca volando
+    if (this.espectador) {
+      this._despertar();
+      this.volando = true; // espectador arranca volando
+    } else {
+      // de vuelta a creativo: caminando (para volar, doble salto o F). Si
+      // quedaste adentro de los bloques, subís hasta el primer hueco libre.
+      this.volando = false;
+      const p = this.player, T = SurviConfig.TILE;
+      for (let i = 0; i < SurviConfig.ROWS && p.y > 0 && this._cajaEnSolido(p.x, p.y); i++) p.y -= T;
+      p.vy = 0;
+      this._fallFromY = null;
+    }
     this.pointer.down = false;
     this._resetMine();
     this._lightDirty = true;
@@ -1241,7 +1271,7 @@ export class SurviGame {
   verComoEspectador() {
     if (!this.muertoHardcore) return;
     this.dead = false;
-    this.hp = SurviConfig.MAX_HP;
+    this.hp = this.maxHp;
     this.espectador = true;
     this.volando = true;
     this._renderHealth();
@@ -1268,6 +1298,45 @@ export class SurviGame {
     const pcx = this.player.x + this.player.w / 2,
       pcy = this.player.y + this.player.h / 2;
     return Math.hypot(cx - pcx, cy - pcy) <= this.reachPx;
+  }
+
+  // ¿Se ve el bloque desde el personaje, sin otro bloque sólido en el medio?
+  // Rayos desde los ojos al centro del bloque y a sus 4 esquinas (un poco
+  // hacia adentro): con que llegue uno alcanza. Así no se pica "a través"
+  // de una pared.
+  static #PUNTOS_VISTA = [
+    [0.5, 0.5],
+    [0.2, 0.2],
+    [0.8, 0.2],
+    [0.2, 0.8],
+    [0.8, 0.8],
+  ];
+
+  _bloqueVisible(col, row) {
+    const T = SurviConfig.TILE, p = this.player, map = this.tilemap;
+    const ox = p.x + p.w / 2, oy = p.y + p.h * 0.3;
+    if (Math.floor(ox / T) === col && Math.floor(oy / T) === row) return true;
+    for (const [ax, ay] of SurviGame.#PUNTOS_VISTA) {
+      const tx = (col + ax) * T, ty = (row + ay) * T;
+      const n = Math.ceil(Math.hypot(tx - ox, ty - oy) / 2); // un paso cada 2 px
+      let libre = true;
+      for (let i = 1; i < n; i++) {
+        const k = i / n;
+        const c = Math.floor((ox + (tx - ox) * k) / T), r = Math.floor((oy + (ty - oy) * k) / T);
+        if (c === col && r === row) break; // llegó al bloque
+        if (map.isSolidAt(c, r)) {
+          libre = false;
+          break;
+        }
+      }
+      if (libre) return true;
+    }
+    return false;
+  }
+
+  // Se puede picar: al alcance y a la vista.
+  _puedePicar(col, row) {
+    return this._inReach(col, row) && this._bloqueVisible(col, row);
   }
 
   _resetMine() {
@@ -1308,11 +1377,11 @@ export class SurviGame {
     let capa = 'bloque';
     const fondoId = this.fondo ? this.fondo[row * SurviConfig.COLS + col] : 0;
     const t0 = this.heldTool;
-    if (id === 0 && fondoId && t0 && (t0.tool === 'pickaxe' || t0.tool === 'axe') && this._inReach(col, row)) {
+    if (id === 0 && fondoId && t0 && (t0.tool === 'pickaxe' || t0.tool === 'axe') && this._puedePicar(col, row)) {
       id = fondoId;
       capa = 'fondo';
     }
-    if (id === 0 || !this._inReach(col, row)) {
+    if (id === 0 || !this._puedePicar(col, row)) {
       this._resetMine();
       this._tryAttack();
       return;
@@ -1396,7 +1465,10 @@ export class SurviGame {
       if (extra && !this.creativo)
         for (const [item, min, max] of extra) this._soltarEnCelda(item, min + Math.floor(Math.random() * (max - min + 1)), col, row);
       this._romperCompanero(col, row, broken); // la otra mitad de la cama / puerta
-      if (SurviConfig.NEST_IDS.has(broken)) this.tilemap.set(col, row, SurviConfig.NIDO_A_RAMA[broken]); // el nido sale, la rama queda
+      if (SurviConfig.NEST_IDS.has(broken)) {
+        this.tilemap.set(col, row, SurviConfig.NIDO_A_RAMA[broken]); // el nido sale, la rama queda
+        if (!this.creativo && Math.random() < SurviConfig.NIDO_PLUMA) this._soltarEnCelda(SurviConfig.ESPECIAL.pluma, 1, col, row);
+      }
       if (tool) this._usarHerramienta(this.hotbarSlots[this.selectedSlot]);
       this.fluidos.activar(col, row); // si había agua/lava al lado, ahora entra
       if (SurviConfig.STATION_IDS.has(id)) {
@@ -1468,6 +1540,12 @@ export class SurviGame {
     // Semillas / zanahoria / papa: si apuntás arriba de tierra arada, se planta
     // (la zanahoria y la papa, si no, se comen)
     if (heldInfo && heldInfo.planta && this._plantar(heldId, heldInfo.planta)) return;
+    if (heldInfo && heldInfo.vidaExtra) {
+      if (this._usoPulsacion) return; // uno por clic
+      this._usoPulsacion = true;
+      this._usarCorazon(heldId);
+      return;
+    }
     if (heldInfo && heldInfo.food) {
       this._eat(heldId, heldInfo);
       return;
@@ -1552,6 +1630,14 @@ export class SurviGame {
   //
   // Solo el propio tile y los 4 vecinos: las diagonales no entran en la
   // máscara, así que recalcularlas sería trabajo al aire.
+  // ¿La caja de una criatura no toca ningún bloque sólido?
+  _cajaLibre(c) {
+    const T = SurviConfig.TILE;
+    for (let col = Math.floor(c.x / T); col <= Math.floor((c.x + c.w - 1) / T); col++)
+      for (let row = Math.floor(c.y / T); row <= Math.floor((c.y + c.h - 1) / T); row++) if (this.tilemap.isSolidAt(col, row)) return false;
+    return true;
+  }
+
   // ¿La caja (x, y, w, h del jugador) toca algún bloque sólido?
   _cajaEnSolido(x, y) {
     const T = SurviConfig.TILE, p = this.player;
@@ -1842,14 +1928,16 @@ export class SurviGame {
     return { col: cama.col, row: cama.row, x: cama.col * SurviConfig.TILE + 2, y: (cama.row + 1) * SurviConfig.TILE - 24 };
   }
 
-  // Tocar la cama: guarda el punto de reaparición y, si es de noche (y no
-  // hay monstruos cerca), dormís hasta la mañana.
+  // Tocar la cama: guarda el punto de reaparición y te acostás (a cualquier
+  // hora). Acostado, el tiempo pasa SUENO_VELOCIDAD veces más rápido; te
+  // levantás con saltar o moviéndote (o si te pegan / rompen la cama).
   _usarCama(col, row) {
+    if (this.durmiendo) return;
     this.cama = { col, row };
     this.spawn = this._spawnDeCama(this.cama);
     const toast = (m) => this.ui.showToast && this.ui.showToast(m);
-    if (!this.esNoche) {
-      toast('Punto de reaparición guardado (solo se puede dormir de noche)');
+    if (this.invisible) {
+      toast('Punto de reaparición guardado');
       return;
     }
     const T = SurviConfig.TILE;
@@ -1860,16 +1948,97 @@ export class SurviGame {
       toast('No podés dormir: hay monstruos cerca · punto de reaparición guardado');
       return;
     }
-    if (this.timeOfDay > SurviConfig.DESPERTAR_HORA) this._nuevoDia(); // pasó la medianoche durmiendo
-    this.timeOfDay = SurviConfig.DESPERTAR_HORA;
-    this._fundidoMs = SurviGame.FUNDIDO_MS;
-    this._lightDirty = true;
-    toast('Dormiste hasta la mañana · punto de reaparición guardado');
+    if (this.lunaSangre) {
+      toast('No podés dormir en luna de sangre · punto de reaparición guardado');
+      return;
+    }
+    this.durmiendo = { col, row };
+    const p = this.player;
+    p.vx = p.vy = 0;
+    p.x = (col + 1) * T - p.w / 2; // al medio de la cama (2 de ancho)
+    p.y = (row + 1) * T - p.h;
+    this._fallFromY = null;
+    this.pointer.down = false;
+    this._resetMine();
+    toast(`Durmiendo (el tiempo pasa x${SurviConfig.SUENO_VELOCIDAD}) · saltá o movete para levantarte`);
     this.sonar('dormir');
+  }
+
+  // Levantarse: quedás parado al lado de la cama.
+  _despertar() {
+    if (!this.durmiendo) return;
+    this.durmiendo = null;
+    const p = this.player;
+    p.x = this.spawn.x;
+    p.y = this.spawn.y;
+    p.vx = p.vy = 0;
+    this._fallFromY = null;
     this.save();
   }
 
   static FUNDIDO_MS = 1400;
+
+  // Al anochecer se sortea la luna de sangre; al amanecer se termina.
+  _cambioNoche() {
+    const noche = this.esNoche;
+    if (noche === this._eraNoche) return;
+    this._eraNoche = noche;
+    const LS = SurviConfig.LUNA_SANGRE, toast = (m) => this.ui.showToast && this.ui.showToast(m);
+    if (noche && this.dias >= LS.desdeDia && Math.random() < LS.chance) {
+      this.lunaSangre = true;
+      if (this.durmiendo) this._despertar(); // te despierta
+      toast('¡Luna de sangre! Los monstruos están más fuertes esta noche');
+      this.sonar('zombie');
+    } else if (!noche && this.lunaSangre) {
+      this.lunaSangre = false;
+      toast('Terminó la luna de sangre');
+    }
+    this._aplicarLunaSangre();
+  }
+
+  // Lo que cambia a la vista con la luna de sangre: lluvia roja y oscuridad rojiza.
+  _aplicarLunaSangre() {
+    if (this.clima) this.clima.sangre = this.lunaSangre;
+    if (this.light) this.light.colorOscuro = this.lunaSangre ? SurviConfig.LUNA_SANGRE.oscuridad : null;
+    this._lightDirty = true;
+  }
+
+  // Luz propia del personaje: más grande con una antorcha en la mano.
+  get _luzPropia() {
+    const id = Number(this.hotbarSlots[this.selectedSlot]);
+    const casco = this.equipment && this.equipment.head ? SurviConfig.ITEM_INFO[this.equipment.head] : null;
+    let luz = SurviConfig.PLAYER_VISION;
+    if (casco && casco.luz) luz = Math.max(luz, casco.luz); // casco de minero
+    if (id === SurviConfig.TID.torch && !this.durmiendo) luz = Math.max(luz, SurviConfig.ANTORCHA_MANO_LUZ);
+    return luz;
+  }
+
+  // Vida máxima: la base + lo que sumaron los corazones de vida.
+  get maxHp() {
+    return SurviConfig.MAX_HP + (this.corazones || 0) * SurviConfig.CORAZON_VIDA.vida;
+  }
+
+  // ¿Tenés alas? (en el inventario / la barra): se puede volar en supervivencia.
+  get tieneAlas() {
+    return (this.inventory && this.inventory[SurviConfig.ESPECIAL.alas]) > 0;
+  }
+
+  // Corazón de vida (clic derecho): +vida máxima para siempre, hasta el tope.
+  _usarCorazon(id) {
+    const C = SurviConfig.CORAZON_VIDA, toast = (m) => this.ui.showToast && this.ui.showToast(m);
+    if ((this.inventory[id] || 0) <= 0) return;
+    if (this.corazones >= C.max) {
+      toast(`Ya tenés la vida máxima (${this.maxHp})`);
+      return;
+    }
+    this.corazones++;
+    this._removeItem(id);
+    this.hp = Math.min(this.maxHp, this.hp + C.vida);
+    this._renderHealth();
+    this.sonar('craftear');
+    this.particulas.chispas(this.player.x + this.player.w / 2, this.player.y + 4, ['#ff4a55', '#ff9aa0', '#ffffff'], 10);
+    toast(`Vida máxima: ${this.maxHp} (${this.corazones}/${C.max})`);
+  }
 
   _nuevoDia() {
     this.dias++;
@@ -2383,16 +2552,17 @@ export class SurviGame {
   }
 
   _renderHealth() {
-    const pct = Math.max(0, this.hp / SurviConfig.MAX_HP) * 100;
-    this.ui.hpBar.style.width = pct + '%';
+    const pct = Math.max(0, this.hp / this.maxHp) * 100;
+    // scaleX en vez de width: no recalcula el layout del HUD en cada frame de la transición
+    this.ui.hpBar.style.transform = `scaleX(${pct / 100})`;
     // envenenado: la barra se pone verde oliva (como en Minecraft)
     this.ui.hpBar.style.background = this.venenoMs > 0 ? '#8fa82c' : pct > 50 ? '#4caf50' : pct > 25 ? '#f5c518' : '#e0563a';
-    this.ui.hpText.textContent = `${Math.max(0, Math.round(this.hp))}/${SurviConfig.MAX_HP}`;
+    this.ui.hpText.textContent = `${Math.max(0, Math.round(this.hp))}/${this.maxHp}`;
   }
 
   _renderHunger() {
     const pct = Math.max(0, this.hunger / SurviConfig.MAX_HUNGER) * 100;
-    this.ui.hungerBar.style.width = pct + '%';
+    this.ui.hungerBar.style.transform = `scaleX(${pct / 100})`;
     this.ui.hungerBar.style.background = pct > 50 ? '#caa24a' : pct > 20 ? '#d98a3d' : '#c0392b';
     this.ui.hungerText.textContent = `${Math.max(0, Math.round(this.hunger))}/${SurviConfig.MAX_HUNGER}`;
   }
@@ -2400,7 +2570,7 @@ export class SurviGame {
   // origen: 'golpe' (mob, lo que se toma por defecto), 'caida' o 'hambre'.
   _damage(amount, { ignoreInvuln = false, origen = ignoreInvuln ? 'otro' : 'golpe' } = {}) {
     if (this.dead || amount <= 0 || this.invisible) return; // creativo / espectador: inmortal
-    if (origen === 'golpe') amount = Math.max(1, Math.round(amount * this.dif.danio)); // dificultad
+    if (origen === 'golpe') amount = Math.max(1, Math.round(amount * this.dif.danio * (this.lunaSangre ? SurviConfig.LUNA_SANGRE.danio : 1))); // dificultad (y luna de sangre)
     if (!ignoreInvuln && this.invulnMs > 0) return;
     // La armadura amortigua los golpes cuerpo a cuerpo — ignoreInvuln=false
     // es justo la marca que ya usan esos golpes (ver _updateEnemies) — pero
@@ -2412,6 +2582,7 @@ export class SurviGame {
     }
     this.hp -= amount;
     this.invulnMs = SurviConfig.INVULN_MS;
+    this._despertar(); // si estabas durmiendo, te despierta
     // Durabilidad: un golpe gasta toda la armadura puesta; una caída, solo las
     // botas (una caída fuerte las gasta más). El hambre no gasta nada.
     if (origen === 'golpe') this._gastarArmadura(['head', 'chest', 'legs', 'boots']);
@@ -2469,7 +2640,7 @@ export class SurviGame {
   respawn() {
     if (this.muertoHardcore) return; // hardcore: una sola vida
     this.dead = false;
-    this.hp = SurviConfig.MAX_HP;
+    this.hp = this.maxHp;
     // Sin esto, si morías con el hambre en 0 (la causa más común de morir
     // sin enemigos cerca) reaparecías con vida llena pero el hambre seguía
     // en 0 — el _starveTimer te volvía a pegar en STARVE_INTERVAL_MS casi
@@ -2503,7 +2674,7 @@ export class SurviGame {
   //   superficie  → de noche zombie o slime; de día solo a veces un slime
   _intentarSpawnEnemigo() {
     const T = SurviConfig.TILE;
-    const topes = this.dif.topes; // dificultad: más o menos monstruos a la vez
+    const topes = this.dif.topes * (this.lunaSangre ? SurviConfig.LUNA_SANGRE.topes : 1); // dificultad (y luna de sangre): más o menos monstruos a la vez
     if (this.enemies.length >= Math.max(1, Math.round(SurviConfig.ENEMIGO_MAX_TOTAL * topes))) return;
     const pcol = Math.max(0, Math.min(SurviConfig.COLS - 1, Math.floor((this.player.x + this.player.w / 2) / T)));
     const prow = Math.floor((this.player.y + this.player.h / 2) / T);
@@ -2511,11 +2682,15 @@ export class SurviGame {
     let tipo;
     const desierto = this.world.biomeByCol[pcol] === 'desierto';
     let regionMob = null; // los mobs de bioma de cueva solo aparecen en su región
+    const LS = SurviConfig.LUNA_SANGRE, rs = Math.random();
     if (bajoTierra) {
       const m = this._elegirMobCueva(this._regionCueva(pcol, prow));
       tipo = m.tipo;
       regionMob = m.regiones;
     }
+    // luna de sangre: en la superficie también salen esqueletos y ojos (sin esperar al día 10)
+    else if (this.lunaSangre && rs < LS.superficie.esqueleto) tipo = 'esqueleto';
+    else if (this.lunaSangre && rs < LS.superficie.esqueleto + LS.superficie.ojo) tipo = Math.random() < 0.6 ? 'ojo' : 'ojo_boca';
     else if (desierto && Math.random() < SurviConfig.SERPIENTE_CHANCE) tipo = 'serpiente'; // de día o de noche
     else if (this.esNoche && this.dias >= this.dif.ojosDesde && Math.random() < SurviConfig.OJO_CHANCE_NOCHE)
       tipo = Math.random() < 0.7 ? 'ojo' : 'ojo_boca'; // ojos voladores (desde el día 10)
@@ -2548,6 +2723,8 @@ export class SurviGame {
     if (!en) return;
     en.x = lugar.col * T + (T - en.w) / 2;
     en.y = tipo === 'murcielago' ? lugar.row * T : (lugar.row + 1) * T - en.h - 1; // colgado del techo / parado sobre el piso
+    // los grandes (zombie, esqueleto, yeti) necesitan lugar: no aparecen adentro de un techo bajo
+    if (tipo !== 'murcielago' && !vuela && !this._cajaLibre(en)) return;
     this.enemies.push(en);
   }
 
@@ -2734,7 +2911,8 @@ export class SurviGame {
     if (this._venenoTick >= SurviConfig.VENENO_TICK_MS) {
       this._venenoTick = 0;
       // si no mata, te deja en 1 como mínimo
-      const dmg = SurviConfig.VENENO_MATA ? SurviConfig.VENENO_DANIO : Math.min(SurviConfig.VENENO_DANIO, this.hp - 1);
+      // (solo mata en Difícil / Hardcore, o si VENENO_MATA está prendido)
+      const dmg = SurviConfig.VENENO_MATA || this.dif.mataHambre ? SurviConfig.VENENO_DANIO : Math.min(SurviConfig.VENENO_DANIO, this.hp - 1);
       if (dmg > 0) this._damage(dmg, { ignoreInvuln: true, origen: 'veneno' });
     }
     if (this.venenoMs <= 0) {
@@ -2774,7 +2952,9 @@ export class SurviGame {
         cambio === 'acida'
           ? '¡Lluvia ácida! Buscá techo o metete al agua'
           : cambio === 'lluvia'
-            ? 'Empezó a llover'
+            ? this.clima.sangre
+              ? '¡Lluvia de sangre! Cura a los monstruos que estén a cielo abierto'
+              : 'Empezó a llover'
             : 'Paró de llover',
       );
     }
@@ -2789,6 +2969,20 @@ export class SurviGame {
     }
     // la lluvia apaga el fuego (a cielo abierto)
     if (this.quemaduraMs > 0 && this.alCielo(this.player) && !this._enFluido.lava) this.quemaduraMs = 0;
+    // Lluvia de sangre (luna de sangre + lluvia): cura a los enemigos a cielo abierto.
+    if (this.clima.sangrienta && this.clima.intensidad >= 0.5) {
+      const L = SurviConfig.LUNA_SANGRE.lluvia;
+      this._sangreMs += dt;
+      if (this._sangreMs >= L.tickMs) {
+        this._sangreMs = 0;
+        for (const en of this.enemies) {
+          const max = en.constructor.VIDA;
+          if (en.estaMuerto() || en.hp >= max || !this.alCielo(en)) continue;
+          en.hp = Math.min(max, en.hp + L.cura);
+          this.particulas.chispas(en.x + en.w / 2, en.y, ['#ff4a55', '#ff8a8a', '#c81e2c'], 3);
+        }
+      }
+    } else this._sangreMs = 0;
     if (!this.clima.acida || this.clima.intensidad < 0.5) return;
     // Lluvia ácida: cada ACIDO_TICK_MS lastima a todo lo que esté a cielo
     // abierto, menos a los slimes y a lo que tenga la cabeza bajo el agua.
@@ -2820,7 +3014,7 @@ export class SurviGame {
   _updateEnemies(dt, step) {
     this._enemyTimer -= dt;
     if (this._enemyTimer <= 0) {
-      this._enemyTimer = SurviConfig.ENEMIGO_SPAWN_MS * this.dif.spawn; // dificultad: más o menos seguido
+      this._enemyTimer = SurviConfig.ENEMIGO_SPAWN_MS * this.dif.spawn * (this.lunaSangre ? SurviConfig.LUNA_SANGRE.spawn : 1); // dificultad (y luna de sangre): más o menos seguido
       this._intentarSpawnEnemigo();
     }
     for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -2921,6 +3115,9 @@ export class SurviGame {
     if (c.esCria) return; // las crías no sueltan nada
     const x = c.x + c.w / 2, y = c.y + c.h / 2;
     for (const { id, qty } of c.drops()) this.soltarItem(id, qty, x, y);
+    // drops especiales con chance (bola de slime, pluma, ojo mutante, llaves…)
+    const extra = SurviConfig.DROPS_ESPECIALES[c instanceof Ave ? 'ave' : c.tipo];
+    if (extra) for (const [id, chance] of extra) if (Math.random() < chance) this.soltarItem(id, 1, x, y);
   }
 
   // ═══════════ Crianza ═══════════
@@ -3317,6 +3514,35 @@ export class SurviGame {
   }
 
   // Datos del cielo para este frame.
+  // Acostado en la cama: el sprite girado 90° sobre el colchón y unas "z" que suben.
+  static SUENO_DY = 1; // px: bajar / subir el cuerpo sobre la cama
+  _dibujarDurmiendo(ctx) {
+    const T = SurviConfig.TILE, PS = SurviConfig.PLAYER_SPRITE, c = SpritesSurvi.PLAYER.cell;
+    const { col, row } = this.durmiendo;
+    const s = this.camera.worldToScreen((col + 1) * T, row * T + T / 2);
+    const x = Math.round(s.x), y = Math.round(s.y + SurviGame.SUENO_DY);
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(-Math.PI / 2); // la cabeza hacia la izquierda
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = this.quality === 'high' ? 'high' : 'low';
+    SpritesSurvi.drawSprite(ctx, this.img.player, 0, 0, c, c, -PS.w / 2, -PS.h / 2, PS.w, PS.h, false);
+    ctx.restore();
+    ctx.imageSmoothingEnabled = false;
+    // "z" pixeladas que suben y se desvanecen
+    const a0 = ctx.globalAlpha;
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 2; i++) {
+      const f = (this.playedMs / 1100 + i * 0.5) % 1;
+      const zx = Math.round(x - T + f * 5), zy = Math.round(y - 7 - f * 10);
+      ctx.globalAlpha = a0 * (1 - f);
+      ctx.fillRect(zx, zy, 3, 1);
+      ctx.fillRect(zx + 1, zy + 1, 1, 1);
+      ctx.fillRect(zx, zy + 2, 3, 1);
+    }
+    ctx.globalAlpha = a0;
+  }
+
   _datosCielo(nightK) {
     return {
       W: this.vistaW,
@@ -3328,6 +3554,7 @@ export class SurviGame {
       camX: this.camera.x,
       dias: this.dias,
       t: this.playedMs,
+      sangre: this.lunaSangre,
     };
   }
 
@@ -3448,6 +3675,7 @@ export class SurviGame {
     if (!SurviConfig.NEST_IDS.has(id)) return;
     this.tilemap.set(col, row, SurviConfig.NIDO_A_RAMA[id]);
     this._soltarDropVarios(id, col, row);
+    if (Math.random() < SurviConfig.NIDO_PLUMA) this._soltarEnCelda(SurviConfig.ESPECIAL.pluma, 1, col, row);
     this._retileAround(col, row);
   }
 
@@ -3484,6 +3712,33 @@ export class SurviGame {
         S.pop();
       }
     }
+  }
+
+  // Tirar un ítem (arrastrado afuera del inventario): sale toda la pila hacia
+  // donde mirás y no se junta por TIRADO_ESPERA_MS (así no vuelve solo).
+  tirarItem(id) {
+    id = Number(id);
+    const qty = this.inventory[id] || 0;
+    if (this.espectador || qty <= 0) return false;
+    const p = this.player, dir = p.facing || 1;
+    this.sueltos.push(
+      new ItemSuelto({
+        id,
+        qty,
+        x: p.x + p.w / 2 + dir * 6,
+        y: p.y + p.h * 0.35,
+        gastado: this.desgaste.tomar(id),
+        vx: dir * 2.4,
+        vy: -2,
+        esperaMs: SurviConfig.TIRADO_ESPERA_MS,
+      }),
+    );
+    if (this.sueltos.length > SurviConfig.SUELTO_MAX) this.sueltos.shift();
+    delete this.inventory[id];
+    this.hotbarSlots = this.hotbarSlots.map((s) => (Number(s) === id ? null : s));
+    this._renderHotbar();
+    this._renderInventory();
+    return true;
   }
 
   // Al morir: todo el inventario y el equipo quedan tirados donde moriste
@@ -3562,8 +3817,10 @@ export class SurviGame {
     if (this._swing.t < this._swing.dur) this._swing.t += dt;
     this._aplicarGolpe();
     const antes = this.timeOfDay;
-    this.timeOfDay = (this.timeOfDay + dt / SurviConfig.DAY_CYCLE_MS) % 1;
+    const velTiempo = this.durmiendo ? SurviConfig.SUENO_VELOCIDAD : 1; // durmiendo, el día pasa más rápido
+    this.timeOfDay = (this.timeOfDay + (dt * velTiempo) / SurviConfig.DAY_CYCLE_MS) % 1;
     if (this.timeOfDay < antes) this._nuevoDia(); // dio la vuelta: amaneció otro día
+    this._cambioNoche();
     this._actualizarClima(dt, step);
     if (this.invulnMs > 0) this.invulnMs -= dt;
     if (this._hitFlashMs > 0) this._hitFlashMs -= dt;
@@ -3575,19 +3832,22 @@ export class SurviGame {
       this._starveTimer += dt;
       if (this._starveTimer >= SurviConfig.STARVE_INTERVAL_MS) {
         this._starveTimer = 0;
-        this._damage(SurviConfig.STARVE_DAMAGE, {
-          ignoreInvuln: true,
-          origen: 'hambre',
-        });
+        // en Fácil / Normal el hambre no mata: te deja en 1 de vida
+        const dmg = this.dif.mataHambre ? SurviConfig.STARVE_DAMAGE : Math.min(SurviConfig.STARVE_DAMAGE, this.hp - 1);
+        if (dmg > 0)
+          this._damage(dmg, {
+            ignoreInvuln: true,
+            origen: 'hambre',
+          });
       }
     } else {
       this._starveTimer = 0;
     }
-    if (this.hunger >= SurviConfig.HUNGER_REGEN_THRESHOLD && this.hp < SurviConfig.MAX_HP) {
+    if (this.hunger >= SurviConfig.HUNGER_REGEN_THRESHOLD && this.hp < this.maxHp) {
       this._regenTimer += dt;
       if (this._regenTimer >= SurviConfig.HP_REGEN_INTERVAL_MS) {
         this._regenTimer = 0;
-        this.hp = Math.min(SurviConfig.MAX_HP, this.hp + SurviConfig.HP_REGEN_AMOUNT);
+        this.hp = Math.min(this.maxHp, this.hp + SurviConfig.HP_REGEN_AMOUNT);
         this._renderHealth();
       }
     } else {
@@ -3603,6 +3863,20 @@ export class SurviGame {
     const right = st.right || this.touchState.right;
     const jump = st.jump || this.touchState.jump;
     const abajo = st.down || this.touchState.down;
+    // Creativo: dos saltos seguidos prenden / apagan el vuelo (como en Minecraft).
+    const saltoNuevo = jump && !this._saltoPrev;
+    this._saltoPrev = jump;
+    if (saltoNuevo && (this.creativo || this.tieneAlas) && !this.espectador && !this.durmiendo) {
+      if (this.playedMs - this._ultimoSaltoMs < SurviConfig.DOBLE_SALTO_MS) {
+        this._ultimoSaltoMs = -1e9;
+        this.alternarVuelo();
+      } else this._ultimoSaltoMs = this.playedMs;
+    }
+    // Durmiendo: saltar o moverse te levanta; si rompieron la cama, también.
+    if (this.durmiendo) {
+      const { col, row } = this.durmiendo;
+      if (saltoNuevo || left || right || this.tilemap.get(col, row) !== SurviConfig.TID.bed_l) this._despertar();
+    }
     this.player.vx = 0;
     if (left) {
       this.player.vx = -SurviConfig.MOVE_SPEED;
@@ -3613,9 +3887,14 @@ export class SurviGame {
       this.player.facing = 1;
     }
     // Creativo volando o espectador: movimiento propio (sin agua, sin caída).
-    const especial = this.invisible && (this.volando || this.espectador);
+    // (con alas en el inventario también se vuela en supervivencia; si ya no las tenés, caés)
+    if (this.volando && !this.invisible && !this.tieneAlas) this.volando = false;
+    const especial = (this.invisible && (this.volando || this.espectador)) || this.volando;
     const wasGrounded = this.player.grounded;
-    if (especial) this._moverEspecial(left, right, jump, abajo, step);
+    if (this.durmiendo) {
+      this.player.vx = this.player.vy = 0; // acostado: no se mueve
+      this._fallFromY = null;
+    } else if (especial) this._moverEspecial(left, right, jump, abajo, step);
     else {
     // Agua y lava: nadando la gravedad y la velocidad bajan, y mantener
     // saltar te hace subir. Caer al agua no lastima.
@@ -3707,7 +3986,7 @@ export class SurviGame {
     this._updatePesca(dt, step);
     this.particulas.actualizar(dt, step);
     this._updateTnts(dt, step);
-    this._updateCultivos(dt);
+    this._updateCultivos(dt * (this.durmiendo ? SurviConfig.SUENO_VELOCIDAD : 1));
     this._vocesAmbiente(dt);
     if (this._avisoLlenoMs > 0) this._avisoLlenoMs -= dt;
     this._actualizarVeneno(dt);
@@ -3904,6 +4183,8 @@ export class SurviGame {
       const p = this.camera.worldToScreen(this.player.x, this.player.y);
       ctx.fillStyle = this.dead ? '#7a2020' : '#3f7ad9';
       ctx.fillRect(Math.round(p.x), Math.round(p.y), this.player.w, this.player.h);
+    } else if (!blink && this.durmiendo) {
+      this._dibujarDurmiendo(ctx);
     } else if (!blink) {
       const p = this.camera.worldToScreen(this.player.x, this.player.y);
       const { f, flip } = this._playerFrame();
@@ -3966,7 +4247,7 @@ export class SurviGame {
           {
             x: this.player.x + this.player.w / 2,
             y: this.player.y + this.player.h / 2,
-            power: SurviConfig.PLAYER_VISION,
+            power: this._luzPropia, // más grande con una antorcha en la mano
           },
         ],
         (c, r) => this.fluidos.luz(c, r), // la lava ilumina
@@ -4024,7 +4305,7 @@ export class SurviGame {
     if (this._hoverTile && !this._blocked()) {
       const { col, row } = this._hoverTile;
       const s = this.camera.worldToScreen(col * SurviConfig.TILE, row * SurviConfig.TILE);
-      ctx.strokeStyle = this._inReach(col, row) ? 'rgba(255,255,255,0.85)' : 'rgba(255,80,80,0.6)';
+      ctx.strokeStyle = this._puedePicar(col, row) ? 'rgba(255,255,255,0.85)' : 'rgba(255,80,80,0.6)'; // rojo: lejos o tapado
       ctx.lineWidth = 2;
       ctx.strokeRect(s.x + 1, s.y + 1, SurviConfig.TILE - 2, SurviConfig.TILE - 2);
       if (this._mine.col === col && this._mine.row === row && this._mine.progress > 0 && this.img.cracks) {
@@ -4047,7 +4328,10 @@ export class SurviGame {
     }
     ctx.restore(); // fin del mundo escalado: lo de abajo cubre toda la pantalla
 
-    if (this.invulnMs > 0) {
+    // tinte rojo de toda la pantalla al recibir daño: en calidad baja no (es
+    // una mezcla de toda la pantalla por frame; ya está el flash del personaje
+    // y el parpadeo)
+    if (this.invulnMs > 0 && this.quality !== 'low') {
       ctx.fillStyle = `rgba(200,30,30,${0.25 * (this.invulnMs / SurviConfig.INVULN_MS)})`;
       ctx.fillRect(0, 0, this.vistaW, SurviConfig.VIEW_H);
     }

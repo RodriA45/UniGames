@@ -152,6 +152,8 @@ export class GestorGuardado {
           sueltos: payload.sueltos || [], // ítems tirados en el suelo
           cultivos: payload.cultivos || {}, // "col,row" → ms que lleva creciendo
           explorado: payload.explorado ? GestorGuardado.codificarTiles(payload.explorado) : null, // mapa: celdas vistas
+          lunaSangre: !!payload.lunaSangre, // esta noche es luna de sangre
+          corazones: payload.corazones || 0, // corazones de vida usados (+vida máxima)
         }),
       );
       localStorage.setItem(

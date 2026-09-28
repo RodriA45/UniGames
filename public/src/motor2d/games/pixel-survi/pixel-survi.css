@@ -215,49 +215,68 @@
   margin-top: 0.15rem;
 }
 
-/* Portada del menú principal — la imagen todavía no existe: si falla,
-   queda visible el placeholder de atrás. */
-.survi-cover-art {
-  position: relative;
-  width: 100%;
-  max-width: 300px;
-  aspect-ratio: 16 / 7;
-  border-radius: var(--game-radius, 12px);
-  overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  background: linear-gradient(160deg, #1d3c5c, #0a1422);
-}
-
-.survi-cover-img {
+/* Portada del menú principal: la imagen (con el logo) tapa toda la pantalla
+   y los botones van abajo, encima. Sin imagen: logo de texto. */
+.survi-screen.survi-cover { overflow: hidden; background: transparent; backdrop-filter: none; }
+.survi-portada-fondo {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  z-index: 2;
+  object-position: center top; /* en pantallas anchas se recorta abajo, nunca el logo */
+  image-rendering: pixelated;
+  z-index: 1; /* arriba del canvas, abajo de las pantallas (z-index 20) */
+  pointer-events: none;
+  user-select: none;
+  background: #2a7fd4;
 }
-
-.survi-cover-fallback {
+/* Mundos, crear mundo, ajustes y cómo jugar: la portada se ve atrás, apenas oscurecida */
+.survi-en-menu .survi-screen:not(.survi-cover) { background: rgba(6, 12, 24, 0.45); }
+.survi-screen .modal-game-box.survi-cover-box {
   position: absolute;
-  inset: 0;
+  left: 50%;
+  bottom: max(6%, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 1;
+  width: min(360px, 90%);
+  max-width: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  z-index: 1;
+  align-items: stretch;
+  gap: 0.45rem;
+  background: none;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
 }
+.survi-screen .modal-game-box.survi-cover-box button { max-width: none; box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35), 0 6px 16px rgba(0, 0, 0, 0.35); }
+.survi-screen .modal-game-box button.survi-cover-jugar {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.5em;
+  font-size: 1.1rem; padding: 0.7rem 1rem;
+}
+.survi-cover-jugar .survi-ico { width: 0.9em; height: 0.9em; }
+.survi-cover-fila { display: flex; gap: 0.45rem; }
+.survi-cover-fila button { flex: 1; white-space: nowrap; font-size: 0.8rem; padding: 0.5rem 0.4rem; }
 
 .survi-cover-logo {
+  display: none;
   font-family: 'Press Start 2P', monospace;
-  font-size: clamp(10px, 2.4vw, 16px);
+  font-size: clamp(12px, 3vw, 20px);
   color: var(--yellow, #f5c518);
-  text-shadow: 0 0 12px rgba(245, 197, 24, 0.45);
+  text-align: center;
+  text-shadow: 0 2px 0 #000, 0 0 12px rgba(245, 197, 24, 0.45);
+  margin-bottom: 0.4rem;
 }
+.survi-sin-portada .survi-cover-logo { display: block; }
 
-.survi-cover-note {
-  font-size: 0.65rem;
-  color: rgba(255, 255, 255, 0.6);
+/* celular horizontal (poco alto): botones más bajos */
+@media (max-height: 430px) {
+  .survi-screen .modal-game-box button.survi-cover-jugar { font-size: 0.95rem; padding: 0.5rem 1rem; }
+  .survi-cover-fila button { font-size: 0.72rem; padding: 0.4rem 0.3rem; }
+  .survi-screen .modal-game-box.survi-cover-box { gap: 0.35rem; bottom: 4%; }
 }
 
 /* ─── Íconos svg (survi_icons.js) ─── */
@@ -1432,3 +1451,156 @@ html.survi-fs-abierto body { overflow: hidden; }
   .survi-mapa-box { height: 94vh; gap: 0.3rem; }
   .survi-mapa-box .modal-game-title { font-size: 12px; margin: 0.2rem 0 0; }
 }
+
+/* Barras de vida y hambre: se achican con transform (scaleX), no con width:
+   la transición no recalcula el layout del HUD en cada frame (gama baja). */
+.survi-health-bar i,
+.survi-hunger-bar i {
+  width: 100%;
+  transform-origin: left center;
+  transition: transform 0.15s ease, background 0.15s ease;
+  will-change: transform;
+}
+
+/* Botón de pausa: ícono SVG (antes era un emoji) */
+.survi-pause-btn { display: flex; align-items: center; justify-content: center; }
+.survi-pause-btn .survi-ico { width: 0.95rem; height: 0.95rem; }
+.survi-movil .survi-pause-btn .survi-ico { width: min(1.05rem, 6cqh); height: min(1.05rem, 6cqh); }
+
+/* Cómo jugar: solo los controles del dispositivo (teclado o táctil) */
+.survi-movil .survi-solo-pc { display: none !important; }
+.survi-howto-sec { display: flex; flex-direction: column; gap: 0.25rem; }
+.survi-howto-tit {
+  display: flex; align-items: center; gap: 0.4rem;
+  margin: 0.1rem 0 0.15rem; font-size: 0.78rem; font-weight: 800; color: #f5c518;
+}
+.survi-howto-tit .survi-ico { margin: 0; color: #f5c518; }
+.survi-howto-list b { color: #fff; }
+.survi-howto-nota { opacity: 0.6; font-size: 0.9em; }
+
+/* ── Menú con la portada de fondo: paneles SÓLIDOS para que el texto se lea ── */
+.survi-en-menu .survi-screen:not(.survi-cover) .modal-game-box {
+  background: rgba(12, 18, 30, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--game-radius, 12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  padding: 0.9rem 1rem;
+  color: #e8ecf3;
+}
+
+/* Cómo jugar: una fila por control = tecla(s) a la izquierda, qué hace a la derecha */
+.survi-ctrl {
+  display: grid;
+  grid-template-columns: 7.2rem 1fr;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  background: #1b2436;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-align: left;
+}
+.survi-ctrl-k { display: flex; flex-wrap: wrap; gap: 0.2rem; }
+.survi-ctrl-d { font-size: 0.72rem; line-height: 1.3; color: #d6dce8; }
+.survi-ctrl kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.5rem; padding: 0.12rem 0.35rem;
+  font: 700 0.66rem/1.2 inherit; color: #fff; white-space: nowrap;
+  background: #2c3850; border: 1px solid rgba(255, 255, 255, 0.18);
+  border-bottom-width: 2px; border-radius: 5px;
+}
+.survi-movil .survi-ctrl { grid-template-columns: 6.4rem 1fr; }
+@media (max-width: 480px) {
+  .survi-ctrl { grid-template-columns: 1fr; gap: 0.25rem; }
+}
+
+/* ══ Inventario: ficha + botones chicos a la derecha ══ */
+.survi-inv-der {
+  flex: 0 0 10.5rem;
+  min-width: 0; min-height: 0;
+  display: flex; flex-direction: column; gap: 0.4rem;
+}
+.survi-inv-main .survi-inv-der .survi-item-info { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.survi-inv-botones { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.survi-screen .modal-game-box button.survi-btn-chico {
+  flex: 1 1 4.6rem;
+  width: auto; max-width: none; margin: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.3em;
+  padding: 0.35rem 0.4rem;
+  font-size: 0.68rem; line-height: 1.1; white-space: nowrap;
+  border-radius: 8px;
+}
+.survi-btn-chico .survi-ico { width: 0.85rem; height: 0.85rem; flex: none; }
+@media (max-width: 600px) {
+  .survi-inv-der { flex: none; }
+}
+
+/* ══ Catálogo del creativo: catálogo a la izquierda, tu inventario a la derecha ══ */
+.survi-catalogo-box {
+  position: relative;
+  display: flex; flex-direction: column;
+  width: min(760px, 96vw); max-width: none;
+  height: min(460px, 90vh);
+}
+.survi-catalogo-main { flex: 1; min-height: 0; width: 100%; display: flex; gap: 0.6rem; }
+.survi-catalogo-izq { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.survi-catalogo-box .survi-catalogo-grid { flex: 1; min-height: 0; max-height: none; align-content: flex-start; justify-content: flex-start; }
+.survi-catalogo-der {
+  flex: 0 0 12.5rem; min-height: 0;
+  display: flex; flex-direction: column; gap: 0.35rem;
+  padding: 0.45rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+.survi-catalogo-sub { font-size: 0.7rem; font-weight: 800; color: #f5c518; text-align: left; }
+.survi-catalogo-sub span { color: rgba(255, 255, 255, 0.6); font-weight: 400; }
+.survi-catalogo-inv {
+  flex: 1; min-height: 0; overflow-y: auto;
+  display: grid; grid-template-columns: repeat(auto-fill, 2.2rem); gap: 0.25rem; align-content: start;
+}
+.survi-screen .modal-game-box .survi-catalogo-inv button.survi-inv-cell,
+.survi-catalogo-inv .survi-inv-cell-empty {
+  width: 2.2rem; height: 2.2rem; min-height: 0; padding: 0; justify-content: center;
+}
+.survi-catalogo-inv .survi-inv-count { top: auto; bottom: 0; right: 2px; font-size: 0.55rem; opacity: 1; }
+.survi-catalogo-hotbar {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.2rem;
+  padding-top: 0.35rem; border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+.survi-catalogo-hotbar .survi-slot { width: 100%; height: auto; aspect-ratio: 1; }
+/* inventario lleno: el panel titila en rojo */
+.survi-catalogo-der.survi-lleno { animation: survi-lleno 0.6s ease; }
+@keyframes survi-lleno {
+  0%, 100% { border-color: rgba(255, 255, 255, 0.08); box-shadow: none; }
+  25%, 75% { border-color: #e0563a; box-shadow: 0 0 0 2px rgba(224, 86, 58, 0.45); }
+  50% { transform: translateX(-3px); }
+}
+@media (max-width: 600px) {
+  .survi-catalogo-main { flex-direction: column; }
+  .survi-catalogo-der { flex: none; max-height: 40%; }
+}
+
+/* ══ Cartel de confirmación (borrar mundo, vaciar inventario) ══ */
+.survi-confirmar {
+  position: absolute; inset: 0; z-index: 40;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
+  background: rgba(4, 8, 16, 0.6);
+}
+.survi-confirmar-box {
+  width: min(340px, 100%);
+  padding: 1rem 1.1rem;
+  display: flex; flex-direction: column; gap: 0.8rem;
+  background: rgba(12, 18, 30, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--game-radius, 12px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6);
+  animation: survi-aparece 0.15s ease-out;
+}
+@keyframes survi-aparece { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: none; } }
+.survi-confirmar-txt { margin: 0; font-size: 0.85rem; line-height: 1.4; color: #e8ecf3; text-align: center; }
+.survi-confirmar-btns { display: flex; gap: 0.5rem; }
+.survi-confirmar-btns button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.35em; }
+.survi-confirmar-btns button.survi-peligro { background: #c0392b; border-color: #c0392b; color: #fff; }
+.survi-confirmar-btns button.survi-peligro:hover { background: #e0563a; border-color: #e0563a; }

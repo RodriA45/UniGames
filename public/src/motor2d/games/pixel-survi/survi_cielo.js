@@ -165,6 +165,12 @@ export class Cielo {
       ctx.fillStyle = g2;
       ctx.fillRect(0, 0, W, H);
     }
+    // luna de sangre: el cielo de la noche se tiñe de rojo
+    if (e.sangre && e.noche > 0) {
+      ctx.globalAlpha = 0.45 * e.noche * afuera;
+      ctx.fillStyle = '#7a0f1c';
+      ctx.fillRect(0, 0, W, H);
+    }
     // sol
     const ts = Cielo.tSol(e.hora);
     if (ts !== null) {
@@ -254,7 +260,7 @@ export class Cielo {
       const cx = Math.round(x), cy = Math.round(y);
       if (abierto(cx, cy) && abierto(cx - 5, cy - 5) && abierto(cx + 5, cy + 5)) {
         ctx.globalAlpha = Math.min(1, vis * 1.3);
-        this.#dibujarLuna(ctx, cx, cy, e.dias);
+        this.#dibujarLuna(ctx, cx, cy, e.dias, e.sangre);
       }
     }
     ctx.globalAlpha = 1;
@@ -264,22 +270,23 @@ export class Cielo {
   // derecha (llena → nueva) y sale por la izquierda (nueva → llena).
   static SOMBRA_FASE = [null, 9, 6, 3, 0, -3, -6, -9];
 
-  #dibujarLuna(ctx, cx, cy, dias) {
+  // sangre: luna de sangre (llena, roja y con un halo más grande)
+  #dibujarLuna(ctx, cx, cy, dias, sangre = false) {
     const R = 6, fase = (((dias || 0) % 8) + 8) % 8;
-    const off = Cielo.SOMBRA_FASE[fase];
+    const off = sangre ? null : Cielo.SOMBRA_FASE[fase];
     const a = ctx.globalAlpha;
-    Cielo.#resplandor(ctx, cx, cy, 13, '220,230,255', a * 0.3);
+    Cielo.#resplandor(ctx, cx, cy, sangre ? 22 : 13, sangre ? '255,60,60' : '220,230,255', a * (sangre ? 0.5 : 0.3));
     ctx.globalAlpha = a;
     const luz = (x, y) => off === null || (x + 0.5 - off) ** 2 + (y + 0.5) ** 2 >= R * R;
     for (let y = -R; y < R; y++) {
       const ancho = Math.round(Math.sqrt(R * R - (y + 0.5) ** 2));
       for (let x = -ancho; x < ancho; x++) {
-        ctx.fillStyle = luz(x, y) ? '#e8ecf5' : '#2b3350';
+        ctx.fillStyle = luz(x, y) ? (sangre ? '#e0343c' : '#e8ecf5') : '#2b3350';
         ctx.fillRect(cx + x, cy + y, 1, 1);
       }
     }
     // cráteres (solo donde está iluminada)
-    ctx.fillStyle = '#a9b2c8';
+    ctx.fillStyle = sangre ? '#9c1c26' : '#a9b2c8';
     for (const [x, y, w, h] of [[-3, -2, 2, 2], [1, 1, 2, 1], [-1, 3, 1, 1], [2, -4, 1, 1]]) {
       if (luz(x, y)) ctx.fillRect(cx + x, cy + y, w, h);
     }

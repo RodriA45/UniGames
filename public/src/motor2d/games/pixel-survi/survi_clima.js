@@ -25,6 +25,8 @@ export class Clima {
     despejado: { nombre: 'Despejado' },
     lluvia: { nombre: 'Lluvia', gota: 'rgba(170, 205, 255, 0.6)', cielo: '#5b6672', luz: 0.8 },
     acida: { nombre: 'Lluvia ácida', gota: 'rgba(130, 255, 90, 0.8)', cielo: '#4f6b43', luz: 0.75 },
+    // No se sortea: es la lluvia común durante una luna de sangre (ver `sangre`).
+    sangre: { nombre: 'Lluvia de sangre', gota: 'rgba(230, 40, 50, 0.75)', cielo: '#5a1a22', luz: 0.7 },
   };
   // Al terminar un clima, qué sale después (el resto de la probabilidad = despejado).
   static CHANCE = { acida: 0.05, lluvia: 0.25 };
@@ -47,6 +49,7 @@ export class Clima {
     this.visual = this.tipo === 'despejado' ? 'lluvia' : this.tipo; // colores mientras se desvanece
     this.gotas = [];
     this.salpicaduras = [];
+    this.sangre = false; // luna de sangre: la lluvia común se vuelve roja (lo pone SurviGame)
   }
 
   static #duracion(tipo) {
@@ -69,13 +72,18 @@ export class Clima {
     return this.tipo === 'acida';
   }
 
+  // Lluvia roja: llueve (común) durante una luna de sangre.
+  get sangrienta() {
+    return this.sangre && this.tipo === 'lluvia';
+  }
+
   get nombre() {
     return Clima.TIPOS[this.tipo].nombre;
   }
 
   // Colores / luz del clima que se está viendo (también mientras se desvanece).
   get datosVisuales() {
-    return Clima.TIPOS[this.visual];
+    return Clima.TIPOS[this.sangre && this.visual === 'lluvia' ? 'sangre' : this.visual];
   }
 
   // Factor de la luz del sol (1 = sin cambio).

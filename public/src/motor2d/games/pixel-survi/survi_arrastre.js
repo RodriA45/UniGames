@@ -27,7 +27,8 @@ export class Arrastre {
   #mover = (e) => this.#alMover(e);
   #soltar = (e) => this.#alLevantar(e);
 
-  // alSoltar(origen, destino): destino = { tipo, slot } o null si se soltó afuera.
+  // alSoltar(origen, destino, punto): destino = { tipo, slot } o null si se soltó
+  // afuera; punto = { x, y } de pantalla donde se soltó (para "tirar" el ítem).
   // alTocar(origen): se tocó sin arrastrar.
   constructor(raiz, { alSoltar, alTocar }) {
     this.#raiz = raiz;
@@ -96,7 +97,8 @@ export class Arrastre {
     const destino = arrastraba && e.type !== 'pointercancel' ? this.#destinoEn(e.clientX, e.clientY) : null;
     this.#limpiar();
     const datos = { id: origen.id, origen: origen.origen, slot: origen.slot };
-    if (arrastraba) this.#alSoltar(datos, destino ? { tipo: destino.tipo, slot: destino.slot } : null);
+    const punto = e.type !== 'pointercancel' ? { x: e.clientX, y: e.clientY } : null;
+    if (arrastraba) this.#alSoltar(datos, destino ? { tipo: destino.tipo, slot: destino.slot } : null, punto);
     else if (e.type !== 'pointercancel') this.#alTocar(datos);
   }
 

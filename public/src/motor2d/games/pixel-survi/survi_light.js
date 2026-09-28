@@ -28,6 +28,7 @@ export class LightMap {
     this.grid = null;
     this.queue = null;
     this.margen = LightMap.MARGIN; // tiles de más alrededor de la vista (menos en gama baja)
+    this.colorOscuro = null; // [r, g, b] para teñir la oscuridad (luna de sangre); null = DARK_COLOR
     this.c0 = 0;
     this.r0 = 0;
     this.w = 0;
@@ -62,13 +63,17 @@ export class LightMap {
   // points: [{x, y, power}] en px de mundo (visión del personaje, etc.).
   // luzExtra(col, row): luz propia de la celda (ej. la lava), o null.
   compute(get, camera, sun, points, luzExtra = null) {
-    const M = this.margen;
-    const c0 = Math.max(0, Math.floor(camera.x / SurviConfig.TILE) - M);
-    const r0 = Math.max(0, Math.floor(camera.y / SurviConfig.TILE) - M);
-    const c1 = Math.min(SurviConfig.COLS - 1, Math.ceil((camera.x + camera.width) / SurviConfig.TILE) + M);
-    const r1 = Math.min(SurviConfig.ROWS - 1, Math.ceil((camera.y + camera.height) / SurviConfig.TILE) + M);
-    const w = c1 - c0 + 1,
-      h = r1 - r0 + 1;
+    // Tamaño de la zona FIJO (solo depende del tamaño de la vista y del
+    // margen): antes era ceil(fin) - floor(inicio), que salta entre dos
+    // valores según dónde cae la cámara dentro del tile. Con el temblor de
+    // cámara (al recibir daño, explosiones) saltaba casi en cada cálculo y
+    // _ensure() rearmaba los arrays, el canvas y el ImageData cada vez.
+    const M = this.margen, T = SurviConfig.TILE;
+    const w = Math.min(SurviConfig.COLS, Math.ceil(camera.width / T) + 1 + 2 * M);
+    const h = Math.min(SurviConfig.ROWS, Math.ceil(camera.height / T) + 1 + 2 * M);
+    const c0 = Math.max(0, Math.min(SurviConfig.COLS - w, Math.floor(camera.x / T) - M));
+    const r0 = Math.max(0, Math.min(SurviConfig.ROWS - h, Math.floor(camera.y / T) - M));
+    const r1 = r0 + h - 1;
     this._ensure(w, h);
     this.c0 = c0;
     this.r0 = r0;
@@ -145,7 +150,7 @@ export class LightMap {
     }
     // oscuridad = 1 - luz (con una curva: la penumbra se ve menos lavada)
     const d = this.image.data;
-    const [R, G, B] = SurviConfig.DARK_COLOR;
+    const [R, G, B] = this.colorOscuro || SurviConfig.DARK_COLOR;
     for (let i = 0; i < w * h; i++) {
       const lit = Math.min(1, L[i]);
       const dark = Math.pow(1 - lit, 1.25);

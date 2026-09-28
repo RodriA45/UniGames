@@ -290,7 +290,7 @@ export class VistaMapa {
 
   dibujar() {
     const J = this.#juego;
-    if (!J || !this.#img) return;
+    if (!J || !J.mapa || !J.player || !this.#img) return; // (el mundo se cerró con el mapa abierto)
     const { COLS, ROWS, TILE: T } = SurviConfig;
     const { W, H } = this.#tam, dpr = globalThis.devicePixelRatio || 1;
     const cv = this.#cv, ctx = this.#ctx;

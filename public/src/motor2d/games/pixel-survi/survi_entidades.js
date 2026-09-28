@@ -197,8 +197,61 @@ export class Criatura extends Engine2D.Entity {
   // 1 bloque y no se tira por caídas de más de `maxCaida` bloques. Mientras
   // dura el empujón de un golpe, manda el empujón. Devuelve 'pared' o
   // 'precipicio' si se tuvo que frenar (la subclase decide qué hacer).
+  // Multiplicador de velocidad (1 = normal). Los enemigos lo suben en luna de sangre.
+  factorVelocidad(juego) {
+    return 1;
+  }
+
+  // ─── Dibujo común (enemigos y animales) ───
+  // cuerpo(L, px) dibuja mirando a la derecha en un lienzo chiquito, en el
+  // tamaño BASE bw x bh; acá se pega estirado a this.w x this.h sin suavizar
+  // (pixeles nítidos aunque la escala no sea entera) y espejado si mira a la
+  // izquierda. colorDe(c) cambia el color (blanco al recibir un golpe, tinte…).
+  // Animación: caminando el cuerpo se "hunde" 1 pixel en cada paso (fase);
+  // quieto en el piso, respira (se hunde y vuelve, lento). Los pies no se mueven.
+  static #PAD = 6; // margen del lienzo (arcos, brazos, colas que sobresalen)
+  static #lienzo = null;
+  static #lctx = null;
+  #faseAnim = Math.random() * 5000; // para que no respiren todos a la vez
+
+  pintarCuerpo(ctx, sx, sy, bw, bh, colorDe, cuerpo, fase = 0) {
+    const P = Criatura.#PAD;
+    if (!Criatura.#lienzo) {
+      Criatura.#lienzo = document.createElement('canvas');
+      Criatura.#lienzo.width = Criatura.#lienzo.height = 64;
+      Criatura.#lctx = Criatura.#lienzo.getContext('2d');
+    }
+    const L = Criatura.#lctx, lw = bw + P * 2, lh = bh + P * 2;
+    L.clearRect(0, 0, lw, lh);
+    const px = (x, y, w, h, color) => {
+      L.fillStyle = colorDe(color);
+      L.fillRect(x, y, w, h);
+    };
+    L.save();
+    L.translate(P, P);
+    cuerpo(L, px);
+    L.restore();
+    const ex = this.w / bw, ey = this.h / bh; // escala (horizontal / vertical)
+    const camina = Math.abs(this.vx) > 0.05 && this.grounded;
+    const hunde = camina ? fase === 1 : this.grounded && Math.sin((performance.now() + this.#faseAnim) / 420) > 0.35;
+    const dh = hunde ? ey : 0; // 1 pixel del dibujo, agrandado
+    const y = Math.round(sy) - P * ey;
+    const dw = lw * ex, alto = lh * ey;
+    const suave = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    if (this.facing < 0) {
+      ctx.save();
+      ctx.translate(Math.round(sx) + this.w + P * ex, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(Criatura.#lienzo, 0, 0, lw, lh, 0, dh, dw, alto - dh);
+      ctx.restore();
+    } else ctx.drawImage(Criatura.#lienzo, 0, 0, lw, lh, Math.round(sx) - P * ex, y + dh, dw, alto - dh);
+    ctx.imageSmoothingEnabled = suave;
+  }
+
   moverHacia(dir, velocidad, juego, step, { maxCaida = 1 } = {}) {
     const map = juego.tilemap;
+    velocidad *= this.factorVelocidad(juego);
     if (dir) this.facing = dir;
     if (this.hitMs <= 0) this.vx = dir * velocidad;
     const quiere = this.vx;
@@ -328,6 +381,16 @@ export class Enemigo extends Criatura {
     return true;
   }
 
+  // Luna de sangre: más rápidos y te ven de más lejos (el daño extra lo
+  // aplica SurviGame._damage).
+  factorVelocidad(juego) {
+    return juego.lunaSangre ? SurviConfig.LUNA_SANGRE.velocidad : 1;
+  }
+
+  factorVista(juego) {
+    return juego.lunaSangre ? SurviConfig.LUNA_SANGRE.vista : 1;
+  }
+
   // Luz del sol directa (ver SurviGame.alSolDirecto): los que SE_QUEMA_AL_SOL
   // pierden vida de a poco y parpadean en naranja.
   quemarseAlSol(dt, juego) {
@@ -361,6 +424,7 @@ export class Enemigo extends Criatura {
   // Distancia al jugador (centro a centro) y si te ve.
   mirarJugador(juego, vistaTiles) {
     const T = SurviConfig.TILE, player = juego.player;
+    vistaTiles *= this.factorVista(juego);
     const dx = player.x + player.w / 2 - (this.x + this.w / 2);
     const dy = player.y + player.h / 2 - (this.y + this.h / 2);
     const cerca = Math.abs(dx) < vistaTiles * T && Math.abs(dy) < 6 * T;
@@ -453,22 +517,18 @@ export class Enemigo extends Criatura {
     return Math.floor(this.paso / 4) % 2;
   }
 
-  // Igual que los animales: la subclase dibuja mirando a la derecha en
-  // coordenadas locales con dibujarCuerpo(ctx, px, fase) y acá se espeja.
+  // ─── Dibujo ───
+  // La subclase dibuja mirando a la derecha, en su tamaño BASE (ANCHO/ESCALA
+  // x ALTO/ESCALA), con dibujarCuerpo(ctx, px, fase). Criatura.pintarCuerpo
+  // lo agranda ESCALA veces, lo espeja y lo anima (caminar / respirar).
+  static ESCALA = 1;
+
   dibujar(ctx, sx, sy) {
+    const E = this.constructor.ESCALA;
     const blanco = this.hitMs > 0;
     const tinte = this.tinte();
-    const px = (x, y, w, h, color) => {
-      ctx.fillStyle = blanco ? '#ffffff' : tinte || color;
-      ctx.fillRect(x, y, w, h);
-    };
-    ctx.save();
-    if (this.facing < 0) {
-      ctx.translate(Math.round(sx) + this.w, Math.round(sy));
-      ctx.scale(-1, 1);
-    } else ctx.translate(Math.round(sx), Math.round(sy));
-    this.dibujarCuerpo(ctx, px, this.fasePiernas);
-    ctx.restore();
+    const fase = this.fasePiernas;
+    this.pintarCuerpo(ctx, sx, sy, Math.round(this.w / E), Math.round(this.h / E), (c) => (blanco ? '#ffffff' : tinte || c), (L, px) => this.dibujarCuerpo(L, px, fase), fase);
     // "!" arriba de la cabeza mientras está en alerta
     if (this.estado === 'alerta') {
       ctx.fillStyle = '#ffd23f';
@@ -508,8 +568,9 @@ export class Slime extends Enemigo {
 // ─── Zombie: lento, aguanta y pega fuerte. Se quema al sol. ───
 export class Zombie extends Enemigo {
   static TIPO = 'zombie';
-  static ANCHO = 10;
-  static ALTO = 22;
+  static ESCALA = 1.75; // un bloque más alto que antes (dibujo base 10x22)
+  static ANCHO = 17;
+  static ALTO = 38;
   static VIDA = 16;
   static DANIO = 3;
   static VELOCIDAD = 0.45;
@@ -560,8 +621,9 @@ export class Zombie extends Enemigo {
 // estás lejos) y tira una flecha cada CADENCIA_MS mientras te vea.
 export class Esqueleto extends Enemigo {
   static TIPO = 'esqueleto';
-  static ANCHO = 10;
-  static ALTO = 22;
+  static ESCALA = 1.75; // un bloque más alto que antes (dibujo base 10x22)
+  static ANCHO = 17;
+  static ALTO = 38;
   static VIDA = 12;
   static DANIO = 0; // no pega al tocarte: dispara
   static VELOCIDAD = 0.5;
@@ -771,9 +833,10 @@ export class OjoVolador extends Enemigo {
       ax = ((tx - cx) / d) * C.ACEL;
       ay = ((ty - cy) / d) * C.ACEL + Math.sin(this.estadoMs / 280) * 0.025; // vaivén
     }
-    this.vx += ax * step;
-    this.vy += ay * step;
-    const v = Math.hypot(this.vx, this.vy), max = C.VEL_MAX * (huye ? 1.4 : 1);
+    const fv = this.factorVelocidad(juego); // luna de sangre
+    this.vx += ax * fv * step;
+    this.vy += ay * fv * step;
+    const v = Math.hypot(this.vx, this.vy), max = C.VEL_MAX * (huye ? 1.4 : 1) * fv;
     if (v > max) {
       this.vx *= max / v;
       this.vy *= max / v;
@@ -1048,8 +1111,9 @@ export class Arana extends Enemigo {
 // a veces cuero.
 export class Yeti extends Enemigo {
   static TIPO = 'yeti';
-  static ANCHO = 12;
-  static ALTO = 16;
+  static ESCALA = 3; // 3 bloques de alto (dibujo base 12x16)
+  static ANCHO = 36;
+  static ALTO = 48;
   static VIDA = 22;
   static DANIO = 3;
   static VELOCIDAD = 0.4;
@@ -1307,7 +1371,8 @@ export class HongoExplosivo extends Enemigo {
   }
 
   drops() {
-    return [{ id: SurviConfig.MAT.polvora, qty: Animal.azar(1, 2) }];
+    // (si explota no suelta nada: ver más abajo)
+    return Math.random() < SurviConfig.POLVORA_CHANCE ? [{ id: SurviConfig.MAT.polvora, qty: 1 }] : [];
   }
 
   get prendido() {
@@ -1788,21 +1853,9 @@ export class Animal extends Criatura {
   // coordenadas locales (0..w, 0..h) con dibujarCuerpo(ctx, px, fase).
   dibujar(ctx, sx, sy) {
     const blanco = this.hitMs > 0;
-    // px(x, y, w, h, color): un rectángulo del dibujo (blanco al recibir un golpe)
-    const px = (x, y, w, h, color) => {
-      ctx.fillStyle = blanco ? '#ffffff' : color;
-      ctx.fillRect(x, y, w, h);
-    };
-    ctx.save();
-    if (this.facing < 0) {
-      ctx.translate(Math.round(sx) + this.w, Math.round(sy));
-      ctx.scale(-1, 1);
-    } else {
-      ctx.translate(Math.round(sx), Math.round(sy));
-    }
-    if (this.esCria) ctx.scale(this.w / this.constructor.ANCHO, this.h / this.constructor.ALTO);
-    this.dibujarCuerpo(ctx, px, this.fasePatas);
-    ctx.restore();
+    const C = this.constructor, fase = this.fasePatas;
+    // dibujo en su tamaño normal (ANCHO x ALTO); la cría se achica sola (this.w/h más chicos)
+    this.pintarCuerpo(ctx, sx, sy, C.ANCHO, C.ALTO, (c) => (blanco ? '#ffffff' : c), (L, px) => this.dibujarCuerpo(L, px, fase), fase);
     if (this.celoMs > 0 || this.mimoMs > 0) Animal.dibujarCorazon(ctx, sx + this.w / 2, sy - 3, this.t);
   }
 
@@ -2285,7 +2338,9 @@ export class ItemSuelto extends Engine2D.Entity {
   }
 
   serializar() {
-    return { id: this.id, qty: this.qty, x: this.x + this.w / 2, y: this.y + this.h / 2, vidaMs: Math.round(this.vidaMs), gastado: this.gastado, vx: 0, vy: 0 };
+    const d = { id: this.id, qty: this.qty, x: this.x + this.w / 2, y: this.y + this.h / 2, vidaMs: Math.round(this.vidaMs), gastado: this.gastado, vx: 0, vy: 0 };
+    if (this.esperaMs > 1000) d.esperaMs = Math.round(this.esperaMs); // lo que tiraste: sigue sin juntarse al cargar
+    return d;
   }
 
   // Devuelve false cuando hay que sacarlo (se juntó, se quemó o se venció).

@@ -19,7 +19,7 @@ export class SurviConfig {
   static WORLD_H = SurviConfig.ROWS * SurviConfig.TILE;
   static VIEW_W = 480; // resolución interna del canvas (30 tiles)
   static VIEW_H = 288; // 18 tiles de alto
-  static COVER_SRC = 'src/motor2d/games/pixel-survi/models/portada.png';
+  static COVER_SRC = 'src/motor2d/games/pixel-survi/models/portada.webp';
   //  IDs de tile
   //
   //  OJO: id-1 es el índice dentro de assets/tiles.png. El orden de abajo
@@ -1121,13 +1121,14 @@ export class SurviConfig {
     },
     dificil: {
       label: 'Difícil',
-      desc: 'Te pegan 50% más, el hambre baja más rápido, hay más monstruos y los ojos salen desde el día 6.',
+      desc: 'Te pegan 50% más, el hambre baja más rápido, hay más monstruos, los ojos salen desde el día 6 y el hambre y el veneno pueden matarte.',
       danio: 1.5, hambre: 1.35, spawn: 0.7, topes: 1.5, ojosDesde: 6,
+      mataHambre: true, // el hambre y el veneno pueden matarte (en Fácil / Normal te dejan en 1)
     },
     hardcore: {
       label: 'Hardcore',
       desc: 'Como Difícil, pero con UNA sola vida: si morís pasás a ser espectador y ya no podés revivir.',
-      danio: 1.5, hambre: 1.35, spawn: 0.7, topes: 1.5, ojosDesde: 6, unaVida: true,
+      danio: 1.5, hambre: 1.35, spawn: 0.7, topes: 1.5, ojosDesde: 6, unaVida: true, mataHambre: true,
     },
   };
   // Modo creativo / espectador
@@ -1231,10 +1232,37 @@ export class SurviConfig {
   static SUELTO_VIDA_MS = 10 * 60 * 1000; // 10 minutos y desaparece
   static SUELTO_IMAN_TILES = 2.2; // a esta distancia vuela hacia vos
   static SUELTO_ESPERA_MS = 350; // recién tirado no se junta enseguida (se ve caer)
+  static TIRADO_ESPERA_MS = 60000; // lo que tirás vos (arrastrado afuera del inventario): 1 min sin juntarse
   static SUELTO_MAX = 400; // tope en el mundo (se van los más viejos)
   static NIDO_CHANCE = 0.3; // de los árboles con una rama larga o muñón, cuántos tienen nido
   static ESCALERA_VEL = 1.6; // px por paso al subir / bajar una escalera
   static DESPERTAR_HORA = 0.02; // hora del ciclo (0..1) a la que te despertás al dormir
+  // Dormir: acostado en la cama el tiempo del día (y los cultivos) pasa más rápido.
+  // Te levantás con saltar o moviéndote.
+  static SUENO_VELOCIDAD = 3;
+  // Antorcha en la mano: tu círculo de visión se agranda (PLAYER_VISION = 0.6).
+  static ANTORCHA_MANO_LUZ = 0.9; // ~8 tiles
+  // Creativo: dos saltos seguidos (en menos de esto) prenden / apagan el vuelo.
+  static DOBLE_SALTO_MS = 300;
+  // Luna de sangre: se sortea al anochecer (desde el día `desdeDia`).
+  //   velocidad / danio / vista: multiplicadores de los enemigos esa noche.
+  //   spawn: el intervalo de aparición se multiplica por esto (menos = más seguido).
+  //   topes: cuántos más monstruos puede haber a la vez.
+  //   superficie: chances de que en la superficie salga esqueleto u ojo.
+  //   lluvia: si llueve esa noche la lluvia es ROJA y cura a los enemigos a cielo
+  //           abierto (cura por tick, cada tickMs).
+  static LUNA_SANGRE = {
+    chance: 0.12,
+    desdeDia: 3,
+    velocidad: 1.35,
+    danio: 1.5,
+    vista: 1.5,
+    spawn: 0.6,
+    topes: 1.5,
+    superficie: { esqueleto: 0.3, ojo: 0.3 },
+    lluvia: { cura: 1, tickMs: 1000 },
+    oscuridad: [30, 2, 8], // la oscuridad de la noche se tiñe de rojo
+  };
   static QUEMADURA_CONTAGIO_MS = 3000; // un mob quemándose te pega: te quemás este rato
   // ─── Feedback de golpe recibido ───
   // _hitFlashMs es un flash corto y bien visible (además del parpadeo largo
@@ -2066,7 +2094,7 @@ export class SurviConfig {
   static TNT_CADENA_MS = 500; // otra TNT alcanzada por una explosión
   static {
     const T = SurviConfig.TID, M = SurviConfig.MAT;
-    SurviConfig.ITEM_INFO[M.polvora] = { name: 'Pólvora', icono: T.icon_polvora };
+    SurviConfig.ITEM_INFO[M.polvora] = { name: 'Pólvora', sprite: 'gunpowder' };
     SurviConfig.TERRAIN_IDS.add(T.tnt);
     SurviConfig.SOLID_IDS.add(T.tnt);
     SurviConfig.HARDNESS[T.tnt] = 0.1;
@@ -2084,4 +2112,106 @@ export class SurviConfig {
     SurviConfig.NO_EXPLOTA = new Set([T.bedrock, ...SurviConfig.STATION_IDS]);
   }
 
+
+  // ══════════ Ítems especiales (sprites en la fila 7-8 del atlas de ítems) ══════════
+  // Ids 4021+. Los que dice "futuro" todavía no tienen de dónde salir en el
+  // mundo (jefes, cofres especiales): por ahora solo desde el creativo.
+  static ESPECIAL = {
+    slimeBall: 4021, // bola de slime: slime (30%)
+    slimeMutante: 4022, // bola de slime mutante: jefe slime (futuro)
+    pluma: 4023, // gallina (50%), aves y nidos (75%)
+    llaveHierro: 4024, // llaves: para cofres especiales (futuro); salen de cofres y mobs
+    llaveOro: 4025,
+    llaveDiamante: 4026,
+    llaveEsmeralda: 4027,
+    corazonAzul: 4028, // jefe (futuro); lo piden las alas
+    corazonRojo: 4029, // cofre especial (futuro): +vida máxima para siempre
+    ojoMutante: 4030, // ojos voladores (50%)
+    cabezaArana: 4031, // araña (50%)
+    alas: 4032, // teniéndolas en el inventario, podés volar (doble salto o F)
+  };
+  static CASCO_MINERO = 3013; // equipo: casco con luz
+  // Corazón rojo: cada uno suma `vida` a la vida máxima, hasta `max` veces.
+  static CORAZON_VIDA = { vida: 5, max: 6 };
+  // Drops extra por tipo de criatura: [id, chance]. (Lo aplica SurviGame._cosechar;
+  // las aves van todas como 'ave'.)
+  static DROPS_ESPECIALES = {};
+  static {
+    const E = SurviConfig.ESPECIAL, M = SurviConfig.MAT;
+    const items = [
+      ['slimeBall', 'Bola de slime', 'slime_ball'],
+      ['slimeMutante', 'Bola de slime mutante', 'slime_mutant'],
+      ['pluma', 'Pluma', 'feather'],
+      ['llaveHierro', 'Llave de hierro', 'key_iron'],
+      ['llaveOro', 'Llave de oro', 'key_gold'],
+      ['llaveDiamante', 'Llave de diamante', 'key_diamond'],
+      ['llaveEsmeralda', 'Llave de esmeralda', 'key_emerald'],
+      ['corazonAzul', 'Corazón azul', 'heart_blue'],
+      ['ojoMutante', 'Ojo mutante', 'eye_mutant'],
+      ['cabezaArana', 'Cabeza de araña', 'spider_head'],
+    ];
+    for (const [k, name, sprite] of items) SurviConfig.ITEM_INFO[E[k]] = { name, sprite };
+    SurviConfig.ITEM_INFO[E.corazonRojo] = {
+      name: 'Corazón de vida',
+      sprite: 'heart_red',
+      vidaExtra: SurviConfig.CORAZON_VIDA.vida, // clic derecho: +vida máxima (se gasta)
+    };
+    SurviConfig.ITEM_INFO[E.alas] = { name: 'Alas', sprite: 'wings', alas: true };
+    SurviConfig.ITEM_INFO[SurviConfig.CASCO_MINERO] = {
+      name: 'Casco de minero',
+      equip: 'head',
+      durabilidad: 180,
+      defense: 2,
+      luz: 0.9, // puesto, agranda tu luz como una antorcha en la mano
+      sprite: 'miner_helmet',
+    };
+    SurviConfig.RECIPES.push(
+      {
+        cat: 'armadura',
+        id: 'casco_minero',
+        result: SurviConfig.CASCO_MINERO,
+        resultQty: 1,
+        inputs: [
+          { id: M.copperIngot, qty: 5 },
+          { id: M.glass, qty: 1 },
+          { id: E.slimeBall, qty: 1 },
+        ],
+        station: 'table',
+      },
+      {
+        cat: 'otros',
+        id: 'alas',
+        result: E.alas,
+        resultQty: 1,
+        inputs: [
+          { id: E.pluma, qty: 20 },
+          { id: M.emerald, qty: 5 },
+          { id: E.corazonAzul, qty: 1 },
+        ],
+        station: 'table',
+      },
+    );
+    SurviConfig.DROPS_ESPECIALES = {
+      slime: [[E.slimeBall, 0.3]],
+      gallina: [[E.pluma, 0.5]],
+      ave: [[E.pluma, 0.75]],
+      ojo: [[E.ojoMutante, 0.5]],
+      ojo_boca: [[E.ojoMutante, 0.5]],
+      arana: [[E.cabezaArana, 0.5]],
+      esqueleto: [
+        [E.llaveHierro, 0.04],
+        [E.llaveOro, 0.01],
+      ],
+      zombie: [[E.llaveHierro, 0.02]],
+    };
+    SurviConfig.NIDO_PLUMA = 0.75; // romper un nido: chance de pluma
+    SurviConfig.POLVORA_CHANCE = 0.5; // hongo explosivo muerto por vos (si explota, nada)
+    // llaves en los cofres de las minas: [id, chance, min, max]
+    SurviConfig.BOTIN_MINA.push(
+      [E.llaveHierro, 0.12, 1, 1],
+      [E.llaveOro, 0.05, 1, 1],
+      [E.llaveDiamante, 0.02, 1, 1],
+      [E.llaveEsmeralda, 0.01, 1, 1],
+    );
+  }
 }
