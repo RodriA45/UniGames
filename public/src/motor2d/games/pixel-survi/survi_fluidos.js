@@ -220,20 +220,28 @@ export class CapaFluidos {
           if (nc < 0 || nc >= COLS || !libre(nc, r)) continue;
           const j = i + d, tj = C[j] >> 4, nj = C[j] & 15;
           if (tj !== 0 && tj !== tipo) continue;
-          // Pasa 1 unidad si la diferencia es mayor que difLat: el agua se nivela
-          // hasta quedar parejita; una gota sola en suelo plano queda de charquito.
+          // Si la diferencia es mayor que difLat pasa la mitad de la diferencia
+          // (antes 1 sola unidad: tardaba mucho y quedaban escalones).
           if (n - nj > difLat) {
-            C[j] = (tipo << 4) | (nj + 1);
-            n -= 1;
+            const pasa = Math.max(1, (n - nj) >> 1);
+            C[j] = (tipo << 4) | (nj + pasa);
+            n -= pasa;
             this.activar(nc, r);
           }
         }
+      }
+      // Agua: una capa de 1 que ya no se mueve (película finita arriba del
+      // lago o de un charco desparramado) se evapora de a poco, así no quedan
+      // líneas de agua sueltas.
+      if (tipo === CapaFluidos.AGUA && n === 1 && n === antes && abajoLleno && Math.random() < 0.15) {
+        n = 0;
+        this.activar(c, r);
       }
       if (n !== antes) {
         C[i] = n > 0 ? (tipo << 4) | n : 0;
         this.activar(c, r);
         this.activar(c, r - 1); // lo de arriba puede caer ahora
-      }
+      } else if (tipo === CapaFluidos.AGUA && n === 1 && abajoLleno) this.#activas.add(i); // sigue: puede evaporarse
     }
     // lo que no se llegó a procesar sigue activo para el próximo tick
   }
@@ -248,40 +256,79 @@ export class CapaFluidos {
   }
 
   // ── Dibujo ──
-  // Tiene que llamarse con el ctx ya escalado por el zoom (como el tilemap).
+  // Se dibuja en un lienzo propio a 1 px por px de mundo (coordenadas enteras,
+  // sin escalar) y después se pega de una vez con el zoom. Antes cada celda
+  // se pintaba directo en el ctx escalado: con zoom no entero los bordes se
+  // suavizaban y entre celda y celda quedaban LÍNEAS finitas (más claras en
+  // el agua, que es transparente, y oscuras en la lava).
+  // La superficie se suaviza con las celdas de al lado: sin escalones de a 1.
+  #lienzo = null;
+  #lctx = null;
+
   dibujar(ctx, camera, tiempoMs) {
-    const T = SurviConfig.TILE, COLS = SurviConfig.COLS, C = this.celdas;
+    const T = SurviConfig.TILE, COLS = SurviConfig.COLS, L = CapaFluidos.LLENO, C = this.celdas;
     const c0 = Math.max(0, Math.floor(camera.x / T)), c1 = Math.min(COLS - 1, Math.ceil((camera.x + camera.width) / T));
     const r0 = Math.max(0, Math.floor(camera.y / T)), r1 = Math.min(SurviConfig.ROWS - 1, Math.ceil((camera.y + camera.height) / T));
-    const ox = -camera.x, oy = -camera.y;
+    const w = (c1 - c0 + 1) * T, h = (r1 - r0 + 1) * T;
+    if (!this.#lienzo) {
+      this.#lienzo = document.createElement('canvas');
+      this.#lctx = this.#lienzo.getContext('2d');
+    }
+    const cv = this.#lienzo, g = this.#lctx;
+    if (cv.width < w || cv.height < h) {
+      cv.width = Math.max(cv.width, w);
+      cv.height = Math.max(cv.height, h);
+    }
+    g.clearRect(0, 0, w, h);
+    let hay = false;
+    // nivel "de superficie" de una celda vecina (para suavizar), o null si no cuenta
+    const nivelVecino = (c, r, tipo) => {
+      if (c < 0 || c >= COLS) return null;
+      const v = C[r * COLS + c];
+      if (v >> 4 !== tipo) return null;
+      const arriba = r > 0 ? C[(r - 1) * COLS + c] >> 4 : 0;
+      return arriba === tipo ? L : v & 15;
+    };
     for (let r = r0; r <= r1; r++) {
       for (let c = c0; c <= c1; c++) {
         const v = C[r * COLS + c];
         if (!v) continue;
+        hay = true;
         const tipo = v >> 4, n = v & 15;
         const arriba = r > 0 ? C[(r - 1) * COLS + c] >> 4 : 0;
         const lleno = arriba === tipo; // debajo de más fluido: la celda se ve llena
-        const h = lleno ? T : Math.max(2, Math.round((n / CapaFluidos.LLENO) * T));
-        const x = Math.round(c * T + ox), y = Math.round((r + 1) * T - h + oy);
+        let nv = n;
+        if (!lleno) {
+          // superficie: promedio con los vecinos del mismo fluido (sin escalones)
+          const a = nivelVecino(c - 1, r, tipo), b = nivelVecino(c + 1, r, tipo);
+          nv = Math.round((n * 2 + (a ?? n) + (b ?? n)) / 4);
+        }
+        const alto = lleno ? T : Math.max(2, Math.round((nv / L) * T));
+        const x = (c - c0) * T, y = (r - r0 + 1) * T - alto;
         if (tipo === CapaFluidos.AGUA) {
-          ctx.fillStyle = 'rgba(46, 104, 214, 0.55)';
-          ctx.fillRect(x, y, T, h);
+          g.fillStyle = 'rgba(46, 104, 214, 0.55)';
+          g.fillRect(x, y, T, alto);
           if (!lleno) {
-            ctx.fillStyle = 'rgba(160, 210, 255, 0.75)';
-            ctx.fillRect(x, y, T, 1);
+            g.fillStyle = 'rgba(160, 210, 255, 0.75)';
+            g.fillRect(x, y, T, 1);
           }
         } else {
           // lava: brillo que late despacio, distinto por columna
           const late = 0.5 + 0.5 * Math.sin(tiempoMs / 420 + c * 0.9 + r * 0.4);
-          ctx.fillStyle = `rgb(${210 + Math.round(35 * late)}, ${70 + Math.round(40 * late)}, 20)`;
-          ctx.fillRect(x, y, T, h);
+          g.fillStyle = `rgb(${210 + Math.round(35 * late)}, ${70 + Math.round(40 * late)}, 20)`;
+          g.fillRect(x, y, T, alto);
           if (!lleno) {
-            ctx.fillStyle = '#ffcf4a';
-            ctx.fillRect(x, y, T, 2);
+            g.fillStyle = '#ffcf4a';
+            g.fillRect(x, y, T, 2);
           }
         }
       }
     }
+    if (!hay) return;
+    const suave = ctx.imageSmoothingEnabled;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(cv, 0, 0, w, h, c0 * T - camera.x, r0 * T - camera.y, w, h);
+    ctx.imageSmoothingEnabled = suave;
   }
 
   // ── Generación ──

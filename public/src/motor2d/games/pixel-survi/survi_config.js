@@ -1981,6 +1981,31 @@ export class SurviConfig {
   // si el resultado es un ítem que ya tenías, siempre entra (no ocupa un
   // slot nuevo, solo suma al stack); si es nuevo, depende de si consumir
   // los materiales liberó algún slot y de cuánto cupo total hay.
+  // ─── Pilas ───
+  // Cuánto entra en un hueco: 1 = no se apila (herramientas, armas, armadura,
+  // cubos, arco, caña, alas: cada una ocupa su hueco); PILA_MAX para los que
+  // tienen tope (flechas); el resto, sin tope.
+  static PILA_MAX = {};
+  static pilaMax(id) {
+    const i = SurviConfig.ITEM_INFO[id];
+    if (!i) return Infinity;
+    if (i.tool || i.arco || i.equip || i.cubo !== undefined || i.cana || i.alas || i.azada) return 1;
+    return SurviConfig.PILA_MAX[id] || Infinity;
+  }
+
+  // Cuántos huecos ocupan `qty` de ese ítem.
+  static pilasDe(id, qty) {
+    if (!(qty > 0)) return 0;
+    const m = SurviConfig.pilaMax(id);
+    return m === Infinity ? 1 : Math.ceil(qty / m);
+  }
+
+  // Cuánto hay en la pila número k (0 = la primera) de `qty` en total.
+  static pilaN(id, qty, k) {
+    const m = SurviConfig.pilaMax(id);
+    return m === Infinity ? qty : Math.max(0, Math.min(m, qty - k * m));
+  }
+
   static craftWouldFit(inventory, recipe, totalSlots) {
     const sim = {
       ...inventory,
@@ -2244,6 +2269,7 @@ export class SurviConfig {
       zombie: [[E.llaveHierro, 0.02]],
     };
     SurviConfig.NIDO_PLUMA = 0.75; // romper un nido: chance de pluma
+    SurviConfig.PILA_MAX[M.arrow] = 32; // flechas: de a 32 por hueco
     SurviConfig.POLVORA_CHANCE = 0.5; // hongo explosivo muerto por vos (si explota, nada)
     // llaves en los cofres de las minas: [id, chance, min, max]
     SurviConfig.BOTIN_MINA.push(

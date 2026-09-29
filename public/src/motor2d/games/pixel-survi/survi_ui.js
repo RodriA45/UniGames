@@ -46,6 +46,8 @@ export class SurviUI {
 
       <!-- Aviso corto (ej. "Inventario lleno") — lo dispara this.showToast(). -->
       <div class="survi-toast hidden"></div>
+      <!-- tooltip propio (reemplaza al del navegador): ver #tooltips() -->
+      <div class="survi-tip hidden"></div>
 
       <!-- Cartel de confirmación (borrar mundo, vaciar inventario): ver confirmar() -->
       <div class="survi-confirmar hidden" role="dialog" aria-modal="true">
@@ -279,10 +281,12 @@ export class SurviUI {
             </div>
             <!-- a la derecha: lo que tenés (se puede soltar acá o en la barra) -->
             <div class="survi-catalogo-der">
-              <div class="survi-catalogo-sub">Tu inventario <span class="survi-catalogo-cupo"></span></div>
+              <div class="survi-catalogo-sub">
+                <span>Tu inventario <span class="survi-catalogo-cupo"></span></span>
+                <button class="survi-btn-tacho" data-act="vaciar-inv" title="Vaciar inventario" aria-label="Vaciar inventario">${Iconos.icon('trash', { size: 14 })}</button>
+              </div>
               <div class="survi-catalogo-inv" data-drop="inv"></div>
               <div class="survi-catalogo-hotbar"></div>
-              <button class="btn-game-secondary survi-btn-chico" data-act="vaciar-inv">${Iconos.icon('trash')} Vaciar</button>
             </div>
           </div>
           <p class="survi-inv-hint">Tocá un ítem para sumarlo, o arrastralo a un hueco de tu inventario o de la barra.</p>
@@ -505,6 +509,7 @@ export class SurviUI {
       sfxVal: q('.survi-sfx-val'),
       coverImg: q('.survi-portada-fondo'),
     });
+    this.#tooltips();
     // Arrastrar y soltar en el inventario (juego = el que se dibujó por última vez)
     this.juegoInv = null;
     this.arrastre = new Arrastre(this.screens.inv, {
@@ -738,16 +743,17 @@ export class SurviUI {
     const ids = SurviUI.idsInventario(game), cap = game.generalSlotCap;
     if (this.catalogoCupo) this.catalogoCupo.textContent = `(${ids.length}/${cap})`;
     this.catalogoInv.innerHTML = '';
-    for (let i = 0; i < cap; i++) {
-      const id = ids[i];
+    for (let i = 0; i < Math.max(cap, ids.length); i++) {
+      const pila = ids[i], id = pila && pila.id;
       const cell = document.createElement(id ? 'button' : 'div');
       cell.className = 'survi-inv-cell' + (id ? '' : ' survi-inv-cell-empty');
       if (id) {
         const info = SurviConfig.ITEM_INFO[id];
         cell.type = 'button';
         cell.title = info.name;
-        cell.innerHTML = `${SurviUI.iconMarkup(id, 24)}${info.tool || info.arco ? '' : `<span class="survi-inv-count">${game.inventory[id]}</span>`}`;
+        cell.innerHTML = `${SurviUI.iconMarkup(id, 24)}${pila.qty > 1 ? `<span class="survi-inv-count">${pila.qty}</span>` : ''}`;
         cell.dataset.dragId = String(id);
+        cell.dataset.qty = String(pila.qty);
         cell.dataset.origen = 'inv';
       }
       this.catalogoInv.appendChild(cell);
@@ -759,6 +765,7 @@ export class SurviUI {
       slot.dataset.slot = String(i);
       if (game.hotbarSlots[i]) {
         slot.dataset.dragId = String(game.hotbarSlots[i]);
+        slot.dataset.qty = slot.dataset.pila || '';
         slot.dataset.origen = 'hotbar';
       }
       this.catalogoHotbar.appendChild(slot);
@@ -775,11 +782,59 @@ export class SurviUI {
     der.classList.add('survi-lleno');
   }
 
-  // Ítems del inventario general (sin los que están en la barra), en orden.
+  // Pilas del inventario general (lo que no está en la barra), en orden:
+  // [{ id, qty, primera }]. Las herramientas van de a una por hueco y las
+  // flechas de a 32; las primeras pilas de cada ítem son las de la barra.
+  // `primera` = es la unidad "en uso" (la que muestra el desgaste).
   static idsInventario(game) {
-    return Object.keys(game.inventory)
-      .map(Number)
-      .filter((id) => (game.inventory[id] || 0) > 0 && SurviConfig.ITEM_INFO[id] && !game.hotbarSlots.includes(id));
+    const out = [];
+    for (const k of Object.keys(game.inventory)) {
+      const id = Number(k), qty = game.inventory[id] || 0;
+      if (qty <= 0 || !SurviConfig.ITEM_INFO[id]) continue;
+      const pilas = SurviConfig.pilasDe(id, qty);
+      for (let n = game.enHotbar(id); n < pilas; n++) out.push({ id, qty: SurviConfig.pilaN(id, qty, n), primera: n === 0 });
+    }
+    return out;
+  }
+
+  // Tooltips con el estilo del juego (negro y amarillo) en vez del del
+  // navegador: al pasar el mouse por algo con `title`, el texto pasa a
+  // data-tip (así el navegador no muestra el suyo) y se ve en .survi-tip.
+  #tooltips() {
+    const tip = this.root.querySelector('.survi-tip');
+    if (!tip) return;
+    let actual = null;
+    const esconder = () => {
+      actual = null;
+      tip.classList.add('hidden');
+    };
+    const ubicar = (e) => {
+      const r = this.root.getBoundingClientRect();
+      let x = e.clientX - r.left + 14, y = e.clientY - r.top + 16;
+      if (x + tip.offsetWidth > r.width - 4) x = e.clientX - r.left - tip.offsetWidth - 10;
+      if (y + tip.offsetHeight > r.height - 4) y = e.clientY - r.top - tip.offsetHeight - 10;
+      tip.style.left = `${Math.max(4, x)}px`;
+      tip.style.top = `${Math.max(4, y)}px`;
+    };
+    this.root.addEventListener('pointerover', (e) => {
+      if (e.pointerType !== 'mouse') return;
+      const el = e.target.closest('[title], [data-tip]');
+      if (!el || !this.root.contains(el)) return esconder();
+      if (el.hasAttribute('title')) {
+        if (el.title) el.dataset.tip = el.title;
+        el.removeAttribute('title');
+      }
+      if (!el.dataset.tip) return esconder();
+      actual = el;
+      tip.textContent = el.dataset.tip;
+      tip.classList.remove('hidden');
+      ubicar(e);
+    });
+    this.root.addEventListener('pointermove', (e) => actual && ubicar(e));
+    this.root.addEventListener('pointerout', (e) => {
+      if (actual && !actual.contains(e.relatedTarget)) esconder();
+    });
+    this.root.addEventListener('pointerdown', esconder);
   }
 
   // Cartel de confirmación dentro del juego (en vez de confirm() del navegador).
@@ -1009,7 +1064,10 @@ export class SurviUI {
   static casillaHotbar(game, i, px = 20) {
     const id = game.hotbarSlots[i];
     const info = id ? SurviConfig.ITEM_INFO[id] : null;
-    const count = id ? game.inventory[id] || 0 : 0;
+    // qué pila de ese ítem es este hueco (si el mismo ítem está en varios huecos)
+    let orden = 0;
+    for (let k = 0; k < i; k++) if (game.hotbarSlots[k] === id) orden++;
+    const count = id ? SurviConfig.pilaN(id, game.inventory[id] || 0, orden) : 0;
     const slot = document.createElement('div');
     slot.className = 'survi-slot' + (i === game.selectedSlot ? ' selected' : '');
     // Las herramientas no se apilan: no tiene sentido mostrarles "1".
@@ -1017,7 +1075,7 @@ export class SurviUI {
     const esArco = info && info.arco;
     const flechas = esArco ? game.inventory[SurviConfig.MAT.arrow] || 0 : 0;
     const showCount = info && !info.tool && !esArco && count > 1;
-    const frac = id ? game.durabilidadInventario(id) : null;
+    const frac = id && orden === 0 ? game.durabilidadInventario(id) : null; // el desgaste, solo en la unidad en uso
     slot.innerHTML = `
       <span class="survi-slot-key">${i + 1}</span>
       ${info ? SurviUI.iconMarkup(id, px) : ''}
@@ -1026,6 +1084,7 @@ export class SurviUI {
       ${info ? SurviUI.barraDurabilidad(frac) : ''}
     `;
     slot.title = info ? SurviUI.tituloItem(id, frac) : '';
+    if (id) slot.dataset.pila = String(count); // cuánto hay en esta pila (para tirarla)
     return slot;
   }
 
@@ -1056,14 +1115,14 @@ export class SurviUI {
     if (!destino) {
       // soltado AFUERA de la caja del inventario: se tira al suelo
       const caja = punto && document.elementFromPoint && document.elementFromPoint(punto.x, punto.y);
-      if (punto && !(caja && caja.closest('.modal-game-box')) && game.tirarItem(origen.id)) {
+      if (punto && !(caja && caja.closest('.modal-game-box')) && game.tirarItem(origen.id, origen.qty)) {
         const info = SurviConfig.ITEM_INFO[origen.id];
         this.showToast(`Tiraste: ${info ? info.name : 'ítem'}`);
         this.renderCatalogoInv(game);
       }
       return;
     }
-    if (destino.tipo === 'hotbar') game.ponerEnHotbar(origen.id, destino.slot);
+    if (destino.tipo === 'hotbar') game.ponerEnHotbar(origen.id, destino.slot, origen.origen === 'hotbar' ? origen.slot : null);
     else if (destino.tipo === 'inv' && origen.origen === 'hotbar' && !game.sacarDeHotbar(origen.slot)) {
       this.showToast('El inventario está lleno');
     }
@@ -1105,6 +1164,7 @@ export class SurviUI {
         slot.dataset.slot = String(i);
         if (game.hotbarSlots[i]) {
           slot.dataset.dragId = String(game.hotbarSlots[i]);
+          slot.dataset.qty = slot.dataset.pila || '';
           slot.dataset.origen = 'hotbar';
         }
         this.invHotbar.appendChild(slot);
@@ -1120,18 +1180,20 @@ export class SurviUI {
       const como = this.root.classList.contains('survi-movil') ? 'con el joystick derecho' : 'con clic izquierdo';
       this.invGrid.innerHTML = `<p class="survi-inv-empty">Vacío — rompé bloques ${como}.</p>`;
     } else {
-      for (const id of ids) {
-        const info = SurviConfig.ITEM_INFO[id];
+      for (const pila of ids) {
+        const id = pila.id;
         const cell = document.createElement('button');
         cell.className = 'survi-inv-cell' + (this.infoId === id ? ' selected' : '');
-        const frac = game.durabilidadInventario(id);
+        // el desgaste solo en la unidad en uso (las otras están nuevas)
+        const frac = pila.primera ? game.durabilidadInventario(id) : SurviConfig.ITEM_INFO[id].durabilidad ? 1 : null;
         cell.title = SurviUI.tituloItem(id, frac);
         cell.innerHTML = `
           ${SurviUI.iconMarkup(id, 28)}
-          ${info.tool || info.arco ? '' : `<span class="survi-inv-count">${game.inventory[id]}</span>`}
+          ${pila.qty > 1 ? `<span class="survi-inv-count">${pila.qty}</span>` : ''}
           ${SurviUI.barraDurabilidad(frac)}
         `;
         cell.dataset.dragId = String(id); // se agarra con Arrastre (ver #soltarItem / #tocarItem)
+        cell.dataset.qty = String(pila.qty);
         cell.dataset.origen = 'inv';
         // pasar el mouse (o tocar) muestra su ficha abajo
         cell.addEventListener('pointerenter', () => this.mostrarInfoItem(game, id));

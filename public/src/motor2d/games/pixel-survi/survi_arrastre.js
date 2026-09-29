@@ -49,6 +49,7 @@ export class Arrastre {
     e.preventDefault(); // que no seleccione texto ni haga scroll
     this.#origen = {
       id: el.dataset.dragId !== undefined ? Number(el.dataset.dragId) : null,
+      qty: el.dataset.qty !== undefined ? Number(el.dataset.qty) : null, // cuánto hay en esa pila
       origen: el.dataset.origen || el.dataset.drop,
       slot: el.dataset.slot !== undefined ? Number(el.dataset.slot) : null,
       el,
@@ -96,7 +97,7 @@ export class Arrastre {
     const arrastraba = !!this.#fantasma;
     const destino = arrastraba && e.type !== 'pointercancel' ? this.#destinoEn(e.clientX, e.clientY) : null;
     this.#limpiar();
-    const datos = { id: origen.id, origen: origen.origen, slot: origen.slot };
+    const datos = { id: origen.id, qty: origen.qty, origen: origen.origen, slot: origen.slot };
     const punto = e.type !== 'pointercancel' ? { x: e.clientX, y: e.clientY } : null;
     if (arrastraba) this.#alSoltar(datos, destino ? { tipo: destino.tipo, slot: destino.slot } : null, punto);
     else if (e.type !== 'pointercancel') this.#alTocar(datos);

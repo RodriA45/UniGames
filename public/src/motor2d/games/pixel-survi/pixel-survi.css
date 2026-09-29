@@ -1654,3 +1654,29 @@ html.survi-fs-abierto body { overflow: hidden; }
 .survi-mob-btn .survi-ico { width: 0.9rem; height: 0.9rem; flex: none; color: #e0563a; }
 .survi-screen .modal-game-box button.survi-mob-jefe { flex-basis: 100%; border-color: rgba(245, 197, 24, 0.5); color: #f5c518; font-weight: 700; }
 .survi-mob-jefe .survi-ico { color: #f5c518; }
+
+/* Catálogo: tacho chiquito al lado de "Tu inventario (n/n)" */
+.survi-catalogo-sub { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; }
+.survi-screen .modal-game-box button.survi-btn-tacho {
+  width: 1.6rem; height: 1.6rem; max-width: none; margin: 0; padding: 0; flex: none;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, 0.06); color: #e8ecf3;
+  border: 1px solid rgba(255, 255, 255, 0.18); border-radius: 6px; cursor: pointer;
+}
+.survi-screen .modal-game-box button.survi-btn-tacho:hover { background: #c0392b; border-color: #c0392b; color: #fff; }
+
+/* Tooltip propio: negro con letras amarillas */
+.survi-tip {
+  position: absolute; z-index: 60;
+  max-width: 240px;
+  padding: 0.3rem 0.55rem;
+  background: #0b0d12;
+  border: 1px solid #f5c518;
+  border-radius: 6px;
+  color: #f5c518;
+  font-size: 0.7rem; font-weight: 700; line-height: 1.25;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  white-space: pre-line;
+}
+.survi-tip.hidden { display: none; }

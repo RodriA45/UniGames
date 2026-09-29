@@ -1113,7 +1113,7 @@ export class SurviGame {
   furnaceTake(slot) {
     const f = this.openFurnace;
     if (!f || !f[slot]) return true;
-    if (!this._hasRoomFor(f[slot].id)) {
+    if (!this._hasRoomFor(f[slot].id, f[slot].qty)) {
       if (this.ui.showToast) this.ui.showToast('Inventario lleno');
       return false;
     }
@@ -1142,7 +1142,7 @@ export class SurviGame {
   chestTake(id) {
     const c = this.openChest;
     if (!c || !c[id]) return;
-    if (!this._hasRoomFor(id)) {
+    if (!this._hasRoomFor(id, c[id])) {
       if (this.ui.showToast) this.ui.showToast('Inventario lleno');
       return;
     }
@@ -1311,7 +1311,7 @@ export class SurviGame {
     if (!this.creativo) return false;
     const info = SurviConfig.ITEM_INFO[id];
     if (!info) return false;
-    const qty = info.tool || info.arco || info.equip || info.cubo !== undefined ? 1 : SurviConfig.CREATIVO_PILA;
+    const qty = Math.min(SurviConfig.CREATIVO_PILA, SurviConfig.pilaMax(id)); // (herramientas 1, flechas 32…)
     return this._addItem(id, qty);
   }
 
@@ -1419,6 +1419,12 @@ export class SurviGame {
       // con un arco en la mano, el clic izquierdo dispara (no pica)
       this._resetMine();
       this._dispararArco(armaId, arma.arco);
+      return;
+    }
+    if (arma && arma.tool === 'sword') {
+      // con una espada en la mano se pelea, no se rompen bloques
+      this._resetMine();
+      this._tryAttack();
       return;
     }
     const hov = this._hoverTile;
@@ -1576,6 +1582,8 @@ export class SurviGame {
     const heldId = this.hotbarSlots[this.selectedSlot];
     const heldInfo = heldId ? SurviConfig.ITEM_INFO[heldId] : null;
     if (heldInfo && heldInfo.cubo !== undefined) {
+      if (this._usoPulsacion) return; // uno por clic (si no, llena y vacía sin parar)
+      this._usoPulsacion = true;
       this._usarCubo(heldId, heldInfo);
       return;
     }
@@ -2317,10 +2325,7 @@ export class SurviGame {
       const tipo = this.fluidos.tipo(col, row);
       if (!tipo) return;
       nuevo = tipo === CapaFluidos.AGUA ? SurviConfig.CUBO.agua : SurviConfig.CUBO.lava;
-      if (this.inventory[id] > 1 && !this._hasRoomFor(nuevo)) {
-        if (this.ui.showToast) this.ui.showToast('Inventario lleno');
-        return;
-      }
+      // (no hace falta lugar: el cubo de la mano se convierte en el mismo hueco)
       if (!this.fluidos.juntar(col, row)) {
         if (this.ui.showToast) this.ui.showToast(`Hay muy poca ${tipo === CapaFluidos.AGUA ? 'agua' : 'lava'} para llenar el cubo`);
         return;
@@ -2332,14 +2337,14 @@ export class SurviGame {
       this.fluidos.poner(col, row, info.cubo);
       nuevo = SurviConfig.CUBO.vacio;
     }
+    // el cubo de la mano SE CONVIERTE en el otro (lleno / vacío), en el mismo hueco;
+    // los demás cubos que tengas quedan como estaban
+    const sel = this.selectedSlot;
     this._removeItem(id, 1);
-    this._addItem(nuevo, 1);
-    // el cubo nuevo queda en la mano (en el mismo hueco de la hotbar)
-    const sel = this.selectedSlot, i = this.hotbarSlots.indexOf(nuevo);
-    if (this.hotbarSlots[sel] === null && i !== sel) {
-      if (i !== -1) this.hotbarSlots[i] = null;
-      this.hotbarSlots[sel] = nuevo;
-    }
+    this.hotbarSlots[sel] = null;
+    this.inventory[nuevo] = (this.inventory[nuevo] || 0) + 1;
+    this.hotbarSlots[sel] = nuevo;
+    this.#refrescarInventario();
     this._renderHotbar();
     this._placeCd = SurviConfig.PLACE_COOLDOWN;
   }
@@ -2412,13 +2417,36 @@ export class SurviGame {
   // Pone `id` en el hueco `slot` de la hotbar. Si `id` ya estaba en otro
   // hueco, los dos se intercambian. Si no, lo que había en `slot` vuelve al
   // inventario general, al lugar que deja libre `id` (así que siempre entra).
-  ponerEnHotbar(id, slot) {
+  // desde: hueco de la barra de donde viene (se intercambian); sin `desde`,
+  // viene del inventario general (tiene que haber una pila afuera de la barra).
+  ponerEnHotbar(id, slot, desde = null) {
     if (!(this.inventory[id] > 0) || !(slot >= 0 && slot < SurviConfig.HOTBAR_SIZE)) return false;
-    const antes = this.hotbarSlots.indexOf(id);
-    if (antes !== -1) this.hotbarSlots[antes] = this.hotbarSlots[slot];
-    this.hotbarSlots[slot] = id;
+    if (desde !== null && desde >= 0 && desde < SurviConfig.HOTBAR_SIZE) {
+      [this.hotbarSlots[desde], this.hotbarSlots[slot]] = [this.hotbarSlots[slot], this.hotbarSlots[desde]];
+    } else {
+      if (this.hotbarSlots[slot] === id) return true;
+      if (SurviConfig.pilasDe(id, this.inventory[id]) - this.enHotbar(id) <= 0) return false; // no hay otra pila afuera
+      this.hotbarSlots[slot] = id; // lo que había vuelve al inventario general (mismo lugar)
+    }
     this.#refrescarInventario();
     return true;
+  }
+
+  // Cuántos huecos de la barra tienen este ítem.
+  enHotbar(id) {
+    let n = 0;
+    for (const s of this.hotbarSlots) if (s === id) n++;
+    return n;
+  }
+
+  // Huecos del inventario GENERAL ocupados (cada pila afuera de la barra).
+  pilasEnGeneral(inv = this.inventory) {
+    let n = 0;
+    for (const k of Object.keys(inv)) {
+      const id = Number(k);
+      n += Math.max(0, SurviConfig.pilasDe(id, inv[k]) - this.enHotbar(id));
+    }
+    return n;
   }
 
   // Saca lo que hay en el hueco `slot` al inventario general. false si el
@@ -2426,8 +2454,7 @@ export class SurviGame {
   sacarDeHotbar(slot) {
     const id = this.hotbarSlots[slot];
     if (!id) return false;
-    const enGeneral = Object.keys(this.inventory).filter((k) => !this.hotbarSlots.includes(Number(k))).length;
-    if (enGeneral >= this.generalSlotCap) return false;
+    if (this.pilasEnGeneral() >= this.generalSlotCap) return false;
     this.hotbarSlots[slot] = null;
     this.#refrescarInventario();
     return true;
@@ -2474,8 +2501,7 @@ export class SurviGame {
   // lleno de tipos distintos) y el drop/resultado se pierde.
   _addItem(id, qty = 1) {
     if (!id || !SurviConfig.ITEM_INFO[id] || qty <= 0) return false;
-    const isNew = !(id in this.inventory);
-    if (isNew && Object.keys(this.inventory).length >= this.invSlotCap) {
+    if (!this._hasRoomFor(id, qty)) {
       if (this.ui.showToast) this.ui.showToast('Inventario lleno');
       return false;
     }
@@ -2498,18 +2524,32 @@ export class SurviGame {
     if (left === 0) {
       delete this.inventory[id];
       this.desgaste.olvidar(id);
-      const i = this.hotbarSlots.indexOf(id);
-      if (i !== -1) this.hotbarSlots[i] = null;
-    } else this.inventory[id] = left;
+      this.hotbarSlots = this.hotbarSlots.map((s) => (s === id ? null : s));
+    } else {
+      this.inventory[id] = left;
+      // si quedaron menos pilas que huecos de la barra con ese ítem, se sacan los de más
+      for (let i = this.hotbarSlots.length - 1; i >= 0 && this.enHotbar(id) > SurviConfig.pilasDe(id, left); i--) {
+        if (this.hotbarSlots[i] === id && i !== this.selectedSlot) this.hotbarSlots[i] = null;
+      }
+      for (let i = this.hotbarSlots.length - 1; i >= 0 && this.enHotbar(id) > SurviConfig.pilasDe(id, left); i--) {
+        if (this.hotbarSlots[i] === id) this.hotbarSlots[i] = null;
+      }
+    }
     this._renderHotbar();
     if (this.invOpen) this._renderInventory();
   }
 
   // ¿Entra este ítem? (true si no ocupa hueco nuevo o si todavía hay cupo)
-  _hasRoomFor(id) {
+  // ¿Entran `qty` más de este ítem? Cuenta HUECOS (pilas), no tipos: las
+  // herramientas ocupan uno cada una y las flechas uno cada 32. Las pilas
+  // nuevas van primero a un hueco libre de la barra (como hace _addItem).
+  _hasRoomFor(id, qty = 1, inv = this.inventory) {
     if (!id || !SurviConfig.ITEM_INFO[id]) return true; // nada que guardar
-    if (id in this.inventory) return true; // ya tenés de ese tipo: solo suma stock
-    return Object.keys(this.inventory).length < this.invSlotCap;
+    const tiene = inv[id] || 0;
+    let nuevas = SurviConfig.pilasDe(id, tiene + qty) - SurviConfig.pilasDe(id, tiene);
+    if (nuevas <= 0) return true;
+    if (!SurviConfig.ITEM_INFO[id].equip && !this.hotbarSlots.includes(id) && this.hotbarSlots.includes(null)) nuevas--;
+    return this.pilasEnGeneral(inv) + nuevas <= this.generalSlotCap;
   }
 
   _renderHotbar() {
@@ -2584,7 +2624,9 @@ export class SurviGame {
       };
     // Chequeamos el cupo ANTES de descontar nada: así, si el resultado no
     // va a entrar, no perdés los materiales de arriba.
-    if (!SurviConfig.craftWouldFit(this.inventory, recipe, this.invSlotCap))
+    const sim = { ...this.inventory };
+    SurviConfig.consumeRecipe(sim, recipe);
+    if (!this._hasRoomFor(recipe.result, recipe.resultQty || 1, sim))
       return {
         ok: false,
         reason: 'full',
@@ -3912,7 +3954,7 @@ export class SurviGame {
 
   // Un ítem del suelo llegó al jugador. true si entró.
   recogerSuelto(s) {
-    if (!this._hasRoomFor(s.id)) return false;
+    if (!this._hasRoomFor(s.id, s.qty)) return false;
     if (!this._addItem(s.id, s.qty)) return false;
     this.sonar('recoger');
     if (s.gastado) this.desgaste.poner(s.id, s.gastado);
@@ -3937,27 +3979,29 @@ export class SurviGame {
 
   // Tirar un ítem (arrastrado afuera del inventario): sale toda la pila hacia
   // donde mirás y no se junta por TIRADO_ESPERA_MS (así no vuelve solo).
-  tirarItem(id) {
+  // cantidad: la de la pila que arrastraste (sin cantidad, todo lo que tenés).
+  tirarItem(id, cantidad = null) {
     id = Number(id);
-    const qty = this.inventory[id] || 0;
+    const total = this.inventory[id] || 0;
+    const qty = Math.min(total, cantidad > 0 ? cantidad : total);
     if (this.espectador || qty <= 0) return false;
     const p = this.player, dir = p.facing || 1;
+    // si tirás la última, se lleva el desgaste; si quedan otras, tirás una nueva
+    const gastado = qty >= total ? this.desgaste.tomar(id) : 0;
     this.sueltos.push(
       new ItemSuelto({
         id,
         qty,
         x: p.x + p.w / 2 + dir * 6,
         y: p.y + p.h * 0.35,
-        gastado: this.desgaste.tomar(id),
+        gastado,
         vx: dir * 2.4,
         vy: -2,
         esperaMs: SurviConfig.TIRADO_ESPERA_MS,
       }),
     );
     if (this.sueltos.length > SurviConfig.SUELTO_MAX) this.sueltos.shift();
-    delete this.inventory[id];
-    this.hotbarSlots = this.hotbarSlots.map((s) => (Number(s) === id ? null : s));
-    this._renderHotbar();
+    this._removeItem(id, qty);
     this._renderInventory();
     return true;
   }
