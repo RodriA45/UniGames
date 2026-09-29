@@ -114,7 +114,50 @@ export class Criatura extends Engine2D.Entity {
 
   // ¿Se está quemando? (al sol, o metida en la lava): se le dibujan llamas.
   get enFuego() {
-    return !!(this.quemando || (this.fluido && this.fluido.lava));
+    return !!(this.quemando || (this.fluido && this.fluido.lava) || this.ardeMs > 0);
+  }
+
+  // ── Fuego ──
+  // Al salir de la lava sigue ardiendo QUEMADURA_MS (pierde vida de a poco);
+  // el agua lo apaga.
+  actualizarFuego(dt) {
+    const fl = this.fluido;
+    if (fl && fl.agua) this.ardeMs = 0;
+    else if (fl && fl.lava) this.ardeMs = SurviConfig.QUEMADURA_MS;
+    else if (this.ardeMs > 0) {
+      this.ardeMs -= dt;
+      this.ardeTick = (this.ardeTick || 0) + dt;
+      if (this.ardeTick >= SurviConfig.QUEMADURA_TICK_MS) {
+        this.ardeTick = 0;
+        this.hp -= SurviConfig.QUEMADURA_DANIO;
+        this.hitMs = Criatura.PARPADEO_MS;
+      }
+    }
+  }
+
+  // Dirección (-1 / 1) hacia el agua más cercana a los costados (hasta
+  // AGUA_BUSCA_TILES), o 0 si no hay. Se recalcula cada tanto, no en cada frame.
+  static AGUA_BUSCA_TILES = 12;
+  dirAgua(juego) {
+    const ahora = performance.now();
+    if (this._aguaT && ahora - this._aguaT < 400) return this._aguaDir;
+    this._aguaT = ahora;
+    this._aguaDir = 0;
+    const F = juego.fluidos, c0 = this.colCentro, f = this.filaPies;
+    if (!F) return 0;
+    for (let d = 0; d <= Criatura.AGUA_BUSCA_TILES && !this._aguaDir; d++) {
+      for (const s of d ? [this.facing || 1, -(this.facing || 1)] : [1]) {
+        const c = c0 + s * d;
+        for (let r = f - 2; r <= f + 5; r++) {
+          if (F.tipo(c, r) === 1) {
+            this._aguaDir = d ? s : this.facing || 1;
+            break;
+          }
+        }
+        if (this._aguaDir) break;
+      }
+    }
+    return this._aguaDir;
   }
 
   // Golpe del jugador: resta vida, la empuja hacia `dir` y parpadea.
@@ -149,6 +192,7 @@ export class Criatura extends Engine2D.Entity {
         this.hitMs = Criatura.PARPADEO_MS;
       }
     } else this.quemaMs = SurviConfig.LAVA_DANIO_MS; // el primer toque quema al instante
+    this.actualizarFuego(dt);
   }
 
   // ── Sensores (en tiles) ──
@@ -395,7 +439,7 @@ export class Enemigo extends Criatura {
   // pierden vida de a poco y parpadean en naranja.
   quemarseAlSol(dt, juego) {
     const C = this.constructor;
-    if (C.SE_QUEMA_AL_SOL && juego.alSolDirecto(this)) {
+    if (C.SE_QUEMA_AL_SOL && juego.alSolDirecto(this) && !(this.fluido && this.fluido.agua)) { // en el agua no se quema
       this.quemando = true;
       this.solMs += dt;
       if (this.solMs >= C.SOL_MS) {
@@ -428,8 +472,8 @@ export class Enemigo extends Criatura {
     const dx = player.x + player.w / 2 - (this.x + this.w / 2);
     const dy = player.y + player.h / 2 - (this.y + this.h / 2);
     const cerca = Math.abs(dx) < vistaTiles * T && Math.abs(dy) < 6 * T;
-    // en creativo o espectador los monstruos no te ven
-    const teVe = cerca && !juego.dead && !juego.invisible && this.ve(juego.tilemap, player.x + player.w / 2, player.y + player.h / 3);
+    // espectador: nadie te ve; creativo: solo los jefes y los que sacaste del catálogo (ver SurviGame.ocultoPara)
+    const teVe = cerca && !juego.dead && !juego.ocultoPara(this) && this.ve(juego.tilemap, player.x + player.w / 2, player.y + player.h / 3);
     return { dx, dy, teVe };
   }
 
@@ -480,9 +524,18 @@ export class Enemigo extends Criatura {
       velocidad = 0;
     } else if (this.estado === 'persigue') {
       // Justo arriba o abajo tuyo: no tiembla de un lado al otro.
+      // (aunque se esté quemando, si te persigue no te suelta)
       dir = Math.abs(dx) < 4 ? 0 : Math.sign(dx);
       velocidad = C.VELOCIDAD_PERSECUCION;
       maxCaida = 4;
+    } else if (this.enFuego) {
+      // en llamas y sin perseguirte: corre al agua si hay cerca
+      const a = this.dirAgua(juego);
+      if (a) {
+        dir = a;
+        velocidad = C.VELOCIDAD_PERSECUCION;
+        maxCaida = 4;
+      }
     }
     const freno = this.moverHacia(dir, velocidad, juego, step, { maxCaida });
     if (this.retrocesoMs <= 0) this.facing = dir || this.facing;
@@ -496,7 +549,7 @@ export class Enemigo extends Criatura {
     this.contarPasos(step);
 
     // ── atacar (al tocarte) ──
-    if (agresivo && C.DANIO > 0 && !juego.invisible && Engine2D.Collisions.rectOverlap(this, player)) {
+    if (agresivo && C.DANIO > 0 && !juego.ocultoPara(this) && Engine2D.Collisions.rectOverlap(this, player)) {
       juego._damage(C.DANIO);
       this.alPegar(juego);
       player.empujar(this.x);
@@ -544,6 +597,7 @@ export class Enemigo extends Criatura {
 // ─── Slime: el enemigo de siempre ───
 export class Slime extends Enemigo {
   static TIPO = 'slime';
+  static AMA_ACIDO = true; // la lluvia ácida no lo lastima (en Difícil / Hardcore lo cura)
 
   // De noche ataca; de día solo si lo hiciste enojar.
   esAgresivo(juego) {
@@ -820,7 +874,8 @@ export class OjoVolador extends Enemigo {
     this.estadoMs += dt;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     const tx = p.x + p.w / 2, ty = p.y + p.h / 2;
-    const huye = !juego.esNoche || juego.dead || juego.invisible; // si no te ve, se va
+    // si no te ve, se va (de día también, salvo los ojos del Ojo Gigante)
+    const huye = (!juego.esNoche && !this.esbirro) || juego.dead || juego.ocultoPara(this);
     let ax = 0, ay = 0;
     if (huye) {
       // de día (o si moriste): se va para arriba y afuera
@@ -943,6 +998,8 @@ export class ProyectilMob extends Engine2D.Entity {
   static TIPOS = {
     telarana: { tam: 6, g: 0.08, danio: 1, colores: ['#f2f2f2', '#d8d8d8', '#bfbfbf'] },
     nieve: { tam: 5, g: 0.14, danio: 1, colores: ['#ffffff', '#e4f3ff', '#b8dcf5'] },
+    // lanza del Yeti Anciano: recta, ATRAVIESA bloques, pega fuerte y suma escarcha
+    escarcha: { tam: 8, g: 0, danio: 5, atraviesa: true, colores: ['#ffffff', '#bfe8ff', '#6fc3ff'] },
   };
   static VIDA_MS = 4000;
 
@@ -956,7 +1013,7 @@ export class ProyectilMob extends Engine2D.Entity {
   #deshacer(juego) {
     const D = ProyectilMob.TIPOS[this.tipo];
     if (juego.particulas) juego.particulas.chispas(this.x + this.w / 2, this.y + this.h / 2, D.colores, 7);
-    juego.sonar(this.tipo === 'nieve' ? 'nieve' : 'telarana', this.x, this.y);
+    juego.sonar(this.tipo === 'telarana' ? 'telarana' : 'nieve', this.x, this.y);
   }
 
   actualizar(dt, step, juego) {
@@ -968,7 +1025,7 @@ export class ProyectilMob extends Engine2D.Entity {
     this.y += this.vy * step;
     const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
     if (cx < 0 || cy < 0 || cx >= SurviConfig.WORLD_W || cy >= SurviConfig.WORLD_H) return false;
-    if (juego.tilemap.isSolidAt(Math.floor(cx / T), Math.floor(cy / T)) || juego.fluidos.tipo(Math.floor(cx / T), Math.floor(cy / T))) {
+    if (!D.atraviesa && (juego.tilemap.isSolidAt(Math.floor(cx / T), Math.floor(cy / T)) || juego.fluidos.tipo(Math.floor(cx / T), Math.floor(cy / T)))) {
       this.#deshacer(juego);
       return false;
     }
@@ -976,6 +1033,7 @@ export class ProyectilMob extends Engine2D.Entity {
     if (!juego.dead && !juego.invisible && Engine2D.Collisions.rectOverlap(this, p)) {
       juego._damage(D.danio);
       if (this.tipo === 'telarana') juego.enredar();
+      else if (this.tipo === 'escarcha') juego.escarchar();
       else {
         juego.congelar();
         p.empujar(this.x - Math.sign(this.vx) * 10); // la bola de nieve empuja
@@ -988,6 +1046,23 @@ export class ProyectilMob extends Engine2D.Entity {
 
   dibujar(ctx, sx, sy) {
     const x = Math.round(sx), y = Math.round(sy);
+    if (this.tipo === 'escarcha') {
+      // lanza de hielo, apuntando hacia donde va
+      ctx.save();
+      ctx.translate(x + this.w / 2, y + this.h / 2);
+      ctx.rotate(Math.atan2(this.vy, this.vx));
+      ctx.fillStyle = '#6fc3ff';
+      ctx.fillRect(-8, -1, 12, 3);
+      ctx.fillStyle = '#bfe8ff';
+      ctx.fillRect(-8, -1, 12, 1);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(4, -1, 3, 3); // punta
+      ctx.fillRect(7, 0, 2, 1);
+      ctx.fillStyle = 'rgba(191,232,255,0.5)';
+      ctx.fillRect(-12, 0, 4, 1); // estela
+      ctx.restore();
+      return;
+    }
     if (this.tipo === 'nieve') {
       ctx.fillStyle = '#f4faff';
       ctx.fillRect(x + 1, y, 3, 5);
@@ -1245,12 +1320,12 @@ export class Murcielago extends Enemigo {
       this.vx = this.vy = 0;
       // se cayó el techo, lo viste de cerca o hiciste ruido: se despierta
       const techo = map.isSolidAt(Math.floor(cx / T), Math.floor((this.y - 1) / T));
-      const teVe = !juego.invisible && !juego.dead && d < C.DESPIERTA_TILES * T && this.ve(map, tx, ty);
+      const teVe = !juego.ocultoPara(this) && !juego.dead && d < C.DESPIERTA_TILES * T && this.ve(map, tx, ty);
       if (!techo || teVe || juego.ruidoCerca(cx, cy, C.RUIDO_TILES * T)) this.despertar(juego);
       return this.sigueCerca(juego);
     }
     let ax = 0, ay = 0;
-    const perdido = juego.dead || juego.invisible || d > C.OLVIDO_TILES * T;
+    const perdido = juego.dead || juego.ocultoPara(this) || d > C.OLVIDO_TILES * T;
     if (this.estado === 'vuela' && perdido) this.cambiarEstado('vuelve');
     if (this.estado === 'vuelve') {
       // sube hasta encontrar techo y se cuelga
@@ -1293,7 +1368,7 @@ export class Murcielago extends Enemigo {
     } else this.y = ny;
     if (this.vx) this.facing = Math.sign(this.vx);
     // mordida
-    if (this.estado === 'vuela' && this.retrocesoMs <= 0 && !juego.invisible && Engine2D.Collisions.rectOverlap(this, p)) {
+    if (this.estado === 'vuela' && this.retrocesoMs <= 0 && !juego.ocultoPara(this) && Engine2D.Collisions.rectOverlap(this, p)) {
       juego._damage(C.DANIO);
       this.alPegar(juego);
       this.retrocesoMs = 700;
@@ -1360,7 +1435,7 @@ export class HongoExplosivo extends Enemigo {
   static VELOCIDAD_PERSECUCION = 0.9;
   static VISTA_TILES = 12;
   static OLVIDO_MS = 4000;
-  static SE_QUEMA_AL_SOL = true;
+  static SE_QUEMA_AL_SOL = false; // (antes se quemaba de día: ya no)
   static MECHA_MS = 1400;
   static PRENDE_TILES = 1.6; // a esta distancia prende la mecha
   static APAGA_TILES = 3.4; // si te alejás más, la apaga
@@ -1391,7 +1466,7 @@ export class HongoExplosivo extends Enemigo {
       this.moverHacia(0, 0, juego, step);
       if (this.hitMs <= 0) this.vx = 0;
       this.mechaMs += dt;
-      if (dist > C.APAGA_TILES || juego.dead || juego.invisible || (this.fluido && this.fluido.agua)) {
+      if (dist > C.APAGA_TILES || juego.dead || juego.ocultoPara(this) || (this.fluido && this.fluido.agua)) {
         this.mechaMs = 0; // el agua también la apaga
         return this.sigueCerca(juego);
       }
@@ -1404,7 +1479,7 @@ export class HongoExplosivo extends Enemigo {
       return true;
     }
     const sigue = super.actualizar(dt, step, juego);
-    if (this.estado === 'persigue' && dist < C.PRENDE_TILES && !juego.invisible && !juego.dead && !(this.fluido && this.fluido.agua)) {
+    if (this.estado === 'persigue' && dist < C.PRENDE_TILES && !juego.ocultoPara(this) && !juego.dead && !(this.fluido && this.fluido.agua)) {
       this.mechaMs = 1;
       juego.sonar('mecha', this.x + this.w / 2, this.y);
     }
@@ -1828,6 +1903,15 @@ export class Animal extends Criatura {
       }
     }
 
+    // en llamas: corre al agua si hay cerca (el agua lo apaga)
+    if (this.enFuego) {
+      const a = this.dirAgua(juego);
+      if (a) {
+        dir = this.facing = a;
+        velocidad = C.VELOCIDAD * Animal.MULT_HUIDA;
+        maxCaida = 4;
+      }
+    }
     const freno = this.moverHacia(dir, velocidad, juego, step, { maxCaida });
     if (dir === 0) this.vx = this.hitMs > 0 ? this.vx : 0;
     if (freno) {

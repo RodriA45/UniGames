@@ -154,6 +154,7 @@ export class GestorGuardado {
           explorado: payload.explorado ? GestorGuardado.codificarTiles(payload.explorado) : null, // mapa: celdas vistas
           lunaSangre: !!payload.lunaSangre, // esta noche es luna de sangre
           corazones: payload.corazones || 0, // corazones de vida usados (+vida máxima)
+          jefes: payload.jefes || [], // tipos de jefe ya derrotados en este mundo
         }),
       );
       localStorage.setItem(

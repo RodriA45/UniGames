@@ -27,11 +27,14 @@ export class SpritesSurvi {
   // lado de assets/, no adentro. Si se mueve algo en models/ hay que
   // actualizar esto (y COVER_SRC en survi_config.js).
   static BASE = 'src/motor2d/games/pixel-survi/models/';
+  static VERSION_ITEMS = 2; // subir cada vez que cambia items.png
   static ASSETS = {
     tiles: SpritesSurvi.BASE + 'assets/world/tiles.png',
     player: SpritesSurvi.BASE + 'player/player.png',
     cracks: SpritesSurvi.BASE + 'assets/particle/cracks.png',
-    items: SpritesSurvi.BASE + 'assets/item/items.png',
+    // ?v=N: al cambiar el PNG (se agregan ítems) subí el número, si no el
+    // navegador sigue usando el viejo de la caché y los íconos salen corridos.
+    items: SpritesSurvi.BASE + 'assets/item/items.png?v=' + SpritesSurvi.VERSION_ITEMS,
   };
   // Lista para precargar todo de una con Engine2D.loadAll()
   // tiles.png ya no existe (el tileset se genera por código, ver
@@ -284,7 +287,10 @@ export class SpritesSurvi {
       offY = (px - c.bh * k) / 2;
     return (
       `background-image:url('${SpritesSurvi.ITEMS.src}');` +
-      `background-size:${SpritesSurvi.ITEMS.cols * SpritesSurvi.ITEMS.cell * k}px ${SpritesSurvi.ITEMS.rows * SpritesSurvi.ITEMS.cell * k}px;` +
+      // alto "auto": se escala con el ancho, así no depende de que ITEMS.rows
+      // coincida con el alto real del PNG (si no coincidían, se estiraba en
+      // vertical y todos los íconos salían corridos)
+      `background-size:${SpritesSurvi.ITEMS.cols * SpritesSurvi.ITEMS.cell * k}px auto;` +
       `background-position:${-(c.sx + c.bx) * k + offX}px ${-(c.sy + c.by) * k + offY}px;` +
       `background-repeat:no-repeat;image-rendering:pixelated;` +
       `width:${px}px;height:${px}px;`

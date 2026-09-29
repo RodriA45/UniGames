@@ -69,6 +69,11 @@ export class SurviUI {
               <span>Y <b class="survi-coords-y">0</b></span>
             </div>
           </div>
+          <!-- barra de vida del jefe que estás peleando (SurviGame._actualizarBarraJefe) -->
+          <div class="survi-jefe-bar hidden">
+            <span class="survi-jefe-nombre"></span>
+            <div class="survi-jefe-vida"><i></i></div>
+          </div>
           <!-- modo creativo / espectador: [espectador] [etiqueta] [volar] -->
           <div class="survi-hud-modo hidden">
             <button class="game-icon-btn survi-btn-espectador" data-act="espectador" title="Modo espectador (V)">${Iconos.icon('eye')}</button>
@@ -400,6 +405,9 @@ export class SurviUI {
       hud: q('.survi-hud'),
       pauseBtn: q('.survi-pause-btn'),
       invBtn: q('.survi-inv-btn'),
+      jefeBar: q('.survi-jefe-bar'),
+      jefeNombre: q('.survi-jefe-nombre'),
+      jefeVida: q('.survi-jefe-vida i'),
       mapaBtn: q('.survi-mapa-btn'),
       mapaCerrar: q('.survi-mapa-cerrar'),
       mapaCanvas: q('.survi-mapa-canvas'),
@@ -571,6 +579,25 @@ export class SurviUI {
   static CATALOGO_CATS = [
     SurviUI.CATEGORIAS[4], // bloques primero
     ...SurviUI.CATEGORIAS.filter((c) => c.key !== 'bloques'),
+    { key: 'mobs', label: 'Mobs', icon: 'skull', es: () => false }, // no son ítems: los genera al tocarlos
+  ];
+  // Pestaña "Mobs" del catálogo (creativo): tocás uno y aparece delante tuyo.
+  static MOBS_CATALOGO = [
+    { tipo: 'rey_slime', nombre: 'Rey Slime', jefe: true },
+    { tipo: 'arana_reina', nombre: 'Araña Reina', jefe: true },
+    { tipo: 'ojo_gigante', nombre: 'Ojo Gigante', jefe: true },
+    { tipo: 'yeti_anciano', nombre: 'Yeti Anciano', jefe: true },
+    { tipo: 'slime', nombre: 'Slime' },
+    { tipo: 'zombie', nombre: 'Zombie' },
+    { tipo: 'esqueleto', nombre: 'Esqueleto' },
+    { tipo: 'momia', nombre: 'Momia' },
+    { tipo: 'serpiente', nombre: 'Serpiente' },
+    { tipo: 'hongo', nombre: 'Hongo explosivo' },
+    { tipo: 'ojo', nombre: 'Ojo volador' },
+    { tipo: 'ojo_boca', nombre: 'Ojo con boca' },
+    { tipo: 'arana', nombre: 'Araña' },
+    { tipo: 'yeti', nombre: 'Yeti' },
+    { tipo: 'murcielago', nombre: 'Murciélago' },
   ];
   // Íconos de las pestañas del crafteo (SurviConfig.CRAFT_CATS)
   static CRAFT_ICON = {
@@ -626,6 +653,7 @@ export class SurviUI {
     if (info.luz) d.push(['Da luz', 'puesto en la cabeza']);
     if (info.vidaExtra) d.push(['Uso', `+${info.vidaExtra} vida máxima (clic derecho)`]);
     if (info.alas) d.push(['Uso', 'volar (doble salto o F)']);
+    if (info.invoca) d.push(['Invoca', `${info.invoca.nombre} (clic derecho con ${info.invoca.cantidad})`]);
     if (info.durabilidad) {
       const quedan = frac === null || frac === undefined ? info.durabilidad : Math.round(frac * info.durabilidad);
       d.push(['Durabilidad', `${quedan}/${info.durabilidad}`]);
@@ -668,6 +696,23 @@ export class SurviUI {
       );
     }
     this.catalogoGrid.innerHTML = '';
+    if (this.catalogoCat === 'mobs') {
+      for (const m of SurviUI.MOBS_CATALOGO) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'survi-mob-btn' + (m.jefe ? ' survi-mob-jefe' : '');
+        b.innerHTML = `${Iconos.icon(m.jefe ? 'sparkles' : 'skull')}<span>${m.nombre}</span>`;
+        b.title = m.jefe ? `Invocar al ${m.nombre}` : `Generar ${m.nombre.toLowerCase()} delante tuyo`;
+        b.addEventListener('click', () => {
+          if (!game.generarMob(m.tipo)) return;
+          this.showToast(m.jefe ? `¡${m.nombre} invocado!` : `${m.nombre} generado`);
+          game.toggleInventory(false); // se cierra para verlo
+        });
+        this.catalogoGrid.appendChild(b);
+      }
+      this.renderCatalogoInv(game);
+      return;
+    }
     const ids = Object.keys(SurviConfig.ITEM_INFO)
       .map(Number)
       .filter((id) => SurviUI.categoriaCatalogo(SurviConfig.ITEM_INFO[id]) === this.catalogoCat)

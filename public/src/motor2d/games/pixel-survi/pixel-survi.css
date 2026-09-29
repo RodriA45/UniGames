@@ -1604,3 +1604,53 @@ html.survi-fs-abierto body { overflow: hidden; }
 .survi-confirmar-btns button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.35em; }
 .survi-confirmar-btns button.survi-peligro { background: #c0392b; border-color: #c0392b; color: #fff; }
 .survi-confirmar-btns button.survi-peligro:hover { background: #e0563a; border-color: #e0563a; }
+
+/* ══ Barra de vida del jefe (arriba al centro) ══ */
+.survi-jefe-bar {
+  position: absolute;
+  top: calc(2.9rem + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(360px, 60%);
+  display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+  pointer-events: none;
+  z-index: 6;
+}
+.survi-jefe-nombre {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  color: #fff;
+  text-shadow: 0 2px 0 #000;
+}
+.survi-jefe-vida {
+  width: 100%; height: 0.7rem;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid #1a1a1a;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25);
+}
+.survi-jefe-vida i {
+  display: block; width: 100%; height: 100%;
+  background: linear-gradient(#ff6a5a, #c0392b);
+  transform-origin: left center;
+  transition: transform 0.2s ease;
+}
+.survi-jefe-fase2 .survi-jefe-vida i { background: linear-gradient(#ffb04a, #d8541b); }
+.survi-jefe-fase2 .survi-jefe-nombre { color: #ffd23f; }
+.survi-movil .survi-jefe-bar { top: calc(min(2.6rem, 14cqh) + env(safe-area-inset-top, 0px)); width: min(300px, 50%); }
+
+/* Catálogo del creativo: pestaña Mobs (botones con nombre) */
+.survi-screen .modal-game-box button.survi-mob-btn {
+  width: auto; max-width: none; margin: 0;
+  flex: 1 1 8.5rem;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.72rem; text-align: left; white-space: nowrap;
+  background: #1b2436; color: #e8ecf3;
+  border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; cursor: pointer;
+}
+.survi-screen .modal-game-box button.survi-mob-btn:hover { border-color: #f5c518; }
+.survi-mob-btn .survi-ico { width: 0.9rem; height: 0.9rem; flex: none; color: #e0563a; }
+.survi-screen .modal-game-box button.survi-mob-jefe { flex-basis: 100%; border-color: rgba(245, 197, 24, 0.5); color: #f5c518; font-weight: 700; }
+.survi-mob-jefe .survi-ico { color: #f5c518; }

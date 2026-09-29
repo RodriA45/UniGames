@@ -1124,11 +1124,12 @@ export class SurviConfig {
       desc: 'Te pegan 50% más, el hambre baja más rápido, hay más monstruos, los ojos salen desde el día 6 y el hambre y el veneno pueden matarte.',
       danio: 1.5, hambre: 1.35, spawn: 0.7, topes: 1.5, ojosDesde: 6,
       mataHambre: true, // el hambre y el veneno pueden matarte (en Fácil / Normal te dejan en 1)
+      jefesDuros: true, // jefes con extras (ej. el Rey Slime llama a la lluvia ácida, que lo cura)
     },
     hardcore: {
       label: 'Hardcore',
       desc: 'Como Difícil, pero con UNA sola vida: si morís pasás a ser espectador y ya no podés revivir.',
-      danio: 1.5, hambre: 1.35, spawn: 0.7, topes: 1.5, ojosDesde: 6, unaVida: true, mataHambre: true,
+      danio: 1.5, hambre: 1.35, spawn: 0.7, topes: 1.5, ojosDesde: 6, unaVida: true, mataHambre: true, jefesDuros: true,
     },
   };
   // Modo creativo / espectador
@@ -1227,6 +1228,9 @@ export class SurviConfig {
   // ─── Clima (ver survi_clima.js) ───
   static ACIDO_TICK_MS = 1000; // lluvia ácida: cada cuánto lastima
   static ACIDO_DANIO = 1;
+  // Slimes (y el Rey Slime) no sufren la lluvia ácida. En Difícil / Hardcore
+  // además los CURA (cada ACIDO_TICK_MS): esto a los slimes comunes y esto al rey.
+  static ACIDO_CURA = { slime: 1, jefe: 3 };
   static ACIDO_DESGASTE = 3; // usos de armadura que gasta cada gota (x3 un golpe normal)
   // ─── Ítems tirados en el suelo (ver ItemSuelto en survi_entidades.js) ───
   static SUELTO_VIDA_MS = 10 * 60 * 1000; // 10 minutos y desaparece
@@ -2086,8 +2090,11 @@ export class SurviConfig {
   // ══════════ Explosivos ══════════
   // Hongo explosivo (radio chico) y TNT (radio grande). Ver SurviGame.explotar.
   static EXPLOSION = {
-    hongo: { radio: 2.4, danio: 7 },
-    tnt: { radio: 3.4, danio: 11 },
+    // lleno: hasta esa distancia (bloques) pega el daño entero; después baja.
+    // Hongo: 32 → sin armadura (o con cobre) te mata de un golpe; con la
+    // armadura de hierro completa (−44%) quedás en 2.
+    hongo: { radio: 3.5, danio: 32, lleno: 2 },
+    tnt: { radio: 3.4, danio: 11, lleno: 0 },
     dropChance: 0.35, // de cada bloque que rompe, chance de que suelte su ítem
   };
   static TNT_MECHA_MS = 3000; // desde que la prendés (con flint) hasta que explota
@@ -2129,8 +2136,15 @@ export class SurviConfig {
     ojoMutante: 4030, // ojos voladores (50%)
     cabezaArana: 4031, // araña (50%)
     alas: 4032, // teniéndolas en el inventario, podés volar (doble salto o F)
+    colmilloReina: 4033, // drop único de la Araña Reina (para el jefe final)
+    lenteAbismo: 4034, // drop único del Ojo Gigante (para el jefe final)
+    cuernoHelado: 4035, // drop único del Yeti Anciano (para el jefe final)
+    ofrendaHelada: 4036, // se craftea: invoca al Yeti Anciano
   };
   static CASCO_MINERO = 3013; // equipo: casco con luz
+  // Escarcha (Yeti Anciano): golpes para congelarte [normal, Difícil / Hardcore],
+  // cuánto dura el congelado y en cuánto tiempo sin golpes se borran las marcas.
+  static ESCARCHA = { golpes: [5, 3], congeladoMs: 3000, olvidoMs: 6000 };
   // Corazón rojo: cada uno suma `vida` a la vida máxima, hasta `max` veces.
   static CORAZON_VIDA = { vida: 5, max: 6 };
   // Drops extra por tipo de criatura: [id, chance]. (Lo aplica SurviGame._cosechar;
@@ -2151,6 +2165,31 @@ export class SurviConfig {
       ['cabezaArana', 'Cabeza de araña', 'spider_head'],
     ];
     for (const [k, name, sprite] of items) SurviConfig.ITEM_INFO[E[k]] = { name, sprite };
+    // Invocación de jefes: clic derecho con `cantidad` en el inventario (ver survi_jefes.js)
+    SurviConfig.ITEM_INFO[E.slimeBall].invoca = { jefe: 'rey_slime', nombre: 'Rey Slime', cantidad: 20 };
+    SurviConfig.ITEM_INFO[E.cabezaArana].invoca = { jefe: 'arana_reina', nombre: 'Araña Reina', cantidad: 5 };
+    SurviConfig.ITEM_INFO[E.ojoMutante].invoca = { jefe: 'ojo_gigante', nombre: 'Ojo Gigante', cantidad: 6 };
+    SurviConfig.ITEM_INFO[E.lenteAbismo] = { name: 'Lente del abismo', sprite: 'eye_mutant' }; // (sprite provisorio)
+    // (íconos provisorios del tileset)
+    SurviConfig.ITEM_INFO[E.cuernoHelado] = { name: 'Cuerno helado', icono: SurviConfig.TID.hielo_azul };
+    SurviConfig.ITEM_INFO[E.ofrendaHelada] = {
+      name: 'Ofrenda helada',
+      icono: SurviConfig.TID.icicle,
+      invoca: { jefe: 'yeti_anciano', nombre: 'Yeti Anciano', cantidad: 1 },
+    };
+    SurviConfig.RECIPES.push({
+      cat: 'otros',
+      id: 'ofrenda_helada',
+      result: E.ofrendaHelada,
+      resultQty: 1,
+      inputs: [
+        { id: SurviConfig.TID.hielo_azul, qty: 12 },
+        { id: M.leather, qty: 4 },
+      ],
+      station: 'table',
+    });
+    // (sprite provisorio: el de la cabeza de araña, hasta que haya uno propio)
+    SurviConfig.ITEM_INFO[E.colmilloReina] = { name: 'Colmillo de reina', sprite: 'spider_head' };
     SurviConfig.ITEM_INFO[E.corazonRojo] = {
       name: 'Corazón de vida',
       sprite: 'heart_red',

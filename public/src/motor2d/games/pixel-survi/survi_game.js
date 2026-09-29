@@ -10,6 +10,7 @@
 import { SpritesSurvi } from './models/sprites-survi.js';
 import { SurviConfig } from './survi_config.js';
 import { Jugador, Enemigo, Animal, Ave, Flecha, ItemSuelto, Boya, TntEncendida } from './survi_entidades.js';
+import { JEFES } from './survi_jefes.js';
 import { Clima } from './survi_clima.js';
 import { SonidoSurvi } from './survi_sonido.js';
 import { Particulas, Llamas } from './survi_particulas.js';
@@ -319,6 +320,12 @@ export class SurviGame {
     this.player = new Jugador(save ? save.px : this.spawn.x, save ? save.py : this.spawn.y);
     // corazones de vida usados (cada uno suma vida máxima para siempre)
     this.corazones = save && Number.isFinite(save.corazones) ? Math.max(0, Math.min(SurviConfig.CORAZON_VIDA.max, save.corazones)) : 0;
+    // jefes: los que ya venciste en este mundo, y el que está peleando ahora
+    this.jefesDerrotados = new Set(save && Array.isArray(save.jefes) ? save.jefes : []);
+    this.jefeActual = null;
+    this._sangreJefe = null; // jefe que llamó a la lluvia de sangre
+    this._jefeVidaVista = -1;
+    if (this.ui.jefeBar) this.ui.jefeBar.classList.add('hidden');
     this.hp = save && save.hp ? Math.min(this.maxHp, save.hp) : this.maxHp;
     this.hunger = save && save.hunger != null ? Math.min(SurviConfig.MAX_HUNGER, save.hunger) : SurviConfig.MAX_HUNGER;
     this.timeOfDay = save && save.timeOfDay != null ? save.timeOfDay : SurviConfig.START_TIME_OF_DAY;
@@ -587,19 +594,24 @@ export class SurviGame {
       equipment: this.equipment,
       // Enemigos vivos en el mapa: sin esto, guardar y salir era una forma
       // de sacarse de encima a los que te estaban persiguiendo.
-      enemies: this.enemies.filter((en) => en.hp > 0).map((en) => this._serializarEnemigo(en)),
+      enemies: this.enemies
+        .filter((en) => en.hp > 0 && !en.esJefe)
+        .map((en) => this._serializarEnemigo(en))
+        .filter(Boolean), // (los jefes y los huevos de araña no se guardan)
       enemyTimer: this._enemyTimer,
       animals: this.animals.filter((a) => !a.estaMuerto()).map((a) => a.serializar()),
       animalTimer: this._animalTimer,
-      clima: this.clima ? this.clima.serializar() : null,
+      // la lluvia de sangre de un jefe no se guarda (el jefe tampoco)
+      clima: this.clima ? (this._sangreJefe ? { tipo: 'despejado', restanteMs: 120000 } : this.clima.serializar()) : null,
       fondo: this.fondo, // paredes y ventanas
       cama: this.cama, // { col, row } de la mitad izquierda, o null
       dias: this.dias,
       sueltos: this.sueltos.map((s) => s.serializar()),
       cultivos: Object.fromEntries(this.cultivos),
       explorado: this.mapa ? this.mapa.serializar() : null,
-      lunaSangre: this.lunaSangre,
+      lunaSangre: this._sangreJefe ? this._sangreAntes : this.lunaSangre,
       corazones: this.corazones,
+      jefes: [...this.jefesDerrotados],
     });
   }
 
@@ -618,7 +630,8 @@ export class SurviGame {
       this.ui.pauseInfo.textContent =
         `${this.nombre} · ${this.creativo ? 'Creativo' : this.dif.label}${this.espectador ? ' · Espectador' : ''} · Día ${this.dias} · ${GestorGuardado.fmtTime(this.playedMs)}` +
         (lugar ? ` · ${lugar}` : '') +
-        (this.lunaSangre ? ' · Luna de sangre' : '');
+        (this.lunaSangre ? ' · Luna de sangre' : '') +
+        (this.jefesDerrotados.size ? ` · Jefes: ${this.jefesDerrotados.size}` : '');
       this.save();
       this.ui.showScreen('pause');
     } else {
@@ -1204,6 +1217,49 @@ export class SurviGame {
     return this.creativo || this.espectador;
   }
 
+  // ¿Este mob NO te ve? En espectador, nadie. En creativo, solo te buscan los
+  // jefes y los mobs que sacaste del catálogo (para probarlos: igual no te
+  // lastiman, en creativo sos inmortal); los que aparecen solos te ignoran.
+  ocultoPara(en) {
+    if (this.espectador) return true;
+    if (this.creativo) return !(en && (en.esJefe || en.deCatalogo));
+    return false;
+  }
+
+  // Creativo: sacar un mob (o un jefe) del catálogo, delante tuyo.
+  generarMob(tipo) {
+    if (!this.creativo || !this.tilemap) return false;
+    if (JEFES[tipo]) return this._invocarJefe(null, { jefe: tipo });
+    const en = Enemigo.crear({ tipo, x: 0, y: 0, vx: 0 });
+    if (!en || !this._ubicarCerca(en, [5, 7, 4, 9])) {
+      if (this.ui.showToast) this.ui.showToast('No hay lugar cerca para que aparezca');
+      return false;
+    }
+    en.deCatalogo = true;
+    en.facing = Math.sign(this.player.x - en.x) || 1;
+    this.enemies.push(en);
+    return true;
+  }
+
+  // Pone a una criatura a `distancias` bloques de vos (primero adelante, después
+  // atrás), a distintas alturas, donde su caja no toque ningún bloque. Cae sola.
+  _ubicarCerca(c, distancias) {
+    const T = SurviConfig.TILE, p = this.player, dir = p.facing || 1;
+    for (const lado of [dir, -dir]) {
+      for (const dist of distancias) {
+        const x = p.x + p.w / 2 + lado * dist * T - c.w / 2;
+        for (const alto of [0, 2, 4, 7, 10]) {
+          const y = p.y + p.h - c.h - alto * T;
+          if (x < T || x + c.w > (SurviConfig.COLS - 1) * T || y < T) continue;
+          c.x = x;
+          c.y = y;
+          if (this._cajaLibre(c)) return true;
+        }
+      }
+    }
+    return false;
+  }
+
   get dif() {
     return SurviConfig.DIFICULTADES[this.dificultad] || SurviConfig.DIFICULTADES.normal;
   }
@@ -1540,6 +1596,12 @@ export class SurviGame {
     // Semillas / zanahoria / papa: si apuntás arriba de tierra arada, se planta
     // (la zanahoria y la papa, si no, se comen)
     if (heldInfo && heldInfo.planta && this._plantar(heldId, heldInfo.planta)) return;
+    if (heldInfo && heldInfo.invoca) {
+      if (this._usoPulsacion) return; // uno por clic
+      this._usoPulsacion = true;
+      this._invocarJefe(heldId, heldInfo.invoca);
+      return;
+    }
     if (heldInfo && heldInfo.vidaExtra) {
       if (this._usoPulsacion) return; // uno por clic
       this._usoPulsacion = true;
@@ -1989,7 +2051,7 @@ export class SurviGame {
       if (this.durmiendo) this._despertar(); // te despierta
       toast('¡Luna de sangre! Los monstruos están más fuertes esta noche');
       this.sonar('zombie');
-    } else if (!noche && this.lunaSangre) {
+    } else if (!noche && this.lunaSangre && !this._sangreJefe) {
       this.lunaSangre = false;
       toast('Terminó la luna de sangre');
     }
@@ -2689,8 +2751,9 @@ export class SurviGame {
       regionMob = m.regiones;
     }
     // luna de sangre: en la superficie también salen esqueletos y ojos (sin esperar al día 10)
-    else if (this.lunaSangre && rs < LS.superficie.esqueleto) tipo = 'esqueleto';
-    else if (this.lunaSangre && rs < LS.superficie.esqueleto + LS.superficie.ojo) tipo = Math.random() < 0.6 ? 'ojo' : 'ojo_boca';
+    // (de día, con la lluvia de sangre del Ojo Gigante, no: solo están más agresivos)
+    else if (this.lunaSangre && this.esNoche && rs < LS.superficie.esqueleto) tipo = 'esqueleto';
+    else if (this.lunaSangre && this.esNoche && rs < LS.superficie.esqueleto + LS.superficie.ojo) tipo = Math.random() < 0.6 ? 'ojo' : 'ojo_boca';
     else if (desierto && Math.random() < SurviConfig.SERPIENTE_CHANCE) tipo = 'serpiente'; // de día o de noche
     else if (this.esNoche && this.dias >= this.dif.ojosDesde && Math.random() < SurviConfig.OJO_CHANCE_NOCHE)
       tipo = Math.random() < 0.7 ? 'ojo' : 'ojo_boca'; // ojos voladores (desde el día 10)
@@ -2977,7 +3040,7 @@ export class SurviGame {
         this._sangreMs = 0;
         for (const en of this.enemies) {
           const max = en.constructor.VIDA;
-          if (en.estaMuerto() || en.hp >= max || !this.alCielo(en)) continue;
+          if (en.esJefe || en.estaMuerto() || en.hp >= max || !this.alCielo(en)) continue; // (a los jefes no)
           en.hp = Math.min(max, en.hp + L.cura);
           this.particulas.chispas(en.x + en.w / 2, en.y, ['#ff4a55', '#ff8a8a', '#c81e2c'], 3);
         }
@@ -2994,7 +3057,16 @@ export class SurviGame {
       this._damage(SurviConfig.ACIDO_DANIO, { ignoreInvuln: true, origen: 'acido' });
     }
     for (const c of [...this.enemies, ...this.animals]) {
-      if (c.tipo === 'slime' || c.estaMuerto() || !this.alCielo(c) || bajoAgua(c.fluido)) continue;
+      if (c.estaMuerto() || !this.alCielo(c) || bajoAgua(c.fluido)) continue;
+      if (c.constructor.AMA_ACIDO) {
+        // slimes: no los lastima; en Difícil / Hardcore los cura
+        const max = c.constructor.VIDA;
+        if (this.dif.jefesDuros && c.hp < max) {
+          c.hp = Math.min(max, c.hp + (c.esJefe ? SurviConfig.ACIDO_CURA.jefe : SurviConfig.ACIDO_CURA.slime));
+          this.particulas.chispas(c.x + c.w / 2, c.y, ['#82ff5a', '#c8ff9a', '#4fd13a'], c.esJefe ? 6 : 3);
+        }
+        continue;
+      }
       c.hp -= SurviConfig.ACIDO_DANIO;
       c.hitMs = 150;
     }
@@ -3022,9 +3094,76 @@ export class SurviGame {
       // muerto, o quedó demasiado lejos del jugador: se saca de la lista
       if (en.estaMuerto() || !en.actualizar(dt, step, this)) {
         if (en.estaMuerto()) this.particulas.muerte(en.x, en.y, en.w, en.h); // nubecita
+        else if (en.esJefe && this.ui.showToast) this.ui.showToast(`${en.nombre} se fue`);
+        if (en.esJefe) en.alTerminar(this); // (ej. corta la lluvia de sangre)
+        if (en === this.jefeActual) this.jefeActual = null;
         this.enemies.splice(i, 1);
       }
     }
+    this._actualizarBarraJefe();
+  }
+
+  // ═══════════ Jefes ═══════════
+  // Usar el ítem de invocación (clic derecho): gasta `cantidad` y el jefe cae
+  // del cielo al costado tuyo, si se cumplen sus condiciones.
+  _invocarJefe(id, { jefe, cantidad = 1 }) {
+    const Clase = JEFES[jefe], toast = (m) => this.ui.showToast && this.ui.showToast(m);
+    if (!Clase) return false;
+    if (this.espectador) return false;
+    if (this.jefeActual) return toast(`Ya estás peleando con ${this.jefeActual.nombre}`), false;
+    // en creativo (para probar): sin gastar nada y a cualquier hora / lugar
+    if (!this.creativo) {
+      if ((this.inventory[id] || 0) < cantidad) {
+        const info = SurviConfig.ITEM_INFO[id];
+        return toast(`Necesitás ${cantidad} ${info ? info.name.toLowerCase() : ''} para invocar al ${Clase.NOMBRE}`), false;
+      }
+      const no = Clase.puedeInvocar(this);
+      if (no) return toast(no), false;
+    }
+    const en = Enemigo.crear({ tipo: jefe, x: 0, y: 0, vx: 0 });
+    if (!en || !Clase.lugarInvocacion(this, en)) return toast('No hay lugar para que aparezca: buscá un sitio más abierto'), false;
+    if (!this.creativo) this._removeItem(id, cantidad);
+    en.facing = Math.sign(this.player.x - en.x) || 1;
+    this.enemies.push(en);
+    this.jefeActual = en;
+    this._jefeVidaVista = -1;
+    if (this.camera) this.camera.shake(5, 400);
+    this.sonar('explosion', en.x + en.w / 2, en.y);
+    toast(`¡${Clase.NOMBRE} despertó!`);
+    return true;
+  }
+
+  _jefeDerrotado(c) {
+    const primera = !this.jefesDerrotados.has(c.tipo);
+    this.jefesDerrotados.add(c.tipo);
+    if (this.jefeActual === c) this.jefeActual = null;
+    if (this.camera) this.camera.shake(6, 500);
+    this.particulas.chispas(c.x + c.w / 2, c.y + c.h / 2, ['#f5c518', '#ffffff', '#ffe45a'], 24);
+    this.sonar('craftear');
+    if (this.ui.showToast) this.ui.showToast(`¡Derrotaste al ${c.nombre}!${primera ? '' : ' (otra vez)'}`);
+    this.save();
+  }
+
+  // Barra de vida del jefe arriba de la pantalla (el DOM solo se toca si cambió).
+  _actualizarBarraJefe() {
+    const J = this.jefeActual, ui = this.ui;
+    if (!ui.jefeBar) return;
+    if (!J || J.estaMuerto()) {
+      if (this._jefeVidaVista !== -1) {
+        ui.jefeBar.classList.add('hidden');
+        this._jefeVidaVista = -1;
+      }
+      return;
+    }
+    const vida = Math.max(0, Math.ceil(J.hp));
+    if (vida === this._jefeVidaVista) return;
+    if (this._jefeVidaVista === -1) {
+      ui.jefeNombre.textContent = J.nombre;
+      ui.jefeBar.classList.remove('hidden');
+    }
+    this._jefeVidaVista = vida;
+    ui.jefeVida.style.transform = `scaleX(${vida / J.vidaMax})`;
+    ui.jefeBar.classList.toggle('survi-jefe-fase2', J.fase === 2);
   }
 
   // ═══════════ Animales ═══════════
@@ -3113,6 +3252,8 @@ export class SurviGame {
   // cae al suelo donde murió (se junta pasando cerca).
   _cosechar(c) {
     if (c.esCria) return; // las crías no sueltan nada
+    if (c.esJefe) this._jefeDerrotado(c);
+    if (c.sinDrops) return; // (los ojos del Ojo Gigante, que se reponen solos)
     const x = c.x + c.w / 2, y = c.y + c.h / 2;
     for (const { id, qty } of c.drops()) this.soltarItem(id, qty, x, y);
     // drops especiales con chance (bola de slime, pluma, ojo mutante, llaves…)
@@ -3448,10 +3589,12 @@ export class SurviGame {
       if (rotos.length) this._lightDirty = true;
     }
     // daño: más cerca, más daño
-    const alcance = (radio + 1.5) * T;
+    const alcance = (radio + 1.5) * T, lleno = (D.lleno || 0) * T;
     const danio = (o) => {
       const d = Math.hypot(o.x + o.w / 2 - x, o.y + o.h / 2 - y);
-      return d >= alcance ? 0 : Math.max(1, Math.round(D.danio * (1 - d / alcance)));
+      if (d >= alcance) return 0;
+      if (d <= lleno) return D.danio; // pegado: el daño entero
+      return Math.max(1, Math.round(D.danio * (1 - (d - lleno) / (alcance - lleno))));
     };
     const p = this.player;
     const dp = this.dead || this.invisible ? 0 : danio(p);
@@ -3484,6 +3627,84 @@ export class SurviGame {
     }
     if (S.BED_IDS.has(broken) || S.DOOR_IDS.has(broken)) this._romperCompanero(c, r, broken);
     if (S.NEST_IDS.has(broken)) this.tilemap.set(c, r, 0);
+    return true;
+  }
+
+  // Escarcha (lanzas / golpes del Yeti Anciano): cada golpe suma una marca; con
+  // ESCARCHA.golpes marcas (menos en Difícil / Hardcore) quedás congelado.
+  // Si pasa un rato sin que te peguen, se van.
+  escarchar() {
+    if (this.dead || this.invisible) return;
+    const E = SurviConfig.ESCARCHA, max = E.golpes[this.dif.jefesDuros ? 1 : 0];
+    this.escarcha = (this.escarcha || 0) + 1;
+    this._escarchaMs = 0;
+    if (this.escarcha >= max) {
+      this.escarcha = 0;
+      this.congelar(E.congeladoMs);
+      if (this.ui.showToast) this.ui.showToast('¡Congelado!');
+    }
+  }
+
+  // Mueve al jugador `tiles` bloques hacia `dir` en `ms` (chocando con las paredes).
+  arrastrarJugador(dir, tiles, ms = 240) {
+    if (this.dead || this.invisible) return;
+    this._arrastreMs = ms;
+    this._arrastreVx = (dir * tiles * SurviConfig.TILE) / (ms / (1000 / 60));
+  }
+
+  // ¿Se puede romper? (sólido, sin contar roca madre ni estaciones)
+  esRompible(c, r) {
+    const id = this.tilemap.get(c, r);
+    return !!id && SurviConfig.SOLID_IDS.has(id) && !SurviConfig.NO_EXPLOTA.has(id);
+  }
+
+  // ¿Es un bloque de madera? (tablones, troncos, puertas…: los que se rompen
+  // con hacha, sin contar estaciones). El Ojo Gigante los rompe embistiendo.
+  esMadera(c, r) {
+    const id = this.tilemap.get(c, r);
+    return !!id && SurviConfig.TOOL_FOR[id] === 'axe' && !SurviConfig.NO_EXPLOTA.has(id) && !SurviConfig.STATION_IDS.has(id);
+  }
+
+  // Lluvia de sangre de un jefe (Ojo Gigante, fase 2): luna de sangre + lluvia
+  // roja hasta que el jefe muera o se vaya. De noche salen más monstruos; de
+  // día solo están más agresivos.
+  empezarSangreJefe(jefe) {
+    if (this._sangreJefe) return;
+    this._sangreJefe = jefe;
+    this._sangreAntes = this.lunaSangre;
+    this.lunaSangre = true;
+    this.clima.forzar('lluvia', 1e9);
+    this._aplicarLunaSangre();
+    if (this.ui.showToast) this.ui.showToast(`¡${jefe.nombre} llamó a la lluvia de sangre!`);
+  }
+
+  terminarSangreJefe(jefe) {
+    if (this._sangreJefe !== jefe) return;
+    this._sangreJefe = null;
+    this.lunaSangre = !!this._sangreAntes && this.esNoche;
+    this.clima.forzar('despejado');
+    this._aplicarLunaSangre();
+    // (si murió, queda el cartel de "¡Derrotaste…!")
+    if (!jefe.estaMuerto() && this.ui.showToast) this.ui.showToast('Terminó la lluvia de sangre');
+  }
+
+  // Un jefe rompe un bloque (el tacle de la Araña Reina): como una explosión
+  // chica, sin tocar roca madre ni estaciones. true si se rompió.
+  romperBloqueJefe(c, r) {
+    const id = this.tilemap.get(c, r);
+    if (!id || !SurviConfig.SOLID_IDS.has(id) || SurviConfig.NO_EXPLOTA.has(id)) return false;
+    if (id === SurviConfig.TID.tnt) {
+      this.encenderTnt(c, r, SurviConfig.TNT_CADENA_MS);
+      return false;
+    }
+    this.particulas.romper(c, r, id, 6);
+    if (!this._romperPorExplosion(c, r, id)) return false;
+    this._retileAround(c, r);
+    this._soltarSinApoyo(c, r);
+    this.fluidos.activar(c, r);
+    this.light.updateColumn((cc, rr) => this.tilemap.get(cc, rr), c);
+    this._lightDirty = true;
+    this.sonar('romper', c * SurviConfig.TILE, r * SurviConfig.TILE, { material: 'piedra' });
     return true;
   }
 
@@ -3821,6 +4042,7 @@ export class SurviGame {
     this.timeOfDay = (this.timeOfDay + (dt * velTiempo) / SurviConfig.DAY_CYCLE_MS) % 1;
     if (this.timeOfDay < antes) this._nuevoDia(); // dio la vuelta: amaneció otro día
     this._cambioNoche();
+    if (this.escarcha > 0 && (this._escarchaMs += dt) > SurviConfig.ESCARCHA.olvidoMs) this.escarcha = 0;
     this._actualizarClima(dt, step);
     if (this.invulnMs > 0) this.invulnMs -= dt;
     if (this._hitFlashMs > 0) this._hitFlashMs -= dt;
@@ -3885,6 +4107,11 @@ export class SurviGame {
     if (right) {
       this.player.vx = SurviConfig.MOVE_SPEED;
       this.player.facing = 1;
+    }
+    // arrastrado por un golpe de jefe (el bastón del Yeti Anciano): le gana a tus teclas
+    if (this._arrastreMs > 0) {
+      this._arrastreMs -= dt;
+      this.player.vx = this._arrastreVx;
     }
     // Creativo volando o espectador: movimiento propio (sin agua, sin caída).
     // (con alas en el inventario también se vuela en supervivencia; si ya no las tenés, caés)
@@ -4173,6 +4400,15 @@ export class SurviGame {
       ctx.lineTo(s.x - f * a.atras * T, s.y + a.vertical * T);
       ctx.stroke();
       ctx.restore();
+    }
+    // marcas de escarcha arriba de la cabeza (Yeti Anciano)
+    if (this.escarcha > 0 && !this.dead) {
+      const pe = this.camera.worldToScreen(this.player.x + this.player.w / 2, this.player.y);
+      const max = SurviConfig.ESCARCHA.golpes[this.dif.jefesDuros ? 1 : 0];
+      for (let i = 0; i < max; i++) {
+        ctx.fillStyle = i < this.escarcha ? '#9fe0ff' : 'rgba(255,255,255,0.25)';
+        ctx.fillRect(Math.round(pe.x - max * 2.5 + i * 5), Math.round(pe.y - 7), 3, 3);
+      }
     }
     // ── Personaje + herramienta en mano ── (espectador: transparente)
     const alfaAntes = ctx.globalAlpha;
