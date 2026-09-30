@@ -3135,6 +3135,14 @@ class PerfilManager extends Modulo {
           ? '/api/perfil'
           : `/api/usuarios/${this.perfilContexto.id}/perfil`;
       this.perfilContexto.data = await app.api.apiFetch(url);
+      
+      if (this.perfilContexto.modo === 'propio' && !this.perfilContexto.data.icono && typeof supabase !== 'undefined') {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user && session.user.user_metadata) {
+          const meta = session.user.user_metadata;
+          this.perfilContexto.data.icono = meta.avatar_url || meta.picture || null;
+        }
+      }
     } catch (error) {
       console.error('Error al cargar el perfil:', error);
       this.perfilContexto.data = null;

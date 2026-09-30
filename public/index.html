@@ -813,10 +813,10 @@
           <div class="rpg-menu-content" id="rpgMainMenuView">
             <h2 class="rpg-menu-title">RPG Pixel</h2>
             <div class="rpg-menu-buttons">
-              <button class="btn-play" onclick="rpgGoToPlay()">Jugar</button>
-              <button class="btn-play" onclick="rpgGoToMejoras()">Mejoras</button>
-              <button class="btn-play" onclick="rpgGoToAjustes()">Ajustes</button>
-              <button class="btn-play" onclick="rpgGoToComoJugar()">Cómo jugar</button>
+              <button class="btn-play" onclick="if(typeof rpgGoToPlay!=='undefined') rpgGoToPlay(); else alert('El juego está cargando, esperá un segundo...');">Jugar</button>
+              <button class="btn-play" onclick="if(typeof rpgGoToMejoras!=='undefined') rpgGoToMejoras(); else alert('El juego está cargando, esperá un segundo...');">Mejoras</button>
+              <button class="btn-play" onclick="if(typeof rpgGoToAjustes!=='undefined') rpgGoToAjustes(); else alert('El juego está cargando, esperá un segundo...');">Ajustes</button>
+              <button class="btn-play" onclick="if(typeof rpgGoToComoJugar!=='undefined') rpgGoToComoJugar(); else alert('El juego está cargando, esperá un segundo...');">Cómo jugar</button>
             </div>
           </div>
 
