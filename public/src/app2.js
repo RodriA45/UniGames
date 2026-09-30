@@ -2918,6 +2918,11 @@ class PerfilManager extends Modulo {
         }),
       });
       if (this.perfilContexto.data) this.perfilContexto.data.icono = icono;
+      if (app.auth.currentUser && app.auth.currentUser.id === this.perfilContexto.data.id) {
+        app.auth.currentUser.icono = icono;
+        localStorage.setItem('unigames_user', JSON.stringify(app.auth.currentUser));
+        app.auth.updateAuthUI();
+      }
       this.togglePerfilIconPicker();
       this.renderPerfil();
     } catch (error) {
