@@ -7746,6 +7746,18 @@ class App extends Modulo {
           app.auth.currentUser = JSON.parse(savedUser);
           app.tema.aplicarTemaEfectivo();
           app.logros.sincronizarLogrosConBackend();
+          // Sincronizar silenciosamente el icono con el backend para evitar
+          // que el navbar muestre una foto desactualizada tras recargar la página.
+          (async () => {
+            try {
+              const data = await app.api.apiFetch('/api/perfil');
+              if (data && app.auth.currentUser) {
+                app.auth.currentUser.icono = data.icono || app.auth.currentUser.icono;
+                localStorage.setItem('unigames_user', JSON.stringify(app.auth.currentUser));
+                app.auth.updateAuthUI();
+              }
+            } catch (_) { /* silencioso: si falla la red, el localStorage es suficiente */ }
+          })();
         }
       } catch (e) {
         localStorage.removeItem('unigames_user');
