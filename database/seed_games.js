@@ -36,7 +36,7 @@ async function seed() {
             (1, '¿Qué empresa desarrolló el juego Fortnite?', 'Valve', 'Riot Games', 'Epic Games', 'Blizzard', 'c'),
             (1, '¿En qué juego la moneda es el "Baya" o "Bell"?', 'Animal Crossing', 'Harvest Moon', 'Stardew Valley', 'The Sims', 'a'),
             (1, '¿Cuál es el apellido de Solid en Metal Gear?', 'Snake', 'Fox', 'Wolf', 'Hound', 'a'),
-            (1, '¿En qué ciudad ocurre GTA Vice City?', 'Los Santos', 'Liberty City', 'Vice City', 'San Fierro', 'c'),
+            (1, '¿Cómo se llama el protagonista de GTA Vice City?', 'CJ', 'Tommy Vercetti', 'Niko Bellic', 'Claude', 'b'),
 
             (2, '¿Quién dirigió la película Titanic?', 'Steven Spielberg', 'Christopher Nolan', 'James Cameron', 'Quentin Tarantino', 'c'),
             (2, '¿Qué actor interpreta a Neo en Matrix?', 'Brad Pitt', 'Tom Cruise', 'Keanu Reeves', 'Will Smith', 'c'),
