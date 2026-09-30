@@ -5752,15 +5752,8 @@ class AdivinaCosa extends Modulo {
     const labelEl = document.getElementById('adivina-theme-label');
     if (labelEl) labelEl.textContent = app.preguntados.temaLabelConDuelo(enDuelo, tId);
 
-    // Mostrar overlay de inicio (en duelo, startAdivina() lo cierra enseguida)
-    const ov = app.nucleo.APP_EL.adivinaOverlay;
-    app.nucleo.APP_EL.adivinaOverlayEmoji.textContent = enDuelo ? '⚔️' : '🕵️';
-    app.nucleo.APP_EL.adivinaOverlayTitle.textContent = enDuelo ? '¡Arrancó el duelo!' : 'Adivina la Cosa';
-    app.nucleo.APP_EL.adivinaOverlayDesc.textContent = `Se muestran ${items.length} items de la temática seleccionada.\nCuantas menos pistas uses, ¡más puntos ganás!`;
-    app.nucleo.APP_EL.adivinaOverlayBtn.textContent = '▶ Empezar';
-    app.nucleo.APP_EL.adivinaOverlayBtn.onclick = this.startAdivina;
-    ov.style.display = 'flex';
-    app.nucleo.APP_EL.adivinaGame.style.display = 'none';
+    // Arrancamos de una en lugar de mostrar otro cartel (el Lanzador ya lo mostró)
+    this.startAdivina();
   }
 
   startAdivina() {
