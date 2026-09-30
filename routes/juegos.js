@@ -119,7 +119,7 @@ async function notificarSiSuperaRecordAjeno(db, usuario_id, juego_id, puntos, no
         const nombreJuego = juego ? juego.nombre : 'un juego';
 
         await db.run(
-            `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'record', ?, NULL) RETURNING id`,
+            `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'record', ?, 'puntuacion') RETURNING id`,
             [anteriorRecord.usuario_id, `${nombreJugador} superó tu récord en ${nombreJuego} con ${puntos} puntos`]
         );
     } catch (notifError) {

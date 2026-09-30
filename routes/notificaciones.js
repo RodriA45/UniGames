@@ -15,7 +15,7 @@ router.get('/notificaciones', async (req, res) => {
     const db = await getDb();
     try {
         const rows = await db.all(
-            `SELECT id, tipo, mensaje, enlace, leido, fecha
+            `SELECT id, tipo, mensaje, enlace, leido, TO_CHAR(fecha, 'YYYY-MM-DD HH24:MI:SS') AS fecha
              FROM notificaciones
              WHERE usuario_id = ?
              ORDER BY fecha DESC

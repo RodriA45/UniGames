@@ -6677,7 +6677,7 @@ class Notificaciones extends Modulo {
     if (enlace) {
       this.closeNotifModal();
       app.navegacion.goTo(enlace);
-      if (typeof tipo === 'string' && tipo.startsWith('duelo_')) {
+      if (typeof tipo === 'string' && tipo.startsWith('duelo')) {
         app.amigos.mostrarTabAmigos('duelos');
       }
     }

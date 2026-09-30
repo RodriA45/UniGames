@@ -93,7 +93,7 @@ router.post('/amigos/solicitudes', verificarToken, async (req, res) => {
         // de notificaciones (menú lateral derecho > Notificaciones).
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'amistad', ?, NULL) RETURNING id`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'amistad', ?, 'amigos') RETURNING id`,
                 [receptorId, `${req.user.username} te envió una solicitud de amistad`]
             );
         } catch (notifError) {

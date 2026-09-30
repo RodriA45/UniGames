@@ -193,7 +193,7 @@ router.post('/duelos', verificarToken, async (req, res) => {
 
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, NULL) RETURNING id`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, 'amigos') RETURNING id`,
                 [amigoId, `${req.user.username} te retó a un duelo de ${JUEGOS_DUELO[juego].nombre}`]
             );
         } catch (notifError) {
@@ -220,7 +220,7 @@ router.post('/duelos/:id/aceptar', verificarToken, async (req, res) => {
 
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, NULL) RETURNING id`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, 'amigos') RETURNING id`,
                 [duelo.retador_id, `${req.user.username} aceptó tu duelo`]
             );
         } catch (notifError) {
@@ -300,7 +300,7 @@ router.post('/duelos/:id/resultado', verificarToken, async (req, res) => {
                 else if (ganadorId === otroId) mensaje = `Ganaste el duelo contra ${req.user.username}`;
                 else mensaje = `${req.user.username} te ganó el duelo`;
                 await db.run(
-                    `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, NULL) RETURNING id`,
+                    `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, 'amigos') RETURNING id`,
                     [otroId, mensaje]
                 );
             } catch (notifError) {
@@ -341,7 +341,7 @@ router.post('/duelos/:id/revancha', verificarToken, async (req, res) => {
 
         try {
             await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, NULL) RETURNING id`,
+                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'duelo', ?, 'amigos') RETURNING id`,
                 [oponenteId, `${req.user.username} te retó a la revancha`]
             );
         } catch (notifError) {
