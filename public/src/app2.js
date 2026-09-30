@@ -3898,9 +3898,10 @@ class Ahorcado extends Modulo {
   async initAhorcado(tematicaId) {
     // Si no se pasa temática (ej. botón "Nueva palabra"), se reusa la última usada
     tematicaId = tematicaId || this.ahorcadoState.tematicaId || 'normal';
+    let exclude = this.ahorcadoState.word || '';
     let word = 'cargando';
     try {
-      const res = await fetch('/api/ahorcado/palabra?tematica=' + encodeURIComponent(tematicaId), {
+      const res = await fetch(`/api/ahorcado/palabra?tematica=${encodeURIComponent(tematicaId)}&exclude=${encodeURIComponent(exclude)}`, {
         cache: 'no-store',
       });
       const data = await res.json();
@@ -5285,8 +5286,9 @@ class TerminaPalabra extends Modulo {
     tematicaId = Number(tematicaId) || this.terminaState.tematicaId || 1;
     this.terminaState.tematicaId = tematicaId;
     let word = null;
+    let exclude = this.terminaState.word || '';
     try {
-      const res = await fetch('/api/wordle/palabra?tematica=' + tematicaId, {
+      const res = await fetch(`/api/wordle/palabra?tematica=${tematicaId}&exclude=${encodeURIComponent(exclude)}`, {
         cache: 'no-store',
       });
       const data = await res.json();

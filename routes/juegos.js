@@ -165,18 +165,27 @@ router.post('/partidas', verificarToken, validate(partidaSchema), async (req, re
 // 5. Obtener palabra aleatoria para Ahorcado
 router.get('/ahorcado/palabra', async (req, res) => {
     const tematica = req.query.tematica;
+    const exclude = req.query.exclude;
     const db = await getDb();
     try {
         let sql = `SELECT palabra FROM palabras_ahorcado`;
         let params = [];
+        let whereAdded = false;
 
         // 'normal' = palabras sin temática (las mismas que usa Sopa en modo
         // Normal). Un número = el id de la temática.
         if (tematica === 'normal') {
             sql += ` WHERE tematica_id IS NULL`;
+            whereAdded = true;
         } else if (tematica !== undefined && /^\d+$/.test(tematica)) {
-            sql += ` WHERE tematica_id = ?`;
+            sql += ` WHERE tematica_id = $1`;
             params.push(Number(tematica));
+            whereAdded = true;
+        }
+
+        if (exclude) {
+            sql += whereAdded ? ` AND UPPER(palabra) != UPPER($${params.length + 1})` : ` WHERE UPPER(palabra) != UPPER($${params.length + 1})`;
+            params.push(exclude);
         }
 
         sql += ` ORDER BY RANDOM() LIMIT 1`;
@@ -201,6 +210,7 @@ router.get('/ahorcado/palabra', async (req, res) => {
 // 5.b Obtener palabra aleatoria para "Adivina la Palabra" (estilo Wordle)
 router.get('/wordle/palabra', async (req, res) => {
     const tematica = req.query.tematica;
+    const exclude = req.query.exclude;
     const db = await getDb();
 
     if (!tematica || !/^\d+$/.test(tematica)) {
@@ -208,8 +218,15 @@ router.get('/wordle/palabra', async (req, res) => {
     }
 
     try {
-        const sql = `SELECT palabra FROM palabras_wordle WHERE tematica_id = ? ORDER BY RANDOM() LIMIT 1`;
-        const row = (await db.query(sql, [Number(tematica)])).rows[0];
+        let sql = `SELECT palabra FROM palabras_wordle WHERE tematica_id = $1`;
+        let params = [Number(tematica)];
+        if (exclude) {
+            sql += ` AND UPPER(palabra) != UPPER($2)`;
+            params.push(exclude);
+        }
+        sql += ` ORDER BY RANDOM() LIMIT 1`;
+        
+        const row = (await db.query(sql, params)).rows[0];
         if (row) {
             res.json({ palabra: row.palabra });
         } else {
