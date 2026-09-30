@@ -139,7 +139,7 @@ router.post('/auth/sync', authRateLimit, async (req, res) => {
         res.json({ 
             message: 'Inicio de sesión sincronizado exitosamente', 
             token: localJwt,
-            user: { id: localUser.id, username: localUser.nombre_usuario, rol: localUser.rol || 'user' } 
+            user: { id: localUser.id, username: localUser.nombre_usuario, rol: localUser.rol || 'user', icono: localUser.icono || null } 
         });
 
     } catch (error) {
