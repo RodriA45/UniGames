@@ -5251,7 +5251,7 @@ class SopaDeLetras extends Modulo {
 
 // TerminaPalabra — Minijuego Termina la Palabra (normal y duelo). (app.termina)
 class TerminaPalabra extends Modulo {
-  static TERMINA_MAX = 5;
+  static TERMINA_MAX = 4;
   constructor() {
     super();
     this.terminaState = {

@@ -677,9 +677,15 @@ export class RpgCombate extends RpgModulo {
     // ── Proyectiles del jefe / flechas ──
     juego.enemigos.updateEnemyProjectiles(dt, step);
     // ── Enemigos ──
+    const floor = juego.datos.floorBounds(C);
+    const xMin = 20, xMax = juego.worldWidth - 20;
+    const yMin = floor.top + 15, yMax = floor.bottom - 10;
+
     juego.enemies.forEach((e) => {
       if (!e.alive) {
         e.avanzarAnimacionMuerte(step);
+        e.x = Math.max(xMin, Math.min(xMax, e.x));
+        e.y = Math.max(yMin, Math.min(yMax, e.y));
         return;
       }
       if (!e.aplicarQuemadura(dt)) return;
@@ -688,6 +694,11 @@ export class RpgCombate extends RpgModulo {
       // especie al crearlo, así un kn_warror invocado dentro de la sala del
       // jefe usa su IA de persecución y no el patrón del jefe.
       e.actualizar(p, cfg, C, dt, step);
+      
+      // Asegurar que el enemigo nunca salga de los límites del suelo,
+      // incluso si su IA de proyectil/arquero/teletransporte omitió el clamp.
+      e.x = Math.max(xMin, Math.min(xMax, e.x));
+      e.y = Math.max(yMin, Math.min(yMax, e.y));
     });
   }
 }

@@ -78,7 +78,7 @@ async function seed() {
             INSERT INTO palabras_wordle (palabra, tematica_id) VALUES
             ('SONIC', 1), ('MARIO', 1), ('ZELDA', 1), ('KIRBY', 1), ('YOSHI', 1), ('LUIGI', 1), ('TETRA', 1), ('FINAL', 1), ('FIGHT', 1), ('PUNCH', 1),
             ('ROCKY', 2), ('ALIEN', 2), ('SHREK', 2), ('JOKER', 2), ('RAMBO', 2), ('VADER', 2), ('FRODO', 2), ('BLADE', 2), ('SEVEN', 2), ('MULAN', 2),
-            ('GOKUS', 3), ('LUFFY', 3), ('LIGHT', 3), ('GOHAN', 3), ('BULMA', 3), ('BROLY', 3), ('ERENS', 3), ('LEVIS', 3), ('OTAKU', 3), ('NINJA', 3),
+            ('GOKU', 3), ('LUFFY', 3), ('LIGHT', 3), ('GOHAN', 3), ('BULMA', 3), ('BROLY', 3), ('EREN', 3), ('LEVI', 3), ('OTAKU', 3), ('NINJA', 3),
             ('LINUX', 4), ('ARRAY', 4), ('CLASE', 4), ('REACT', 4), ('SWIFT', 4), ('REDUX', 4), ('MOUSE', 4), ('PIXEL', 4), ('BYTES', 4), ('CLICK', 4)
             ON CONFLICT DO NOTHING;
         `);
