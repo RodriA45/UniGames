@@ -33,6 +33,7 @@
 - **Sistema de Amigos y Duelos:** Busca y agrega a otros jugadores mediante su nombre de usuario, inspecciona sus logros en su perfil público y rétalos a **duelos 1v1** en minijuegos seleccionados (con soporte para temáticas y límite de tiempo).
 - **Perfiles Personalizables:** Edición de perfil dinámica desde la interfaz. Cambia tu nombre de usuario y tu avatar pixel-art en tiempo real sin recargar la página.
 - **Motor 2D Nativo (`engine2d.js`):** Desarrollado desde cero en Vanilla JS utilizando HTML5 Canvas con manejo avanzado de *requestAnimationFrame*, colisiones, sistema de partículas y cámara.
+- **Filtro de Seguridad (Bad Words):** Middleware integrado en el backend para bloquear el uso de lenguaje inapropiado y validación estricta en tiempo real para evitar nombres de usuario duplicados.
 - **Panel de Administración:** Panel exclusivo que permite:
   - Ver estadísticas en tiempo real.
   - Gestionar usuarios (buscar, banear, promover a admin).
