@@ -508,7 +508,7 @@
       </button>
       <canvas id="runnerCanvas"></canvas>
       <!-- Pantalla de menú del juego (Pixel Runner) -->
-      <div class="runner-menu" id="runnerMenu">
+      <div class="runner-menu hidden" id="runnerMenu">
         <div class="runner-menu-background" style="background-image: url('src/motor2d/games/pixel-runner/menu.webp'); background-size: cover; background-position: center;">
           <div class="runner-menu-content">
             <h2 class="runner-menu-title">Pixel Runner</h2>
@@ -689,7 +689,7 @@
       </div>
 
       <!-- Menú Principal -->
-      <div class="trampas-menu" id="trampasMainMenu">
+      <div class="trampas-menu hidden" id="trampasMainMenu">
         <div class="trampas-menu-title">Castle Escape</div>
         <div class="trampas-menu-subtitle">¿Porqué este castillo es un laberinto?</div>
         <button class="trampas-menu-btn" onclick="trShowLevelSelect()">▶ Jugar</button>
@@ -810,13 +810,13 @@
         <div class="rpg-menu-background" style="background-image: url('src/motor2d/games/rpg-pixel/models/menu.webp'); background-size: cover; background-position: center;">
 
           <!-- Vista 0: menú principal -->
-          <div class="rpg-menu-content" id="rpgMainMenuView">
+          <div class="rpg-menu-content hidden" id="rpgMainMenuView">
             <h2 class="rpg-menu-title">RPG Pixel</h2>
             <div class="rpg-menu-buttons">
-              <button class="btn-play" onclick="if(typeof rpgGoToPlay!=='undefined') rpgGoToPlay(); else alert('El juego está cargando, esperá un segundo...');">Jugar</button>
-              <button class="btn-play" onclick="if(typeof rpgGoToMejoras!=='undefined') rpgGoToMejoras(); else alert('El juego está cargando, esperá un segundo...');">Mejoras</button>
-              <button class="btn-play" onclick="if(typeof rpgGoToAjustes!=='undefined') rpgGoToAjustes(); else alert('El juego está cargando, esperá un segundo...');">Ajustes</button>
-              <button class="btn-play" onclick="if(typeof rpgGoToComoJugar!=='undefined') rpgGoToComoJugar(); else alert('El juego está cargando, esperá un segundo...');">Cómo jugar</button>
+              <button class="btn-play" onclick="rpgGoToPlay()">Jugar</button>
+              <button class="btn-play" onclick="rpgGoToMejoras()">Mejoras</button>
+              <button class="btn-play" onclick="rpgGoToAjustes()">Ajustes</button>
+              <button class="btn-play" onclick="rpgGoToComoJugar()">Cómo jugar</button>
             </div>
           </div>
 
