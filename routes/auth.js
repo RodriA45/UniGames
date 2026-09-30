@@ -38,6 +38,27 @@ async function usernameDisponible(db, base) {
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
+// Endpoint para verificar disponibilidad de nombre de usuario en el registro
+router.get('/auth/check-username', authRateLimit, async (req, res) => {
+    const { username } = req.query;
+    if (!username || typeof username !== 'string') {
+        return res.status(400).json({ error: 'Username inválido' });
+    }
+    const limpio = username.trim();
+    if (!USERNAME_RE.test(limpio) || containsBadWords(limpio)) {
+        return res.status(400).json({ error: 'El nombre de usuario debe tener entre 3 y 20 caracteres y no contener lenguaje inapropiado' });
+    }
+    
+    try {
+        const db = await getDb();
+        const tomado = (await db.query(`SELECT 1 FROM usuarios WHERE LOWER(nombre_usuario) = LOWER($1)`, [limpio])).rows.length > 0;
+        return res.json({ available: !tomado });
+    } catch (err) {
+        console.error("Error en /auth/check-username:", err);
+        res.status(500).json({ error: 'Error del servidor' });
+    }
+});
+
 // Endpoint para sincronizar el usuario de Supabase con la base de datos local
 router.post('/auth/sync', authRateLimit, async (req, res) => {
     const { supabaseToken, username } = req.body;

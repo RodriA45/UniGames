@@ -243,6 +243,17 @@ class AuthManager extends Modulo {
     if (!this.supabaseClient)
       return this.showAuthAlert('register-alert', 'El sistema de seguridad está cargando...', 'error');
     try {
+      // 0. Pre-validar que el nombre de usuario esté libre
+      const checkRes = await fetch(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
+      if (!checkRes.ok) {
+        const checkData = await checkRes.json();
+        return this.showAuthAlert('register-alert', checkData.error || 'Nombre de usuario inválido', 'error');
+      }
+      const checkData = await checkRes.json();
+      if (!checkData.available) {
+        return this.showAuthAlert('register-alert', 'Ese nombre de usuario ya está en uso. Elegí otro.', 'error');
+      }
+
       // 1. Crear usuario en Supabase Auth
       const { data: supaData, error: supaError } = await this.supabaseClient.auth.signUp({
         email: email,
