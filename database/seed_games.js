@@ -55,7 +55,7 @@ async function seed() {
             (3, '¿Qué anime trata sobre el alquimista de acero?', 'Fullmetal Alchemist', 'Bleach', 'Fairy Tail', 'Black Clover', 'a'),
             (3, '¿Quién es el creador de Neon Genesis Evangelion?', 'Hayao Miyazaki', 'Hideaki Anno', 'Masashi Kishimoto', 'Akira Toriyama', 'b'),
             (3, '¿En Attack on Titan, cuál es el muro más externo?', 'Muro Rose', 'Muro Sina', 'Muro Maria', 'Muro Sheena', 'c'),
-            (3, '¿Qué nombre recibe la libreta en Death Note?', 'Death Note', 'Life Note', 'Shinigami Note', 'Kill Note', 'a'),
+            (3, '¿Cómo se llama el Shinigami que deja caer la libreta en Death Note?', 'Ryuk', 'Rem', 'Gelus', 'Sidoh', 'a'),
             (3, '¿Cómo se llama la técnica principal de Goku?', 'Rasengan', 'Kamehameha', 'Chidori', 'Genkidama', 'b'),
             (3, '¿Cuál de estos Pokémon es tipo planta?', 'Charmander', 'Squirtle', 'Bulbasaur', 'Pikachu', 'c'),
             (3, '¿Qué estudio de animación creó "El Viaje de Chihiro"?', 'Toei Animation', 'Studio Ghibli', 'Madhouse', 'Bones', 'b'),
