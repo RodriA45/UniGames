@@ -5385,7 +5385,7 @@ class TerminaPalabra extends Modulo {
       <div class="game-screen-theme" id="termina-theme-label">${app.preguntados.temaLabelConDuelo(this.terminaDuelo && this.terminaDuelo.activo, this.terminaState.tematicaId)}</div>
     </div>
     <div class="termina-wrap">
-      <p class="termina-hint">Completá la palabra. Tenés ${TerminaPalabra.TERMINA_MAX - intentos} intentos restantes.</p>
+      ${!finished ? `<p class="termina-hint">Completá la palabra. Tenés ${TerminaPalabra.TERMINA_MAX - intentos} intentos restantes.</p>` : ''}
       <div class="termina-display">${displayWord}</div>
       ${
         !finished
