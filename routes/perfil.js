@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { getDb } = require('../database/db');
 const { verificarToken, apiRateLimit, JWT_SECRET } = require('../middlewares/auth');
+const { containsBadWords } = require('../middlewares/bad_words');
 
 const router = express.Router();
 
@@ -81,6 +82,9 @@ router.patch('/perfil', verificarToken, async (req, res) => {
     if (descripcion !== undefined && descripcion.length > 200) {
         return res.status(400).json({ error: 'La descripción no puede superar los 200 caracteres' });
     }
+    if (descripcion !== undefined && containsBadWords(descripcion)) {
+        return res.status(400).json({ error: 'La descripción contiene lenguaje inapropiado' });
+    }
     if (icono !== undefined && !ICONOS_VALIDOS.includes(icono)) {
         return res.status(400).json({ error: 'Ícono inválido' });
     }
@@ -117,6 +121,9 @@ router.patch('/perfil/username', verificarToken, async (req, res) => {
     }
     if (!/^[a-zA-Z0-9_]+$/.test(newUsername)) {
         return res.status(400).json({ error: 'Solo se permiten letras, números y guiones bajos' });
+    }
+    if (containsBadWords(newUsername)) {
+        return res.status(400).json({ error: 'El nombre de usuario contiene lenguaje inapropiado' });
     }
 
     const db = await getDb();

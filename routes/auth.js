@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('../database/db');
 const { authRateLimit, JWT_SECRET } = require('../middlewares/auth');
 const { createClient } = require('@supabase/supabase-js');
+const { containsBadWords } = require('../middlewares/bad_words');
 
 const router = express.Router();
 
@@ -74,6 +75,11 @@ router.post('/auth/sync', authRateLimit, async (req, res) => {
                         error: 'El nombre de usuario debe tener entre 3 y 20 caracteres: letras, números o guión bajo'
                     });
                 }
+                if (containsBadWords(limpio)) {
+                    return res.status(400).json({
+                        error: 'El nombre de usuario contiene lenguaje inapropiado'
+                    });
+                }
                 base = limpio;
             } else {
                 // Registro con confirmación de email: el /sync del registro no
@@ -81,9 +87,12 @@ router.post('/auth/sync', authRateLimit, async (req, res) => {
                 // nombre elegido viaja en user_metadata (ver signUp en app2.js).
                 // Lo puede tocar el cliente: se valida igual; si no sirve, email.
                 const meta = user.user_metadata && user.user_metadata.username;
-                base = (typeof meta === 'string' && USERNAME_RE.test(meta.trim()))
+                base = (typeof meta === 'string' && USERNAME_RE.test(meta.trim()) && !containsBadWords(meta.trim()))
                     ? meta.trim()
                     : usernameDesdeEmail(email);
+            }
+            if (containsBadWords(base)) {
+                base = 'usuario_' + Math.floor(10000 + Math.random() * 90000);
             }
             const newUsername = await usernameDisponible(db, base);
 
