@@ -20,8 +20,8 @@ router.get('/logros', verificarToken, async (req, res) => {
 });
 
 // 2. Desbloquear un logro (idempotente: si ya lo tenía, no hace nada)
-// El id del logro se valida solo por formato acá; la lógica de qué logro
-// corresponde a qué condición vive en ACHIEVEMENTS (app2.js).
+// El id tiene que existir en la tabla `logros` (FK); la lógica de qué
+// logro corresponde a qué condición vive en ACHIEVEMENTS (app2.js).
 router.post('/logros', verificarToken, async (req, res) => {
     const { logro_id } = req.body;
     if (!logro_id || typeof logro_id !== 'string' || logro_id.length > 64) {
@@ -44,6 +44,11 @@ router.post('/logros', verificarToken, async (req, res) => {
         );
         res.status(201).json({ message: 'Logro desbloqueado', logro_id });
     } catch (error) {
+        // 23503 = FK: el id no está en el catálogo `logros`
+        // (database/logros_catalogo.js).
+        if (error.code === '23503') {
+            return res.status(400).json({ error: 'Logro desconocido' });
+        }
         console.error('Error en POST /api/logros:', error);
         res.status(500).json({ error: 'Error al guardar el logro' });
     }

@@ -34,11 +34,16 @@
 - **Perfiles Personalizables:** Edición de perfil dinámica desde la interfaz. Cambia tu nombre de usuario y tu avatar pixel-art en tiempo real sin recargar la página.
 - **Motor 2D Nativo (`engine2d.js`):** Desarrollado desde cero en Vanilla JS utilizando HTML5 Canvas con manejo avanzado de *requestAnimationFrame*, colisiones, sistema de partículas y cámara.
 - **Filtro de Seguridad (Bad Words):** Middleware integrado en el backend para bloquear el uso de lenguaje inapropiado y validación estricta en tiempo real para evitar nombres de usuario duplicados.
-- **Panel de Administración:** Panel exclusivo que permite:
-  - Ver estadísticas en tiempo real.
-  - Gestionar usuarios (buscar, banear, promover a admin).
-  - Personalizar el tema visual global de la aplicación (Oscuro, Claro, Rojo).
-  - Gestionar anuncios globales.
+- **Panel de Administración (sección propia, solo admins):** el HTML del panel lo sirve `GET /api/admin/panel` únicamente si la base confirma que la cuenta es admin activa (no alcanza con el rol del token). Incluye:
+  - **Dashboard:** usuarios, conectados en este momento, récords, duelos, cuentas nuevas por día, top 5 y estado del servidor.
+  - **Cuentas:** búsqueda y filtros (Usuarios: en línea / desconectados · Admins · Baneados: temporales / permanentes), paginadas de a 20 (`1 · 1–20`, `2 · 21–35`…), estado en línea, última conexión y menú ⋯ con *Ver perfil*, cambio de rol y **baneo temporal o permanente con motivo** (tabla `sanciones`; el usuario baneado queda afuera en el momento y ve el motivo).
+  - **Contenido y reportes** paginados de a 20; los reportes se ordenan tocando el título de cada columna (usuarios: más nuevos primero).
+  - Todas las confirmaciones y avisos usan carteles propios del sitio (no `alert`/`confirm` del navegador).
+  - **Avisos:** título + descripción, prioridad *normal* (solo notificación) o *alta* (cartel en el medio de la pantalla para todos), envío inmediato o programado por fecha y hora, e historial con fecha/hora, destinatarios y % de lectura.
+  - **Logs en tiempo real:** pedidos HTTP y mensajes del servidor en vivo, con búsqueda, filtro por nivel, pausa y descarga.
+  - **Configuración:** modo mantenimiento, abrir/cerrar el registro de cuentas nuevas, ocultar juegos, tema por defecto y perfiles del equipo.
+  - Contenido de los juegos y reportes (CSV / PDF).
+- **Tiempo real (Server-Sent Events):** notificaciones, avisos, cambios de configuración y de rol llegan al instante (`GET /api/stream`).
 - **Leaderboard Global:** Tabla de puntuaciones competitiva.
 
 ## 🚀 Instalación y Uso Local
@@ -65,7 +70,6 @@
    ```env
    # Backend
    JWT_SECRET=tu_clave_secreta_super_segura
-   DEV_SECRET=clave_para_acceder_al_admin_en_produccion
 
    # Supabase
    DATABASE_URL=postgresql://postgres.xxx... (URL de conexión a tu DB Postgres)
@@ -93,7 +97,7 @@
 ### 📦 Cómo subir cambios y Modo Administrador (Para Desarrolladores)
 
 **Modo Administrador Automático:** 
-Si necesitas convertir tu usuario a Administrador rápidamente, corre el script (requiere configurar la variable `DEV_SECRET` en `.env`):
+Si necesitas convertir tu usuario a Administrador rápidamente, corre el script (usa la misma `DATABASE_URL` del `.env`):
 ```bash
 npm run admin
 ```
@@ -116,13 +120,13 @@ UniGames/
 │   ├── src/                
 │   │   ├── app2.js         # Orquestador SPA y lógica principal de Frontend
 │   │   ├── styles.css      # Estilos globales y UI
-│   │   ├── security.js     # Validaciones frontend
+│   │   ├── modales.css     # Estilos de modales
 │   │   └── motor2d/        # Motor 2D Nativo y lógica de juegos avanzados
 │   │       ├── engine2d.js # Core del motor (Loop, Física, Audio, Render)
 │   │       ├── ui-components.css
-│   │       └── games/      # Implementaciones (pixel-runner, castle-escape, rpg-pixel)
+│   │       └── games/      # Implementaciones (pixel-runner, castle-escape, rpg-pixel, pixel-survi)
 │   ├── logos/              # Imágenes generales y avatares
-│   ├── sounds/             # Efectos de sonido y música (.mp3)
+│   ├── assert/             # Música del menú e íconos de perfil
 │   └── index.html          # Vista principal (SPA), Modales y Canvas
 │
 ├── routes/                 # Endpoints modulares del Backend (auth.js, admin.js, juegos.js)

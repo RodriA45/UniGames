@@ -9,7 +9,7 @@ try {
   execSync('node database/seed_games.js', { stdio: 'inherit' });
   console.log('Base de datos inicializada correctamente.');
 } catch (error) {
-  console.error('⚠️ Advertencia: No se pudo ejecutar el script de inicialización de la base de datos.');
+  console.error('Advertencia: No se pudo ejecutar el script de inicialización de la base de datos.');
   console.error(error.message);
 }
 

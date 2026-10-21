@@ -14,11 +14,16 @@ router.use(verificarToken);
 router.get('/notificaciones', async (req, res) => {
     const db = await getDb();
     try {
+        // Las de avisos no guardan texto propio (mensaje NULL): el título y
+        // el texto salen de la tabla avisos (3FN, no se duplica por usuario).
         const rows = await db.all(
-            `SELECT id, tipo, mensaje, enlace, leido, TO_CHAR(fecha, 'YYYY-MM-DD HH24:MI:SS') AS fecha
-             FROM notificaciones
-             WHERE usuario_id = ?
-             ORDER BY fecha DESC
+            `SELECT n.id, n.tipo, COALESCE(n.mensaje, a.titulo) AS mensaje, a.texto AS detalle,
+                    a.prioridad, n.aviso_id, n.enlace, n.leido,
+                    TO_CHAR(n.fecha, 'YYYY-MM-DD HH24:MI:SS') AS fecha
+             FROM notificaciones n
+             LEFT JOIN avisos a ON a.id = n.aviso_id
+             WHERE n.usuario_id = ?
+             ORDER BY n.fecha DESC, n.id DESC
              LIMIT 50`,
             [req.user.id]
         );
@@ -44,6 +49,28 @@ router.get('/notificaciones/no-leidas', async (req, res) => {
     }
 });
 
+// 2.b Avisos de prioridad alta que el usuario todavía no vio: se muestran
+// en el cartel del medio al entrar (para los que no estaban conectados
+// cuando se mandaron). Al cerrarlo, el front la marca como leída.
+router.get('/notificaciones/avisos-pendientes', async (req, res) => {
+    const db = await getDb();
+    try {
+        const rows = await db.all(
+            `SELECT n.id AS notificacion_id, a.id, a.titulo, a.texto, a.enviado_en
+             FROM notificaciones n
+             JOIN avisos a ON a.id = n.aviso_id
+             WHERE n.usuario_id = ? AND n.leido = 0 AND a.prioridad = 'alta'
+             ORDER BY a.enviado_en ASC
+             LIMIT 5`,
+            [req.user.id]
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error('Error en GET /api/notificaciones/avisos-pendientes:', error);
+        res.status(500).json({ error: 'Error al obtener los avisos' });
+    }
+});
+
 // 3. Marcar una notificación puntual como leída
 router.post('/notificaciones/:id/leer', async (req, res) => {
     const { id } = req.params;
@@ -58,6 +85,22 @@ router.post('/notificaciones/:id/leer', async (req, res) => {
     } catch (error) {
         console.error('Error en POST /api/notificaciones/:id/leer:', error);
         res.status(500).json({ error: 'Error al actualizar la notificación' });
+    }
+});
+
+// 3.b Marcar como leída la notificación de un aviso (al cerrar el cartel
+// de un aviso de prioridad alta, que no conoce el id de la notificación)
+router.post('/notificaciones/aviso/:avisoId/leer', async (req, res) => {
+    const db = await getDb();
+    try {
+        await db.run(
+            `UPDATE notificaciones SET leido = 1 WHERE aviso_id = ? AND usuario_id = ?`,
+            [req.params.avisoId, req.user.id]
+        );
+        res.json({ message: 'Aviso marcado como leído' });
+    } catch (error) {
+        console.error('Error en POST /api/notificaciones/aviso/:avisoId/leer:', error);
+        res.status(500).json({ error: 'Error al actualizar el aviso' });
     }
 });
 

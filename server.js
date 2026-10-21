@@ -1,4 +1,9 @@
 require('dotenv').config();
+// Logs para el panel admin: se engancha a console.* antes que nada, así
+// también quedan registrados los mensajes de arranque.
+const logs = require('./services/logs');
+logs.capturarConsola();
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -17,6 +22,9 @@ const amigosRoutes = require('./routes/amigos');
 const logrosRoutes = require('./routes/logros');
 const notificacionesRoutes = require('./routes/notificaciones');
 const duelosRouter = require('./routes/duelos');
+const streamRouter = require('./routes/stream');
+const { mantenimiento } = require('./middlewares/mantenimiento');
+const { iniciarProgramador } = require('./services/avisos');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,8 +35,17 @@ app.set('trust proxy', 1);
 
 // Configuración
 app.use(cors());
-app.use(compression());
+// Sin compresión en los canales en tiempo real (SSE): gzip junta los
+// mensajes en un buffer y llegarían todos de golpe en vez de al instante.
+app.use(compression({
+    filter: (req, res) => {
+        const tipo = String(res.getHeader('Content-Type') || '');
+        if (tipo.includes('text/event-stream')) return false;
+        return compression.filter(req, res);
+    },
+}));
 app.use(express.json());
+app.use(logs.middlewareHttp);
 
 // Bloquear archivos sensibles
 app.use((req, res, next) => {
@@ -163,6 +180,10 @@ app.get('/api/config', (req, res) => {
     });
 });
 
+// Modo mantenimiento: corta la API a quien no sea admin (ver middleware).
+app.use('/api', mantenimiento);
+
+app.use('/api', streamRouter);
 app.use('/api/admin/reportes', reportesRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api', authRoutes);
@@ -182,10 +203,11 @@ async function startServer() {
     try {
         await getDb(); // Conecta a PostgreSQL y comprueba errores antes de abrir el puerto
         app.listen(PORT, () => {
-            console.log(`🚀 Servidor corriendo en el puerto ${PORT} (build ${BUILD_ID})`);
+            console.log(`Servidor corriendo en el puerto ${PORT} (build ${BUILD_ID})`);
+            iniciarProgramador(); // avisos programados
         });
     } catch (error) {
-        console.error('❌ Error crítico al iniciar el servidor:', error);
+        console.error('Error crítico al iniciar el servidor:', error);
         process.exit(1);
     }
 }

@@ -264,6 +264,7 @@ export class CapaFluidos {
   // La superficie se suaviza con las celdas de al lado: sin escalones de a 1.
   #lienzo = null;
   #lctx = null;
+  #sucio = null; // recuadro pintado en el lienzo el frame anterior (para borrar solo eso)
 
   dibujar(ctx, camera, tiempoMs) {
     const T = SurviConfig.TILE, COLS = SurviConfig.COLS, L = CapaFluidos.LLENO, C = this.celdas;
@@ -279,8 +280,13 @@ export class CapaFluidos {
       cv.width = Math.max(cv.width, w);
       cv.height = Math.max(cv.height, h);
     }
-    g.clearRect(0, 0, w, h);
+    // Se borra solo lo que se pintó el frame anterior y se pega solo el
+    // recuadro con fluido (antes: borrar y pegar un lienzo del tamaño de
+    // toda la vista en cada frame, aunque hubiera un solo charco).
+    const prev = this.#sucio;
+    if (prev) g.clearRect(prev.x, prev.y, prev.w, prev.h);
     let hay = false;
+    let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
     // nivel "de superficie" de una celda vecina (para suavizar), o null si no cuenta
     const nivelVecino = (c, r, tipo) => {
       if (c < 0 || c >= COLS) return null;
@@ -305,6 +311,10 @@ export class CapaFluidos {
         }
         const alto = lleno ? T : Math.max(2, Math.round((nv / L) * T));
         const x = (c - c0) * T, y = (r - r0 + 1) * T - alto;
+        if (x < bx0) bx0 = x;
+        if (y < by0) by0 = y;
+        if (x + T > bx1) bx1 = x + T;
+        if ((r - r0 + 1) * T > by1) by1 = (r - r0 + 1) * T;
         if (tipo === CapaFluidos.AGUA) {
           g.fillStyle = 'rgba(46, 104, 214, 0.55)';
           g.fillRect(x, y, T, alto);
@@ -324,10 +334,15 @@ export class CapaFluidos {
         }
       }
     }
-    if (!hay) return;
+    if (!hay) {
+      this.#sucio = null;
+      return;
+    }
+    const bw = bx1 - bx0, bh = by1 - by0;
+    this.#sucio = { x: bx0, y: by0, w: bw, h: bh };
     const suave = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(cv, 0, 0, w, h, c0 * T - camera.x, r0 * T - camera.y, w, h);
+    ctx.drawImage(cv, bx0, by0, bw, bh, c0 * T - camera.x + bx0, r0 * T - camera.y + by0, bw, bh);
     ctx.imageSmoothingEnabled = suave;
   }
 

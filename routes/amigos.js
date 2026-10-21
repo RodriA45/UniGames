@@ -1,5 +1,6 @@
 const express = require('express');
 const { getDb } = require('../database/db');
+const { crearNotificacion } = require('../services/notificaciones');
 const { verificarToken } = require('../middlewares/auth');
 
 const router = express.Router();
@@ -89,16 +90,12 @@ router.post('/amigos/solicitudes', verificarToken, async (req, res) => {
             [req.user.id, receptorId]
         );
 
-        // Notificamos al receptor para que le aparezca en su bandeja
-        // de notificaciones (menú lateral derecho > Notificaciones).
-        try {
-            await db.run(
-                `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'amistad', ?, 'amigos') RETURNING id`,
-                [receptorId, `${req.user.username} te envió una solicitud de amistad`]
-            );
-        } catch (notifError) {
-            console.error('Error al crear notificación de solicitud de amistad:', notifError);
-        }
+        // Notificamos al receptor (le llega al instante si está conectado).
+        await crearNotificacion(db, receptorId, {
+            tipo: 'amistad',
+            mensaje: `${req.user.username} te envió una solicitud de amistad`,
+            enlace: 'amigos',
+        });
 
         res.status(201).json({ message: 'Solicitud enviada', id: result.rows[0].id });
     } catch (error) {

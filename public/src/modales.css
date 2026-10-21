@@ -6,10 +6,18 @@
   position: fixed; inset: 0; z-index: 1000;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
-  transition: opacity 0.3s ease;
+  /* Cerrado: además de transparente, invisible. Con solo opacity: 0 el
+     navegador lo seguía componiendo (blur de pantalla completa incluido)
+     en cada frame. visibility espera al final del fundido para no cortarlo. */
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
   padding: 1rem;
 }
-.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal-overlay.open { opacity: 1; pointer-events: all; visibility: visible; transition: opacity 0.3s ease, visibility 0s; }
+/* Los orbes y el puntito animan sin parar: con el modal cerrado, quietos. */
+.modal-overlay:not(.open) .modal-orb,
+.modal-overlay:not(.open) .modal-logo-dot,
+.notif-overlay:not(.show) .modal-logo-dot { animation: none; }
 
 .modal-bg-blur {
   position: absolute; inset: 0;
@@ -180,10 +188,11 @@
   position: fixed; inset: 0; z-index: 1100;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
-  transition: opacity 0.25s ease;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0s linear 0.25s;
   padding: 1rem;
 }
-.admin-overlay.show { opacity: 1; pointer-events: all; }
+.admin-overlay.show { opacity: 1; pointer-events: all; visibility: visible; transition: opacity 0.25s ease, visibility 0s; }
 .admin-overlay .modal-bg-blur { position: absolute; inset: 0; background: rgba(8,11,26,0.8); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 
 .admin-card {
@@ -254,10 +263,11 @@ select.auth-input option { background-color: #1E293B; color: #F1F5F9; }
   position: fixed; inset: 0; z-index: 1150;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
-  transition: opacity 0.25s ease;
+  visibility: hidden;
+  transition: opacity 0.25s ease, visibility 0s linear 0.25s;
   padding: 1rem;
 }
-.notif-overlay.show { opacity: 1; pointer-events: all; }
+.notif-overlay.show { opacity: 1; pointer-events: all; visibility: visible; transition: opacity 0.25s ease, visibility 0s; }
 .notif-overlay .modal-bg-blur { position: absolute; inset: 0; background: rgba(8,11,26,0.8); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 
 .notif-card {

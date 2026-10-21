@@ -1619,7 +1619,7 @@ export class RpgDatos extends RpgModulo {
   // cada una según el tipo de cofre y qué mejoras de una sola vez ya salieron.
   static POWERUP_DEFS = {
     potionGreen: {
-      label: '🟢 Poción verde · +10 HP máx',
+      label: 'Poción verde · +10 HP máx',
       apply() {
         juego.upgrades.maxHpBonus += 10;
         juego.jugador.maxHp += 10;
@@ -1636,38 +1636,38 @@ export class RpgDatos extends RpgModulo {
       },
     },
     armor: {
-      label: '🛡️ Pechera · -25% daño recibido',
+      label: 'Pechera · -25% daño recibido',
       apply() {
         juego.upgrades.dmgReduction = Math.min(0.75, juego.upgrades.dmgReduction + 0.25);
       },
     },
     potionRed: {
-      label: '❤️ Poción roja · Curación',
+      label: 'Poción roja · Curación',
       apply() {
         juego.jugador.hp = Math.min(juego.jugador.maxHp, juego.jugador.hp + 15);
       },
     },
     gun: {
-      label: '🔫 Pistola · Disparo doble',
+      label: 'Pistola · Disparo doble',
       apply() {
         juego.upgrades.doubleShot = true;
       },
     },
     potionOrange: {
-      label: '🟠 Poción amarilla · +50% velocidad',
+      label: 'Poción amarilla · +50% velocidad',
       apply() {
         juego.upgrades.speedPermanent = true;
         juego.jugador.speed = RpgConfig.PLAYER_SPEED * 1.5;
       },
     },
     ammo: {
-      label: '💥 Munición · +2 daño',
+      label: 'Munición · +2 daño',
       apply() {
         juego.upgrades.dmgBonus += 2;
       },
     },
     blueOrb: {
-      label: '🔵 Esfera azul · Balas en llamas',
+      label: 'Esfera azul · Balas en llamas',
       apply() {
         juego.upgrades.burning = true;
       },

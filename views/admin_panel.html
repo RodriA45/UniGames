@@ -1,0 +1,400 @@
+<!--
+  UniGames — Panel de administración.
+  Este HTML NO está en public/: lo sirve GET /api/admin/panel solo a usuarios
+  que la base confirma como admin activo (ver routes/admin.js). Lo inserta
+  app2.js (AdminPanel.admAbrir) dentro de <section id="sec-admin">.
+-->
+<div class="adm" id="admRoot">
+
+  <!-- ── Barra lateral ── -->
+  <aside class="adm-side">
+    <div class="adm-brand">
+      <span class="adm-brand-mark" aria-hidden="true"></span>
+      <div>
+        <div class="adm-brand-title">UNIGAMES</div>
+        <div class="adm-brand-sub">Panel de control</div>
+      </div>
+    </div>
+
+    <nav class="adm-nav" aria-label="Secciones del panel">
+      <button class="adm-nav-btn active" data-adm-tab="dashboard" onclick="admMostrarTab('dashboard')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="adm-nav-btn" data-adm-tab="cuentas" onclick="admMostrarTab('cuentas')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.6c2 .7 3.2 2.5 3.6 5.4"/></svg>
+        <span>Cuentas</span>
+      </button>
+      <button class="adm-nav-btn" data-adm-tab="avisos" onclick="admMostrarTab('avisos')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/></svg>
+        <span>Avisos</span>
+        <span class="adm-nav-badge" id="admBadgeProgramados" hidden></span>
+      </button>
+      <button class="adm-nav-btn" data-adm-tab="juegos" onclick="admMostrarTab('juegos')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="7" width="19" height="11" rx="3.5"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="13.5" r="1"/></svg>
+        <span>Contenido</span>
+      </button>
+      <button class="adm-nav-btn" data-adm-tab="reportes" onclick="admMostrarTab('reportes')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 13h7M9 17h7M9 9h3"/></svg>
+        <span>Reportes</span>
+      </button>
+      <button class="adm-nav-btn" data-adm-tab="logs" onclick="admMostrarTab('logs')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></svg>
+        <span>Logs</span>
+        <span class="adm-nav-badge adm-nav-badge-error" id="admBadgeErrores" hidden></span>
+      </button>
+      <button class="adm-nav-btn" data-adm-tab="config" onclick="admMostrarTab('config')">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+        <span>Configuración</span>
+      </button>
+    </nav>
+
+    <div class="adm-side-foot">
+      <div class="adm-live" id="admLive" data-estado="conectando">
+        <span class="adm-live-dot"></span>
+        <span id="admLiveTxt">Conectando…</span>
+      </div>
+      <button class="adm-exit" onclick="admSalir()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+        Volver al sitio
+      </button>
+    </div>
+  </aside>
+
+  <!-- ── Contenido ── -->
+  <div class="adm-main">
+    <div class="adm-head">
+      <div>
+        <h1 class="adm-title" id="admTitulo">Dashboard</h1>
+        <p class="adm-sub" id="admSubtitulo">Resumen general de UniGames</p>
+      </div>
+      <div class="adm-head-actions" id="admAcciones"></div>
+    </div>
+
+    <!-- ═════════ DASHBOARD ═════════ -->
+    <section class="adm-panel active" data-adm-panel="dashboard">
+      <div class="adm-kpis" id="admKpis">
+        <div class="adm-kpi skeleton"></div><div class="adm-kpi skeleton"></div><div class="adm-kpi skeleton"></div>
+        <div class="adm-kpi skeleton"></div><div class="adm-kpi skeleton"></div><div class="adm-kpi skeleton"></div>
+      </div>
+
+      <div class="adm-grid adm-grid-2-1">
+        <article class="adm-card">
+          <div class="adm-card-head">
+            <h2>Cuentas nuevas</h2>
+            <span class="adm-card-hint" id="admRegistrosTotal">últimos 14 días</span>
+          </div>
+          <div class="adm-bars" id="admRegistros"></div>
+        </article>
+        <article class="adm-card">
+          <div class="adm-card-head"><h2>Top 5 jugadores</h2><span class="adm-card-hint">puntos sumados</span></div>
+          <ol class="adm-rank" id="admTop5"></ol>
+        </article>
+      </div>
+
+      <div class="adm-grid adm-grid-2-1">
+        <article class="adm-card">
+          <div class="adm-card-head"><h2>Récords por juego</h2><span class="adm-card-hint">jugadores con puntaje</span></div>
+          <div class="adm-hbars" id="admPorJuego"></div>
+        </article>
+        <div class="adm-stack">
+          <article class="adm-card">
+            <div class="adm-card-head"><h2>Últimas cuentas</h2></div>
+            <ul class="adm-mini-list" id="admUltimos"></ul>
+          </article>
+          <article class="adm-card">
+            <div class="adm-card-head"><h2>Servidor</h2><button class="adm-link" onclick="admMostrarTab('logs')">Ver logs →</button></div>
+            <div class="adm-server" id="admServidor"></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═════════ CUENTAS ═════════ -->
+    <section class="adm-panel" data-adm-panel="cuentas">
+      <div class="adm-toolbar">
+        <label class="adm-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+          <input id="admCuentasBuscar" type="search" placeholder="Buscar por usuario o email…" autocomplete="off" oninput="admBuscarCuentas(this.value)">
+        </label>
+        <div class="adm-chips" role="group" aria-label="Filtrar cuentas">
+          <button class="adm-chip active" data-filtro-cuentas="usuarios" onclick="admFiltrarCuentas('usuarios')">Usuarios <b id="admCntTodas">–</b></button>
+          <button class="adm-chip" data-filtro-cuentas="admins" onclick="admFiltrarCuentas('admins')">Admins <b id="admCntAdmins">–</b></button>
+          <button class="adm-chip" data-filtro-cuentas="baneados" onclick="admFiltrarCuentas('baneados')">Baneados <b id="admCntBaneados">–</b></button>
+        </div>
+      </div>
+      <div class="adm-subfiltros">
+        <div class="adm-seg adm-seg-sm" id="admSubConexion" role="group" aria-label="Filtrar por conexión">
+          <button type="button" class="active" data-sub-conexion="" onclick="admSubfiltroCuentas('conexion', '')">Todos</button>
+          <button type="button" data-sub-conexion="online" onclick="admSubfiltroCuentas('conexion', 'online')"><span class="adm-online"></span> En línea <b id="admCntOnline">–</b></button>
+          <button type="button" data-sub-conexion="offline" onclick="admSubfiltroCuentas('conexion', 'offline')">Desconectados</button>
+        </div>
+        <div class="adm-seg adm-seg-sm" id="admSubBan" role="group" aria-label="Filtrar por tipo de baneo" hidden>
+          <button type="button" class="active" data-sub-ban="" onclick="admSubfiltroCuentas('ban', '')">Todos</button>
+          <button type="button" data-sub-ban="temporal" onclick="admSubfiltroCuentas('ban', 'temporal')"><i data-ico="hourglass" data-ico-size="13"></i> Temporales</button>
+          <button type="button" data-sub-ban="permanente" onclick="admSubfiltroCuentas('ban', 'permanente')"><i data-ico="ban" data-ico-size="13"></i> Permanentes</button>
+        </div>
+      </div>
+
+      <div class="adm-card adm-card-flush">
+        <div class="adm-table-wrap">
+          <table class="adm-table" id="admCuentasTabla">
+            <thead>
+              <tr><th>Usuario</th><th>Email</th><th>Rol</th><th>Estado</th><th>Última conexión</th><th>Registro</th><th class="adm-th-menu"><span class="sr-only">Acciones</span></th></tr>
+            </thead>
+            <tbody id="admCuentasBody"></tbody>
+          </table>
+        </div>
+        <div class="adm-pager" id="admCuentasPager"></div>
+      </div>
+    </section>
+
+    <!-- ═════════ AVISOS ═════════ -->
+    <section class="adm-panel" data-adm-panel="avisos">
+      <div class="adm-grid adm-grid-avisos">
+        <article class="adm-card adm-aviso-form" id="avForm">
+          <div class="adm-card-head">
+            <h2 id="avFormTitulo">Nuevo aviso</h2>
+            <button class="adm-link" id="avCancelarEdicionBtn" onclick="avCancelarEdicion()" hidden>Cancelar edición</button>
+          </div>
+
+          <label class="adm-field">
+            <span class="adm-label">Título <em id="avTituloCont">0/120</em></span>
+            <input class="adm-input" id="avTitulo" maxlength="120" placeholder="Ej: ¡Nuevo juego disponible!" oninput="avActualizarPreview()">
+          </label>
+
+          <label class="adm-field">
+            <span class="adm-label">Descripción <em id="avTextoCont">0/2000</em></span>
+            <textarea class="adm-input" id="avTexto" rows="4" maxlength="2000" placeholder="Contá de qué se trata el aviso…" oninput="avActualizarPreview()"></textarea>
+          </label>
+
+          <div class="adm-field">
+            <span class="adm-label">Prioridad</span>
+            <div class="adm-options" role="radiogroup">
+              <button type="button" class="adm-option active" data-av-prioridad="normal" onclick="avSetPrioridad('normal')" role="radio" aria-checked="true">
+                <span class="adm-option-ico"><i data-ico="bell" data-ico-size="20"></i></span>
+                <span><b>Normal</b><small>Aparece solo en las notificaciones.</small></span>
+              </button>
+              <button type="button" class="adm-option adm-option-alta" data-av-prioridad="alta" onclick="avSetPrioridad('alta')" role="radio" aria-checked="false">
+                <span class="adm-option-ico"><i data-ico="siren" data-ico-size="20"></i></span>
+                <span><b>Alta</b><small>Cartel en el medio de la pantalla para todos.</small></span>
+              </button>
+            </div>
+          </div>
+
+          <div class="adm-field">
+            <span class="adm-label">Envío</span>
+            <div class="adm-seg" role="radiogroup">
+              <button type="button" class="active" data-av-envio="ahora" onclick="avSetEnvio('ahora')">Enviar ahora</button>
+              <button type="button" data-av-envio="programar" onclick="avSetEnvio('programar')">Programar</button>
+            </div>
+            <div class="adm-programar" id="avProgramarWrap" hidden>
+              <input class="adm-input" type="datetime-local" id="avFecha" onchange="avActualizarPreview()">
+              <span class="adm-hint" id="avFechaHint"></span>
+            </div>
+          </div>
+
+          <div class="adm-form-actions">
+            <span class="adm-form-msg" id="avMsg"></span>
+            <button class="adm-btn adm-btn-primary" id="avSubmit" onclick="avGuardar()">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5z"/></svg>
+              <span>Enviar aviso</span>
+            </button>
+          </div>
+        </article>
+
+        <article class="adm-card adm-aviso-preview">
+          <div class="adm-card-head"><h2>Vista previa</h2><span class="adm-card-hint" id="avPreviewHint">así lo ven los usuarios</span></div>
+          <div id="avPreview"></div>
+        </article>
+      </div>
+
+      <article class="adm-card">
+        <div class="adm-card-head">
+          <h2>Programados</h2>
+          <span class="adm-card-hint" id="avProgramadosHint">salen solos en la fecha elegida</span>
+        </div>
+        <div class="adm-sched" id="avProgramados"></div>
+      </article>
+
+      <article class="adm-card adm-card-flush">
+        <div class="adm-card-head adm-card-head-pad">
+          <h2>Historial de envíos</h2>
+          <label class="adm-search adm-search-sm">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+            <input type="search" id="avHistBuscar" placeholder="Buscar aviso…" oninput="avBuscarHistorial(this.value)">
+          </label>
+        </div>
+        <div class="adm-table-wrap">
+          <table class="adm-table">
+            <thead><tr><th>Enviado</th><th>Aviso</th><th>Prioridad</th><th class="num">Destinatarios</th><th>Leído</th><th>Por</th><th></th></tr></thead>
+            <tbody id="avHistorialBody"></tbody>
+          </table>
+        </div>
+        <div class="adm-pager" id="avHistorialPager"></div>
+      </article>
+    </section>
+
+    <!-- ═════════ CONTENIDO DE JUEGOS ═════════ -->
+    <section class="adm-panel adm-legacy" data-adm-panel="juegos">
+      <div class="adm-card">
+        <!-- Mismos IDs que usa AdminContenidoJuegos (app2.js) -->
+        <div class="admin-juegos-toolbar">
+          <div class="auth-form-group" style="margin-bottom:0;">
+            <label class="auth-form-label">Tipo de contenido</label>
+            <select class="auth-input" id="juegosTipoSelect" onchange="switchJuegoTipo(this.value)">
+              <option value="ahorcado">Ahorcado (palabras)</option>
+              <option value="sopa">Sopa de Letras</option>
+              <option value="wordle">Adivina la Palabra</option>
+              <option value="termina">Termina la Palabra</option>
+              <option value="preguntas">Preguntados</option>
+              <option value="adivina">Adivina la Cosa</option>
+            </select>
+          </div>
+          <div class="auth-form-group" style="margin-bottom:0;">
+            <label class="auth-form-label">Filtrar por temática</label>
+            <select class="auth-input" id="juegosTematicaFiltro" onchange="loadJuegosContenidoList()"></select>
+          </div>
+        </div>
+
+        <div class="admin-juegos-form">
+          <p class="admin-juegos-nota" id="jgNotaCompartida" style="display:none;"></p>
+          <div id="juegosCamposComunes"></div>
+          <div style="display:flex; gap:8px; margin-top:4px;">
+            <button class="auth-btn-submit" id="juegosSubmitBtn" onclick="guardarContenidoJuego()" style="margin-top:0;"><span>Agregar</span></button>
+            <button class="auth-btn-submit" id="juegosCancelBtn" onclick="cancelarEdicionJuego()" style="margin-top:0; display:none; background:#334155;"><span>Cancelar edición</span></button>
+          </div>
+        </div>
+
+        <div class="admin-section-title">Contenido cargado</div>
+        <div id="juegosContenidoList"></div>
+        <div class="adm-pager adm-pager-legacy" id="juegosContenidoPager"></div>
+      
+      </div>
+    </section>
+
+    <!-- ═════════ REPORTES ═════════ -->
+    <section class="adm-panel adm-legacy" data-adm-panel="reportes">
+      <div class="adm-card">
+        <!-- Mismos IDs que usa ReportesAdmin (app2.js) -->
+        <div class="admin-juegos-toolbar">
+          <div class="auth-form-group" style="margin-bottom:0;">
+            <label class="auth-form-label" for="reporteTipo">Reporte</label>
+            <select class="auth-input" id="reporteTipo" onchange="cambiarTipoReporte(this.value)">
+              <option value="usuarios">Usuarios registrados</option>
+              <option value="ranking">Ranking por juego</option>
+              <option value="actividad">Actividad por juego</option>
+            </select>
+          </div>
+          <div class="auth-form-group" id="reporteJuegoGrupo" style="margin-bottom:0; visibility:hidden;">
+            <label class="auth-form-label" for="reporteJuego">Juego</label>
+            <select class="auth-input" id="reporteJuego" onchange="cargarReporte()">
+              <option value="">Todos</option>
+            </select>
+          </div>
+        </div>
+        <div class="admin-reporte-barra">
+          <span class="admin-reporte-estado" id="reporteEstado"></span>
+          <div class="admin-reporte-botones">
+            <button class="auth-btn-submit" onclick="exportarReporteCSV()"><span>Descargar CSV (Excel)</span></button>
+            <button class="auth-btn-submit" onclick="exportarReportePDF()"><span>Descargar PDF</span></button>
+          </div>
+        </div>
+        <div class="admin-reporte-scroll">
+          <table class="admin-reporte-tabla" id="reporteTabla"></table>
+        </div>
+        <div class="adm-pager adm-pager-legacy" id="reportePager"></div>
+      
+      </div>
+    </section>
+
+    <!-- ═════════ LOGS ═════════ -->
+    <section class="adm-panel" data-adm-panel="logs">
+      <div class="adm-toolbar">
+        <label class="adm-search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg>
+          <input id="lgBuscar" type="search" placeholder="Buscar en los logs (ruta, usuario, error…)" autocomplete="off" oninput="lgBuscar(this.value)">
+        </label>
+        <div class="adm-chips" role="group" aria-label="Filtrar por nivel">
+          <button class="adm-chip lvl-http active" data-lg-nivel="http" onclick="lgToggleNivel('http')">HTTP <b id="lgCntHttp">0</b></button>
+          <button class="adm-chip lvl-info active" data-lg-nivel="info" onclick="lgToggleNivel('info')">INFO <b id="lgCntInfo">0</b></button>
+          <button class="adm-chip lvl-warn active" data-lg-nivel="warn" onclick="lgToggleNivel('warn')">WARN <b id="lgCntWarn">0</b></button>
+          <button class="adm-chip lvl-error active" data-lg-nivel="error" onclick="lgToggleNivel('error')">ERROR <b id="lgCntError">0</b></button>
+        </div>
+      </div>
+
+      <div class="adm-console">
+        <div class="adm-console-bar">
+          <div class="adm-console-status" id="lgEstado"><span class="adm-live-dot"></span> <span id="lgEstadoTxt">Conectando…</span></div>
+          <div class="adm-console-actions">
+            <button class="adm-btn adm-btn-ghost" id="lgPausaBtn" onclick="lgTogglePausa()">Pausar</button>
+            <button class="adm-btn adm-btn-ghost" id="lgScrollBtn" onclick="lgToggleAutoScroll()" aria-pressed="true">Auto-scroll <i data-ico="check" data-ico-size="13"></i></button>
+            <button class="adm-btn adm-btn-ghost" onclick="lgLimpiar()">Limpiar</button>
+            <button class="adm-btn adm-btn-ghost" onclick="lgDescargar()">Descargar .txt</button>
+          </div>
+        </div>
+        <div class="adm-console-body" id="lgCuerpo" role="log" aria-live="off"></div>
+      </div>
+      <p class="adm-hint adm-hint-block">Se guardan los últimos 1000 registros en memoria del servidor: al reiniciarlo (deploy o Render dormido) se vacían. No se registran contraseñas, tokens ni datos de formularios.</p>
+    </section>
+
+    <!-- ═════════ CONFIGURACIÓN ═════════ -->
+    <section class="adm-panel" data-adm-panel="config">
+      <div class="adm-grid adm-grid-2">
+        <article class="adm-card">
+          <div class="adm-card-head"><h2>Estado del sitio</h2></div>
+
+          <div class="adm-switch-row">
+            <div>
+              <b>Modo mantenimiento</b>
+              <small>Los usuarios ven un cartel y no pueden jugar. Los admins siguen entrando normalmente.</small>
+            </div>
+            <label class="adm-switch"><input type="checkbox" id="cfgMantenimiento" onchange="admConfigCambio()"><span></span></label>
+          </div>
+          <label class="adm-field">
+            <span class="adm-label">Mensaje de mantenimiento</span>
+            <textarea class="adm-input" id="cfgMantenimientoMsg" rows="2" maxlength="300" oninput="admConfigCambio()"></textarea>
+          </label>
+
+          <div class="adm-switch-row">
+            <div>
+              <b>Registro de cuentas nuevas</b>
+              <small>Si lo cerrás, solo pueden entrar las cuentas que ya existen.</small>
+            </div>
+            <label class="adm-switch"><input type="checkbox" id="cfgRegistro" onchange="admConfigCambio()"><span></span></label>
+          </div>
+        </article>
+
+        <article class="adm-card">
+          <div class="adm-card-head"><h2>Juegos visibles</h2><span class="adm-card-hint">ocultos para los usuarios, los admins los siguen viendo</span></div>
+          <div class="adm-games-toggle" id="cfgJuegos"></div>
+        </article>
+
+        <article class="adm-card">
+          <div class="adm-card-head"><h2>Apariencia</h2><span class="adm-card-hint">tema por defecto del sitio</span></div>
+          <div class="adm-themes" id="cfgTemas">
+            <button type="button" class="adm-theme" data-tema="dark" onclick="admElegirTemaSitio('dark')"><span class="sw sw-dark"></span>Oscuro</button>
+            <button type="button" class="adm-theme" data-tema="light" onclick="admElegirTemaSitio('light')"><span class="sw sw-light"></span>Claro</button>
+            <button type="button" class="adm-theme" data-tema="red" onclick="admElegirTemaSitio('red')"><span class="sw sw-red"></span>Rojo</button>
+          </div>
+          <p class="adm-hint">Cada usuario puede elegir el suyo desde el menú; esto es lo que ve quien no eligió ninguno.</p>
+        </article>
+
+        <article class="adm-card">
+          <div class="adm-card-head"><h2>Equipo</h2><span class="adm-card-hint">perfiles de GitHub en "Acerca de"</span></div>
+          <label class="adm-field"><span class="adm-label">Rodrigo</span><input class="adm-input" id="cfgGitRodrigo" placeholder="usuario o URL de GitHub" oninput="admConfigCambio()"></label>
+          <label class="adm-field"><span class="adm-label">Santiago</span><input class="adm-input" id="cfgGitSantiago" placeholder="usuario o URL de GitHub" oninput="admConfigCambio()"></label>
+          <label class="adm-field"><span class="adm-label">Kevin</span><input class="adm-input" id="cfgGitKevin" placeholder="usuario o URL de GitHub" oninput="admConfigCambio()"></label>
+        </article>
+      </div>
+
+      <div class="adm-savebar" id="cfgSavebar" hidden>
+        <span>Tenés cambios sin guardar</span>
+        <div>
+          <button class="adm-btn adm-btn-ghost" onclick="admCargarConfig()">Descartar</button>
+          <button class="adm-btn adm-btn-primary" onclick="admGuardarConfig()">Guardar cambios</button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>

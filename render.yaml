@@ -17,6 +17,9 @@ services:
       # Token Secreto para JWT
       - key: JWT_SECRET
         generateValue: true
-      # Secreto para crear administradores y usar /api/dev-login
-      - key: DEV_SECRET
-        generateValue: true
+      # Supabase Auth: routes/auth.js crea el cliente al cargar, sin esto el server no arranca.
+      # Cargar los valores reales desde el Dashboard de Render (Settings > Environment).
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false

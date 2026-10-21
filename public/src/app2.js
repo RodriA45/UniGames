@@ -79,17 +79,23 @@ class AuthManager extends Modulo {
 
           // If we just clicked a password reset link
           if (window.location.href.includes('reset_password=true') && sessionData.session) {
-            const newPassword = prompt('Ingresá tu nueva contraseña:');
+            const newPassword = await app.dialogo.dlgPedir({
+              titulo: 'Nueva contraseña',
+              mensaje: 'Ingresá tu nueva contraseña (mínimo 6 caracteres).',
+              tipo: 'password',
+              confirmar: 'Guardar contraseña',
+              minimo: 6,
+            });
             if (newPassword) {
               const { error } = await this.supabaseClient.auth.updateUser({
                 password: newPassword,
               });
               if (!error) {
-                alert('¡Contraseña actualizada exitosamente! Ya podés iniciar sesión.');
+                await app.dialogo.dlgAvisar('¡Contraseña actualizada! Ya podés iniciar sesión.', { titulo: 'Listo', tipo: 'ok' });
                 this.supabaseClient.auth.signOut();
                 window.history.replaceState({}, document.title, '/');
               } else {
-                alert('Hubo un error al actualizar: ' + error.message);
+                app.dialogo.dlgAvisar('Hubo un error al actualizar: ' + error.message, { tipo: 'error' });
               }
             }
           }
@@ -455,7 +461,7 @@ class AuthManager extends Modulo {
     if (this.currentUser) {
       drawerBody.innerHTML = `
         <div class="account-greeting">Hola, ${app.utils.sanitizeHTML(this.currentUser.username)}</div>
-        ${this.currentUser.rol === 'admin' ? '<button class="account-drawer-btn" onclick="closeAccountDrawer(); openAdminModal();"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span class="account-drawer-btn-label">Panel Admin</span></button>' : ''}
+        ${this.currentUser.rol === 'admin' ? '<button class="account-drawer-btn" onclick="closeAccountDrawer(); admAbrir();"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg><span class="account-drawer-btn-label">Panel Admin</span></button>' : ''}
         <button class="account-drawer-btn" onclick="closeAccountDrawer(); abrirPerfilPropio();"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg><span class="account-drawer-btn-label">Perfil</span></button>
         <button class="account-drawer-btn" onclick="closeAccountDrawer(); openNotifModal();" style="justify-content: space-between;"><span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg><span class="account-drawer-btn-label">Notificaciones</span></span><span id="notifDrawerBadge"></span></button>
         <button class="account-drawer-btn" onclick="closeAccountDrawer(); goTo('puntuacion');"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg><span class="account-drawer-btn-label">Puntuación</span></button>
@@ -469,6 +475,9 @@ class AuthManager extends Modulo {
         <button class="account-drawer-btn btn-login-drawer" onclick="closeAccountDrawer(); openModal('login');"><span class="account-drawer-btn-label">Iniciar sesión</span></button>
       `;
     }
+    // Cambió la sesión: canal en tiempo real, modo mantenimiento y panel admin
+    if (app.tiempoReal) app.tiempoReal.trSincronizar();
+    if (app.configSitio) app.configSitio.csAlCambiarSesion();
   }
 
   // Cambia el usuario logueado. El progreso de los juegos 2D es por usuario
@@ -595,7 +604,7 @@ class Nucleo extends Modulo {
   }
 
   onerror(msg, url, line, col, err) {
-    alert('Error: ' + msg + ' at line ' + line);
+    console.error('Error: ' + msg + ' (línea ' + line + ')', err || '');
     return false;
   }
 }
@@ -690,7 +699,7 @@ class AudioManager extends Modulo {
     return this.sfxVolume;
   }
 
-  // El audio arranca "activado" por defecto (icono 🔊) e intenta reproducirse
+  // El audio arranca "activado" por defecto (ícono de parlante) e intenta reproducirse
   // apenas carga la página.
   initAudio() {
     const btn = app.nucleo.APP_EL.globalAudioBtn;
@@ -876,7 +885,15 @@ class CatalogoJuegos extends Modulo {
 
   // Tarjeta completa de un juego (la misma en Inicio y en Juegos).
   // No pasar directo a .map() (le mandaría el índice): usar g => gameCardFullHTML(g).
+  // Saca los juegos que el admin ocultó desde Configuración (los admins los
+  // siguen viendo, marcados como ocultos, para poder probarlos).
+  catVisibles(lista) {
+    if (!app.configSitio || app.configSitio.csEsAdmin()) return lista;
+    return lista.filter((g) => !app.configSitio.csJuegoOculto(g.id));
+  }
+
   gameCardFullHTML(g) {
+    const oculto = app.configSitio && app.configSitio.csJuegoOculto(g.id);
     const bandStyle = g.bg ? ` style="background: ${g.bg};"` : '';
     const titleStyle = g.titleColor ? ` style="color:${g.titleColor};"` : '';
     const btnStyle =
@@ -885,7 +902,7 @@ class CatalogoJuegos extends Modulo {
         : '';
     const tags = g.tags || (g.tag ? [g.tag] : []);
     return `
-    <div class="game-card-full" onclick="launchGame('${g.id}', this)">
+    <div class="game-card-full${oculto ? ' juego-oculto' : ''}" onclick="launchGame('${g.id}', this)">
       <div class="card-header-band"${bandStyle}>
         <span class="card-emoji"><span class="card-emoji-float">${app.utils.gameIconSVG(g.id, 32)}</span></span>
         <span class="card-title"${titleStyle}>${g.title}</span>
@@ -893,7 +910,7 @@ class CatalogoJuegos extends Modulo {
       <div class="card-body">
         <p class="card-desc">${g.desc}</p>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem;">
-          ${tags.map((t) => `<span class="card-tag">${t}</span>`).join('')}
+          ${oculto ? `<span class="card-tag tag-oculto">${app.utils.uiIconSVG('lock', 12)} Oculto</span>` : ''}${tags.map((t) => `<span class="card-tag">${t}</span>`).join('')}
         </div>
         <button class="btn-play"${btnStyle} onclick="event.stopPropagation(); launchGame('${g.id}', this)"><span class="btn-play-label">▶ Jugar</span></button>
       </div>
@@ -903,7 +920,7 @@ class CatalogoJuegos extends Modulo {
 
   // Destacados: 3 al azar sin repetir los fijos de "Sencillos".
   renderFeatured() {
-    const pool = [...this.allGames, ...this.actionGames].filter(
+    const pool = this.catVisibles([...this.allGames, ...this.actionGames]).filter(
       (g) => !CatalogoJuegos.SIMPLE_GAME_IDS.includes(g.id),
     );
     const three = app.utils.shuffle(pool).slice(0, 3);
@@ -911,27 +928,27 @@ class CatalogoJuegos extends Modulo {
   }
 
   renderSimple() {
-    const list = CatalogoJuegos.SIMPLE_GAME_IDS.map((id) => this.allGames.find((g) => g.id === id)).filter(
-      Boolean,
+    const list = this.catVisibles(
+      CatalogoJuegos.SIMPLE_GAME_IDS.map((id) => this.allGames.find((g) => g.id === id)).filter(Boolean),
     );
     app.nucleo.APP_EL.simpleGrid.innerHTML = list.map((g) => this.gameCardFullHTML(g)).join('');
   }
 
   renderAction() {
-    app.nucleo.APP_EL.actionGrid.innerHTML = this.actionGames.map((g) => this.gameCardFullHTML(g)).join('');
+    app.nucleo.APP_EL.actionGrid.innerHTML = this.catVisibles(this.actionGames).map((g) => this.gameCardFullHTML(g)).join('');
   }
 
   // Página Juegos: Clásicos y Del Motor (los 4 juegos 2D).
   renderClassicGames() {
     if (app.nucleo.APP_EL.classicGrid)
-      app.nucleo.APP_EL.classicGrid.innerHTML = this.allGames
+      app.nucleo.APP_EL.classicGrid.innerHTML = this.catVisibles(this.allGames)
         .map((g) => this.gameCardFullHTML(g))
         .join('');
   }
 
   renderMotorGames() {
     if (app.nucleo.APP_EL.motorGrid)
-      app.nucleo.APP_EL.motorGrid.innerHTML = this.actionGames
+      app.nucleo.APP_EL.motorGrid.innerHTML = this.catVisibles(this.actionGames)
         .map((g) => this.gameCardFullHTML(g))
         .join('');
   }
@@ -939,7 +956,7 @@ class CatalogoJuegos extends Modulo {
   renderRecommendedGames(currentGameId) {
     const container = document.getElementById('recBox-' + currentGameId);
     if (!container) return;
-    const pool = [...this.allGames, ...this.actionGames].filter((g) => g.id !== currentGameId);
+    const pool = this.catVisibles([...this.allGames, ...this.actionGames]).filter((g) => g.id !== currentGameId);
     const three = app.utils.shuffle(pool).slice(0, 3);
     container.innerHTML = three.map((g) => this.gameCardFullHTML(g)).join('');
   }
@@ -1044,7 +1061,7 @@ class AmigosManager extends Modulo {
       // ranking, búsqueda) donde la mayoría arranca fuera de pantalla.
       return `<img src="${valor}" alt="${app.utils.sanitizeHTML(altText || '')}" loading="lazy" decoding="async">`;
     }
-    return valor || '🙂';
+    return valor || app.utils.uiIconSVG('user', 20);
   }
 
   buscarUsuarios() {
@@ -1175,7 +1192,13 @@ class AmigosManager extends Modulo {
   async eliminarAmigo(id) {
     const amigo = this.amigosList.find((a) => a.id === id);
     if (!amigo) return;
-    if (!confirm(`¿Eliminar a ${amigo.username} de tu lista de amigos?`)) return;
+    const ok = await app.dialogo.dlgConfirmar({
+      titulo: 'Eliminar amigo',
+      mensaje: `¿Eliminar a ${amigo.username} de tu lista de amigos?`,
+      confirmar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
     try {
       await app.api.apiFetch('/api/amigos/' + id, {
         method: 'DELETE',
@@ -1183,7 +1206,7 @@ class AmigosManager extends Modulo {
       this.amigosList = this.amigosList.filter((a) => a.id !== id);
       this.renderAmigos();
     } catch (error) {
-      alert(error.message || 'No se pudo eliminar al amigo.');
+      app.dialogo.dlgAvisar(error.message || 'No se pudo eliminar al amigo.', { tipo: 'error' });
     }
   }
 
@@ -1468,7 +1491,11 @@ class DuelosManager extends Modulo {
             : `<button class="friend-btn friend-btn-duel" onclick="jugarDuelo(${d.id}, '${d.juego}')">▶ Jugar</button>`;
         } else if (d.estado === 'finalizado') {
           const etiqueta =
-            d.resultado === 'gano' ? '🏆 Ganaste' : d.resultado === 'perdio' ? '💀 Perdiste' : '🤝 Empate';
+            d.resultado === 'gano'
+              ? `${app.utils.uiIconSVG('trophy')} Ganaste`
+              : d.resultado === 'perdio'
+                ? `${app.utils.uiIconSVG('skull')} Perdiste`
+                : `${app.utils.uiIconSVG('handshake')} Empate`;
           cuerpo = `
         <span class="friend-status">${etiqueta} (${d.misPuntos ?? 0} vs ${d.puntosOponente ?? 0})</span>
         <button class="friend-btn friend-btn-duel" onclick="revanchaDuelo(${d.id})">Revancha</button>`;
@@ -2898,7 +2925,7 @@ class PerfilManager extends Modulo {
       }
       this.abrirPerfilPropio(); // reload profile
     } catch (err) {
-      alert(err.message);
+      await app.dialogo.dlgAvisar(err.message, { tipo: 'error' });
       input.focus();
     }
   }
@@ -2926,7 +2953,7 @@ class PerfilManager extends Modulo {
       this.togglePerfilIconPicker();
       this.renderPerfil();
     } catch (error) {
-      alert(error.message || 'No se pudo cambiar el ícono.');
+      app.dialogo.dlgAvisar(error.message || 'No se pudo cambiar el ícono.', { tipo: 'error' });
     }
   }
 
@@ -2946,13 +2973,13 @@ class PerfilManager extends Modulo {
       if (this.perfilContexto.data) this.perfilContexto.data.descripcion = descripcion;
       if (btn) {
         const original = btn.textContent;
-        btn.textContent = '✅ Guardado';
+        btn.innerHTML = app.utils.uiIconSVG('check') + ' Guardado';
         setTimeout(() => {
           btn.textContent = original;
         }, 1500);
       }
     } catch (error) {
-      alert(error.message || 'No se pudo guardar la descripción.');
+      app.dialogo.dlgAvisar(error.message || 'No se pudo guardar la descripción.', { tipo: 'error' });
     }
   }
 
@@ -3035,8 +3062,8 @@ class PerfilManager extends Modulo {
               ? `
           <div class="profile-name-edit-container hidden" id="profileNameEditContainer" style="display:flex;align-items:center;gap:4px;">
             <input type="text" id="profileNameInput" class="auth-input" style="width:150px;padding:4px 8px;margin:0;font-family:'Press Start 2P', monospace;font-size:clamp(11px, 2vw, 15px);" maxlength="20">
-            <button class="btn-play" style="padding:4px 8px;font-size:12px;margin:0;" onclick="guardarNuevoUsuario()">✔️</button>
-            <button class="btn-back" style="padding:4px 8px;font-size:12px;margin:0;" onclick="cancelarEdicionUsuario()">❌</button>
+            <button class="btn-play" style="padding:4px 8px;font-size:12px;margin:0;" onclick="guardarNuevoUsuario()" aria-label="Guardar">${app.utils.uiIconSVG('check')}</button>
+            <button class="btn-back" style="padding:4px 8px;font-size:12px;margin:0;" onclick="cancelarEdicionUsuario()" aria-label="Cancelar">${app.utils.uiIconSVG('x')}</button>
           </div>
           `
               : ''
@@ -3207,7 +3234,7 @@ class Navegacion extends Modulo {
       if (!slot || slot.childElementCount) continue;
       slot.appendChild(
         Engine2D.Quality.createRow({
-          label: '🖼️ Gráficos',
+          label: 'Gráficos',
         }),
       );
     }
@@ -3249,8 +3276,17 @@ class Navegacion extends Modulo {
   // opciones.forzar: navega sin preguntar (lo usan la confirmación de salida
   // del duelo y el cambio de usuario).
   goTo(section, opciones = {}) {
+    // El panel admin no se abre directo: pasa por AdminPanel.admAbrir, que
+    // le pide el HTML al servidor (y el servidor verifica que sea admin).
+    if (section === 'admin' && !opciones.adminOk) {
+      app.admin.admAbrir();
+      return;
+    }
     // Duelo en juego: primero se pregunta; si confirma, se vuelve a llamar con forzar.
     if (!opciones.forzar && app.duelos.pedirConfirmacionSalida(section)) return;
+    const seccionAnterior = document.querySelector('.section.active');
+    if (seccionAnterior && seccionAnterior.id === 'sec-admin' && section !== 'admin') app.admin.admAlSalir();
+    document.body.classList.toggle('in-admin', section === 'admin');
     if (typeof stopRunner === 'function') stopRunner();
     if (typeof stopTrampas === 'function') stopTrampas();
     if (typeof rpgStopLoop === 'function') rpgStopLoop();
@@ -3267,8 +3303,8 @@ class Navegacion extends Modulo {
       puntuacion: 2,
     };
     links.forEach((a) => a.classList.remove('active'));
-    // Para pantallas de juego, mantener "Juegos" activo
-    const navIdx = map[section] !== undefined ? map[section] : map['juegos'];
+    // Para pantallas de juego, mantener "Juegos" activo (el panel admin no marca ninguno)
+    const navIdx = section === 'admin' ? -1 : map[section] !== undefined ? map[section] : map['juegos'];
     if (links[navIdx]) links[navIdx].classList.add('active');
 
     // Puntuación siempre arranca en Global.
@@ -3465,6 +3501,18 @@ class CargadorModulos extends Modulo {
     if (typeof Engine2D !== 'undefined' && Engine2D.Quality) {
       app.navegacion.syncQualityClass(Engine2D.Quality.get());
       Engine2D.Quality.onChange(app.navegacion.syncQualityClass);
+      // Modo adaptativo: la detección inicial es una adivinanza (núcleos,
+      // RAM) y en una PC justa solía arrancar en Medio. Si un juego del
+      // motor viene a menos de 40 FPS durante 4 segundos seguidos, se baja
+      // un escalón y queda guardado para la próxima. Nunca pisa lo que la
+      // persona eligió a mano en Ajustes.
+      Engine2D.Quality.setAdaptive(true, { downFps: 40, seconds: 4 });
+      Engine2D.Quality.onChange((nivel, opts) => {
+        if (opts && opts.reason === 'fps') {
+          const nombres = { low: 'Bajo', medium: 'Medio', high: 'Alto' };
+          app.utils.mostrarToast(`Gráficos en ${nombres[nivel] || nivel} para que el juego vaya más fluido`, 'info', 'monitor');
+        }
+      });
     }
   }
 
@@ -3553,7 +3601,7 @@ class RunnerUI extends Modulo {
     // ── Mejoras de nivel (10 niveles, misma tabla de costos 100..1000) ──
     {
       tipo: 'shieldDuration',
-      icon: '🛡️',
+      icon: 'shield',
       nombre: 'Duración del Escudo',
       tipoNivel: true,
       campo: 'shieldLevel',
@@ -3561,7 +3609,7 @@ class RunnerUI extends Modulo {
     },
     {
       tipo: 'x2Duration',
-      icon: '⚡',
+      icon: 'bolt',
       nombre: 'Duración del x2',
       tipoNivel: true,
       campo: 'x2Level',
@@ -3569,7 +3617,7 @@ class RunnerUI extends Modulo {
     },
     {
       tipo: 'slowFallDuration',
-      icon: '🥾',
+      icon: 'boot',
       nombre: 'Duración de Caída Lenta',
       tipoNivel: true,
       campo: 'slowFallLevel',
@@ -3577,7 +3625,7 @@ class RunnerUI extends Modulo {
     },
     {
       tipo: 'slowSpeedDuration',
-      icon: '🐢',
+      icon: 'turtle',
       nombre: 'Duración de Velocidad Reducida',
       tipoNivel: true,
       campo: 'slowSpeedLevel',
@@ -3586,7 +3634,7 @@ class RunnerUI extends Modulo {
     // ── Mejoras especiales (compra única) ──
     {
       tipo: 'shieldHits',
-      icon: '🛡️✨',
+      icon: 'shieldStar',
       nombre: 'Escudo Reforzado',
       tipoNivel: false,
       campo: 'shieldHits',
@@ -3595,7 +3643,7 @@ class RunnerUI extends Modulo {
     },
     {
       tipo: 'x2Triple',
-      icon: '🔥',
+      icon: 'flame',
       nombre: 'Triple Puntos',
       tipoNivel: false,
       campo: 'x2Triple',
@@ -3604,7 +3652,7 @@ class RunnerUI extends Modulo {
     },
     {
       tipo: 'slowSpeedStrong',
-      icon: '🐢💨',
+      icon: 'turtleFast',
       nombre: 'Frenada Fuerte',
       tipoNivel: false,
       campo: 'slowSpeedStrong',
@@ -3689,9 +3737,9 @@ class RunnerUI extends Modulo {
     const descInfinito = app.nucleo.APP_EL.runnerModoInfinitoDesc;
     if (btnInfinito) btnInfinito.classList.toggle('locked', !desbloqueado);
     if (descInfinito) {
-      descInfinito.textContent = desbloqueado
+      descInfinito.innerHTML = desbloqueado
         ? 'Sin límite de puntos, ¡aguantá lo más que puedas!'
-        : '🔒 Completá Historia para desbloquear';
+        : app.utils.uiIconSVG('lock', 12) + ' Completá Historia para desbloquear';
     }
     const panel = app.nucleo.APP_EL.runnerModePanel;
     if (panel) panel.classList.remove('hidden');
@@ -3745,14 +3793,14 @@ class RunnerUI extends Modulo {
       const efectoSiguiente = maxed ? '' : def.formatEfecto(nivel + 1);
       return `
       <div class="runner-mejora-card${maxed ? ' maxed' : ''}">
-        <div class="runner-mejora-icon">${def.icon}</div>
+        <div class="runner-mejora-icon">${app.utils.uiIconSVG(def.icon, 26)}</div>
         <div class="runner-mejora-info">
           <div class="runner-mejora-nombre">${def.nombre}</div>
           <div class="runner-mejora-nivel">Nivel ${nivel}/${maxLevel}</div>
           <div class="runner-mejora-efecto">${maxed ? efectoActual : efectoActual + ' → ' + efectoSiguiente}</div>
         </div>
         <button class="runner-mejora-btn" ${maxed || !puedeComprar ? 'disabled' : ''} onclick="comprarMejora('${def.tipo}')">
-          ${maxed ? 'MÁX' : '🪙 ' + costo}
+          ${maxed ? 'MÁX' : app.utils.uiIconSVG('coin', 13) + ' ' + costo}
         </button>
       </div>`;
     } else {
@@ -3760,13 +3808,13 @@ class RunnerUI extends Modulo {
       const puedeComprar = !comprado && coins >= def.costo;
       return `
       <div class="runner-mejora-card${comprado ? ' maxed' : ''}">
-        <div class="runner-mejora-icon">${def.icon}</div>
+        <div class="runner-mejora-icon">${app.utils.uiIconSVG(def.icon, 26)}</div>
         <div class="runner-mejora-info">
           <div class="runner-mejora-nombre">${def.nombre}</div>
           <div class="runner-mejora-efecto">${def.descripcion}</div>
         </div>
         <button class="runner-mejora-btn" ${comprado || !puedeComprar ? 'disabled' : ''} onclick="comprarMejora('${def.tipo}')">
-          ${comprado ? '✔ Comprado' : '🪙 ' + def.costo}
+          ${comprado ? app.utils.uiIconSVG('check', 13) + ' Comprado' : app.utils.uiIconSVG('coin', 13) + ' ' + def.costo}
         </button>
       </div>`;
     }
@@ -3971,7 +4019,7 @@ class Ahorcado extends Modulo {
     if (labelEl) {
       labelEl.textContent =
         this.ahorcadoDuelo && this.ahorcadoDuelo.activo
-          ? `⚔️ Duelo · Palabra ${this.ahorcadoDuelo.ronda}/${this.ahorcadoDuelo.totalRondas} · ${this.ahorcadoDuelo.puntosTotal} pts`
+          ? `Duelo · Palabra ${this.ahorcadoDuelo.ronda}/${this.ahorcadoDuelo.totalRondas} · ${this.ahorcadoDuelo.puntosTotal} pts`
           : Preguntados.TEMATICA_NAMES[tematicaId] || 'Normal';
     }
   }
@@ -4022,7 +4070,7 @@ class Ahorcado extends Modulo {
       const tId = tIdRaw && tIdRaw !== 'normal' ? Number(tIdRaw) : null;
       const enDuelo = this.ahorcadoDuelo && this.ahorcadoDuelo.activo;
       if (won) {
-        statusEl.textContent = '🎉 ¡Ganaste! La palabra era: ' + word.toUpperCase();
+        statusEl.textContent = '¡Ganaste! La palabra era: ' + word.toUpperCase();
         statusEl.className = 'ahorcado-status win';
         // Cada error resta puntos: la primera palabra sin errores vale 200,
         // y cada fallo descuenta 30 (piso de 20 puntos por palabra ganada).
@@ -4052,7 +4100,7 @@ class Ahorcado extends Modulo {
         }
       } else {
         this.ahorcadoState.revealed = word.split('');
-        statusEl.textContent = '💀 ¡Perdiste! La palabra era: ' + word.toUpperCase();
+        statusEl.textContent = '¡Perdiste! La palabra era: ' + word.toUpperCase();
         statusEl.className = 'ahorcado-status lose';
         if (!enDuelo) {
           app.puntuaciones.guardarPuntaje(4, 50, tId); // 50 puntos consuelo
@@ -4066,7 +4114,7 @@ class Ahorcado extends Modulo {
       if (enDuelo) {
         const labelEl = document.getElementById('ahorcado-theme-label');
         if (labelEl)
-          labelEl.textContent = `⚔️ Duelo · Palabra ${this.ahorcadoDuelo.ronda}/${this.ahorcadoDuelo.totalRondas} · ${this.ahorcadoDuelo.puntosTotal} pts`;
+          labelEl.textContent = `Duelo · Palabra ${this.ahorcadoDuelo.ronda}/${this.ahorcadoDuelo.totalRondas} · ${this.ahorcadoDuelo.puntosTotal} pts`;
         // Pausa breve para que se alcance a leer la palabra, y pasa sola a
         // la siguiente (o cierra el duelo si era la última de las 5).
         setTimeout(this.siguienteRondaAhorcadoDuelo, 1600);
@@ -4183,7 +4231,7 @@ class AdivinaPalabra extends Modulo {
     if (labelEl) {
       labelEl.textContent =
         this.wordleDuelo && this.wordleDuelo.activo
-          ? `⚔️ Duelo · ${AdivinaPalabra.WORDLE_TEMATICAS[tematicaId] || ''}`
+          ? `Duelo · ${AdivinaPalabra.WORDLE_TEMATICAS[tematicaId] || ''}`
           : AdivinaPalabra.WORDLE_TEMATICAS[tematicaId] || '';
     }
     app.nucleo.APP_EL.wordleHint.textContent =
@@ -4309,7 +4357,7 @@ class AdivinaPalabra extends Modulo {
     const enDuelo = this.wordleDuelo && this.wordleDuelo.activo;
     if (won) {
       this.wordleState.finished = true;
-      statusEl.textContent = '🎉 ¡La adivinaste! Era: ' + word.toUpperCase();
+      statusEl.textContent = '¡La adivinaste! Era: ' + word.toUpperCase();
       statusEl.className = 'wordle-status win';
       const intentosUsados = this.wordleState.currentRow;
       const puntos = Math.max(1500 - (intentosUsados - 1) * 250, 250);
@@ -4342,7 +4390,7 @@ class AdivinaPalabra extends Modulo {
       }
     } else if (lost) {
       this.wordleState.finished = true;
-      statusEl.textContent = '💀 ¡Se acabaron los intentos! Era: ' + word.toUpperCase();
+      statusEl.textContent = '¡Se acabaron los intentos! Era: ' + word.toUpperCase();
       statusEl.className = 'wordle-status lose';
       if (enDuelo) {
         const dueloId = this.wordleDuelo.dueloId;
@@ -4644,11 +4692,11 @@ class Preguntados extends Modulo {
   }
 
   // Arma el texto del "theme label" de cada minijuego clásico, agregando
-  // el prefijo "⚔️ Duelo ·" cuando la partida es un duelo 1v1 (mismo
+  // el prefijo "Duelo ·" cuando la partida es un duelo 1v1 (mismo
   // criterio visual que ya usaban Ahorcado y Adivina la Palabra).
   temaLabelConDuelo(esDuelo, tematicaId) {
     const base = Preguntados.TEMATICA_NAMES[tematicaId] || '';
-    return esDuelo ? `⚔️ Duelo · ${base}` : base;
+    return esDuelo ? `Duelo · ${base}` : base;
   }
 
   renderPreguntados() {
@@ -4705,7 +4753,7 @@ class Preguntados extends Modulo {
         <div class="game-screen-theme" id="preguntados-theme-label">${Preguntados.TEMATICA_NAMES[this.pregState.tematicaId] || ''}</div>
       </div>
       <div class="preg-result">
-        <div class="preg-result-emoji">${score >= preguntas.length * 0.7 ? '🏆' : score >= preguntas.length * 0.4 ? '😊' : '😅'}</div>
+        <div class="preg-result-emoji">${app.utils.uiIconSVG(score >= preguntas.length * 0.7 ? 'trophy' : score >= preguntas.length * 0.4 ? 'smile' : 'meh', 56)}</div>
         <p class="preg-result-title">${score >= preguntas.length * 0.7 ? '¡Excelente!' : score >= preguntas.length * 0.4 ? '¡Bien hecho!' : '¡Seguí practicando!'}</p>
         <p class="preg-result-score">${score} / ${preguntas.length} correctas</p>
         <p class="preg-result-pts">+${puntos} puntos</p>
@@ -4961,7 +5009,7 @@ class SopaDeLetras extends Modulo {
     };
     app.nucleo.APP_EL.sopaThemeLabel.textContent =
       this.sopaDuelo && this.sopaDuelo.activo
-        ? `⚔️ Duelo · ${SopaDeLetras.nombreTematica(tematicaId)}`
+        ? `Duelo · ${SopaDeLetras.nombreTematica(tematicaId)}`
         : SopaDeLetras.nombreTematica(tematicaId);
     this.renderSopa();
     this.startSopaTimer();
@@ -5065,7 +5113,7 @@ class SopaDeLetras extends Modulo {
     </div>
     <div class="sopa-wrap">
       <div class="sopa-info">
-        <span class="sopa-timer${timeLeft <= 15 ? ' sopa-timer-urgent' : ''}">⏱ ${timeLeft}s</span>
+        <span class="sopa-timer${timeLeft <= 15 ? ' sopa-timer-urgent' : ''}">${app.utils.uiIconSVG('timer')} ${timeLeft}s</span>
         <span class="sopa-score-disp"><svg style="width:1rem;height:1rem;fill:gold;vertical-align:middle;margin-right:2px;" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> ${this.sopaState.score}</span>
       </div>
       <div class="sopa-main">
@@ -5086,7 +5134,7 @@ class SopaDeLetras extends Modulo {
       // Actualizar solo el timer sin re-renderizar todo
       const el = document.querySelector('.sopa-timer');
       if (el) {
-        el.textContent = '⏱ ' + this.sopaState.timeLeft + 's';
+        el.innerHTML = app.utils.uiIconSVG('timer') + ' ' + this.sopaState.timeLeft + 's';
         if (this.sopaState.timeLeft <= 15) el.classList.add('sopa-timer-urgent');
       }
       if (this.sopaState.timeLeft <= 0) {
@@ -5264,7 +5312,7 @@ class SopaDeLetras extends Modulo {
       <div class="game-screen-title"><span>${app.utils.gameIconSVG('sopa', 22)}</span> Sopa de Letras</div>
     </div>
     <div class="preg-result">
-      <div class="preg-result-emoji">${won ? '🏆' : found > total / 2 ? '😊' : '😅'}</div>
+      <div class="preg-result-emoji">${app.utils.uiIconSVG(won ? 'trophy' : found > total / 2 ? 'smile' : 'meh', 56)}</div>
       <p class="preg-result-title">${won ? '¡Encontraste todas!' : '¡Tiempo agotado!'}</p>
       <p class="preg-result-score">${found} / ${total} palabras encontradas</p>
       <p class="preg-result-pts">+${pts} puntos</p>
@@ -5378,7 +5426,7 @@ class TerminaPalabra extends Modulo {
         if (i < guesses.length) {
           const g = guesses[i];
           return `<div class="termina-intento ${g.correct ? 'correct' : 'wrong'}">
-        ${g.text} ${g.correct ? '✅' : '❌'}
+        ${g.text} ${app.utils.uiIconSVG(g.correct ? 'check' : 'x')}
       </div>`;
         }
         return `<div class="termina-intento empty">${i < intentos ? '' : '—'}</div>`;
@@ -5431,7 +5479,7 @@ class TerminaPalabra extends Modulo {
         finished
           ? `
         <div class="termina-result ${guesses[guesses.length - 1]?.correct ? 'win' : 'lose'}">
-          ${guesses[guesses.length - 1]?.correct ? '🎉 ¡Correcto!' : '💀 Era: ' + word.toUpperCase()}
+          ${guesses[guesses.length - 1]?.correct ? '¡Correcto!' : 'Era: ' + word.toUpperCase()}
         </div>
         ${botonesFinTermina}`
           : ''
@@ -5807,7 +5855,7 @@ class AdivinaCosa extends Modulo {
     for (const pista of s.pistasRevealedThisItem) {
       const el = document.createElement('div');
       el.className = 'adivina-pista-item';
-      el.textContent = `🔹 ${pista}`;
+      el.innerHTML = app.utils.uiIconSVG('diamond', 12) + ' ' + app.utils.sanitizeHTML(pista);
       app.nucleo.APP_EL.adivinaPistasList.appendChild(el);
     }
 
@@ -5871,10 +5919,10 @@ class AdivinaCosa extends Modulo {
       ctx.fillStyle = '#e2e8f0';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = '#94a3b8';
-      ctx.font = '64px serif';
+      ctx.font = 'bold 72px Outfit, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('🕵️', canvas.width / 2, canvas.height / 2);
+      ctx.fillText('?', canvas.width / 2, canvas.height / 2);
     };
   }
 
@@ -5903,7 +5951,7 @@ class AdivinaCosa extends Modulo {
     const fb = app.nucleo.APP_EL.adivinaFeedback;
     fb.style.display = 'block';
     fb.className = 'adivina-feedback incorrecto';
-    fb.textContent = `❌ La respuesta era: ${item.respuesta.charAt(0).toUpperCase() + item.respuesta.slice(1)}`;
+    fb.textContent = `La respuesta era: ${item.respuesta.charAt(0).toUpperCase() + item.respuesta.slice(1)}`;
     input.disabled = true;
     app.nucleo.APP_EL.adivinaBtnPista.disabled = true;
     const btnRendirse = app.nucleo.APP_EL.adivinaBtnRendirse;
@@ -5945,7 +5993,7 @@ class AdivinaCosa extends Modulo {
       const pts = this.puntosItem(pistasUsadas);
       s.score += pts;
       fb.className = 'adivina-feedback correcto';
-      fb.textContent = `✅ ¡Correcto! +${pts} puntos`;
+      fb.textContent = `¡Correcto! +${pts} puntos`;
       input.disabled = true;
       app.nucleo.APP_EL.adivinaBtnPista.disabled = true;
       app.logros.actualizarProgresoParcial('adivina', {
@@ -5967,7 +6015,7 @@ class AdivinaCosa extends Modulo {
       setTimeout(() => this.nextAdivinaItem(), 1800);
     } else {
       fb.className = 'adivina-feedback incorrecto';
-      fb.textContent = '❌ No es eso, seguí intentando o pedí más pistas.';
+      fb.textContent = 'No es eso, seguí intentando o pedí más pistas.';
       input.value = '';
       setTimeout(() => {
         fb.style.display = 'none';
@@ -6004,10 +6052,10 @@ class AdivinaCosa extends Modulo {
           : {}),
       });
       const ov = app.nucleo.APP_EL.adivinaOverlay;
-      app.nucleo.APP_EL.adivinaOverlayEmoji.textContent = '🏆';
+      app.nucleo.APP_EL.adivinaOverlayEmoji.innerHTML = app.utils.uiIconSVG('trophy', 48);
       app.nucleo.APP_EL.adivinaOverlayTitle.textContent = '¡Juego terminado!';
       app.nucleo.APP_EL.adivinaOverlayDesc.textContent = `Tu puntaje final: ${s.score} puntos`;
-      app.nucleo.APP_EL.adivinaOverlayBtn.textContent = '🔁 Jugar de nuevo';
+      app.nucleo.APP_EL.adivinaOverlayBtn.textContent = 'Jugar de nuevo';
       app.nucleo.APP_EL.adivinaOverlayBtn.onclick = this.startAdivina;
       ov.style.display = 'flex';
       return;
@@ -6028,7 +6076,8 @@ class InfoModal extends Modulo {
     fetch('/api/admin/config')
       .then((r) => r.json())
       .then((c) => {
-        if (c.color_tema) app.tema.setTemaSitio(c.color_tema);
+        // Tema del sitio, modo mantenimiento y juegos ocultos
+        app.configSitio.csAplicar(c);
 
         const banner = document.getElementById('systemBanner');
         const bannerText = document.getElementById('systemBannerText');
@@ -6180,159 +6229,415 @@ class InfoModal extends Modulo {
   }
 }
 
-// AvisosManager — Avisos globales: CRUD desde el admin y banner público. (app.avisos)
+// AvisosManager — Avisos del admin: cartel de prioridad alta para los usuarios y pestaña "Avisos" del panel (crear, programar, historial). (app.avisos)
 class AvisosManager extends Modulo {
   constructor() {
     super();
-    this.avisoStyle = document.createElement('style');
+    // Público: cola de avisos de prioridad alta por mostrar (uno a la vez)
+    this.avCola = [];
+    this.avActual = null;
+    // Panel admin
+    this.avPrioridad = 'normal';
+    this.avEnvio = 'ahora';
+    this.avEditandoId = null;
+    this.avPagina = 1;
+    this.avQ = '';
+    this.avDatos = null;
+    this.avReloj = null;
+    this.avTimerBuscar = null;
   }
 
   iniciar() {
-    this.avisoStyle.textContent = `
-@keyframes slideDownAviso {
-    from { transform: translateY(-100%); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-`;
-    document.head.appendChild(this.avisoStyle);
-
-    document.addEventListener('DOMContentLoaded', () => {
-      // wait a bit for standard init
-      setTimeout(this.loadAvisoPublico, 500);
+    // Esc en el cartel = "Entendido"
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.avActual && !app.dialogo.dlgActual) this.avCerrarAvisoAlta();
     });
-
   }
 
-  async loadAdminAvisos() {
-    const token = localStorage.getItem('unigames_token');
-    if (!token) return;
+  // ─── Público: cartel en el medio de la pantalla ───
+
+  // Al conectarse (o reconectarse) se piden los avisos de prioridad alta que
+  // el usuario todavía no vio: los que salieron mientras no estaba.
+  async avRevisarPendientes() {
+    if (!app.auth.currentUser) return;
     try {
-      const res = await app.api.authFetch('/api/admin/avisos');
-      if (!res.ok) throw new Error('Error fetching avisos');
-      const avisos = await res.json();
-      const listDiv = document.getElementById('adminAvisosList');
-      if (avisos.length === 0) {
-        listDiv.innerHTML =
-          '<div style="text-align:center; color:#94A3B8; font-size:12px; padding:10px;">No hay avisos creados.</div>';
-        return;
-      }
-      listDiv.innerHTML = avisos
-        .map(
-          (aviso) => `
-            <div style="background:rgba(0,0,0,0.3); border-radius:6px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; border-left: 4px solid ${aviso.color || '#3b82f6'};">
-                <div style="flex:1;">
-                    <div style="font-size:13px; color:#F1F5F9; font-weight:600; margin-bottom:4px;">
-                        ${app.utils.sanitizeHTML(aviso.icono || '📢')} ${app.utils.sanitizeHTML(aviso.texto)}
-                    </div>
-                    <div style="font-size:10px; color:#94A3B8;">
-                        Estado: <span style="color: ${aviso.activo ? '#4ade80' : '#94A3B8'}">${aviso.activo ? 'Activo (Mostrándose)' : 'Inactivo'}</span>
-                    </div>
-                </div>
-                <div style="display:flex; gap:8px;">
-                    ${aviso.activo ? `<button onclick="toggleAvisoAdmin(${aviso.id}, false)" style="background:#334155; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">Desactivar</button>` : `<button onclick="toggleAvisoAdmin(${aviso.id}, true)" style="background:#2563eb; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">Activar</button>`}
-                    <button onclick="eliminarAvisoAdmin(${aviso.id})" style="background:#ef4444; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">X</button>
-                </div>
-            </div>
-        `,
-        )
-        .join('');
-    } catch (e) {
-      console.error(e);
+      const pendientes = await app.api.apiFetch('/api/notificaciones/avisos-pendientes');
+      (pendientes || []).forEach((a) => this.avEncolar(a));
+    } catch {
+      /* silencioso: es un extra */
     }
   }
 
-  async crearAvisoAdmin() {
-    const texto = document.getElementById('adminAvisoNuevoTexto').value.trim();
-    const icono = document.getElementById('adminAvisoNuevoIcono').value.trim() || '📢';
-    const color = document.getElementById('adminAvisoNuevoColor').value;
-    if (!texto) {
-      alert('El texto del aviso no puede estar vacío');
+  avEncolar(aviso, opciones = {}) {
+    if (!aviso || aviso.id == null) return;
+    if ((this.avActual && this.avActual.id === aviso.id) || this.avCola.some((x) => x.id === aviso.id)) return;
+    this.avCola.push({ ...aviso, lectura: !!opciones.lectura });
+    if (!this.avActual) this.avSiguiente();
+  }
+
+  // opciones.lectura: abierto desde la lista de notificaciones (solo para
+  // leerlo completo, sin el estilo de alerta).
+  avMostrarAlta(aviso, opciones = {}) {
+    if (!opciones.lectura) return this.avEncolar(aviso);
+    this.avCola = this.avCola.filter((x) => x.id !== aviso.id);
+    this.avCola.unshift({ ...aviso, lectura: true });
+    if (!this.avActual) this.avSiguiente();
+  }
+
+  avSiguiente() {
+    const overlay = document.getElementById('avisoAltaOverlay');
+    const aviso = this.avCola.shift();
+    if (!overlay) return;
+    if (!aviso) {
+      this.avActual = null;
+      overlay.hidden = true;
       return;
     }
+    this.avActual = aviso;
+    overlay.classList.toggle('lectura', aviso.lectura);
+    overlay.querySelector('.aviso-alta-tag').lastChild.textContent = aviso.lectura ? ' AVISO' : ' AVISO IMPORTANTE';
+    document.getElementById('avisoAltaTitulo').textContent = aviso.titulo || 'Aviso';
+    document.getElementById('avisoAltaTexto').textContent = aviso.texto || '';
+    document.getElementById('avisoAltaFecha').textContent = aviso.enviado_en ? app.admin.admFechaHora(aviso.enviado_en) : '';
+    document.getElementById('avisoAltaCola').textContent = this.avCola.length ? `+${this.avCola.length} aviso${this.avCola.length > 1 ? 's' : ''} más` : '';
+    document.getElementById('avisoAltaBtn').textContent = this.avCola.length ? 'Siguiente' : 'Entendido';
+    overlay.hidden = false;
+    setTimeout(() => document.getElementById('avisoAltaBtn')?.focus(), 50);
+  }
+
+  async avCerrarAvisoAlta() {
+    const aviso = this.avActual;
+    if (aviso && !aviso.lectura) {
+      try {
+        await app.api.apiFetch(`/api/notificaciones/aviso/${aviso.id}/leer`, { method: 'POST' });
+      } catch {
+        /* si falla, vuelve a aparecer la próxima vez: mejor eso que perderlo */
+      }
+      app.notificaciones.actualizarBadgeNotificaciones();
+    }
+    this.avSiguiente();
+  }
+
+  avQuitarDeCola(id) {
+    this.avCola = this.avCola.filter((x) => x.id !== id);
+    if (this.avActual && this.avActual.id === id) this.avSiguiente();
+  }
+
+  // ─── Panel admin: pestaña Avisos ───
+
+  async avCargar() {
+    const params = new URLSearchParams({ pagina: this.avPagina });
+    if (this.avQ) params.set('q', this.avQ);
     try {
-      const res = await app.api.authFetch('/api/admin/avisos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          texto,
-          icono,
-          color,
-          activo: false,
-        }),
-      });
-      if (res.ok) {
-        document.getElementById('adminAvisoNuevoTexto').value = '';
-        this.loadAdminAvisos();
+      this.avDatos = await app.api.apiFetch('/api/admin/avisos?' + params);
+    } catch (e) {
+      app.utils.mostrarToast('No se pudieron cargar los avisos: ' + e.message, 'error');
+      return;
+    }
+    this.avPagina = this.avDatos.historial.pagina;
+    this.avRenderProgramados();
+    this.avRenderHistorial();
+    this.avActualizarPreview();
+    app.admin.admBadge('admBadgeProgramados', this.avDatos.programados.length);
+  }
+
+  avRenderProgramados() {
+    const cont = document.getElementById('avProgramados');
+    if (!cont || !this.avDatos) return;
+    const lista = this.avDatos.programados;
+    if (!lista.length) {
+      cont.innerHTML = '<div class="adm-empty" style="grid-column:1/-1">No hay avisos programados. Elegí "Programar" en el formulario para dejar uno listo.</div>';
+      return;
+    }
+    const s = app.utils.sanitizeHTML;
+    cont.innerHTML = lista
+      .map((a) => {
+        const vencido = a.programado_para && new Date(a.programado_para) <= new Date();
+        return `
+        <div class="adm-sched-item">
+          <div class="adm-sched-top">
+            <span class="adm-badge ${a.prioridad === 'alta' ? 'adm-badge-alta' : 'adm-badge-normal'}">${a.prioridad === 'alta' ? app.utils.uiIconSVG('siren', 12) + ' Alta' : app.utils.uiIconSVG('bell', 12) + ' Normal'}</span>
+            <span class="adm-sched-when">${a.programado_para ? (vencido ? 'Saliendo…' : 'Sale ' + app.admin.admRelativo(a.programado_para)) : 'Sin fecha'}</span>
+          </div>
+          <h3>${s(a.titulo)}</h3>
+          <p>${s(a.texto)}</p>
+          <div class="adm-sched-date">${app.utils.uiIconSVG('calendar', 12)} ${a.programado_para ? app.admin.admFechaHora(a.programado_para) : '—'}${a.creado_por ? ' · por ' + s(a.creado_por) : ''}</div>
+          <div class="adm-sched-actions">
+            <button class="adm-btn adm-btn-ghost adm-btn-sm" onclick="avEditar(${a.id})">Editar</button>
+            <button class="adm-btn adm-btn-ok adm-btn-sm" onclick="avEnviarYa(${a.id})">Enviar ahora</button>
+            <button class="adm-btn adm-btn-danger adm-btn-sm" onclick="avEliminar(${a.id}, false)">Cancelar</button>
+          </div>
+        </div>`;
+      })
+      .join('');
+  }
+
+  avRenderHistorial() {
+    const body = document.getElementById('avHistorialBody');
+    if (!body || !this.avDatos) return;
+    const h = this.avDatos.historial;
+    const s = app.utils.sanitizeHTML;
+    if (!h.items.length) {
+      body.innerHTML = `<tr><td colspan="7" class="adm-empty">${this.avQ ? 'Ningún aviso coincide con la búsqueda.' : 'Todavía no se envió ningún aviso.'}</td></tr>`;
+    } else {
+      body.innerHTML = h.items
+        .map((a) => {
+          const pct = a.destinatarios ? Math.round((a.leidos / a.destinatarios) * 100) : 0;
+          return `
+          <tr>
+            <td class="nowrap"><b>${app.admin.admFechaHora(a.enviado_en)}</b><div class="muted" style="font-size:11.5px">${app.admin.admRelativo(a.enviado_en)}</div></td>
+            <td><div class="av-hist-titulo">${s(a.titulo)}</div><div class="av-hist-texto" title="${s(a.texto)}">${s(a.texto)}</div></td>
+            <td><span class="adm-badge ${a.prioridad === 'alta' ? 'adm-badge-alta' : 'adm-badge-normal'}">${a.prioridad === 'alta' ? 'Alta' : 'Normal'}</span></td>
+            <td class="num">${a.destinatarios}</td>
+            <td><div class="adm-progress" title="${a.leidos} de ${a.destinatarios} lo leyeron"><div class="adm-progress-track"><div class="adm-progress-fill" style="width:${pct}%"></div></div><span>${pct}%</span></div></td>
+            <td class="muted">${a.creado_por ? s(a.creado_por) : '—'}</td>
+            <td><button class="adm-btn adm-btn-danger adm-btn-sm" title="Lo saca de las notificaciones de todos" onclick="avEliminar(${a.id}, true)">Retirar</button></td>
+          </tr>`;
+        })
+        .join('');
+    }
+    document.getElementById('avHistorialPager').innerHTML = app.admin.admPagerHTML(h, 'avIrPagina', 'avisos');
+  }
+
+  avIrPagina(n) {
+    this.avPagina = n;
+    this.avCargar();
+  }
+
+  avBuscarHistorial(q) {
+    clearTimeout(this.avTimerBuscar);
+    this.avTimerBuscar = setTimeout(() => {
+      this.avQ = q.trim();
+      this.avPagina = 1;
+      this.avCargar();
+    }, 300);
+  }
+
+  // Refresca el "sale en X min" de los programados mientras la pestaña está abierta.
+  avIniciarReloj() {
+    this.avDetenerReloj();
+    this.avReloj = setInterval(() => {
+      if (!document.hidden) this.avRenderProgramados();
+      this.avActualizarPreview();
+    }, 30000);
+  }
+
+  avDetenerReloj() {
+    clearInterval(this.avReloj);
+    this.avReloj = null;
+  }
+
+  // ─── Formulario ───
+
+  avSetPrioridad(p) {
+    this.avPrioridad = p === 'alta' ? 'alta' : 'normal';
+    document.querySelectorAll('[data-av-prioridad]').forEach((b) => {
+      const activo = b.dataset.avPrioridad === this.avPrioridad;
+      b.classList.toggle('active', activo);
+      b.setAttribute('aria-checked', activo ? 'true' : 'false');
+    });
+    this.avActualizarPreview();
+  }
+
+  avSetEnvio(modo) {
+    this.avEnvio = modo === 'programar' ? 'programar' : 'ahora';
+    document.querySelectorAll('[data-av-envio]').forEach((b) => b.classList.toggle('active', b.dataset.avEnvio === this.avEnvio));
+    const wrap = document.getElementById('avProgramarWrap');
+    const input = document.getElementById('avFecha');
+    wrap.hidden = this.avEnvio !== 'programar';
+    if (this.avEnvio === 'programar') {
+      input.min = this.avALocal(new Date(Date.now() + 60 * 1000));
+      if (!input.value) {
+        // Por defecto: dentro de una hora, en punto
+        const d = new Date(Date.now() + 60 * 60 * 1000);
+        d.setMinutes(0, 0, 0);
+        input.value = this.avALocal(d);
+      }
+    }
+    this.avActualizarBoton();
+    this.avActualizarPreview();
+  }
+
+  // Date → valor de <input type="datetime-local"> en la hora local del admin
+  avALocal(fecha) {
+    const d = new Date(fecha);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+  }
+
+  avActualizarBoton() {
+    const span = document.querySelector('#avSubmit span');
+    if (!span) return;
+    if (this.avEditandoId) span.textContent = 'Guardar cambios';
+    else span.textContent = this.avEnvio === 'programar' ? 'Programar aviso' : 'Enviar aviso';
+  }
+
+  avActualizarPreview() {
+    const titulo = document.getElementById('avTitulo');
+    const texto = document.getElementById('avTexto');
+    const prev = document.getElementById('avPreview');
+    if (!titulo || !texto || !prev) return;
+    const s = app.utils.sanitizeHTML;
+    const contT = document.getElementById('avTituloCont');
+    const contX = document.getElementById('avTextoCont');
+    contT.textContent = `${titulo.value.length}/120`;
+    contX.textContent = `${texto.value.length}/2000`;
+    contT.classList.toggle('limite', titulo.value.length > 100);
+    contX.classList.toggle('limite', texto.value.length > 1800);
+
+    const t = titulo.value.trim() ? s(titulo.value.trim()) : '<span class="av-prev-vacio">Título del aviso</span>';
+    const x = texto.value.trim() ? s(texto.value.trim()) : '<span class="av-prev-vacio">Acá va la descripción…</span>';
+
+    // Cuándo sale
+    let cuando = 'Ahora';
+    const hint = document.getElementById('avFechaHint');
+    if (this.avEnvio === 'programar') {
+      const v = document.getElementById('avFecha').value;
+      const fecha = v ? new Date(v) : null;
+      if (fecha && !Number.isNaN(fecha.getTime())) {
+        cuando = app.admin.admFechaHora(fecha);
+        hint.textContent = fecha > new Date() ? `Sale ${app.admin.admRelativo(fecha)}` : 'Esa fecha ya pasó';
       } else {
-        alert('Error al crear aviso');
+        hint.textContent = 'Elegí día y hora';
       }
+    }
+
+    let html = `
+      <div class="av-prev-label">En las notificaciones</div>
+      <div class="av-prev-notif"><span class="ico">${app.utils.uiIconSVG('megaphone', 18)}</span><div><b>${t}</b><p>${x}</p><time>${s(cuando)}</time></div></div>`;
+    if (this.avPrioridad === 'alta') {
+      html += `
+      <div class="av-prev-label">Cartel en el medio de la pantalla (a todos)</div>
+      <div class="av-prev-alta"><span class="tag">${app.utils.uiIconSVG('siren', 11)} AVISO IMPORTANTE</span><h3>${t}</h3><p>${x}</p><span class="btn">Entendido</span></div>`;
+    }
+    prev.innerHTML = html;
+    document.getElementById('avPreviewHint').textContent =
+      this.avPrioridad === 'alta' ? 'notificación + cartel para todos' : 'solo como notificación';
+  }
+
+  avMensaje(texto, tipo = '') {
+    const el = document.getElementById('avMsg');
+    if (!el) return;
+    el.textContent = texto;
+    el.className = 'adm-form-msg' + (tipo ? ' ' + tipo : '');
+  }
+
+  async avGuardar() {
+    const titulo = document.getElementById('avTitulo').value.trim();
+    const texto = document.getElementById('avTexto').value.trim();
+    if (!titulo) return this.avMensaje('Poné un título.', 'error');
+    if (!texto) return this.avMensaje('Escribí la descripción del aviso.', 'error');
+
+    const body = { titulo, texto, prioridad: this.avPrioridad };
+    if (this.avEnvio === 'programar') {
+      const v = document.getElementById('avFecha').value;
+      const fecha = v ? new Date(v) : null;
+      if (!fecha || Number.isNaN(fecha.getTime())) return this.avMensaje('Elegí la fecha y hora de envío.', 'error');
+      if (fecha <= new Date(Date.now() + 30 * 1000)) return this.avMensaje('La fecha tiene que ser en el futuro.', 'error');
+      body.programado_para = fecha.toISOString();
+    } else if (this.avEditandoId) {
+      return this.avMensaje('Para mandarlo ya, usá "Enviar ahora" en la tarjeta del aviso.', 'error');
+    }
+
+    if (!this.avEditandoId && this.avEnvio === 'ahora') {
+      const ok = await app.dialogo.dlgConfirmar(
+        this.avPrioridad === 'alta'
+          ? { titulo: 'Enviar aviso importante', icono: 'siren', mensaje: `A todos los usuarios conectados les va a aparecer un cartel en el medio de la pantalla con "${titulo}".`, confirmar: 'Enviar a todos', peligro: true }
+          : { titulo: 'Enviar aviso', icono: 'megaphone', mensaje: `¿Enviar "${titulo}" a todos los usuarios ahora? Les llega como notificación.`, confirmar: 'Enviar' },
+      );
+      if (!ok) return;
+    }
+
+    const btn = document.getElementById('avSubmit');
+    btn.disabled = true;
+    this.avMensaje('Guardando…');
+    try {
+      if (this.avEditandoId) {
+        await app.api.apiFetch(`/api/admin/avisos/${this.avEditandoId}`, { method: 'PUT', body: JSON.stringify(body) });
+        app.utils.mostrarToast('Aviso programado actualizado');
+      } else {
+        const r = await app.api.apiFetch('/api/admin/avisos', { method: 'POST', body: JSON.stringify(body) });
+        app.utils.mostrarToast(
+          r.enviado ? `Aviso enviado a ${r.destinatarios} usuario${r.destinatarios === 1 ? '' : 's'}` : `Aviso programado para ${app.admin.admFechaHora(body.programado_para)}`,
+          'info',
+          r.enviado ? 'megaphone' : 'calendar',
+        );
+      }
+      this.avLimpiarFormulario();
+      this.avCargar();
     } catch (e) {
-      console.error(e);
+      this.avMensaje(e.message, 'error');
+    } finally {
+      btn.disabled = false;
     }
   }
 
-  async toggleAvisoAdmin(id, activar) {
-    try {
-      const res = await app.api.authFetch(`/api/admin/avisos/${id}/toggle`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          activo: activar,
-        }),
-      });
-      if (res.ok) {
-        this.loadAdminAvisos();
-        // Refrescar el aviso en la UI pública si es necesario
-        this.loadAvisoPublico();
-      }
-    } catch (e) {
-      console.error(e);
-    }
+  avLimpiarFormulario() {
+    this.avEditandoId = null;
+    document.getElementById('avTitulo').value = '';
+    document.getElementById('avTexto').value = '';
+    document.getElementById('avFecha').value = '';
+    document.getElementById('avForm').classList.remove('editando');
+    document.getElementById('avFormTitulo').textContent = 'Nuevo aviso';
+    document.getElementById('avCancelarEdicionBtn').hidden = true;
+    this.avMensaje('');
+    this.avSetPrioridad('normal');
+    this.avSetEnvio('ahora');
   }
 
-  async eliminarAvisoAdmin(id) {
-    if (!confirm('¿Seguro que deseas eliminar este aviso de forma permanente?')) return;
-    try {
-      const res = await app.api.authFetch(`/api/admin/avisos/${id}`, {
-        method: 'DELETE',
-      });
-      if (res.ok) {
-        this.loadAdminAvisos();
-        this.loadAvisoPublico();
-      }
-    } catch (e) {
-      console.error(e);
-    }
+  avEditar(id) {
+    const a = this.avDatos && this.avDatos.programados.find((x) => x.id === id);
+    if (!a) return;
+    this.avEditandoId = id;
+    document.getElementById('avTitulo').value = a.titulo;
+    document.getElementById('avTexto').value = a.texto;
+    document.getElementById('avForm').classList.add('editando');
+    document.getElementById('avFormTitulo').textContent = 'Editar aviso programado';
+    document.getElementById('avCancelarEdicionBtn').hidden = false;
+    this.avSetPrioridad(a.prioridad);
+    document.getElementById('avFecha').value = a.programado_para ? this.avALocal(a.programado_para) : '';
+    this.avSetEnvio('programar');
+    this.avMensaje('Editando: los cambios se guardan sin mandarlo.');
+    document.getElementById('avForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  async loadAvisoPublico() {
-    try {
-      const res = await fetch('/api/admin/avisos/activo');
-      if (!res.ok) return;
-      const aviso = await res.json();
+  avCancelarEdicion() {
+    this.avLimpiarFormulario();
+  }
 
-      const existingAviso = document.getElementById('global-aviso-banner');
-      if (existingAviso) existingAviso.remove();
-      if (aviso) {
-        const avisoHTML = `
-                <div id="global-aviso-banner" style="background: ${aviso.color || '#3b82f6'}; color: white; text-align: center; padding: 12px 20px; font-weight: 600; font-size: 14px; position: relative; z-index: 50; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); animation: slideDownAviso 0.5s ease-out forwards;">
-                    <span style="margin-right:8px; font-size:16px;">${app.utils.sanitizeHTML(aviso.icono || '📢')}</span>
-                    ${app.utils.sanitizeHTML(aviso.texto)}
-                </div>
-            `;
-        // Insertar justo debajo del header
-        const header = document.querySelector('header');
-        if (header) {
-          header.insertAdjacentHTML('afterend', avisoHTML);
-        }
-      }
+  async avEnviarYa(id) {
+    const a = this.avDatos && this.avDatos.programados.find((x) => x.id === id);
+    const ok = await app.dialogo.dlgConfirmar({
+      titulo: 'Enviar ahora',
+      icono: 'megaphone',
+      mensaje: `¿Mandar ahora "${a ? a.titulo : 'este aviso'}" a todos los usuarios, sin esperar la fecha programada?`,
+      confirmar: 'Enviar ahora',
+    });
+    if (!ok) return;
+    try {
+      const r = await app.api.apiFetch(`/api/admin/avisos/${id}/enviar`, { method: 'POST' });
+      app.utils.mostrarToast(`Aviso enviado a ${r.destinatarios} usuarios`, 'info', 'megaphone');
+      if (this.avEditandoId === id) this.avLimpiarFormulario();
     } catch (e) {
-      console.error('Error cargando aviso publico:', e);
+      app.dialogo.dlgAvisar(e.message, { tipo: 'error' });
     }
+    this.avCargar();
+  }
+
+  async avEliminar(id, enviado) {
+    const ok = await app.dialogo.dlgConfirmar(
+      enviado
+        ? { titulo: 'Retirar aviso', mensaje: 'Se borra de las notificaciones de todos los usuarios y del historial. No se puede deshacer.', confirmar: 'Retirar', peligro: true }
+        : { titulo: 'Cancelar aviso programado', mensaje: 'El aviso no se va a enviar y se borra.', confirmar: 'Cancelar aviso', cancelar: 'Volver', peligro: true },
+    );
+    if (!ok) return;
+    try {
+      await app.api.apiFetch(`/api/admin/avisos/${id}`, { method: 'DELETE' });
+      app.utils.mostrarToast(enviado ? 'Aviso retirado' : 'Aviso cancelado');
+      if (this.avEditandoId === id) this.avLimpiarFormulario();
+    } catch (e) {
+      app.dialogo.dlgAvisar(e.message, { tipo: 'error' });
+    }
+    this.avCargar();
   }
 }
 
@@ -6407,17 +6712,83 @@ class Utils extends Modulo {
         '<path d="M8 3H5a2 2 0 0 0-2 2v3"></path><path d="M21 8V5a2 2 0 0 0-2-2h-3"></path><path d="M3 16v3a2 2 0 0 0 2 2h3"></path><path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>',
       minimize:
         '<path d="M8 3v3a2 2 0 0 1-2 2H3"></path><path d="M21 8h-3a2 2 0 0 1-2-2V3"></path><path d="M3 16h3a2 2 0 0 1 2 2v3"></path><path d="M16 21v-3a2 2 0 0 1 2-2h3"></path>',
+      // ── Íconos propios para reemplazar emojis en la interfaz (los logros siguen con emoji) ──
+      x: '<path d="M18 6 6 18M6 6l12 12"/>',
+      clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>',
+      timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6M12 2v3"/>',
+      hourglass: '<path d="M6 2h12M6 22h12M7 2v4a5 5 0 0 0 10 0V2M7 22v-4a5 5 0 0 1 10 0v4"/>',
+      calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+      bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+      siren: '<path d="M7 18v-6a5 5 0 0 1 10 0v6"/><path d="M5 18h14v3H5z"/><path d="M12 2v2M4.2 5.2l1.4 1.4M19.8 5.2l-1.4 1.4M2 12h2M20 12h2"/>',
+      megaphone: '<path d="M3 11v2a1 1 0 0 0 1 1h2l6 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M16 9a4 4 0 0 1 0 6M19 6a8 8 0 0 1 0 12"/>',
+      info: '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/>',
+      help: '<circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 2.5-3 4.5M12 17h.01"/>',
+      ban: '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+      shield: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+      shieldStar: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 7.5l1.2 2.4 2.6.4-1.9 1.8.5 2.6L12 13.5l-2.4 1.2.5-2.6-1.9-1.8 2.6-.4z"/>',
+      hammer: '<path d="M15 3l6 6-3 3-6-6z"/><path d="M13.5 7.5 4 17a1.4 1.4 0 0 0 2 2l9.5-9.5"/>',
+      edit: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+      wrench: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
+      settings: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+      trophy: '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3"/>',
+      skull: '<path d="M12 3a8 8 0 0 0-5 14.2V20a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1v-2.8A8 8 0 0 0 12 3z"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><path d="M10 21v-2M14 21v-2"/>',
+      flag: '<path d="M4 22V4M4 4h12l-2 4 2 4H4"/>',
+      swords: '<path d="M14.5 17.5 3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2"/><path d="M9.5 6.5 13 3h3v3l-3.5 3.5M5 14l-2 2 4 4 2-2"/>',
+      bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+      boot: '<path d="M7 3h6v8l6 3a2 2 0 0 1 1 1.8V19H4V3z"/><path d="M4 15h16"/>',
+      turtle: '<path d="M4 16a8 6 0 0 1 16 0z"/><path d="M8 16v2.5M16 16v2.5M20 14h2.5l-1-2.5"/><path d="M8 12l2-2.5h4l2 2.5"/>',
+      turtleFast: '<path d="M6 16a7 5.5 0 0 1 14 0z"/><path d="M9.5 16v2.5M16.5 16v2.5M20 14h2.5l-1-2.5"/><path d="M1 10h4M1 13h3M2 16h2"/>',
+      flame: '<path d="M12 22a6 6 0 0 0 6-6c0-4-3-6-4-10-3 2-4 5-4 7-1-1-1.5-2-1.5-3C6.5 11.5 6 13.5 6 16a6 6 0 0 0 6 6z"/>',
+      coin: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5"/>',
+      search: '<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+      refresh: '<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>',
+      image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>',
+      book: '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V2H6.5A2.5 2.5 0 0 0 4 4.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',
+      infinity: '<path d="M12 12c-2-2.7-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.3 6-4zm0 0c2 2.7 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.3-6 4z"/>',
+      gamepad: '<rect x="2" y="7" width="20" height="11" rx="4"/><path d="M7 11v3M5.5 12.5h3"/><circle cx="16" cy="11.5" r="1"/><circle cx="18" cy="13.5" r="1"/>',
+      music: '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+      volume: '<path d="M11 5 6 9H2v6h4l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/>',
+      monitor: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
+      pause: '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>',
+      smile: '<circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/>',
+      meh: '<circle cx="12" cy="12" r="9"/><path d="M8 15h8M9 9h.01M15 9h.01"/>',
+      star: '<path d="m12 2 3.1 6.3 6.9 1-5 4.9 1.2 6.8L12 17.8 5.8 21 7 14.2 2 9.3l6.9-1z"/>',
+      diamond: '<path d="M12 3l6 9-6 9-6-9z"/>',
+      heart: '<path d="M12 21s-7-4.5-9.3-9A5 5 0 0 1 12 6a5 5 0 0 1 9.3 6c-2.3 4.5-9.3 9-9.3 9z"/>',
+      clover: '<circle cx="12" cy="7.5" r="3.5"/><circle cx="7.5" cy="12" r="3.5"/><circle cx="16.5" cy="12" r="3.5"/><path d="M12 12v10"/>',
+      totem: '<rect x="7" y="2" width="10" height="7" rx="1"/><rect x="7" y="9" width="10" height="7" rx="1"/><path d="M9 22v-6h6v6M10 5h.01M14 5h.01M10 12h4"/>',
+      chest: '<rect x="3" y="9" width="18" height="11" rx="1"/><path d="M3 13h18M5 9V7a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v2M12 12v3"/>',
+      list: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 12h6M9 16h6"/>',
     };
     const inner = paths[name] || '';
-    return `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${inner}</svg>`;
+    return `<svg class="ui-ico" viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${inner}</svg>`;
+  }
+
+  // Rellena los <i data-ico="nombre"> y <i data-game-ico="id"> del HTML
+  // estático con su dibujo (index.html y el panel admin no usan emojis).
+  pintarIconos(raiz = document) {
+    raiz.querySelectorAll('[data-ico]:not([data-ico-listo])').forEach((el) => {
+      el.innerHTML = this.uiIconSVG(el.dataset.ico, Number(el.dataset.icoSize) || 16);
+      el.setAttribute('data-ico-listo', '');
+    });
+    raiz.querySelectorAll('[data-game-ico]:not([data-ico-listo])').forEach((el) => {
+      el.innerHTML = this.gameIconSVG(el.dataset.gameIco, Number(el.dataset.icoSize) || 20);
+      el.setAttribute('data-ico-listo', '');
+    });
   }
 
   // Cartel flotante genérico (mismo estilo visual que el toast de logros)
   // para avisos cortos como "Solicitud enviada" en vez de usar alert().
-  mostrarToast(mensaje, tipo = 'info') {
+  // icono: nombre de uiIconSVG (opcional)
+  mostrarToast(mensaje, tipo = 'info', icono = null) {
     const toast = document.createElement('div');
     toast.className = 'app-toast' + (tipo === 'error' ? ' error' : '');
-    toast.textContent = mensaje;
+    if (icono) {
+      toast.innerHTML = this.uiIconSVG(icono, 16) + ' ';
+      toast.appendChild(document.createTextNode(mensaje));
+    } else {
+      toast.textContent = mensaje;
+    }
     document.body.appendChild(toast);
     requestAnimationFrame(() => toast.classList.add('show'));
     setTimeout(() => {
@@ -6435,7 +6806,91 @@ class ApiClient extends Modulo {
     if (token) headers['Authorization'] = 'Bearer ' + token;
     const res = await fetch(url, { ...options, headers });
     if (res.status === 401 && token) this.sesionVencida();
+    // 403 con baneado:true = la cuenta fue baneada (ver verificarToken)
+    if (res.status === 403 && token) {
+      res
+        .clone()
+        .json()
+        .then((d) => d && d.baneado && this.sesionBaneada({ mensaje: d.error, sancion: d.sancion }))
+        .catch(() => {});
+    }
     return res;
+  }
+
+  // Cuenta baneada: se cierra la sesión y se muestra el motivo en un cartel
+  sesionBaneada(datos = {}) {
+    if (!app.auth.currentUser || this.mostrandoBaneo) return;
+    this.mostrandoBaneo = true;
+    app.admin.admExpulsar();
+    app.auth.logout();
+    const s = datos.sancion || {};
+    const cuando =
+      s.tipo === 'temporal' && s.hasta
+        ? `Vas a poder volver a entrar el ${new Date(s.hasta).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+        : s.tipo === 'permanente'
+          ? 'El baneo es permanente.'
+          : '';
+    app.dialogo
+      .dlgAbrir({
+        titulo: 'Tu cuenta fue suspendida',
+        icono: 'ban',
+        tipo: 'error',
+        html: `<p class="dlg-mensaje">${app.utils.sanitizeHTML(cuando)}</p>${
+          s.motivo ? `<div class="dlg-motivo"><b>Motivo:</b> ${app.utils.sanitizeHTML(s.motivo)}</div>` : `<p class="dlg-mensaje">${app.utils.sanitizeHTML(datos.mensaje || '')}</p>`
+        }`,
+        botones: [{ texto: 'Entendido', valor: true, estilo: 'primario' }],
+      })
+      .then(() => (this.mostrandoBaneo = false));
+  }
+
+  // Abre un canal de Server-Sent Events con fetch (EventSource no deja
+  // mandar el header Authorization, y el token no va en la URL para que no
+  // quede en logs). Llama onEvento(nombre, datos) por cada evento recibido.
+  // Termina cuando el servidor corta; si responde con error, tira un Error
+  // con .status (401/403...).
+  async abrirStreamSSE(url, onEvento, signal) {
+    const token = localStorage.getItem('unigames_token');
+    const res = await fetch(url, {
+      headers: { Authorization: 'Bearer ' + token, Accept: 'text/event-stream' },
+      cache: 'no-store',
+      signal,
+    });
+    if (!res.ok || !res.body) {
+      const err = new Error('HTTP ' + res.status);
+      err.status = res.status;
+      throw err;
+    }
+    const lector = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { value, done } = await lector.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, '\n');
+      let corte;
+      while ((corte = buffer.indexOf('\n\n')) !== -1) {
+        const bloque = buffer.slice(0, corte);
+        buffer = buffer.slice(corte + 2);
+        let evento = 'message';
+        const datos = [];
+        for (const linea of bloque.split('\n')) {
+          if (linea.startsWith('event:')) evento = linea.slice(6).trim();
+          else if (linea.startsWith('data:')) datos.push(linea.slice(5).replace(/^ /, ''));
+        }
+        if (!datos.length) continue; // comentarios (": ping") y "retry:"
+        let data;
+        try {
+          data = JSON.parse(datos.join('\n'));
+        } catch {
+          data = datos.join('\n');
+        }
+        try {
+          onEvento(evento, data);
+        } catch (e) {
+          console.error('Error procesando evento en tiempo real:', e);
+        }
+      }
+    }
   }
 
   sesionVencida() {
@@ -6477,6 +6932,10 @@ class LanzadorJuegos extends Modulo {
 
   // Desde una tarjeta: solo navega; la temática se elige en la pantalla del juego.
   launchGame(gameKey, btn) {
+    if (app.configSitio.csJuegoOculto(gameKey) && !app.configSitio.csEsAdmin()) {
+      app.utils.mostrarToast('Este juego no está disponible por ahora.', 'error');
+      return;
+    }
     app.navegacion.goTo(gameKey);
     if (gameKey === 'runner') {
       // Entrada normal (no duelo): si había quedado un duelo colgado de una
@@ -6505,7 +6964,7 @@ class LanzadorJuegos extends Modulo {
       const title = document.getElementById('adivinaOverlayTitle');
       const desc = document.getElementById('adivinaOverlayDesc');
       const btn = document.getElementById('adivinaOverlayBtn');
-      if (emoji) emoji.textContent = '🕵️';
+      if (emoji) emoji.innerHTML = app.utils.uiIconSVG('search', 48);
       if (title) title.textContent = 'Adivina la Cosa';
       if (desc) desc.innerHTML = 'Se muestran pistas una por una.<br>¡Cuantas menos uses, más puntos ganás!';
       if (btn) {
@@ -6605,17 +7064,24 @@ class Notificaciones extends Modulo {
   // Notificaciones (routes/notificaciones.js): amistad, avisos y récords superados.
   // Emoji + destino (goTo) según el tipo de notificación.
   static NOTIF_ICONOS = {
-    solicitud_amistad: '🤝',
-    aviso: '📢',
-    record_superado: '🏆',
-    duelo_reto: '⚔️',
-    duelo_aceptado: '✅',
-    duelo_resultado: '🏁',
+    // nombres de app.utils.uiIconSVG
+    amistad: 'handshake',
+    solicitud_amistad: 'handshake',
+    aviso: 'megaphone',
+    record: 'trophy',
+    record_superado: 'trophy',
+    duelo: 'swords',
+    duelo_reto: 'swords',
+    duelo_aceptado: 'check',
+    duelo_resultado: 'flag',
   };
   iniciar() {
-    // Cada 30s refresca el contador (no con la pestaña oculta: gasta batería).
+    this.notifCache = {};
+    // Las notificaciones llegan al instante por el canal en tiempo real
+    // (app.tiempoReal). Esto queda de respaldo por si el canal se cae: cada
+    // 30s refresca el contador (no con la pestaña oculta: gasta batería).
     setInterval(() => {
-      if (document.hidden) return;
+      if (document.hidden || app.tiempoReal.trConectado) return;
       this.actualizarBadgeNotificaciones();
     }, 30000);
     document.addEventListener('visibilitychange', () => {
@@ -6650,6 +7116,12 @@ class Notificaciones extends Modulo {
     if (overlay) overlay.classList.remove('show');
   }
 
+  // Si la lista está abierta, la recarga (llegó una notificación nueva)
+  refrescarSiAbierta() {
+    const overlay = document.getElementById('notifOverlay');
+    if (overlay && overlay.classList.contains('show')) this.fetchNotificaciones();
+  }
+
   async fetchNotificaciones() {
     const body = document.getElementById('notifListBody');
     if (!body) return;
@@ -6673,16 +7145,18 @@ class Notificaciones extends Modulo {
       body.innerHTML = '<div class="notif-empty">No tenés notificaciones todavía.</div>';
       return;
     }
+    this.notifCache = Object.fromEntries(notifs.map((n) => [n.id, n]));
     body.innerHTML = notifs
       .map(
         (n) => `
-    <div class="notif-item ${n.leido ? '' : 'unread'}" id="notifItem-${n.id}" onclick="onClickNotif(${n.id}, ${n.leido ? 'true' : 'false'}, ${n.enlace ? `'${n.enlace}'` : 'null'}, '${n.tipo}')">
-      <span class="notif-item-icon">${Notificaciones.NOTIF_ICONOS[n.tipo] || '🔔'}</span>
+    <div class="notif-item ${n.leido ? '' : 'unread'} ${n.prioridad === 'alta' ? 'prioridad-alta' : ''}" id="notifItem-${n.id}" onclick="onClickNotif(${n.id}, ${n.leido ? 'true' : 'false'}, ${n.enlace ? `'${n.enlace}'` : 'null'}, '${n.tipo}')">
+      <span class="notif-item-icon">${app.utils.uiIconSVG(n.prioridad === 'alta' ? 'siren' : Notificaciones.NOTIF_ICONOS[n.tipo] || 'bell', 18)}</span>
       <div class="notif-item-text">
-        ${app.utils.sanitizeHTML(n.mensaje)}
+        ${n.aviso_id ? `<b>${app.utils.sanitizeHTML(n.mensaje)}</b>` : app.utils.sanitizeHTML(n.mensaje)}
+        ${n.detalle ? `<span class="notif-item-detalle">${app.utils.sanitizeHTML(n.detalle)}</span>` : ''}
         <span class="notif-item-date">${this.formatearFechaNotif(n.fecha)}</span>
       </div>
-      <button class="notif-item-del" title="Eliminar" onclick="event.stopPropagation(); eliminarNotificacion(${n.id});">✕</button>
+      <button class="notif-item-del" title="Eliminar" onclick="event.stopPropagation(); eliminarNotificacion(${n.id});">${app.utils.uiIconSVG('x', 13)}</button>
     </div>
   `,
       )
@@ -6693,6 +7167,16 @@ class Notificaciones extends Modulo {
   // tiene una sección asociada (enlace) navega ahí y cierra el modal.
   async onClickNotif(id, yaLeida, enlace, tipo) {
     if (!yaLeida) await this.marcarNotifLeida(id, false);
+    // Un aviso del admin se abre completo en el cartel (modo lectura)
+    const n = this.notifCache && this.notifCache[id];
+    if (n && n.aviso_id) {
+      this.closeNotifModal();
+      app.avisos.avMostrarAlta(
+        { id: n.aviso_id, titulo: n.mensaje, texto: n.detalle, enviado_en: n.fecha ? n.fecha.replace(' ', 'T') + 'Z' : null },
+        { lectura: true },
+      );
+      return;
+    }
     if (enlace) {
       this.closeNotifModal();
       app.navegacion.goTo(enlace);
@@ -6772,200 +7256,1419 @@ class Notificaciones extends Modulo {
   }
 }
 
-// AdminPanel — Panel de administración: configuración, usuarios, roles y dashboard. (app.admin)
-class AdminPanel extends Modulo {
-  openAdminModal() {
-    document.getElementById('adminOverlay').classList.add('show');
-    this.loadAdminDashboard();
-    this.loadAdminUsers();
-    this.loadAdminConfig();
-    this.loadAdminUsers();
+// Dialogo — Carteles propios del sitio (reemplazan alert / confirm / prompt del navegador): avisos, confirmaciones, pedir un dato y formularios. (app.dialogo)
+class Dialogo extends Modulo {
+  constructor() {
+    super();
+    this.dlgCola = [];
+    this.dlgActual = null;
   }
 
-  closeAdminModal() {
-    document.getElementById('adminOverlay').classList.remove('show');
-  }
-
-  async loadAdminConfig() {
-    try {
-      const res = await fetch('/api/admin/config');
-      const config = await res.json();
-      if (config.color_tema) document.getElementById('adminTema').value = config.color_tema;
-      if (config.github_rodrigo) document.getElementById('adminGitRodrigo').value = config.github_rodrigo;
-      if (config.github_santiago) document.getElementById('adminGitSantiago').value = config.github_santiago;
-      if (config.github_kevin) document.getElementById('adminGitKevin').value = config.github_kevin;
-    } catch (e) {
-      console.error('Error cargando config:', e);
-    }
-  }
-
-  async saveAdminConfig() {
-    const data = {
-      color_tema: document.getElementById('adminTema').value,
-      github_rodrigo: document.getElementById('adminGitRodrigo').value,
-      github_santiago: document.getElementById('adminGitSantiago').value,
-      github_kevin: document.getElementById('adminGitKevin').value,
+  iniciar() {
+    const crear = () => {
+      if (document.getElementById('dlgOverlay')) return;
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        `<div class="dlg-overlay" id="dlgOverlay" hidden>
+          <div class="dlg-bg" data-dlg-cerrar></div>
+          <div class="dlg-card" role="dialog" aria-modal="true" aria-labelledby="dlgTitulo">
+            <div class="dlg-head"><span class="dlg-icono" id="dlgIcono" aria-hidden="true"></span><h2 id="dlgTitulo"></h2>
+              <button class="dlg-x" data-dlg-cerrar aria-label="Cerrar">${app.utils.uiIconSVG('x', 14)}</button></div>
+            <div class="dlg-cuerpo" id="dlgCuerpo"></div>
+            <p class="dlg-error" id="dlgError" hidden></p>
+            <div class="dlg-botones" id="dlgBotones"></div>
+          </div>
+        </div>`,
+      );
+      // Al corregir un dato, se borra el error que había quedado abajo
+      document.getElementById('dlgCuerpo').addEventListener('input', () => this.dlgError(''));
+      document.getElementById('dlgOverlay').addEventListener('click', (e) => {
+        if (e.target.closest('[data-dlg-cerrar]')) this.dlgCerrar(null);
+      });
     };
-    try {
-      const res = await app.api.authFetch('/api/admin/config', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
+    if (document.body) crear();
+    else document.addEventListener('DOMContentLoaded', crear);
+
+    document.addEventListener(
+      'keydown',
+      (e) => {
+        if (!this.dlgActual) return;
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          this.dlgCerrar(null);
+        } else if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+          e.preventDefault();
+          const principal = document.querySelector('#dlgBotones [data-principal]');
+          if (principal) principal.click();
+        }
+      },
+      true,
+    );
+    // Red de seguridad: cualquier alert() que quede suelto sale como cartel
+    window.alert = (msg) => this.dlgAvisar(String(msg ?? ''));
+  }
+
+  // Cartel genérico. Devuelve una promesa con el valor del botón elegido
+  // (null si se cierra con ✕, Esc o tocando afuera).
+  //   opciones: { titulo, icono, mensaje, html, tipo: 'info'|'peligro'|'error'|'ok',
+  //               ancho: 'chico'|'grande', alAbrir(cuerpo),
+  //               botones: [{ texto, valor, estilo: 'primario'|'peligro'|'secundario',
+  //                           accion: async (cuerpo) => resultado | false }] }
+  //   Si un botón tiene accion y devuelve false, el cartel queda abierto
+  //   (ej. un formulario con un dato mal); si no, se cierra con ese resultado.
+  dlgAbrir(opciones) {
+    return new Promise((resolver) => {
+      this.dlgCola.push({ opciones, resolver });
+      if (!this.dlgActual) this.dlgSiguiente();
+    });
+  }
+
+  dlgSiguiente() {
+    const item = this.dlgCola.shift();
+    const overlay = document.getElementById('dlgOverlay');
+    if (!item || !overlay) {
+      this.dlgActual = null;
+      if (overlay) overlay.hidden = true;
+      document.body.classList.remove('dlg-abierto');
+      return;
+    }
+    this.dlgActual = item;
+    const o = item.opciones;
+    const iconos = { info: 'info', peligro: 'warning', error: 'ban', ok: 'check' };
+    overlay.dataset.tipo = o.tipo || 'info';
+    overlay.dataset.ancho = o.ancho || 'chico';
+    document.getElementById('dlgIcono').innerHTML = app.utils.uiIconSVG(o.icono || iconos[o.tipo || 'info'], 22);
+    document.getElementById('dlgTitulo').textContent = o.titulo || 'UniGames';
+    const cuerpo = document.getElementById('dlgCuerpo');
+    if (o.html) cuerpo.innerHTML = o.html;
+    else {
+      cuerpo.innerHTML = '';
+      const p = document.createElement('p');
+      p.className = 'dlg-mensaje';
+      p.textContent = o.mensaje || '';
+      cuerpo.appendChild(p);
+    }
+    this.dlgError('');
+    const botones = o.botones && o.botones.length ? o.botones : [{ texto: 'Entendido', valor: true, estilo: 'primario' }];
+    const cont = document.getElementById('dlgBotones');
+    cont.innerHTML = '';
+    botones.forEach((b, i) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'dlg-btn dlg-btn-' + (b.estilo || 'secundario');
+      btn.textContent = b.texto;
+      if (b.estilo === 'primario' || b.estilo === 'peligro') btn.dataset.principal = '';
+      btn.addEventListener('click', async () => {
+        if (!b.accion) return this.dlgCerrar(b.valor);
+        cont.querySelectorAll('button').forEach((x) => (x.disabled = true));
+        let r;
+        try {
+          r = await b.accion(cuerpo);
+        } catch (e) {
+          this.dlgError(e.message || 'Algo salió mal');
+          r = false;
+        }
+        cont.querySelectorAll('button').forEach((x) => (x.disabled = false));
+        if (r !== false) this.dlgCerrar(r === undefined ? b.valor : r);
       });
-      if (res.ok) {
-        alert('Configuración guardada! La página se recargará para aplicar los cambios.');
-        setTimeout(() => location.reload(), 500);
-      } else {
-        alert('Error guardando configuración');
-      }
-    } catch (e) {
-      console.error(e);
-    }
+      cont.appendChild(btn);
+      if (i === botones.length - 1) setTimeout(() => (cuerpo.querySelector('input, textarea, select') || btn).focus(), 30);
+    });
+    overlay.hidden = false;
+    document.body.classList.add('dlg-abierto');
+    if (o.alAbrir) o.alAbrir(cuerpo);
   }
 
-  async loadAdminUsers() {
-    const list = document.getElementById('adminUsersList');
-    try {
-      const res = await app.api.authFetch('/api/admin/usuarios');
-      if (!res.ok) return (list.innerHTML = '<li>Error cargando usuarios</li>');
-      let users = await res.json();
-
-      const searchInput = document.getElementById('adminUserSearch');
-      window.allAdminUsers = users;
-      const renderUsers = (userList) => {
-        list.innerHTML = userList
-          .map(
-            (u) => `
-          <li>
-            <div>
-              <b style="${u.estado === 'suspendido' ? 'color:#EF4444;text-decoration:line-through;' : ''}">${app.utils.sanitizeHTML(u.nombre_usuario)}</b> 
-              <span style="color:#94A3B8; font-size:11px;">(${app.utils.sanitizeHTML(u.email)})</span>
-            </div>
-            <div style="display:flex; gap:5px; align-items:center;">
-              <select onchange="changeUserRole(${u.id}, this.value)" class="auth-input" style="width:auto; padding:2px; font-size:11px;">
-                <option value="user" ${u.rol === 'user' ? 'selected' : ''}>User</option>
-                <option value="admin" ${u.rol === 'admin' ? 'selected' : ''}>Admin</option>
-              </select>
-              <button onclick="changeUserStatus(${u.id}, '${u.estado === 'activo' ? 'suspendido' : 'activo'}')" 
-                      style="background:${u.estado === 'activo' ? '#EF4444' : '#10B981'}; border:none; color:white; padding:4px 8px; border-radius:4px; font-size:10px; cursor:pointer;">
-                ${u.estado === 'activo' ? 'Suspender' : 'Activar'}
-              </button>
-            </div>
-          </li>
-        `,
-          )
-          .join('');
-      };
-      renderUsers(users);
-      searchInput.oninput = (e) => {
-        const query = e.target.value.toLowerCase();
-        const filtered = window.allAdminUsers.filter(
-          (u) => u.nombre_usuario.toLowerCase().includes(query) || u.email.toLowerCase().includes(query),
-        );
-        renderUsers(filtered);
-      };
-    } catch (e) {
-      console.error(e);
-    }
+  dlgCerrar(valor) {
+    const item = this.dlgActual;
+    if (!item) return;
+    this.dlgActual = null;
+    item.resolver(valor);
+    this.dlgSiguiente();
   }
 
-  async changeUserRole(id, rol) {
-    try {
-      const res = await app.api.authFetch('/api/admin/usuarios/' + id + '/rol', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          rol,
-        }),
-      });
-      if (res.ok) alert('Rol actualizado correctamente');
-      else alert('Error actualizando rol');
-    } catch (e) {
-      console.error(e);
-    }
+  // Mensaje de error dentro del cartel abierto (validaciones de formularios)
+  dlgError(texto) {
+    const el = document.getElementById('dlgError');
+    if (!el) return;
+    el.textContent = texto || '';
+    el.hidden = !texto;
   }
 
-  switchAdminTab(tabId) {
-    document.querySelectorAll('.admin-tab').forEach((t) => t.classList.remove('active'));
-    document.querySelectorAll('.admin-tab-content').forEach((c) => (c.style.display = 'none'));
-    event.target.classList.add('active');
-    document.getElementById('adminTab' + tabId.charAt(0).toUpperCase() + tabId.slice(1)).style.display =
-      'block';
-    if (tabId === 'dashboard') this.loadAdminDashboard();
-    if (tabId === 'usuarios') this.loadAdminUsers();
-    if (tabId === 'avisos') app.avisos.loadAdminAvisos();
-    if (tabId === 'juegos') app.adminJuegos.loadAdminJuegos();
-    if (tabId === 'config') this.loadAdminConfig();
-    if (tabId === 'reportes') app.reportes.abrirReportes();
+  // ─── Atajos ───
+
+  dlgAvisar(mensaje, opciones = {}) {
+    return this.dlgAbrir({
+      titulo: opciones.titulo || (opciones.tipo === 'error' ? 'Ups' : 'Aviso'),
+      tipo: opciones.tipo || 'info',
+      mensaje,
+      botones: [{ texto: opciones.boton || 'Entendido', valor: true, estilo: 'primario' }],
+    });
   }
 
-  async loadAdminDashboard() {
-    try {
-      const res = await app.api.authFetch('/api/admin/dashboard');
-      if (!res.ok) return;
-      const stats = await res.json();
-      document.getElementById('dashboardActivos').textContent = stats.activos;
-      document.getElementById('dashboardTotal').textContent = stats.totalUsuarios;
-      const top5 = document.getElementById('dashboardTop5');
-      top5.innerHTML = stats.top5
-        .map((u, i) => `<li>${i + 1}. <b>${app.utils.sanitizeHTML(u.jugador)}</b> - ${u.puntosTotales} pts</li>`)
-        .join('');
+  async dlgConfirmar({ titulo = '¿Seguro?', mensaje = '', confirmar = 'Aceptar', cancelar = 'Cancelar', peligro = false, icono } = {}) {
+    const r = await this.dlgAbrir({
+      titulo,
+      mensaje,
+      icono,
+      tipo: peligro ? 'peligro' : 'info',
+      botones: [
+        { texto: cancelar, valor: false, estilo: 'secundario' },
+        { texto: confirmar, valor: true, estilo: peligro ? 'peligro' : 'primario' },
+      ],
+    });
+    return r === true;
+  }
 
-      await app.cargador.ensureChartJsLoaded();
-      const ctx = document.getElementById('gamesChart').getContext('2d');
-      if (window.adminChart) window.adminChart.destroy();
-      window.adminChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: stats.partidasPorJuego.map((p) => p.nombre),
-          datasets: [
-            {
-              data: stats.partidasPorJuego.map((p) => p.cantidad),
-              backgroundColor: ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981'],
-              borderWidth: 0,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'right',
-              labels: {
-                color: '#F1F5F9',
-                font: {
-                  size: 11,
-                },
-              },
-            },
+  // Pide un dato (reemplazo de prompt). Devuelve el texto o null si cancela.
+  async dlgPedir({ titulo = 'UniGames', mensaje = '', tipo = 'text', placeholder = '', confirmar = 'Aceptar', minimo = 1 } = {}) {
+    const s = app.utils.sanitizeHTML;
+    const r = await this.dlgAbrir({
+      titulo,
+      html: `${mensaje ? `<p class="dlg-mensaje">${s(mensaje)}</p>` : ''}<input class="dlg-input" type="${tipo === 'password' ? 'password' : 'text'}" placeholder="${s(placeholder)}" autocomplete="${tipo === 'password' ? 'new-password' : 'off'}">`,
+      botones: [
+        { texto: 'Cancelar', valor: null, estilo: 'secundario' },
+        {
+          texto: confirmar,
+          estilo: 'primario',
+          accion: (cuerpo) => {
+            const v = cuerpo.querySelector('.dlg-input').value;
+            if (v.trim().length < minimo) {
+              this.dlgError(minimo > 1 ? `Tiene que tener al menos ${minimo} caracteres.` : 'Completá el campo.');
+              return false;
+            }
+            return v;
           },
         },
-      });
+      ],
+    });
+    return typeof r === 'string' ? r : null;
+  }
+}
+
+// Pestañas del panel admin: [título, subtítulo]
+const ADM_TABS = {
+  dashboard: ['Dashboard', 'Resumen general de UniGames'],
+  cuentas: ['Cuentas', 'Usuarios registrados, roles y estados'],
+  avisos: ['Avisos', 'Anuncios para todos los usuarios: al instante o programados'],
+  juegos: ['Contenido', 'Palabras, preguntas e items de cada minijuego'],
+  reportes: ['Reportes', 'Tablas para ver y exportar a CSV o PDF'],
+  logs: ['Logs del servidor', 'Lo que pasa en el servidor, en tiempo real'],
+  config: ['Configuración', 'Cómo se comporta el sitio para todos'],
+};
+
+// AdminPanel — Sección del panel de administración: acceso (solo admins), pestañas, dashboard, cuentas y configuración. (app.admin)
+class AdminPanel extends Modulo {
+  constructor() {
+    super();
+    this.admListo = false; // el HTML del panel ya se pidió al servidor e insertó
+    this.admTab = 'dashboard';
+    this.admCuentas = { pagina: 1, q: '', filtro: 'usuarios', conexion: '', ban: '' };
+    this.admCuentasItems = {};
+    this.admTimerBuscar = null;
+    this.admConfigActual = null;
+    this.admTemaSitio = 'dark';
+    this.admEnLinea = null;
+  }
+
+  // Compatibilidad: el botón viejo del menú llamaba a openAdminModal().
+  openAdminModal() {
+    return this.admAbrir();
+  }
+
+  // Entrada al panel. Doble control:
+  //  1. el front solo lo intenta si la cuenta dice ser admin;
+  //  2. el HTML del panel lo manda el servidor, que verifica contra la base
+  //     que el usuario siga siendo admin activo. Si no, 403 y afuera.
+  async admAbrir(tab) {
+    const u = app.auth.currentUser;
+    if (!u || u.rol !== 'admin') {
+      app.utils.mostrarToast('Esta sección es solo para administradores.', 'error');
+      if (!u) app.auth.openModal('login');
+      return false;
+    }
+    if (!this.admListo) {
+      let res;
+      try {
+        res = await app.api.authFetch('/api/admin/panel');
+      } catch {
+        app.utils.mostrarToast('No se pudo abrir el panel (sin conexión).', 'error');
+        return false;
+      }
+      if (!res.ok) {
+        this.admExpulsar(res.status === 403 ? 'Tu cuenta no tiene permisos de administrador.' : 'No se pudo abrir el panel.');
+        return false;
+      }
+      document.getElementById('sec-admin').innerHTML = await res.text();
+      app.utils.pintarIconos(document.getElementById('sec-admin'));
+      this.admListo = true;
+    }
+    app.navegacion.goTo('admin', { adminOk: true });
+    this.admMostrarTab(tab || this.admTab || 'dashboard');
+    app.logsAdmin.lgConectar();
+    return true;
+  }
+
+  // Se llama desde Navegacion.goTo al salir de la sección admin.
+  admAlSalir() {
+    app.logsAdmin.lgDesconectar();
+    app.avisos.avDetenerReloj();
+  }
+
+  admSalir() {
+    app.navegacion.goTo('inicio');
+  }
+
+  // Saca al usuario del panel y borra su HTML (ej. le quitaron el rol en vivo).
+  admExpulsar(mensaje) {
+    const sec = document.getElementById('sec-admin');
+    const estabaAdentro = sec && sec.classList.contains('active');
+    app.logsAdmin.lgDesconectar();
+    app.avisos.avDetenerReloj();
+    if (sec) sec.innerHTML = '';
+    this.admListo = false;
+    if (estabaAdentro) app.navegacion.goTo('inicio', { forzar: true });
+    if (mensaje) app.utils.mostrarToast(mensaje, 'error');
+  }
+
+  admMostrarTab(tab) {
+    if (!ADM_TABS[tab]) tab = 'dashboard';
+    this.admCerrarMenu();
+    this.admTab = tab;
+    document.querySelectorAll('[data-adm-tab]').forEach((b) => {
+      const activo = b.dataset.admTab === tab;
+      b.classList.toggle('active', activo);
+      b.setAttribute('aria-current', activo ? 'page' : 'false');
+    });
+    document.querySelectorAll('[data-adm-panel]').forEach((p) => p.classList.toggle('active', p.dataset.admPanel === tab));
+    const [titulo, sub] = ADM_TABS[tab];
+    document.getElementById('admTitulo').textContent = titulo;
+    document.getElementById('admSubtitulo').textContent = sub;
+    document.getElementById('admAcciones').innerHTML =
+      tab === 'dashboard'
+        ? '<button class="adm-btn adm-btn-ghost" onclick="admCargarDashboard()">↻ Actualizar</button>'
+        : '';
+
+    if (tab === 'avisos') app.avisos.avIniciarReloj();
+    else app.avisos.avDetenerReloj();
+
+    if (tab === 'dashboard') this.admCargarDashboard();
+    if (tab === 'cuentas') this.admCargarCuentas();
+    if (tab === 'avisos') app.avisos.avCargar();
+    if (tab === 'juegos') app.adminJuegos.loadAdminJuegos();
+    if (tab === 'reportes') app.reportes.abrirReportes();
+    if (tab === 'logs') app.logsAdmin.lgAlMostrar();
+    if (tab === 'config') this.admCargarConfig();
+  }
+
+  // ─── Utilidades de formato ───
+
+  admFechaHora(fecha) {
+    const d = new Date(fecha);
+    if (Number.isNaN(d.getTime())) return '—';
+    return d.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  admFecha(fecha) {
+    const d = new Date(fecha);
+    return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  // "en 2 h 5 min" / "hace 3 días"
+  admRelativo(fecha) {
+    const ms = new Date(fecha).getTime() - Date.now();
+    const abs = Math.abs(ms);
+    const min = Math.round(abs / 60000);
+    let txt;
+    if (min < 1) txt = 'menos de un minuto';
+    else if (min < 60) txt = `${min} min`;
+    else if (min < 60 * 24) {
+      const h = Math.floor(min / 60);
+      const m = min % 60;
+      txt = `${h} h${m ? ' ' + m + ' min' : ''}`;
+    } else {
+      const d = Math.round(min / 1440);
+      txt = `${d} día${d === 1 ? '' : 's'}`;
+    }
+    return ms >= 0 ? `en ${txt}` : `hace ${txt}`;
+  }
+
+  admNumero(n) {
+    return Number(n || 0).toLocaleString('es-AR');
+  }
+
+  admBadge(id, n) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.hidden = !n;
+    el.textContent = n > 99 ? '99+' : String(n || '');
+  }
+
+  // Paginación con el rango de cada página: "1 · 1–20", "2 · 21–35".
+  // fn: nombre del método global que recibe el número de página.
+  admPagerHTML(p, fn, nombre = 'resultados') {
+    if (!p || !p.total) return '';
+    const { pagina, paginas, total, porPagina } = p;
+    const desde = (pagina - 1) * porPagina + 1;
+    const hasta = Math.min(pagina * porPagina, total);
+    const info = `<div class="adm-pager-info">Mostrando <b>${desde}–${hasta}</b> de <b>${this.admNumero(total)}</b> ${nombre}</div>`;
+    if (paginas <= 1) return info;
+
+    // Con muchas páginas: primera, última y las de alrededor de la actual
+    const numeros = new Set([1, paginas, pagina - 1, pagina, pagina + 1]);
+    const lista = [...numeros].filter((n) => n >= 1 && n <= paginas).sort((a, b) => a - b);
+    let botones = `<button class="adm-page adm-page-nav" ${pagina === 1 ? 'disabled' : ''} onclick="${fn}(${pagina - 1})" aria-label="Página anterior">‹</button>`;
+    let anterior = 0;
+    for (const n of lista) {
+      if (n - anterior > 1) botones += '<span class="adm-pager-info">…</span>';
+      const d = (n - 1) * porPagina + 1;
+      const h = Math.min(n * porPagina, total);
+      botones += `<button class="adm-page ${n === pagina ? 'active' : ''}" onclick="${fn}(${n})" title="Página ${n}: ${d} a ${h} (lugar para ${n * porPagina})" ${n === pagina ? 'aria-current="page"' : ''}><b>${n}</b><small>${d}–${h}</small></button>`;
+      anterior = n;
+    }
+    botones += `<button class="adm-page adm-page-nav" ${pagina === paginas ? 'disabled' : ''} onclick="${fn}(${pagina + 1})" aria-label="Página siguiente">›</button>`;
+    return info + `<div class="adm-pages">${botones}</div>`;
+  }
+
+  // ─── Dashboard ───
+
+  async admCargarDashboard() {
+    let d;
+    try {
+      d = await app.api.apiFetch('/api/admin/dashboard');
     } catch (e) {
-      console.error(e);
+      app.utils.mostrarToast('No se pudo cargar el dashboard: ' + e.message, 'error');
+      return;
+    }
+    const s = app.utils.sanitizeHTML;
+    const n = this.admNumero;
+    const u = d.usuarios;
+    const records = d.partidasPorJuego.reduce((acc, j) => acc + j.cantidad, 0);
+    const conRecords = d.partidasPorJuego.filter((j) => j.cantidad > 0).length;
+    if (this.admEnLinea == null) this.admEnLinea = u.en_linea;
+
+    const ico = {
+      users: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/></svg>',
+      live: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M5.6 5.6a9 9 0 0 0 0 12.8M18.4 5.6a9 9 0 0 1 0 12.8"/></svg>',
+      trophy: '<svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M12 14v4M8 21h8"/></svg>',
+      swords: '<svg viewBox="0 0 24 24"><path d="M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2M9.5 6.5L13 3h3v3l-3.5 3.5M5 14l-2 2 4 4 2-2"/></svg>',
+      heart: '<svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>',
+      mega: '<svg viewBox="0 0 24 24"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>',
+    };
+    const kpis = [
+      { label: 'Usuarios', ico: ico.users, color: '#a78bfa', value: n(u.total), foot: `<b>+${n(u.nuevos_7d)}</b> esta semana` },
+      { label: 'En línea', ico: ico.live, color: '#4ade80', value: n(this.admEnLinea), foot: 'con la página abierta', id: 'admKpiEnLinea' },
+      { label: 'Récords', ico: ico.trophy, color: '#60a5fa', value: n(records), foot: `en ${conRecords} juego${conRecords === 1 ? '' : 's'}` },
+      { label: 'Duelos', ico: ico.swords, color: '#f472b6', value: n(d.duelos.total), foot: `${n(d.duelos.en_curso)} en curso · ${n(d.duelos.pendientes)} pendientes` },
+      { label: 'Amistades', ico: ico.heart, color: '#fbbf24', value: n(d.social.amistades), foot: `${n(d.social.logros)} logros desbloqueados` },
+      { label: 'Avisos', ico: ico.mega, color: '#f87171', value: n(d.social.avisos_enviados), foot: `${n(d.social.avisos_programados)} programado${d.social.avisos_programados === 1 ? '' : 's'}` },
+    ];
+    document.getElementById('admKpis').innerHTML = kpis
+      .map(
+        (k) => `
+      <div class="adm-kpi" style="--kpi:${k.color}">
+        <div class="adm-kpi-label">${k.ico}${k.label}</div>
+        <div class="adm-kpi-value" ${k.id ? `id="${k.id}"` : ''}>${k.value}</div>
+        <div class="adm-kpi-foot">${k.foot}</div>
+      </div>`,
+      )
+      .join('');
+
+    // Cuentas nuevas por día (14 barras)
+    const max = Math.max(1, ...d.registros.map((r) => r.cantidad));
+    const totalReg = d.registros.reduce((a, r) => a + r.cantidad, 0);
+    document.getElementById('admRegistrosTotal').textContent = `${n(totalReg)} en los últimos 14 días`;
+    document.getElementById('admRegistros').innerHTML = d.registros
+      .map((r, i) => {
+        const [, mes, dia] = r.dia.split('-');
+        const hoy = i === d.registros.length - 1;
+        const h = r.cantidad ? Math.max(4, (r.cantidad / max) * 100) : 0;
+        return `<div class="adm-bar" title="${dia}/${mes}: ${r.cantidad} cuenta${r.cantidad === 1 ? '' : 's'} nueva${r.cantidad === 1 ? '' : 's'}">
+          <div class="adm-bar-col ${r.cantidad ? '' : 'cero'} ${hoy ? 'hoy' : ''}" style="height:${h}%">${r.cantidad ? `<span class="adm-bar-n">${r.cantidad}</span>` : ''}</div>
+          <span class="adm-bar-l">${hoy ? 'hoy' : `${dia}/${mes}`}</span>
+        </div>`;
+      })
+      .join('');
+
+    // Récords por juego
+    const maxJ = Math.max(1, ...d.partidasPorJuego.map((j) => j.cantidad));
+    document.getElementById('admPorJuego').innerHTML = d.partidasPorJuego
+      .map(
+        (j) => `
+      <div class="adm-hbar" title="${s(j.nombre)}: ${j.cantidad} jugadores · récord ${n(j.record)} pts">
+        <span class="adm-hbar-name">${s(j.nombre)}</span>
+        <div class="adm-hbar-track"><div class="adm-hbar-fill" data-w="${(j.cantidad / maxJ) * 100}"></div></div>
+        <span class="adm-hbar-n">${n(j.cantidad)}</span>
+      </div>`,
+      )
+      .join('');
+    requestAnimationFrame(() =>
+      document.querySelectorAll('#admPorJuego .adm-hbar-fill').forEach((el) => (el.style.width = el.dataset.w + '%')),
+    );
+
+    // Top 5 y últimas cuentas
+    const avatar = (icono) => s(icono || PerfilManager.PERFIL_ICONO_DEFAULT);
+    document.getElementById('admTop5').innerHTML = d.top5.length
+      ? d.top5
+          .map(
+            (t, i) => `
+        <li><span class="adm-rank-pos">${i + 1}</span><img class="adm-avatar" src="${avatar(t.icono)}" alt="" loading="lazy">
+        <span class="adm-rank-name">${s(t.jugador)}</span><span class="adm-rank-pts">${n(t.puntosTotales)}</span></li>`,
+          )
+          .join('')
+      : '<li class="adm-empty">Todavía nadie tiene puntos.</li>';
+    document.getElementById('admUltimos').innerHTML = d.ultimos
+      .map(
+        (x) => `<li><img class="adm-avatar" src="${avatar(x.icono)}" alt="" loading="lazy"><span>${s(x.nombre_usuario)}</span><time>${this.admRelativo(x.fecha_registro)}</time></li>`,
+      )
+      .join('');
+
+    // Servidor
+    const up = d.servidor.uptime;
+    const uptime = up >= 86400 ? `${Math.floor(up / 86400)} d ${Math.floor((up % 86400) / 3600)} h` : up >= 3600 ? `${Math.floor(up / 3600)} h ${Math.floor((up % 3600) / 60)} min` : `${Math.floor(up / 60)} min`;
+    document.getElementById('admServidor').innerHTML = `
+      <div><small>Encendido hace</small><b>${uptime}</b></div>
+      <div><small>Memoria</small><b>${d.servidor.memoriaMB} MB</b></div>
+      <div><small>Errores</small><b class="${d.logs.error ? 'err' : ''}">${n(d.logs.error)}</b></div>
+      <div><small>Advertencias</small><b class="${d.logs.warn ? 'warn' : ''}">${n(d.logs.warn)}</b></div>`;
+  }
+
+  // Lo llama LogsAdmin con el evento "presencia" del canal de admins.
+  admActualizarEnLinea(n) {
+    this.admEnLinea = n;
+    const kpi = document.getElementById('admKpiEnLinea');
+    if (kpi) kpi.textContent = this.admNumero(n);
+    const txt = document.getElementById('admLiveTxt');
+    if (txt) txt.textContent = `En vivo · ${this.admNumero(n)} en línea`;
+  }
+
+  // ─── Cuentas ───
+
+  // "Ahora" si está conectado; si no, hace cuánto se conectó por última vez
+  admUltimaConexion(u) {
+    if (u.en_linea) return '<span class="adm-ahora">Ahora</span>';
+    if (!u.ultima_conexion) return '<span class="muted">Nunca</span>';
+    return `<span title="${this.admFechaHora(u.ultima_conexion)}">${this.admRelativo(u.ultima_conexion)}</span>`;
+  }
+
+  // Cartelito de baneo debajo del nombre
+  admBadgeBan(u) {
+    if (!u.ban_tipo) return '';
+    if (u.ban_tipo === 'permanente') return `<span class="adm-ban adm-ban-perm" title="Baneo permanente">${app.utils.uiIconSVG('ban', 11)} Baneado · permanente</span>`;
+    return `<span class="adm-ban" title="Baneado hasta ${this.admFechaHora(u.ban_hasta)}">${app.utils.uiIconSVG('hourglass', 11)} Baneado · ${this.admRelativo(u.ban_hasta).replace('en ', 'queda ')}</span>`;
+  }
+
+  async admCargarCuentas() {
+    const { pagina, q, filtro, conexion, ban } = this.admCuentas;
+    const params = new URLSearchParams({ pagina, filtro });
+    if (q) params.set('q', q);
+    if (filtro === 'baneados' && ban) params.set('ban', ban);
+    if (filtro !== 'baneados' && conexion) params.set('conexion', conexion);
+
+    const body = document.getElementById('admCuentasBody');
+    let d;
+    try {
+      d = await app.api.apiFetch('/api/admin/usuarios?' + params);
+    } catch (e) {
+      body.innerHTML = `<tr><td colspan="7" class="adm-empty">No se pudieron cargar las cuentas: ${app.utils.sanitizeHTML(e.message)}</td></tr>`;
+      return;
+    }
+    this.admCuentas.pagina = d.pagina;
+    this.admCuentasItems = Object.fromEntries(d.items.map((u) => [u.id, u]));
+    document.getElementById('admCntTodas').textContent = this.admNumero(d.resumen.total);
+    document.getElementById('admCntAdmins').textContent = this.admNumero(d.resumen.admins);
+    document.getElementById('admCntBaneados').textContent = this.admNumero(d.resumen.baneados);
+    document.getElementById('admCntOnline').textContent = this.admNumero(d.resumen.en_linea);
+
+    const s = app.utils.sanitizeHTML;
+    const yo = app.auth.currentUser ? app.auth.currentUser.id : null;
+    const vacio = q
+      ? `No hay cuentas que coincidan con "${s(q)}".`
+      : filtro === 'baneados'
+        ? 'No hay cuentas baneadas.'
+        : conexion === 'online'
+          ? 'No hay nadie conectado en este momento.'
+          : 'No hay cuentas en este filtro.';
+    body.innerHTML = d.items.length
+      ? d.items
+          .map(
+            (u) => `
+        <tr class="${u.ban_tipo ? 'fila-baneada' : ''}">
+          <td><div class="adm-user"><img class="adm-avatar" src="${s(u.icono || PerfilManager.PERFIL_ICONO_DEFAULT)}" alt="" loading="lazy">
+            <div><div class="adm-user-name">${s(u.nombre_usuario)}${u.id === yo ? '<span class="yo">VOS</span>' : ''}</div>
+            ${this.admBadgeBan(u) || `<div class="muted" style="font-size:11.5px">#${u.id}</div>`}</div></div></td>
+          <td class="muted">${s(u.email)}</td>
+          <td><span class="adm-badge ${u.rol === 'admin' ? 'adm-badge-admin' : 'adm-badge-user'}">${u.rol === 'admin' ? app.utils.uiIconSVG('shield', 11) + ' Admin' : 'Usuario'}</span></td>
+          <td>${u.en_linea ? '<span class="adm-estado on"><span class="adm-online"></span> En línea</span>' : '<span class="adm-estado off"><span class="adm-offline"></span> Desconectado</span>'}</td>
+          <td class="nowrap">${this.admUltimaConexion(u)}</td>
+          <td class="nowrap muted">${this.admFecha(u.fecha_registro)}</td>
+          <td class="adm-td-menu"><button class="adm-menu-btn" onclick="admAbrirMenuCuenta(event, ${u.id})" aria-label="Opciones de ${s(u.nombre_usuario)}" aria-haspopup="menu">⋯</button></td>
+        </tr>`,
+          )
+          .join('')
+      : `<tr><td colspan="7" class="adm-empty">${vacio}</td></tr>`;
+
+    document.getElementById('admCuentasPager').innerHTML = this.admPagerHTML(d, 'admIrPaginaCuentas', 'cuentas');
+  }
+
+  admBuscarCuentas(q) {
+    clearTimeout(this.admTimerBuscar);
+    this.admTimerBuscar = setTimeout(() => {
+      this.admCuentas.q = q.trim();
+      this.admCuentas.pagina = 1;
+      this.admCargarCuentas();
+    }, 300);
+  }
+
+  admFiltrarCuentas(filtro) {
+    this.admCuentas.filtro = filtro;
+    this.admCuentas.pagina = 1;
+    document.querySelectorAll('[data-filtro-cuentas]').forEach((b) => b.classList.toggle('active', b.dataset.filtroCuentas === filtro));
+    // Debajo: conexión para usuarios/admins, tipo de baneo para baneados
+    document.getElementById('admSubConexion').hidden = filtro === 'baneados';
+    document.getElementById('admSubBan').hidden = filtro !== 'baneados';
+    this.admCargarCuentas();
+  }
+
+  admSubfiltroCuentas(cual, valor) {
+    this.admCuentas[cual] = valor;
+    this.admCuentas.pagina = 1;
+    const attr = cual === 'conexion' ? 'subConexion' : 'subBan';
+    document.querySelectorAll(`[data-sub-${cual}]`).forEach((b) => b.classList.toggle('active', b.dataset[attr] === valor));
+    this.admCargarCuentas();
+  }
+
+  admIrPaginaCuentas(n) {
+    this.admCuentas.pagina = n;
+    this.admCargarCuentas();
+    document.getElementById('admCuentasTabla')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ─── Menú ⋯ de cada cuenta ───
+
+  admAbrirMenuCuenta(ev, id) {
+    ev.stopPropagation();
+    const u = this.admCuentasItems && this.admCuentasItems[id];
+    if (!u) return;
+    const yaAbierto = document.getElementById('admMenuCuenta');
+    this.admCerrarMenu();
+    if (yaAbierto && yaAbierto.dataset.id === String(id)) return; // segundo click: cierra
+
+    const esYo = app.auth.currentUser && app.auth.currentUser.id === id;
+    const n = app.utils.jsArg(u.nombre_usuario);
+    let items = `<button role="menuitem" onclick="admVerPerfil(${id})">${app.utils.uiIconSVG('user', 15)} Ver perfil</button>`;
+    if (!esYo) {
+      items += u.rol === 'admin'
+        ? `<button role="menuitem" onclick="admCambiarRol(${id}, 'user', ${n})">${app.utils.uiIconSVG('shield', 15)} Quitar admin</button>`
+        : `<button role="menuitem" onclick="admCambiarRol(${id}, 'admin', ${n})">${app.utils.uiIconSVG('shield', 15)} Hacer admin</button>`;
+      items += '<hr>';
+      if (u.ban_tipo) {
+        items += `<button role="menuitem" onclick="admBanear(${id})">${app.utils.uiIconSVG('edit', 15)} Modificar baneo</button>`;
+        items += `<button role="menuitem" class="ok" onclick="admDesbanear(${id}, ${n})">${app.utils.uiIconSVG('check', 15)} Levantar baneo</button>`;
+      } else {
+        items += `<button role="menuitem" class="peligro" onclick="admBanear(${id})">${app.utils.uiIconSVG('hammer', 15)} Banear…</button>`;
+      }
+    }
+    const menu = document.createElement('div');
+    menu.id = 'admMenuCuenta';
+    menu.className = 'adm-menu';
+    menu.setAttribute('role', 'menu');
+    menu.dataset.id = id;
+    menu.innerHTML = items;
+    document.body.appendChild(menu);
+    // Se posiciona al lado del botón (fixed, para que no lo corte la tabla)
+    const r = ev.currentTarget.getBoundingClientRect();
+    const alto = menu.offsetHeight;
+    const ancho = menu.offsetWidth;
+    const top = r.bottom + 6 + alto > window.innerHeight ? r.top - alto - 6 : r.bottom + 6;
+    menu.style.top = Math.max(8, top) + 'px';
+    menu.style.left = Math.max(8, Math.min(r.right - ancho, window.innerWidth - ancho - 8)) + 'px';
+    menu.querySelector('button')?.focus();
+    setTimeout(() => {
+      document.addEventListener('click', this.admCerrarMenu, { once: true });
+      window.addEventListener('scroll', this.admCerrarMenu, { once: true, passive: true });
+    }, 0);
+  }
+
+  admCerrarMenu() {
+    document.getElementById('admMenuCuenta')?.remove();
+  }
+
+  async admCambiarRol(id, rol, nombre) {
+    this.admCerrarMenu();
+    const ok = await app.dialogo.dlgConfirmar(
+      rol === 'admin'
+        ? { titulo: 'Hacer admin', icono: 'shield', mensaje: `¿Darle permisos de administrador a ${nombre}? Va a poder entrar a este panel.`, confirmar: 'Hacer admin' }
+        : { titulo: 'Quitar admin', mensaje: `¿Quitarle los permisos de administrador a ${nombre}?`, confirmar: 'Quitar permisos', peligro: true },
+    );
+    if (!ok) return;
+    try {
+      await app.api.apiFetch(`/api/admin/usuarios/${id}/rol`, { method: 'PUT', body: JSON.stringify({ rol }) });
+      app.utils.mostrarToast(`${nombre} ahora es ${rol === 'admin' ? 'admin' : 'usuario'}`);
+    } catch (e) {
+      app.dialogo.dlgAvisar(e.message, { tipo: 'error' });
+    }
+    this.admCargarCuentas();
+  }
+
+  // ─── Perfil ───
+
+  async admVerPerfil(id) {
+    this.admCerrarMenu();
+    let p;
+    try {
+      p = await app.api.apiFetch('/api/admin/usuarios/' + id);
+    } catch (e) {
+      app.dialogo.dlgAvisar(e.message, { tipo: 'error' });
+      return;
+    }
+    const s = app.utils.sanitizeHTML;
+    const n = this.admNumero;
+    const records = p.records.length
+      ? p.records.map((r) => `<li><span>${s(r.juego)}</span><b>${n(r.puntos)}</b></li>`).join('')
+      : '<li class="muted">Todavía no tiene récords.</li>';
+    const historial = p.sanciones.length
+      ? p.sanciones
+          .map((x) => {
+            const vigente = !x.levantada_en && (x.tipo === 'permanente' || new Date(x.hasta) > new Date());
+            const estado = x.levantada_en
+              ? `levantado ${this.admFecha(x.levantada_en)}${x.levantada_por ? ' por ' + s(x.levantada_por) : ''}`
+              : vigente ? '<b class="vigente">vigente</b>' : 'vencido';
+            return `<li><div><b>${x.tipo === 'permanente' ? app.utils.uiIconSVG('ban', 12) + ' Permanente' : app.utils.uiIconSVG('hourglass', 12) + ' Temporal'}</b> · ${this.admFecha(x.creado_en)}${x.creado_por ? ' por ' + s(x.creado_por) : ''}${x.tipo === 'temporal' ? ' · hasta ' + this.admFechaHora(x.hasta) : ''}</div>
+              <div class="motivo">"${s(x.motivo)}"</div><div class="muted">${estado}</div></li>`;
+          })
+          .join('')
+      : '<li class="muted">Sin sanciones.</li>';
+
+    const r = await app.dialogo.dlgAbrir({
+      titulo: 'Perfil de ' + p.nombre_usuario,
+      icono: 'user',
+      ancho: 'grande',
+      html: `
+        <div class="adm-perfil">
+          <div class="adm-perfil-top">
+            <img class="adm-perfil-avatar" src="${s(p.icono || PerfilManager.PERFIL_ICONO_DEFAULT)}" alt="">
+            <div>
+              <div class="adm-perfil-nombre">${s(p.nombre_usuario)} <span class="adm-badge ${p.rol === 'admin' ? 'adm-badge-admin' : 'adm-badge-user'}">${p.rol === 'admin' ? app.utils.uiIconSVG('shield', 11) + ' Admin' : 'Usuario'}</span></div>
+              <div class="muted">${s(p.email)} · #${p.id}</div>
+              <div class="adm-perfil-estado">${p.en_linea ? '<span class="adm-estado on"><span class="adm-online"></span> En línea</span>' : `<span class="adm-estado off"><span class="adm-offline"></span> Desconectado</span> · última conexión ${p.ultima_conexion ? this.admRelativo(p.ultima_conexion) : 'nunca'}`}</div>
+              ${this.admBadgeBan(p)}
+            </div>
+          </div>
+          ${p.descripcion ? `<p class="adm-perfil-desc">"${s(p.descripcion)}"</p>` : ''}
+          ${p.ban_tipo ? `<div class="adm-perfil-ban"><b>Motivo del baneo:</b> ${s(p.ban_motivo)}</div>` : ''}
+          <div class="adm-perfil-stats">
+            <div><small>Registro</small><b>${this.admFecha(p.fecha_registro)}</b></div>
+            <div><small>Amigos</small><b>${n(p.amigos)}</b></div>
+            <div><small>Logros</small><b>${n(p.logros)}</b></div>
+            <div><small>Duelos ganados</small><b>${n(p.duelos_ganados)}/${n(p.duelos)}</b></div>
+          </div>
+          <div class="adm-perfil-cols">
+            <div><h3>Récords</h3><ul class="adm-perfil-records">${records}</ul></div>
+            <div><h3>Historial de sanciones</h3><ul class="adm-perfil-sanciones">${historial}</ul></div>
+          </div>
+        </div>`,
+      botones:
+        app.auth.currentUser && app.auth.currentUser.id === p.id
+          ? [{ texto: 'Cerrar', valor: null, estilo: 'primario' }]
+          : [
+              p.ban_tipo
+                ? { texto: 'Levantar baneo', valor: 'desbanear', estilo: 'secundario' }
+                : { texto: 'Banear…', valor: 'banear', estilo: 'secundario' },
+              { texto: 'Cerrar', valor: null, estilo: 'primario' },
+            ],
+    });
+    if (r === 'banear') this.admBanear(p.id);
+    if (r === 'desbanear') this.admDesbanear(p.id, p.nombre_usuario);
+  }
+
+  // ─── Baneos ───
+
+  static get ADM_DURACIONES() {
+    return [
+      ['1 hora', 1],
+      ['1 día', 24],
+      ['3 días', 72],
+      ['7 días', 168],
+      ['30 días', 720],
+    ];
+  }
+
+  async admBanear(id) {
+    this.admCerrarMenu();
+    let u = this.admCuentasItems && this.admCuentasItems[id];
+    if (!u) {
+      try {
+        u = await app.api.apiFetch('/api/admin/usuarios/' + id);
+      } catch (e) {
+        return app.dialogo.dlgAvisar(e.message, { tipo: 'error' });
+      }
+    }
+    const s = app.utils.sanitizeHTML;
+    const local = (d) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    const estado = { tipo: u.ban_tipo || 'temporal', horas: 24, hasta: null };
+    if (u.ban_tipo === 'temporal' && u.ban_hasta) {
+      estado.horas = null;
+      estado.hasta = new Date(u.ban_hasta);
+    }
+
+    const finTemporal = () => (estado.horas ? new Date(Date.now() + estado.horas * 3600 * 1000) : estado.hasta);
+    const pintar = (cuerpo) => {
+      cuerpo.querySelectorAll('[data-ban-tipo]').forEach((b) => b.classList.toggle('active', b.dataset.banTipo === estado.tipo));
+      cuerpo.querySelector('.ban-temporal').hidden = estado.tipo !== 'temporal';
+      cuerpo.querySelectorAll('[data-ban-horas]').forEach((b) => b.classList.toggle('active', Number(b.dataset.banHoras) === estado.horas));
+      cuerpo.querySelector('[data-ban-otra]').classList.toggle('active', !estado.horas);
+      const fecha = cuerpo.querySelector('.ban-fecha');
+      fecha.hidden = !!estado.horas;
+      const fin = finTemporal();
+      const resumen = cuerpo.querySelector('.ban-resumen');
+      resumen.innerHTML =
+        estado.tipo === 'permanente'
+          ? app.utils.uiIconSVG('ban', 14) + ' No va a poder entrar hasta que un admin levante el baneo.'
+          : fin && !Number.isNaN(fin.getTime())
+            ? `${app.utils.uiIconSVG('hourglass', 14)} Vuelve a poder entrar el <b>${this.admFechaHora(fin)}</b> (${this.admRelativo(fin)}).`
+            : 'Elegí hasta cuándo.';
+    };
+
+    await app.dialogo.dlgAbrir({
+      titulo: (u.ban_tipo ? 'Modificar baneo de ' : 'Banear a ') + u.nombre_usuario,
+      icono: 'hammer',
+      tipo: 'peligro',
+      html: `
+        <div class="ban-form">
+          ${u.ban_tipo ? `<p class="dlg-mensaje">Ya tiene un baneo ${u.ban_tipo === 'permanente' ? 'permanente' : 'hasta el ' + this.admFechaHora(u.ban_hasta)}. Si lo guardás, se reemplaza por este.</p>` : '<p class="dlg-mensaje">No va a poder iniciar sesión ni jugar mientras dure. Si está conectado, lo saca en el momento y le muestra el motivo.</p>'}
+          <span class="dlg-label">Tipo de baneo</span>
+          <div class="ban-tipos">
+            <button type="button" data-ban-tipo="temporal"><span>${app.utils.uiIconSVG('hourglass', 20)}</span><b>Temporal</b><small>Se levanta solo en la fecha elegida</small></button>
+            <button type="button" data-ban-tipo="permanente"><span>${app.utils.uiIconSVG('ban', 20)}</span><b>Permanente</b><small>Hasta que un admin lo levante</small></button>
+          </div>
+          <div class="ban-temporal">
+            <span class="dlg-label">Duración</span>
+            <div class="ban-duraciones">
+              ${AdminPanel.ADM_DURACIONES.map(([t, h]) => `<button type="button" data-ban-horas="${h}">${t}</button>`).join('')}
+              <button type="button" data-ban-otra>Otra fecha…</button>
+            </div>
+            <input class="dlg-input ban-fecha" type="datetime-local" hidden>
+          </div>
+          <label class="dlg-label" for="banMotivo">Motivo <em class="ban-cont">0/300</em></label>
+          <textarea class="dlg-input" id="banMotivo" rows="3" maxlength="300" placeholder="Ej: lenguaje ofensivo en el nombre de usuario">${u.ban_tipo && u.ban_motivo ? s(u.ban_motivo) : ''}</textarea>
+          <p class="ban-resumen"></p>
+        </div>`,
+      alAbrir: (cuerpo) => {
+        const fecha = cuerpo.querySelector('.ban-fecha');
+        fecha.min = local(new Date(Date.now() + 5 * 60000));
+        fecha.value = local(estado.hasta || new Date(Date.now() + 48 * 3600 * 1000));
+        const motivo = cuerpo.querySelector('#banMotivo');
+        const contar = () => (cuerpo.querySelector('.ban-cont').textContent = `${motivo.value.length}/300`);
+        motivo.addEventListener('input', contar);
+        contar();
+        cuerpo.addEventListener('click', (e) => {
+          const b = e.target.closest('button');
+          if (!b) return;
+          if (b.dataset.banTipo) estado.tipo = b.dataset.banTipo;
+          if (b.dataset.banHoras) estado.horas = Number(b.dataset.banHoras);
+          if (b.hasAttribute('data-ban-otra')) {
+            estado.horas = null;
+            estado.hasta = new Date(fecha.value);
+          }
+          pintar(cuerpo);
+        });
+        fecha.addEventListener('change', () => {
+          estado.hasta = new Date(fecha.value);
+          pintar(cuerpo);
+        });
+        pintar(cuerpo);
+        setTimeout(() => motivo.focus(), 40);
+      },
+      botones: [
+        { texto: 'Cancelar', valor: null, estilo: 'secundario' },
+        {
+          texto: u.ban_tipo ? 'Guardar baneo' : 'Banear',
+          estilo: 'peligro',
+          accion: async (cuerpo) => {
+            const motivo = cuerpo.querySelector('#banMotivo').value.trim();
+            if (!motivo) {
+              app.dialogo.dlgError('Escribí el motivo: el usuario lo va a ver.');
+              return false;
+            }
+            const body = { tipo: estado.tipo, motivo };
+            if (estado.tipo === 'temporal') {
+              const fin = finTemporal();
+              if (!fin || Number.isNaN(fin.getTime()) || fin <= new Date(Date.now() + 60000)) {
+                app.dialogo.dlgError('La fecha de fin tiene que ser en el futuro.');
+                return false;
+              }
+              body.hasta = fin.toISOString();
+            }
+            try {
+              await app.api.apiFetch(`/api/admin/usuarios/${id}/sancion`, { method: 'POST', body: JSON.stringify(body) });
+            } catch (e) {
+              app.dialogo.dlgError(e.message);
+              return false;
+            }
+            app.utils.mostrarToast(`${u.nombre_usuario} fue baneado ${estado.tipo === 'permanente' ? 'de forma permanente' : 'hasta el ' + this.admFechaHora(body.hasta)}`, 'info', 'hammer');
+            this.admCargarCuentas();
+            return true;
+          },
+        },
+      ],
+    });
+  }
+
+  async admDesbanear(id, nombre) {
+    this.admCerrarMenu();
+    const ok = await app.dialogo.dlgConfirmar({
+      titulo: 'Levantar baneo',
+      icono: 'check',
+      mensaje: `¿Levantar el baneo de ${nombre}? Va a poder volver a entrar en el momento.`,
+      confirmar: 'Levantar baneo',
+    });
+    if (!ok) return;
+    try {
+      await app.api.apiFetch(`/api/admin/usuarios/${id}/sancion`, { method: 'DELETE' });
+      app.utils.mostrarToast(`${nombre} ya puede volver a entrar`, 'info', 'check');
+    } catch (e) {
+      app.dialogo.dlgAvisar(e.message, { tipo: 'error' });
+    }
+    this.admCargarCuentas();
+  }
+
+  // ─── Configuración ───
+
+  admJuegosCatalogo() {
+    return [...app.catalogo.allGames, ...app.catalogo.actionGames];
+  }
+
+  async admCargarConfig() {
+    let c;
+    try {
+      c = await app.api.apiFetch('/api/admin/config');
+    } catch (e) {
+      app.utils.mostrarToast('No se pudo cargar la configuración: ' + e.message, 'error');
+      return;
+    }
+    this.admConfigActual = c;
+    document.getElementById('cfgMantenimiento').checked = c.mantenimiento_activo === 'true';
+    document.getElementById('cfgMantenimientoMsg').value = c.mantenimiento_mensaje || '';
+    document.getElementById('cfgRegistro').checked = c.registro_abierto !== 'false';
+    document.getElementById('cfgGitRodrigo').value = c.github_rodrigo || '';
+    document.getElementById('cfgGitSantiago').value = c.github_santiago || '';
+    document.getElementById('cfgGitKevin').value = c.github_kevin || '';
+    this.admTemaSitio = TemaUsuario.TEMAS.includes(c.color_tema) ? c.color_tema : 'dark';
+    document.querySelectorAll('#cfgTemas .adm-theme').forEach((b) => b.classList.toggle('active', b.dataset.tema === this.admTemaSitio));
+
+    let ocultos = [];
+    try {
+      ocultos = JSON.parse(c.juegos_ocultos || '[]');
+    } catch {
+      /* valor roto: se toman todos como visibles */
+    }
+    const s = app.utils.sanitizeHTML;
+    document.getElementById('cfgJuegos').innerHTML = this.admJuegosCatalogo()
+      .map((g) => {
+        const visible = !ocultos.includes(g.id);
+        return `
+      <label class="adm-game-toggle ${visible ? '' : 'oculto'}" data-juego="${s(g.id)}">
+        ${app.utils.gameIconSVG(g.id, 18)}
+        <span class="adm-game-name">${s(g.title)}</span>
+        <span class="adm-switch"><input type="checkbox" ${visible ? 'checked' : ''} onchange="this.closest('.adm-game-toggle').classList.toggle('oculto', !this.checked); admConfigCambio()" aria-label="${s(g.title)} visible"><span></span></span>
+      </label>`;
+      })
+      .join('');
+    document.getElementById('cfgSavebar').hidden = true;
+  }
+
+  admConfigCambio() {
+    const bar = document.getElementById('cfgSavebar');
+    if (bar) bar.hidden = false;
+  }
+
+  admElegirTemaSitio(tema) {
+    this.admTemaSitio = tema;
+    document.querySelectorAll('#cfgTemas .adm-theme').forEach((b) => b.classList.toggle('active', b.dataset.tema === tema));
+    this.admConfigCambio();
+  }
+
+  async admGuardarConfig() {
+    const ocultos = [...document.querySelectorAll('#cfgJuegos .adm-game-toggle')]
+      .filter((el) => !el.querySelector('input').checked)
+      .map((el) => el.dataset.juego);
+    const datos = {
+      mantenimiento_activo: document.getElementById('cfgMantenimiento').checked ? 'true' : 'false',
+      mantenimiento_mensaje: document.getElementById('cfgMantenimientoMsg').value.trim(),
+      registro_abierto: document.getElementById('cfgRegistro').checked ? 'true' : 'false',
+      juegos_ocultos: JSON.stringify(ocultos),
+      color_tema: this.admTemaSitio,
+      github_rodrigo: document.getElementById('cfgGitRodrigo').value.trim(),
+      github_santiago: document.getElementById('cfgGitSantiago').value.trim(),
+      github_kevin: document.getElementById('cfgGitKevin').value.trim(),
+    };
+    const antes = this.admConfigActual || {};
+    if (datos.mantenimiento_activo === 'true' && antes.mantenimiento_activo !== 'true') {
+      const ok = await app.dialogo.dlgConfirmar({
+        titulo: 'Activar modo mantenimiento',
+        icono: 'wrench',
+        mensaje: 'Los usuarios conectados van a ver el cartel de mantenimiento en el momento y no van a poder jugar. Los admins siguen entrando.',
+        confirmar: 'Activar',
+        peligro: true,
+      });
+      if (!ok) return;
+    }
+    try {
+      await app.api.apiFetch('/api/admin/config', { method: 'PUT', body: JSON.stringify(datos) });
+      app.utils.mostrarToast('Configuración guardada');
+      this.admConfigActual = { ...antes, ...datos };
+      document.getElementById('cfgSavebar').hidden = true;
+      app.configSitio.csAplicar(datos);
+    } catch (e) {
+      app.dialogo.dlgAvisar(e.message, { tipo: 'error' });
+    }
+  }
+}
+
+// LogsAdmin — Pestaña "Logs" del panel: logs del servidor en vivo, con búsqueda, filtro por nivel, pausa y descarga. (app.logsAdmin)
+class LogsAdmin extends Modulo {
+  constructor() {
+    super();
+    this.lgItems = [];
+    this.lgUltimoId = 0;
+    this.lgDesdeId = 0; // "Limpiar" oculta lo anterior a este id (solo en la vista)
+    this.lgCtrl = null;
+    this.lgReintento = null;
+    this.lgIntentos = 0;
+    this.lgPausado = false;
+    this.lgPendientes = 0;
+    this.lgAutoScroll = true;
+    this.lgQ = '';
+    this.lgNiveles = new Set(['http', 'info', 'warn', 'error']);
+    this.lgConteo = { http: 0, info: 0, warn: 0, error: 0 };
+    this.lgErroresSinVer = 0;
+    this.lgTimerBuscar = null;
+  }
+
+  static get MAX_FILAS() {
+    return 600; // filas en pantalla (el resto queda en memoria para buscar/descargar)
+  }
+
+  // Abre el canal de admins: logs nuevos + cantidad de usuarios en línea.
+  async lgConectar() {
+    if (this.lgCtrl) return;
+    clearTimeout(this.lgReintento);
+    const ctrl = new AbortController();
+    this.lgCtrl = ctrl;
+    this.lgSetEstado('conectando');
+
+    try {
+      const data = await app.api.apiFetch('/api/admin/logs?limite=1000');
+      this.lgItems = data.items;
+      this.lgUltimoId = this.lgItems.length ? this.lgItems[this.lgItems.length - 1].id : this.lgUltimoId;
+      this.lgConteo = data.conteo;
+      this.lgActualizarConteo();
+      this.lgRender();
+    } catch {
+      /* si falla igual se intenta el stream */
+    }
+
+    try {
+      await app.api.abrirStreamSSE('/api/admin/logs/stream', this.lgEvento, ctrl.signal);
+    } catch (err) {
+      if (ctrl.signal.aborted) return;
+      if (err.status === 401 || err.status === 403) {
+        this.lgCtrl = null;
+        app.admin.admExpulsar('Ya no tenés permisos de administrador.');
+        return;
+      }
+    }
+    if (ctrl.signal.aborted || this.lgCtrl !== ctrl) return;
+    // Se cortó (deploy, reinicio, red): reintentar mientras siga en el panel
+    this.lgCtrl = null;
+    this.lgSetEstado('caido');
+    const espera = Math.min(30000, 2000 * 2 ** this.lgIntentos++);
+    this.lgReintento = setTimeout(() => {
+      if (document.getElementById('sec-admin')?.classList.contains('active')) this.lgConectar();
+    }, espera);
+  }
+
+  lgDesconectar() {
+    clearTimeout(this.lgReintento);
+    if (this.lgCtrl) this.lgCtrl.abort();
+    this.lgCtrl = null;
+  }
+
+  lgEvento(evento, data) {
+    if (evento === 'hola' || evento === 'presencia') {
+      if (evento === 'hola') {
+        this.lgIntentos = 0;
+        this.lgSetEstado(this.lgPausado ? 'pausa' : 'vivo');
+      }
+      app.admin.admActualizarEnLinea(data.enLinea);
+      return;
+    }
+    if (evento !== 'log' || data.id <= this.lgUltimoId) return;
+    this.lgUltimoId = data.id;
+    this.lgItems.push(data);
+    if (this.lgItems.length > 1000) this.lgItems.shift();
+    this.lgConteo[data.nivel] = (this.lgConteo[data.nivel] || 0) + 1;
+    this.lgActualizarConteo();
+
+    const visible = document.querySelector('[data-adm-panel="logs"].active');
+    if (data.nivel === 'error' && !visible) {
+      this.lgErroresSinVer++;
+      app.admin.admBadge('admBadgeErrores', this.lgErroresSinVer);
+    }
+    if (this.lgPausado) {
+      this.lgPendientes++;
+      this.lgSetEstado('pausa');
+      return;
+    }
+    if (this.lgCoincide(data)) this.lgAgregarFila(data);
+    this.lgSetEstado('vivo');
+  }
+
+  lgAlMostrar() {
+    this.lgErroresSinVer = 0;
+    app.admin.admBadge('admBadgeErrores', 0);
+    this.lgRender();
+  }
+
+  lgSetEstado(estado) {
+    const totalVisibles = this.lgItems.filter((e) => e.id > this.lgDesdeId).length;
+    const textos = {
+      conectando: 'Conectando…',
+      vivo: `En vivo · ${totalVisibles} registros`,
+      pausa: `Pausado${this.lgPendientes ? ` · ${this.lgPendientes} nuevos sin mostrar` : ''}`,
+      caido: 'Desconectado · reintentando…',
+    };
+    const st = document.getElementById('lgEstado');
+    if (st) {
+      st.dataset.estado = estado;
+      document.getElementById('lgEstadoTxt').textContent = textos[estado];
+    }
+    const live = document.getElementById('admLive');
+    if (live) {
+      live.dataset.estado = estado === 'pausa' ? 'vivo' : estado;
+      if (estado === 'caido') document.getElementById('admLiveTxt').textContent = 'Sin conexión en vivo';
+      else if (estado === 'conectando') document.getElementById('admLiveTxt').textContent = 'Conectando…';
+      else if (app.admin.admEnLinea != null) app.admin.admActualizarEnLinea(app.admin.admEnLinea);
     }
   }
 
-  async changeUserStatus(id, estado) {
-    try {
-      const res = await app.api.authFetch(`/api/admin/usuarios/${id}/estado`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          estado,
-        }),
-      });
-      if (res.ok) this.loadAdminUsers();
-    } catch (e) {
-      console.error(e);
+  lgActualizarConteo() {
+    const ids = { http: 'lgCntHttp', info: 'lgCntInfo', warn: 'lgCntWarn', error: 'lgCntError' };
+    for (const [nivel, id] of Object.entries(ids)) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = this.lgConteo[nivel] || 0;
     }
+  }
+
+  lgCoincide(e) {
+    if (e.id <= this.lgDesdeId) return false;
+    if (!this.lgNiveles.has(e.nivel)) return false;
+    if (!this.lgQ) return true;
+    const q = this.lgQ.toLowerCase();
+    return e.mensaje.toLowerCase().includes(q) || (e.usuario || '').toLowerCase().includes(q);
+  }
+
+  // Texto escapado con las coincidencias de la búsqueda resaltadas
+  lgResaltar(texto) {
+    const s = app.utils.sanitizeHTML;
+    if (!this.lgQ) return s(texto);
+    const q = this.lgQ.toLowerCase();
+    const bajo = texto.toLowerCase();
+    let out = '';
+    let i = 0;
+    let j;
+    while ((j = bajo.indexOf(q, i)) !== -1) {
+      out += s(texto.slice(i, j)) + '<mark>' + s(texto.slice(j, j + q.length)) + '</mark>';
+      i = j + q.length;
+    }
+    return out + s(texto.slice(i));
+  }
+
+  lgHora(ts) {
+    const d = new Date(ts);
+    const p = (n, l = 2) => String(n).padStart(l, '0');
+    return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
+  }
+
+  lgFilaHTML(e, nuevo = false) {
+    return `<div class="lg-row ${e.nivel}${nuevo ? ' nuevo' : ''}" title="${this.lgHora(e.ts)} · ${new Date(e.ts).toLocaleDateString('es-AR')}">
+      <span class="lg-ts">${this.lgHora(e.ts)}</span>
+      <span class="lg-lvl ${e.nivel}">${e.nivel.toUpperCase()}</span>
+      <span class="lg-msg">${this.lgResaltar(e.mensaje)}</span>
+      <span class="lg-user">${e.usuario ? '@' + this.lgResaltar(e.usuario) : ''}</span>
+    </div>`;
+  }
+
+  lgRender() {
+    const cuerpo = document.getElementById('lgCuerpo');
+    if (!cuerpo) return;
+    const filtrados = this.lgItems.filter(this.lgCoincide);
+    const mostrar = filtrados.slice(-LogsAdmin.MAX_FILAS);
+    if (!mostrar.length) {
+      cuerpo.innerHTML = `<div class="lg-vacio">${this.lgQ || this.lgNiveles.size < 4 ? 'Ningún log coincide con la búsqueda o los filtros.' : 'Todavía no hay logs. Apenas pase algo en el servidor aparece acá.'}</div>`;
+    } else {
+      const aviso =
+        filtrados.length > mostrar.length
+          ? `<div class="lg-vacio" style="padding:.5rem">Mostrando los últimos ${mostrar.length} de ${filtrados.length}. Descargá el .txt para verlos todos.</div>`
+          : '';
+      cuerpo.innerHTML = aviso + mostrar.map((e) => this.lgFilaHTML(e)).join('');
+    }
+    if (this.lgAutoScroll) cuerpo.scrollTop = cuerpo.scrollHeight;
+    this.lgSetEstado(this.lgCtrl ? (this.lgPausado ? 'pausa' : 'vivo') : 'caido');
+  }
+
+  lgAgregarFila(e) {
+    const cuerpo = document.getElementById('lgCuerpo');
+    if (!cuerpo || !document.querySelector('[data-adm-panel="logs"].active')) return;
+    const vacio = cuerpo.querySelector('.lg-vacio:only-child');
+    if (vacio) vacio.remove();
+    cuerpo.insertAdjacentHTML('beforeend', this.lgFilaHTML(e, true));
+    while (cuerpo.querySelectorAll('.lg-row').length > LogsAdmin.MAX_FILAS) cuerpo.querySelector('.lg-row').remove();
+    if (this.lgAutoScroll) cuerpo.scrollTop = cuerpo.scrollHeight;
+  }
+
+  lgBuscar(q) {
+    clearTimeout(this.lgTimerBuscar);
+    this.lgTimerBuscar = setTimeout(() => {
+      this.lgQ = q.trim();
+      this.lgRender();
+    }, 150);
+  }
+
+  lgToggleNivel(nivel) {
+    if (this.lgNiveles.has(nivel)) this.lgNiveles.delete(nivel);
+    else this.lgNiveles.add(nivel);
+    document.querySelectorAll('[data-lg-nivel]').forEach((b) => b.classList.toggle('active', this.lgNiveles.has(b.dataset.lgNivel)));
+    this.lgRender();
+  }
+
+  lgTogglePausa() {
+    this.lgPausado = !this.lgPausado;
+    document.getElementById('lgPausaBtn').textContent = this.lgPausado ? 'Reanudar' : 'Pausar';
+    if (!this.lgPausado) {
+      this.lgPendientes = 0;
+      this.lgRender();
+    } else {
+      this.lgSetEstado('pausa');
+    }
+  }
+
+  lgToggleAutoScroll() {
+    this.lgAutoScroll = !this.lgAutoScroll;
+    const b = document.getElementById('lgScrollBtn');
+    b.innerHTML = this.lgAutoScroll ? 'Auto-scroll ' + app.utils.uiIconSVG('check', 13) : 'Auto-scroll';
+    b.setAttribute('aria-pressed', this.lgAutoScroll ? 'true' : 'false');
+    if (this.lgAutoScroll) this.lgRender();
+  }
+
+  lgLimpiar() {
+    this.lgDesdeId = this.lgUltimoId;
+    this.lgRender();
+  }
+
+  lgDescargar() {
+    const lineas = this.lgItems
+      .filter(this.lgCoincide)
+      .map((e) => `${e.ts} [${e.nivel.toUpperCase()}] ${e.mensaje}${e.usuario ? ' @' + e.usuario : ''}`);
+    const blob = new Blob([lineas.join('\n') + '\n'], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    const ahora = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    a.href = URL.createObjectURL(blob);
+    a.download = `unigames-logs-${ahora.getFullYear()}${p(ahora.getMonth() + 1)}${p(ahora.getDate())}-${p(ahora.getHours())}${p(ahora.getMinutes())}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+}
+
+// TiempoReal — Canal en tiempo real con el servidor (notificaciones, avisos, cambios de config y de sesión). (app.tiempoReal)
+class TiempoReal extends Modulo {
+  constructor() {
+    super();
+    this.trToken = null;
+    this.trCtrl = null;
+    this.trTimer = null;
+    this.trIntentos = 0;
+    this.trConectado = false;
+  }
+
+  // Se llama cada vez que cambia la sesión (updateAuthUI): conecta si hay
+  // usuario logueado y desconecta si no. No reabre si ya está conectado.
+  trSincronizar() {
+    const token = localStorage.getItem('unigames_token');
+    if (!app.auth.currentUser || !token) return this.trDesconectar();
+    if (this.trToken === token && this.trCtrl) return;
+    this.trDesconectar();
+    this.trToken = token;
+    this.trConectar();
+  }
+
+  async trConectar() {
+    clearTimeout(this.trTimer);
+    const ctrl = new AbortController();
+    this.trCtrl = ctrl;
+    try {
+      await app.api.abrirStreamSSE('/api/stream', this.trDespachar, ctrl.signal);
+    } catch (err) {
+      if (ctrl.signal.aborted) return;
+      if (err.status === 401) {
+        this.trCtrl = null;
+        this.trConectado = false;
+        app.api.sesionVencida();
+        return;
+      }
+    }
+    if (ctrl.signal.aborted || this.trCtrl !== ctrl) return;
+    this.trConectado = false;
+    // Se cortó (deploy, Render dormido, red): reintentar con espera creciente
+    const espera = Math.min(30000, 2000 * 2 ** this.trIntentos++);
+    this.trTimer = setTimeout(() => {
+      if (this.trCtrl === ctrl) this.trConectar();
+    }, espera);
+  }
+
+  trDesconectar() {
+    clearTimeout(this.trTimer);
+    if (this.trCtrl) this.trCtrl.abort();
+    this.trCtrl = null;
+    this.trToken = null;
+    this.trIntentos = 0;
+    this.trConectado = false;
+  }
+
+  trDespachar(evento, data) {
+    switch (evento) {
+      case 'hola':
+        // Conectado (o reconectado): ponerse al día con lo que pasó mientras tanto
+        this.trIntentos = 0;
+        this.trConectado = true;
+        app.notificaciones.actualizarBadgeNotificaciones();
+        app.avisos.avRevisarPendientes();
+        break;
+
+      case 'notificacion': {
+        app.notificaciones.actualizarBadgeNotificaciones();
+        app.notificaciones.refrescarSiAbierta();
+        app.utils.mostrarToast(data.mensaje, 'info', Notificaciones.NOTIF_ICONOS[data.tipo] || 'bell');
+        break;
+      }
+
+      case 'aviso': {
+        app.notificaciones.actualizarBadgeNotificaciones();
+        app.notificaciones.refrescarSiAbierta();
+        // Al admin que lo mandó no se le muestra su propio cartel
+        const esMio = app.auth.currentUser && data.creado_por === app.auth.currentUser.id;
+        if (data.prioridad === 'alta' && !esMio) app.avisos.avMostrarAlta(data);
+        else if (!esMio) app.utils.mostrarToast(data.titulo, 'info', 'megaphone');
+        if (document.querySelector('[data-adm-panel="avisos"].active')) app.avisos.avCargar();
+        break;
+      }
+
+      case 'aviso_retirado':
+        app.avisos.avQuitarDeCola(data.id);
+        app.notificaciones.actualizarBadgeNotificaciones();
+        app.notificaciones.refrescarSiAbierta();
+        break;
+
+      case 'config':
+        app.configSitio.csAplicar(data);
+        break;
+
+      case 'sesion':
+        this.trCambioDeSesion(data);
+        break;
+    }
+  }
+
+  // Un admin cambió el rol o el estado de esta cuenta.
+  trCambioDeSesion(data) {
+    const u = app.auth.currentUser;
+    if (!u) return;
+    if (data.baneado) {
+      app.api.sesionBaneada(data);
+      return;
+    }
+    if (data.rol && data.rol !== u.rol) {
+      u.rol = data.rol;
+      localStorage.setItem('unigames_user', JSON.stringify(u));
+      app.auth.updateAuthUI();
+      if (data.rol === 'admin') app.utils.mostrarToast('¡Ahora sos administrador! Tenés el Panel Admin en tu menú.');
+      else app.admin.admExpulsar('Un administrador te quitó los permisos de admin.');
+    }
+  }
+}
+
+// ConfigSitio — Configuración global aplicada en vivo: tema del sitio, modo mantenimiento y juegos ocultos. (app.configSitio)
+class ConfigSitio extends Modulo {
+  constructor() {
+    super();
+    this.csConfig = {};
+    this.csUltimoAdmin = null;
+  }
+
+  csEsAdmin() {
+    return !!(app.auth.currentUser && app.auth.currentUser.rol === 'admin');
+  }
+
+  // parcial: las claves que cambiaron (al cargar, o por el canal en tiempo real)
+  csAplicar(parcial = {}) {
+    Object.assign(this.csConfig, parcial);
+    if ('color_tema' in parcial) app.tema.setTemaSitio(parcial.color_tema);
+    if ('mantenimiento_activo' in parcial || 'mantenimiento_mensaje' in parcial) this.csAplicarMantenimiento();
+    if ('juegos_ocultos' in parcial) this.csAplicarJuegos();
+  }
+
+  csJuegosOcultos() {
+    try {
+      const a = JSON.parse(this.csConfig.juegos_ocultos || '[]');
+      return Array.isArray(a) ? a : [];
+    } catch {
+      return [];
+    }
+  }
+
+  csJuegoOculto(id) {
+    return this.csJuegosOcultos().includes(id);
+  }
+
+  csAplicarMantenimiento() {
+    const activo = this.csConfig.mantenimiento_activo === 'true';
+    const admin = this.csEsAdmin();
+    const bloquear = activo && !admin;
+    const overlay = document.getElementById('mantenimientoOverlay');
+    const strip = document.getElementById('mantenimientoStrip');
+    const msg = document.getElementById('mantenimientoMsg');
+    if (msg) msg.textContent = this.csConfig.mantenimiento_mensaje || 'Estamos haciendo mejoras. Volvé en un rato.';
+    if (overlay) overlay.hidden = !bloquear;
+    if (strip) strip.hidden = !(activo && admin);
+    const yaBloqueado = document.body.classList.contains('mant-bloqueado');
+    document.body.classList.toggle('mant-bloqueado', bloquear);
+    // Si estaba jugando, se lo saca del juego (el cartel tapa todo, pero el
+    // juego seguiría corriendo atrás y recibiendo teclas).
+    if (bloquear && !yaBloqueado && !document.getElementById('sec-inicio')?.classList.contains('active')) {
+      app.navegacion.goTo('inicio', { forzar: true });
+    }
+  }
+
+  csAplicarJuegos() {
+    app.catalogo.renderFeatured();
+    app.catalogo.renderSimple();
+    app.catalogo.renderAction();
+    app.catalogo.renderClassicGames();
+    app.catalogo.renderMotorGames();
+  }
+
+  // Lo llama AuthManager.updateAuthUI cada vez que cambia la sesión.
+  csAlCambiarSesion() {
+    const admin = this.csEsAdmin();
+    this.csAplicarMantenimiento();
+    if (this.csUltimoAdmin !== null && this.csUltimoAdmin !== admin && this.csJuegosOcultos().length) this.csAplicarJuegos();
+    this.csUltimoAdmin = admin;
+    // Si dejó de ser admin (o cerró sesión) con el panel cargado, se borra.
+    if (!admin && app.admin.admListo) app.admin.admExpulsar();
   }
 }
 
@@ -6985,6 +8688,7 @@ class ReportesAdmin extends Modulo {
         ['rol', 'Rol'],
         ['estado', 'Estado'],
         ['fecha_registro', 'Registro'],
+        ['ultima_conexion', 'Última conexión'],
         ['juegos_jugados', 'Juegos jugados'],
         ['logros', 'Logros'],
         ['amigos', 'Amigos'],
@@ -7027,7 +8731,16 @@ class ReportesAdmin extends Modulo {
     [8, 'Castle Escape'],
   ];
 
-  static CAMPOS_FECHA = new Set(['fecha_registro', 'fecha']);
+  static CAMPOS_FECHA = new Set(['fecha_registro', 'fecha', 'ultima_conexion']);
+
+  // Orden con el que abre cada reporte (después se cambia tocando el título de una columna)
+  static ORDEN_INICIAL = {
+    usuarios: { campo: 'fecha_registro', dir: 'desc' }, // los más nuevos primero
+    ranking: null,
+    actividad: null,
+  };
+
+  static POR_PAGINA = 20;
 
   // jsPDF + autotable (~400KB) se bajan recién al exportar el primer PDF.
   static JSPDF_URL = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js';
@@ -7038,6 +8751,43 @@ class ReportesAdmin extends Modulo {
     this.reporteTipo = 'usuarios';
     this.reporteFilas = [];
     this.jsPdfCargando = null;
+    this.reporteOrden = ReportesAdmin.ORDEN_INICIAL.usuarios;
+    this.reportePagina = 1;
+  }
+
+  // Click en el título de una columna: ordena por ella (otro click invierte)
+  ordenarReporte(campo) {
+    const actual = this.reporteOrden;
+    if (actual && actual.campo === campo) this.reporteOrden = { campo, dir: actual.dir === 'asc' ? 'desc' : 'asc' };
+    else this.reporteOrden = { campo, dir: ReportesAdmin.CAMPOS_FECHA.has(campo) ? 'desc' : 'asc' };
+    this.reportePagina = 1;
+    this.aplicarOrdenReporte();
+    this.renderReporte();
+  }
+
+  // Ordena reporteFilas (también lo que se exporta a CSV/PDF)
+  aplicarOrdenReporte() {
+    const o = this.reporteOrden;
+    if (!o) return;
+    const fecha = ReportesAdmin.CAMPOS_FECHA.has(o.campo);
+    const signo = o.dir === 'asc' ? 1 : -1;
+    this.reporteFilas.sort((a, b) => {
+      let x = a[o.campo];
+      let y = b[o.campo];
+      if (x === null || x === undefined || x === '') return 1; // vacíos siempre al final
+      if (y === null || y === undefined || y === '') return -1;
+      if (fecha) return (new Date(x) - new Date(y)) * signo;
+      const nx = Number(x);
+      const ny = Number(y);
+      if (!Number.isNaN(nx) && !Number.isNaN(ny)) return (nx - ny) * signo;
+      return String(x).localeCompare(String(y), 'es', { sensitivity: 'base' }) * signo;
+    });
+  }
+
+  irPaginaReporte(n) {
+    this.reportePagina = n;
+    this.renderReporte();
+    document.getElementById('reporteTabla')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   // Al abrir la pestaña Reportes del panel admin.
@@ -7052,6 +8802,7 @@ class ReportesAdmin extends Modulo {
   cambiarTipoReporte(tipo) {
     if (!ReportesAdmin.REPORTES[tipo]) return;
     this.reporteTipo = tipo;
+    this.reporteOrden = ReportesAdmin.ORDEN_INICIAL[tipo] || null;
     // el filtro por juego solo aplica al ranking
     document.getElementById('reporteJuegoGrupo').style.visibility = tipo === 'ranking' ? 'visible' : 'hidden';
     this.cargarReporte();
@@ -7069,9 +8820,11 @@ class ReportesAdmin extends Modulo {
     const url = def.url + (juego ? '?juego_id=' + encodeURIComponent(juego) : '');
     estado.textContent = 'Cargando…';
     this.reporteFilas = [];
+    this.reportePagina = 1;
     this.renderReporte();
     try {
       this.reporteFilas = await app.api.apiFetch(url);
+      this.aplicarOrdenReporte();
       estado.textContent = this.reporteFilas.length + (this.reporteFilas.length === 1 ? ' registro' : ' registros');
     } catch (err) {
       estado.textContent = 'No se pudo cargar el reporte: ' + err.message;
@@ -7095,13 +8848,37 @@ class ReportesAdmin extends Modulo {
     if (!tabla) return;
     const { columnas } = ReportesAdmin.REPORTES[this.reporteTipo];
     const esc = app.utils.sanitizeHTML;
-    const cabecera = '<thead><tr>' + columnas.map(([, t]) => `<th>${esc(t)}</th>`).join('') + '</tr></thead>';
-    const cuerpo = this.reporteFilas.length
+    const o = this.reporteOrden;
+    const cabecera =
+      '<thead><tr>' +
+      columnas
+        .map(([c, t]) => {
+          const activo = o && o.campo === c;
+          const flecha = activo ? (o.dir === 'asc' ? '▲' : '▼') : '↕';
+          return `<th class="ordenable${activo ? ' activo' : ''}" aria-sort="${activo ? (o.dir === 'asc' ? 'ascending' : 'descending') : 'none'}">
+            <button type="button" onclick="ordenarReporte('${c}')" title="Ordenar por ${esc(t)}">${esc(t)} <span>${flecha}</span></button></th>`;
+        })
+        .join('') +
+      '</tr></thead>';
+    // De a 20 por página
+    const por = ReportesAdmin.POR_PAGINA;
+    const total = this.reporteFilas.length;
+    const paginas = Math.max(1, Math.ceil(total / por));
+    this.reportePagina = Math.min(Math.max(1, this.reportePagina), paginas);
+    const desde = (this.reportePagina - 1) * por;
+    const cuerpo = total
       ? this.reporteFilas
+          .slice(desde, desde + por)
           .map((f) => '<tr>' + columnas.map(([c]) => `<td>${esc(ReportesAdmin.valorCelda(f, c))}</td>`).join('') + '</tr>')
           .join('')
       : `<tr><td colspan="${columnas.length}" class="admin-reporte-vacio">Sin datos</td></tr>`;
     tabla.innerHTML = cabecera + '<tbody>' + cuerpo + '</tbody>';
+    const pager = document.getElementById('reportePager');
+    if (pager) {
+      pager.innerHTML = total
+        ? app.admin.admPagerHTML({ pagina: this.reportePagina, paginas, total, porPagina: por }, 'irPaginaReporte', 'registros')
+        : '';
+    }
   }
 
   // "unigames_ranking_juego7_2026-09-25.pdf"
@@ -7216,6 +8993,17 @@ class AdminContenidoJuegos extends Modulo {
     window.__jgEditingId = null;
     window.__jgTematicas = [];
     window.__jgLastItems = [];
+    this.jgPagina = 1; // la lista se muestra de a 20
+  }
+
+  static get POR_PAGINA() {
+    return 20;
+  }
+
+  jgIrPagina(n) {
+    this.jgPagina = n;
+    this.jgRenderLista();
+    document.getElementById('juegosContenidoList')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   jgEndpoint(tipo) {
@@ -7372,6 +9160,7 @@ class AdminContenidoJuegos extends Modulo {
 
   async switchJuegoTipo(tipo) {
     window.__jgEditingId = null;
+    this.jgPagina = 1;
     this.jgResetBotones();
     await this.jgFetchTematicas();
     this.jgPoblarSelectFiltro(tipo);
@@ -7386,7 +9175,7 @@ class AdminContenidoJuegos extends Modulo {
     if (familia === 'ahorcado') {
       const palabra = val('jgPalabra').trim();
       if (!palabra) {
-        alert('La palabra es requerida');
+        app.dialogo.dlgAvisar('La palabra es requerida', { tipo: 'error' });
         return null;
       }
       return {
@@ -7398,11 +9187,11 @@ class AdminContenidoJuegos extends Modulo {
       const palabra = val('jgPalabra').trim();
       const tematica_id = val('jgTematica');
       if (!palabra) {
-        alert('La palabra es requerida');
+        app.dialogo.dlgAvisar('La palabra es requerida', { tipo: 'error' });
         return null;
       }
       if (!tematica_id) {
-        alert('Elegí una temática');
+        app.dialogo.dlgAvisar('Elegí una temática', { tipo: 'error' });
         return null;
       }
       return {
@@ -7418,15 +9207,15 @@ class AdminContenidoJuegos extends Modulo {
       const opcion_c = val('jgOpcionC').trim();
       const opcion_d = val('jgOpcionD').trim();
       if (!tematica_id) {
-        alert('Elegí una temática');
+        app.dialogo.dlgAvisar('Elegí una temática', { tipo: 'error' });
         return null;
       }
       if (!pregunta) {
-        alert('La pregunta es requerida');
+        app.dialogo.dlgAvisar('La pregunta es requerida', { tipo: 'error' });
         return null;
       }
       if (!opcion_a || !opcion_b || !opcion_c || !opcion_d) {
-        alert('Las 4 opciones son requeridas');
+        app.dialogo.dlgAvisar('Las 4 opciones son requeridas', { tipo: 'error' });
         return null;
       }
       return {
@@ -7443,11 +9232,11 @@ class AdminContenidoJuegos extends Modulo {
       const tematica_id = val('jgTematica');
       const respuesta = val('jgRespuesta').trim();
       if (!tematica_id) {
-        alert('Elegí una temática');
+        app.dialogo.dlgAvisar('Elegí una temática', { tipo: 'error' });
         return null;
       }
       if (!respuesta) {
-        alert('La respuesta es requerida');
+        app.dialogo.dlgAvisar('La respuesta es requerida', { tipo: 'error' });
         return null;
       }
       return {
@@ -7481,14 +9270,14 @@ class AdminContenidoJuegos extends Modulo {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || 'Error al guardar');
+        app.dialogo.dlgAvisar(data.error || 'Error al guardar', { tipo: 'error' });
         return;
       }
       this.cancelarEdicionJuego();
-      this.loadJuegosContenidoList();
+      this.loadJuegosContenidoList({ mantenerPagina: true });
     } catch (e) {
       console.error(e);
-      alert('Error de conexión');
+      app.dialogo.dlgAvisar('Error de conexión', { tipo: 'error' });
     }
   }
 
@@ -7535,76 +9324,108 @@ class AdminContenidoJuegos extends Modulo {
   }
 
   async eliminarContenidoJuego(tipo, id) {
-    if (!confirm('¿Eliminar este elemento de forma permanente?')) return;
+    const ok = await app.dialogo.dlgConfirmar({
+      titulo: 'Eliminar contenido',
+      mensaje: 'Se borra de forma permanente y deja de aparecer en el juego.',
+      confirmar: 'Eliminar',
+      peligro: true,
+    });
+    if (!ok) return;
     try {
       const res = await app.api.authFetch('/api/admin/' + this.jgEndpoint(tipo) + '/' + id, {
         method: 'DELETE',
       });
       if (res.ok) {
         if (window.__jgEditingId === id) this.cancelarEdicionJuego();
-        this.loadJuegosContenidoList();
+        this.loadJuegosContenidoList({ mantenerPagina: true });
       } else {
-        alert('Error al eliminar');
+        app.dialogo.dlgAvisar('Error al eliminar', { tipo: 'error' });
       }
     } catch (e) {
       console.error(e);
     }
   }
 
-  async loadJuegosContenidoList() {
+  // opciones.mantenerPagina: después de guardar/borrar se queda en la misma página
+  async loadJuegosContenidoList(opciones = {}) {
+    if (!opciones.mantenerPagina) this.jgPagina = 1;
     const tipo = document.getElementById('juegosTipoSelect').value;
     const tematicaFiltro = document.getElementById('juegosTematicaFiltro').value;
     const listBox = document.getElementById('juegosContenidoList');
-    listBox.innerHTML =
-      '<div style="text-align:center; color:#94A3B8; font-size:12px; padding:10px;">Cargando...</div>';
+    listBox.innerHTML = '<div class="adm-empty">Cargando…</div>';
     let url = '/api/admin/' + this.jgEndpoint(tipo);
     if (tematicaFiltro) url += '?tematica_id=' + encodeURIComponent(tematicaFiltro);
     try {
       const res = await app.api.authFetch(url);
       if (!res.ok) {
-        listBox.innerHTML = '<div style="color:#FCA5A5; font-size:12px;">Error cargando contenido</div>';
+        listBox.innerHTML = '<div class="adm-empty">Error cargando contenido</div>';
+        document.getElementById('juegosContenidoPager').innerHTML = '';
         return;
       }
-      const items = await res.json();
-      window.__jgLastItems = items;
-      if (!items.length) {
-        listBox.innerHTML =
-          '<div style="text-align:center; color:#94A3B8; font-size:12px; padding:10px;">No hay elementos cargados.</div>';
-        return;
-      }
-      const temaNombre = (id) => {
-        if (id === null || id === undefined || id === '') return 'Normal';
-        const t = window.__jgTematicas.find((t) => t.id == id);
-        return t ? t.nombre : '#' + id;
-      };
-      listBox.innerHTML = items
-        .map((item) => {
-          const familia = this.jgFormFamily(tipo);
-          let titulo = '';
-          if (familia === 'ahorcado' || familia === 'wordle') titulo = item.palabra;
-          if (familia === 'preguntas') titulo = item.pregunta;
-          if (familia === 'adivina') titulo = item.respuesta;
-          return `
-                <div style="background:rgba(0,0,0,0.3); border-radius:6px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px;">
-                    <div style="flex:1; min-width:0;">
-                        <div style="font-size:13px; color:#F1F5F9; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${app.utils.sanitizeHTML(titulo)}</div>
-                        <div style="font-size:10px; color:#94A3B8;">Temática: ${app.utils.sanitizeHTML(temaNombre(item.tematica_id))}</div>
-                    </div>
-                    <div style="display:flex; gap:6px; flex-shrink:0;">
-                        <button class="admin-btn-small" style="background:#2563eb;" onclick="editarContenidoJuegoPorId('${tipo}', ${item.id})">Editar</button>
-                        <button class="admin-btn-small" style="background:#ef4444;" onclick="eliminarContenidoJuego('${tipo}', ${item.id})">Eliminar</button>
-                    </div>
-                </div>`;
-        })
-        .join('');
+      window.__jgLastItems = await res.json();
+      this.jgRenderLista();
     } catch (e) {
       console.error(e);
-      listBox.innerHTML = '<div style="color:#FCA5A5; font-size:12px;">Error de conexión</div>';
+      listBox.innerHTML = '<div class="adm-empty">Error de conexión</div>';
     }
+  }
+
+  jgRenderLista() {
+    const tipo = document.getElementById('juegosTipoSelect').value;
+    const listBox = document.getElementById('juegosContenidoList');
+    const pager = document.getElementById('juegosContenidoPager');
+    const items = window.__jgLastItems || [];
+    if (!items.length) {
+      listBox.innerHTML = '<div class="adm-empty">No hay elementos cargados.</div>';
+      pager.innerHTML = '';
+      return;
+    }
+    const porPagina = AdminContenidoJuegos.POR_PAGINA;
+    const paginas = Math.max(1, Math.ceil(items.length / porPagina));
+    this.jgPagina = Math.min(Math.max(1, this.jgPagina), paginas);
+    const desde = (this.jgPagina - 1) * porPagina;
+    const temaNombre = (id) => {
+      if (id === null || id === undefined || id === '') return 'Normal';
+      const t = window.__jgTematicas.find((t) => t.id == id);
+      return t ? t.nombre : '#' + id;
+    };
+    const familia = this.jgFormFamily(tipo);
+    const s = app.utils.sanitizeHTML;
+    listBox.innerHTML = items
+      .slice(desde, desde + porPagina)
+      .map((item) => {
+        let titulo = '';
+        let detalle = '';
+        if (familia === 'ahorcado' || familia === 'wordle') titulo = item.palabra;
+        if (familia === 'preguntas') {
+          titulo = item.pregunta;
+          detalle = ` · Correcta: ${s(item.respuesta_correcta || '?')}`;
+        }
+        if (familia === 'adivina') {
+          titulo = item.respuesta;
+          detalle = (item.aliases || []).length ? ` · ${item.aliases.length} alias` : '';
+        }
+        return `
+        <div class="adm-content-row${window.__jgEditingId === item.id ? ' editando' : ''}">
+          <div class="adm-content-info">
+            <div class="adm-content-titulo">${s(titulo)}</div>
+            <div class="adm-content-meta">${s(temaNombre(item.tematica_id))}${detalle} · #${item.id}</div>
+          </div>
+          <div class="adm-content-acciones">
+            <button class="adm-btn adm-btn-ghost adm-btn-sm" onclick="editarContenidoJuegoPorId('${tipo}', ${item.id})">Editar</button>
+            <button class="adm-btn adm-btn-danger adm-btn-sm" onclick="eliminarContenidoJuego('${tipo}', ${item.id})">Eliminar</button>
+          </div>
+        </div>`;
+      })
+      .join('');
+    pager.innerHTML = app.admin.admPagerHTML(
+      { pagina: this.jgPagina, paginas, total: items.length, porPagina },
+      'jgIrPagina',
+      'elementos',
+    );
   }
 }
 
-//   App — clase raíz: compone los módulos y arranca la aplicación
 class App extends Modulo {
   arrancar() {
     this.auth = new AuthManager();
@@ -7635,7 +9456,12 @@ class App extends Modulo {
     this.admin = new AdminPanel();
     this.adminJuegos = new AdminContenidoJuegos();
     this.reportes = new ReportesAdmin();
+    this.logsAdmin = new LogsAdmin();
+    this.tiempoReal = new TiempoReal();
+    this.configSitio = new ConfigSitio();
+    this.dialogo = new Dialogo();
     this.exponerGlobales();
+    this.dialogo.iniciar();
     this.nucleo.iniciar();
     this.audio.iniciar();
     this.cargador.iniciar();
@@ -7681,6 +9507,10 @@ class App extends Modulo {
       this.admin,
       this.adminJuegos,
       this.reportes,
+      this.logsAdmin,
+      this.tiempoReal,
+      this.configSitio,
+      this.dialogo,
       this,
     ];
   }
@@ -7729,6 +9559,9 @@ class App extends Modulo {
       Notificaciones,
       AdminPanel,
       AdminContenidoJuegos,
+      LogsAdmin,
+      TiempoReal,
+      ConfigSitio,
     ]) {
       for (const nombre of Object.keys(Clase)) window[nombre] = Clase[nombre];
     }
@@ -7765,6 +9598,7 @@ class App extends Modulo {
       }
       // Siempre: sin sesión, esto pinta el botón de "Iniciar sesión".
       app.auth.updateAuthUI();
+      app.utils.pintarIconos();
       const params = new URLSearchParams(window.location.search);
       const urlError = params.get('error_description');
       if (urlError) {

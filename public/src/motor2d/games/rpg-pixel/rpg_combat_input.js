@@ -133,13 +133,13 @@ export class RpgCombate extends RpgModulo {
 
   renderPauseOverlay() {
     this.destroyPauseQualityRow();
-    RpgConfig.EL.overlayTitle.textContent = '⏸ Pausa';
+    RpgConfig.EL.overlayTitle.textContent = 'Pausa';
     RpgConfig.EL.overlaySub.innerHTML =
       '<div class="rpg-pause-layout">' +
       '<div class="rpg-pause-actions">' +
       '<button class="btn-play" onclick="rpgResumeGame()">▶ Continuar</button>' +
-      '<button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;" onclick="rpgShowPauseSettings()">⚙ Ajustes</button>' +
-      '<button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;" onclick="rpgQuitToMenuFromRoom()">✖ Salir</button>' +
+      '<button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;" onclick="rpgShowPauseSettings()">' + (window.app && app.utils ? app.utils.uiIconSVG('settings', 15) + ' ' : '') + 'Ajustes</button>' +
+      '<button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;" onclick="rpgQuitToMenuFromRoom()">' + (window.app && app.utils ? app.utils.uiIconSVG('x', 15) + ' ' : '') + 'Salir</button>' +
       '</div>' +
       '<div class="rpg-pause-upgrades">' +
       juego.enemigos.buildUpgradesSummaryHtml() +
@@ -404,7 +404,7 @@ export class RpgCombate extends RpgModulo {
         const extraLabel = extraDef.apply();
         items.push({
           key: extraKey,
-          label: '🍀 Extra · ' + (extraLabel || extraDef.label),
+          label: 'Extra · ' + (extraLabel || extraDef.label),
         });
       }
     }
@@ -452,7 +452,7 @@ export class RpgCombate extends RpgModulo {
         );
       })
       .join('');
-    RpgConfig.EL.overlayTitle.textContent = chestType === 'gold' ? '✨ ¡Cofre de oro!' : '📦 ¡Cofre de plata!';
+    RpgConfig.EL.overlayTitle.textContent = chestType === 'gold' ? '¡Cofre de oro!' : '¡Cofre de plata!';
     RpgConfig.EL.overlaySub.innerHTML = '<div class="rpg-reward-list">' + rowsHtml + '</div>';
     RpgConfig.EL.overlayButtons.innerHTML =
       '<button class="btn-play" onclick="rpgCollectChestReward()">Recoger</button>';
@@ -513,7 +513,7 @@ export class RpgCombate extends RpgModulo {
       juego.enemigos.updateHudTimer();
       if (juego.combatElapsed >= juego.timeLimitMs) {
         juego.enemigos.gameOver(
-          '⏱ Se acabó el tiempo',
+          'Se acabó el tiempo',
           (cfg.enemyName || 'El enemigo') + ' resistió hasta el final de la canción.',
         );
         return;

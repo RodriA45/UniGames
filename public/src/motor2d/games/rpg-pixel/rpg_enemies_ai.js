@@ -476,7 +476,7 @@ export class RpgEnemigos extends RpgModulo {
     const totalSec = Math.ceil(remainMs / 1000);
     const mm = Math.floor(totalSec / 60);
     const ss = totalSec % 60;
-    el.textContent = '⏱ ' + mm + ':' + String(ss).padStart(2, '0');
+    el.textContent = mm + ':' + String(ss).padStart(2, '0');
     el.classList.toggle('rpg-timer-warn', remainMs <= 15000);
   }
 
@@ -492,7 +492,7 @@ export class RpgEnemigos extends RpgModulo {
     const roomCfg = juego.datos.roomCfg();
     const foeLabel = roomCfg.enemyName || 'Los enemigos';
     juego.combate.setOverlay(
-      title || '💀 Derrota',
+      title || 'Derrota',
       sub || foeLabel + ' fueron más fuertes esta vez. La partida se borró — volvé al menú para empezar de nuevo.',
       '<button class="btn-play rpg-btn-secondary" style="opacity:1;cursor:pointer;" onclick="rpgShowMenu()">← Volver al menú</button>',
     );
@@ -568,7 +568,7 @@ export class RpgEnemigos extends RpgModulo {
       juego.menu.saveSlotData(juego.activeSlot, save);
     }
     juego.combate.setOverlay(
-      '🏆 ¡Capítulo superado!',
+      '¡Capítulo superado!',
       'Derrotaste a ' +
         chapterCfg.rooms[5].enemyName +
         ' y completaste ' +

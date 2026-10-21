@@ -1,15 +1,16 @@
 const express = require('express');
 const { getDb } = require('../database/db');
-const { verificarToken } = require('../middlewares/auth');
+const { crearNotificacion } = require('../services/notificaciones');
+const { verificarToken, publicRateLimit } = require('../middlewares/auth');
 const { validate } = require('../middlewares/validate');
 const { partidaSchema } = require('../schemas');
 
 const router = express.Router();
 
-// aliases vive como texto en la DB. Lo normal es JSON (así lo guardan el
-// panel admin y el seed), pero filas viejas del seed quedaron como
-// "a,b,c". Se aceptan los dos formatos para no tirar 500 por una fila.
+// La vista v_adivina_items devuelve aliases como array (salen de la tabla
+// adivina_aliases). Se sigue aceptando texto JSON o "a,b,c" por las dudas.
 function parseAliases(raw) {
+    if (Array.isArray(raw)) return raw;
     if (!raw) return [];
     try {
         const v = JSON.parse(raw);
@@ -21,7 +22,7 @@ function parseAliases(raw) {
 
 
 // 3. Obtener tabla de puntuaciones (Leaderboard)
-router.get('/leaderboard', async (req, res) => {
+router.get('/leaderboard', publicRateLimit, async (req, res) => {
     const { juego_id } = req.query;
     const db = await getDb();
 
@@ -58,7 +59,7 @@ router.get('/leaderboard', async (req, res) => {
 });
 
 // 3b. Leaderboard global: top 5 por juego, un registro por usuario (el MAX absoluto)
-router.get('/leaderboard/global', async (req, res) => {
+router.get('/leaderboard/global', publicRateLimit, async (req, res) => {
     const db = await getDb();
     try {
         const sql = `
@@ -118,10 +119,11 @@ async function notificarSiSuperaRecordAjeno(db, usuario_id, juego_id, puntos, no
         const juego = (await db.query(`SELECT nombre FROM juegos WHERE id = $1`, [juego_id])).rows[0];
         const nombreJuego = juego ? juego.nombre : 'un juego';
 
-        await db.run(
-            `INSERT INTO notificaciones (usuario_id, tipo, mensaje, enlace) VALUES (?, 'record', ?, 'puntuacion') RETURNING id`,
-            [anteriorRecord.usuario_id, `${nombreJugador} superó tu récord en ${nombreJuego} con ${puntos} puntos`]
-        );
+        await crearNotificacion(db, anteriorRecord.usuario_id, {
+            tipo: 'record',
+            mensaje: `${nombreJugador} superó tu récord en ${nombreJuego} con ${puntos} puntos`,
+            enlace: 'puntuacion',
+        });
     } catch (notifError) {
         console.error('Error al notificar récord superado:', notifError);
     }
@@ -163,7 +165,7 @@ router.post('/partidas', verificarToken, validate(partidaSchema), async (req, re
 });
 
 // 5. Obtener palabra aleatoria para Ahorcado
-router.get('/ahorcado/palabra', async (req, res) => {
+router.get('/ahorcado/palabra', publicRateLimit, async (req, res) => {
     const tematica = req.query.tematica;
     const exclude = req.query.exclude;
     const db = await getDb();
@@ -208,7 +210,7 @@ router.get('/ahorcado/palabra', async (req, res) => {
 });
 
 // 5.b Obtener palabra aleatoria para "Adivina la Palabra" (estilo Wordle)
-router.get('/wordle/palabra', async (req, res) => {
+router.get('/wordle/palabra', publicRateLimit, async (req, res) => {
     const tematica = req.query.tematica;
     const exclude = req.query.exclude;
     const db = await getDb();
@@ -239,11 +241,13 @@ router.get('/wordle/palabra', async (req, res) => {
 });
 
 // 6. Obtener preguntas aleatorias (opcionalmente por temática)
-router.get('/preguntas', async (req, res) => {
+router.get('/preguntas', publicRateLimit, async (req, res) => {
     const tematica_id = req.query.tematica_id;
     const db = await getDb();
     try {
-        let sql = `SELECT * FROM preguntas`;
+        // v_preguntas: pregunta + sus 4 opciones (tabla pregunta_opciones)
+        // con la forma opcion_a..d / respuesta_correcta que usa el frontend.
+        let sql = `SELECT * FROM v_preguntas`;
         let params = [];
         
         if (tematica_id) {
@@ -260,7 +264,7 @@ router.get('/preguntas', async (req, res) => {
     }
 });
 
-router.get('/sopa/palabras', async (req, res) => {
+router.get('/sopa/palabras', publicRateLimit, async (req, res) => {
     const tematica = req.query.tematica;
     // Igual tope que el resto de los endpoints de este archivo: nunca
     // se devuelven de más aunque alguien pida un número gigante.
@@ -300,7 +304,7 @@ router.get('/sopa/palabras', async (req, res) => {
     }
 });
 
-router.get('/adivina/items', async (req, res) => {
+router.get('/adivina/items', publicRateLimit, async (req, res) => {
     const tematica = req.query.tematica;
 
     if (!tematica || !/^\d+$/.test(tematica)) {
@@ -315,15 +319,14 @@ router.get('/adivina/items', async (req, res) => {
         // un techo de seguridad, no un recorte real de contenido.
         const sql = `
             SELECT respuesta, aliases, imagen, pista_1, pista_2, pista_3, pista_4
-            FROM adivina_items
+            FROM v_adivina_items
             WHERE tematica_id = ?
             LIMIT 50
         `;
         const rows = (await db.query(sql, [Number(tematica)])).rows;
 
         // El frontend espera el mismo shape que tenía ADIVINA_DATA:
-        // pistas como array de 4 y aliases como array (acá vive como JSON
-        // en la columna, se parsea antes de mandarlo).
+        // pistas como array de 4 y aliases como array.
         const items = rows.map(r => ({
             respuesta: r.respuesta,
             aliases: parseAliases(r.aliases),

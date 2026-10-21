@@ -29,6 +29,12 @@ export class Cielo {
   #estrellas = [];
   #nubes = []; // { img, oscura, x, y, capa, umbral }
   #deriva = 0; // cuánto se corrieron las nubes con el viento (px)
+  // Caché del fondo (color + degradés + sol): rellenar la pantalla entera
+  // con degradés en cada frame era lo más caro de dibujar en Survi. Ahora
+  // se pinta en un canvas aparte y solo se rehace cuando algo cambia lo
+  // suficiente como para notarse; las nubes siguen siendo por frame.
+  #lienzoFondo = null;
+  #claveFondo = '';
 
   constructor(semilla = 1) {
     let s = semilla >>> 0 || 1;
@@ -138,9 +144,51 @@ export class Cielo {
   // e: { W, H, hora, noche (0..1), lluvia (0..1), camX, colorLluvia }
   dibujarFondo(ctx, e) {
     const { W, H } = e;
+    const afuera = 1 - this.#cueva;
+    // Escala real del ctx (la resolución interna de la calidad): el caché se
+    // arma a esa resolución, así se pega 1 a 1 sin estirar.
+    const esc = ctx.getTransform().a || 1;
+    const q = (v) => Math.round(v * 64); // pasos de 1/64: imperceptibles
+    const crep = Math.max(0, 1 - Math.abs(e.hora - 0.56) / 0.06, 1 - Math.abs(e.hora - 0.95) / 0.05) * (1 - e.lluvia * 0.7);
+    const ts = Cielo.tSol(e.hora);
+    let sol = 'n';
+    if (ts !== null) {
+      const { x, y } = Cielo.#arco(ts, W, H);
+      sol = Math.round(x) + ',' + Math.round(y) + ',' + q(Math.min(1, Math.min(ts, 1 - ts) * 6));
+    }
+    const clave = afuera <= 0.01
+      ? `${W}|${H}|${esc}|${this.colorActual}`
+      : `${W}|${H}|${esc}|${this.colorActual}|${q(afuera)}|${q(e.lluvia)}|${e.colorLluvia}|${q(e.noche)}|${q(crep)}|${e.sangre ? 1 : 0}|${sol}`;
+    if (clave !== this.#claveFondo || !this.#lienzoFondo) {
+      const cw = Math.max(1, Math.round(W * esc)), ch = Math.max(1, Math.round(H * esc));
+      if (!this.#lienzoFondo) this.#lienzoFondo = document.createElement('canvas');
+      const lf = this.#lienzoFondo;
+      if (lf.width !== cw || lf.height !== ch) {
+        lf.width = cw;
+        lf.height = ch;
+      }
+      const c = lf.getContext('2d');
+      c.setTransform(esc, 0, 0, esc, 0, 0);
+      this.#pintarFondo(c, e, afuera, crep, ts);
+      this.#claveFondo = clave;
+    }
+    const a = ctx.globalAlpha;
+    ctx.globalAlpha = 1;
+    ctx.drawImage(this.#lienzoFondo, 0, 0, W, H);
+    ctx.globalAlpha = a;
+    if (afuera <= 0.01) return;
+    // nubes (se mueven con el viento y la cámara: por frame)
+    this.#dibujarNubes(ctx, e, afuera);
+    ctx.globalAlpha = 1;
+  }
+
+  // Lo que queda en el caché del fondo: color, lluvia, degradés, luna de
+  // sangre y sol. Mismo dibujo que antes, solo que en el canvas aparte.
+  #pintarFondo(ctx, e, afuera, crep, ts) {
+    const { W, H } = e;
+    ctx.globalAlpha = 1;
     ctx.fillStyle = this.colorActual;
     ctx.fillRect(0, 0, W, H);
-    const afuera = 1 - this.#cueva;
     if (afuera <= 0.01) return;
     // cielo nublado con lluvia (gris) o lluvia ácida (verdoso)
     if (e.lluvia > 0) {
@@ -156,7 +204,6 @@ export class Cielo {
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, W, H);
     // amanecer / atardecer: horizonte naranja
-    const crep = Math.max(0, 1 - Math.abs(e.hora - 0.56) / 0.06, 1 - Math.abs(e.hora - 0.95) / 0.05) * (1 - e.lluvia * 0.7);
     if (crep > 0) {
       ctx.globalAlpha = 0.5 * crep * afuera;
       const g2 = ctx.createLinearGradient(0, H * 0.25, 0, H);
@@ -172,15 +219,12 @@ export class Cielo {
       ctx.fillRect(0, 0, W, H);
     }
     // sol
-    const ts = Cielo.tSol(e.hora);
     if (ts !== null) {
       const { x, y } = Cielo.#arco(ts, W, H);
       const bajo = Math.min(1, Math.min(ts, 1 - ts) * 6); // cerca del horizonte: anaranjado
       ctx.globalAlpha = afuera * (1 - e.lluvia * 0.85);
       this.#dibujarSol(ctx, Math.round(x), Math.round(y), bajo);
     }
-    // nubes
-    this.#dibujarNubes(ctx, e, afuera);
     ctx.globalAlpha = 1;
   }
 

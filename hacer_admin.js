@@ -46,10 +46,10 @@ async function cambiarRol(db, nuevoRol) {
   const titulo = nuevoRol === 'admin' ? 'DAR PERMISOS DE ADMINISTRADOR' : 'QUITAR PERMISOS DE ADMINISTRADOR';
   console.log(`\n${C_BLUE}--- ${titulo} ---${C_END}\n`);
 
-  const email = (await ask("Email del usuario (o '0' para volver): ")).trim();
+  const email = (await ask("Email del usuario (o '0' para volver): ")).trim().toLowerCase();
   if (email === '0' || !email) return;
 
-  const result = await db.query('SELECT id, nombre_usuario, rol FROM usuarios WHERE email = $1', [email]);
+  const result = await db.query('SELECT id, nombre_usuario, rol FROM usuarios WHERE LOWER(email) = $1', [email]);
   const row = result.rows[0];
   if (!row) {
     console.log(`\n${C_FAIL}❌ No se encontró un usuario con el correo '${email}'.${C_END}\n`);
@@ -65,7 +65,7 @@ async function cambiarRol(db, nuevoRol) {
     console.log(`\n${C_WARNING}Operación cancelada.${C_END}\n`);
     return;
   }
-  await db.query('UPDATE usuarios SET rol = $1 WHERE email = $2', [nuevoRol, email]);
+  await db.query('UPDATE usuarios SET rol = $1 WHERE LOWER(email) = $2', [nuevoRol, email]);
   console.log(`\n${C_GREEN}✅ Rol de '${row.nombre_usuario}' actualizado a ${nuevoRol}.${C_END}\n`);
 }
 

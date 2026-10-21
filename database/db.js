@@ -21,7 +21,7 @@ async function getDb() {
 
         // Test the connection
         await poolInstance.query('SELECT 1');
-        console.log('✅ Conectado a PostgreSQL (UniGames)');
+        console.log('Conectado a PostgreSQL (UniGames)');
         
         // --- Capa de compatibilidad SQLite -> PostgreSQL ---
         // Permite que las rutas sigan usando db.get, db.all, db.run y '?' en lugar de '$1'
@@ -70,11 +70,29 @@ async function getDb() {
             const res = await originalQuery(newSql, newParams);
             return { changes: res.rowCount }; // Compatible con result.changes de SQLite
         };
+
+        // Transacción: corre fn(client) en una sola conexión entre BEGIN y
+        // COMMIT (ROLLBACK si tira error). El client es el de `pg` directo,
+        // así que adentro se usan parámetros $1, $2... (no '?').
+        poolInstance.transaction = async function(fn) {
+            const client = await poolInstance.connect();
+            try {
+                await client.query('BEGIN');
+                const resultado = await fn(client);
+                await client.query('COMMIT');
+                return resultado;
+            } catch (err) {
+                await client.query('ROLLBACK');
+                throw err;
+            } finally {
+                client.release();
+            }
+        };
         // ----------------------------------------------------
         
         return poolInstance;
     } catch (error) {
-        console.error('❌ Error crítico al conectar a PostgreSQL:', error);
+        console.error('Error crítico al conectar a PostgreSQL:', error);
         process.exit(1);
     }
 }

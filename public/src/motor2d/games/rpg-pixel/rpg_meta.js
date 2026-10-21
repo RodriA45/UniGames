@@ -208,7 +208,7 @@ export class RpgMejoras extends RpgModulo {
     const lifeCost = lifeMaxed ? null : this.upgradeCost(this.meta.lifeLevel + 1);
     rows.push(
       this.mejoraRowHtml({
-        title: '❤️ Vida máxima',
+        title: (window.app && app.utils ? app.utils.uiIconSVG('heart', 16) + ' ' : '') + 'Vida máxima',
         desc:
           'Nivel ' +
           this.meta.lifeLevel +
@@ -227,7 +227,7 @@ export class RpgMejoras extends RpgModulo {
     const dmgCost = dmgMaxed ? null : this.upgradeCost(this.meta.dmgLevel + 1);
     rows.push(
       this.mejoraRowHtml({
-        title: '💥 Daño',
+        title: (window.app && app.utils ? app.utils.uiIconSVG('swords', 16) + ' ' : '') + 'Daño',
         desc:
           'Nivel ' +
           this.meta.dmgLevel +
@@ -244,7 +244,7 @@ export class RpgMejoras extends RpgModulo {
     );
     rows.push(
       this.mejoraRowHtml({
-        title: '✨ Cofre inicial garantizado',
+        title: (window.app && app.utils ? app.utils.uiIconSVG('chest', 16) + ' ' : '') + 'Cofre inicial garantizado',
         desc: 'El primer cofre del Capítulo 1 (habitación 1) sale siempre de oro.',
         costLabel: this.meta.guaranteedFirstChest ? 'Comprado' : gold + RpgConfig.CHEST_GUARANTEED_COST,
         disabled: this.meta.guaranteedFirstChest || this.meta.gold < RpgConfig.CHEST_GUARANTEED_COST,
@@ -254,7 +254,7 @@ export class RpgMejoras extends RpgModulo {
     );
     rows.push(
       this.mejoraRowHtml({
-        title: '🍀 Suerte del cofre',
+        title: (window.app && app.utils ? app.utils.uiIconSVG('clover', 16) + ' ' : '') + 'Suerte del cofre',
         desc: Math.round(RpgConfig.CHEST_EXTRA_CHANCE * 100) + '% de chance de una recompensa extra en cada cofre.',
         costLabel: this.meta.extraChestChance ? 'Comprado' : gold + RpgConfig.CHEST_EXTRA_COST,
         disabled: this.meta.extraChestChance || this.meta.gold < RpgConfig.CHEST_EXTRA_COST,
@@ -264,7 +264,7 @@ export class RpgMejoras extends RpgModulo {
     );
     rows.push(
       this.mejoraRowHtml({
-        title: '🗿 Tótem',
+        title: (window.app && app.utils ? app.utils.uiIconSVG('totem', 16) + ' ' : '') + 'Tótem',
         desc:
           'Si un golpe te iba a matar, volvés con ' +
           RpgConfig.TOTEM_HEAL +

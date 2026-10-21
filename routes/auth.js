@@ -4,6 +4,8 @@ const { getDb } = require('../database/db');
 const { authRateLimit, JWT_SECRET } = require('../middlewares/auth');
 const { createClient } = require('@supabase/supabase-js');
 const { containsBadWords } = require('../middlewares/bad_words');
+const { registroAbierto } = require('../services/configSitio');
+const { sancionActiva, mensajeSancion } = require('../services/sanciones');
 
 const router = express.Router();
 
@@ -76,16 +78,23 @@ router.post('/auth/sync', authRateLimit, async (req, res) => {
             return res.status(401).json({ error: 'Token de Supabase inválido o expirado' });
         }
 
-        const email = user.email;
+        // Normalizado: el mismo correo con otras mayúsculas es la misma cuenta.
+        const email = String(user.email).toLowerCase().trim();
         const db = await getDb();
 
         // 2. Buscar si el usuario ya existe localmente
-        let sql = `SELECT * FROM usuarios WHERE email = $1`;
+        // LOWER(email) en la columna: así matchean también las filas viejas
+        // que se guardaron con mayúsculas antes de normalizar.
+        let sql = `SELECT * FROM usuarios WHERE LOWER(email) = $1`;
         let result = await db.query(sql, [email]);
         let localUser = result.rows[0];
 
-        // 3. Si no existe, lo creamos
+        // 3. Si no existe, lo creamos (salvo que el admin haya cerrado el
+        // registro de cuentas nuevas desde Configuración)
         if (!localUser) {
+            if (!(await registroAbierto())) {
+                return res.status(403).json({ error: 'El registro de cuentas nuevas está cerrado por ahora. Probá más tarde.' });
+            }
             // Con username: tiene que cumplir las reglas (si no, 400).
             // Sin username: user_metadata (registro con confirmación) o email (Google).
             let base;
@@ -119,14 +128,17 @@ router.post('/auth/sync', authRateLimit, async (req, res) => {
 
             // Insertamos al nuevo usuario. La contraseña ya no importa porque Supabase la maneja.
             // Le ponemos un hash vacío o un placeholder.
-            sql = `INSERT INTO usuarios (nombre_usuario, email, password_hash) VALUES ($1, $2, $3) RETURNING id, nombre_usuario, rol, estado`;
+            sql = `INSERT INTO usuarios (nombre_usuario, email, password_hash) VALUES ($1, $2, $3) RETURNING id, nombre_usuario, rol`;
             result = await db.query(sql, [newUsername, email, 'SUPABASE_MANAGED']);
             localUser = result.rows[0];
         }
 
-        if (localUser.estado === 'suspendido') {
-            return res.status(403).json({ error: 'Tu cuenta ha sido suspendida' });
+        // Cuenta baneada (temporal o permanente): no entra, y se le dice por qué
+        const sancion = await sancionActiva(localUser.id);
+        if (sancion) {
+            return res.status(403).json({ error: mensajeSancion(sancion), baneado: true });
         }
+        await db.query('UPDATE usuarios SET ultima_conexion = NOW() WHERE id = $1', [localUser.id]);
 
         // 4. Generamos nuestro token JWT local tradicional (que usan los juegos para validar identidad rápida)
         const localJwt = jwt.sign({ 
@@ -149,14 +161,14 @@ router.post('/auth/sync', authRateLimit, async (req, res) => {
 });
 
 // Endpoint para verificar si un email existe localmente (útil para recuperar contraseña de forma "inteligente")
-router.post('/auth/check-email', async (req, res) => {
+router.post('/auth/check-email', authRateLimit, async (req, res) => {
     const { email } = req.body;
-    if (!email) {
+    if (!email || typeof email !== 'string') {
         return res.status(400).json({ error: 'Falta email' });
     }
     try {
         const db = await getDb();
-        const result = await db.query(`SELECT id FROM usuarios WHERE email = $1`, [email.toLowerCase().trim()]);
+        const result = await db.query(`SELECT id FROM usuarios WHERE LOWER(email) = $1`, [String(email).toLowerCase().trim()]);
         res.json({ exists: result.rows.length > 0 });
     } catch (error) {
         console.error('Error al verificar email:', error);

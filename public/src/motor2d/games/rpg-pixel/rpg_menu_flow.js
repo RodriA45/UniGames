@@ -63,7 +63,7 @@ export class RpgPartida extends RpgModulo {
           '</button>' +
           '<button class="rpg-slot-delete" title="Borrar partida" onclick="rpgDeleteSlotConfirm(' +
           n +
-          ')">🗑</button>' +
+          ')" aria-label="Borrar partida">' + (window.app && app.utils ? app.utils.uiIconSVG('trash', 15) : 'X') + '</button>' +
           '</div>';
       } else {
         html +=

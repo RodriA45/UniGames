@@ -21,14 +21,18 @@ router.get('/usuarios', async (req, res) => {
                    u.nombre_usuario,
                    u.email,
                    u.rol,
-                   u.estado,
+                   CASE WHEN s.tipo = 'permanente' THEN 'baneado (permanente)'
+                        WHEN s.tipo = 'temporal' THEN 'baneado (temporal)'
+                        ELSE 'activo' END AS estado,
                    u.fecha_registro,
+                   u.ultima_conexion,
                    (SELECT COUNT(*)::int FROM partidas p WHERE p.usuario_id = u.id) AS juegos_jugados,
                    (SELECT COUNT(*)::int FROM logros_usuario l WHERE l.usuario_id = u.id) AS logros,
                    (SELECT COUNT(*)::int FROM amistades a
                      WHERE a.estado = 'aceptada' AND (a.usuario1_id = u.id OR a.usuario2_id = u.id)) AS amigos
             FROM usuarios u
-            ORDER BY u.id
+            LEFT JOIN v_sanciones_activas s ON s.usuario_id = u.id
+            ORDER BY u.fecha_registro DESC, u.id DESC
         `);
         res.json(filas);
     } catch (error) {

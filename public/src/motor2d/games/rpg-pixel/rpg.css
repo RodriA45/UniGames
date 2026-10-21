@@ -352,6 +352,22 @@
   text-align: center;
 }
 .rpg-hud-timer.rpg-timer-warn { color: #ef4444; }
+/* Reloj del tiempo límite: forma dibujada con CSS (antes era un emoji ⏱).
+   Toma el color del texto, así en rojo (poco tiempo) también cambia. */
+.rpg-hud-timer:not(:empty)::before {
+  content: '';
+  display: inline-block;
+  width: 0.62rem;
+  height: 0.62rem;
+  margin-right: 0.25rem;
+  vertical-align: -0.06rem;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background:
+    linear-gradient(currentColor, currentColor) 50% 18% / 2px 36% no-repeat,
+    linear-gradient(currentColor, currentColor) 72% 50% / 34% 2px no-repeat;
+}
 
 .rpg-hud-ammo {
   flex: 0 0 auto;

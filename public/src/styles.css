@@ -2717,10 +2717,17 @@ footer span {
 }
 
 .info-tutorial-list li::before {
-  content: '👉';
+  /* flechita propia (antes un emoji) */
+  content: '';
   position: absolute;
-  left: 0;
-  top: 1px;
+  left: 2px;
+  top: 0.45em;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid currentColor;
+  opacity: 0.7;
 }
 
 .info-nav {
@@ -4045,14 +4052,37 @@ body.theme-light .section-title {
   transition: opacity 0.3s ease, visibility 0s linear 0s;
 }
 
-/* El brillo del logo repinta el header en cada frame: se apaga dentro de los
-   juegos 2D, en calidad baja y con "reducir movimiento". */
+/* Animaciones decorativas que se siguen calculando en cada frame aunque no
+   se miren (el brillo del logo anima text-shadow: recalcula estilos y
+   repinta). Dentro de los juegos 2D compiten con el canvas por el mismo
+   hilo, así que se apagan: logos, tarjetas que quedan debajo del juego y
+   letras del título. También en calidad baja y con "reducir movimiento". */
 body.in-engine-game .logo,
-html.q-low .logo {
+body.in-engine-game .footer-logo,
+body.in-engine-game .card-emoji-float,
+body.in-engine-game .card-title,
+body.in-engine-game .wave-letter,
+html.q-low .logo,
+html.q-low .footer-logo {
   animation: none;
 }
 @media (prefers-reduced-motion: reduce) {
-  .logo { animation: none; }
+  .logo,
+  .footer-logo { animation: none; }
+}
+
+/* Fondo del sitio dentro de los juegos 2D: la imagen fija de pantalla
+   completa + el <main> semitransparente obligan al compositor a mezclar
+   toda la vista en cada frame del canvas (en equipos sin aceleración por
+   GPU fue lo que más pesaba). Mientras se juega se saca la capa y el main
+   pasa a un color opaco equivalente al que se veía (88% blanco sobre el
+   azul del tema), así que a la vista queda igual. */
+body.has-bg-gif.in-engine-game::before {
+  display: none;
+}
+body.has-bg-gif.in-engine-game main {
+  background: #e2e4e8;
+  background: color-mix(in srgb, #ffffff 88%, var(--blue-dark));
 }
 
 /* Calidad baja: sin blur detrás de los overlays (color sólido alcanza). */

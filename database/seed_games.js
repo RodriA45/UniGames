@@ -1,9 +1,39 @@
 const { getDb } = require('./db');
+const LOGROS = require('./logros_catalogo');
+
+// ══════════════════════════════════════
+//   UniGames — seed_games.js
+// ══════════════════════════════════════
+// Contenido inicial de los juegos. Corre en cada arranque (start.js) y es
+// idempotente: lo que ya existe no se toca, así no pisa lo que se cargó o
+// editó desde el panel admin.
+//
+// Preguntas y Adivina la Cosa se cargan primero en tablas temporales con
+// la forma "plana" (opcion_a..d, pista_1..4, aliases) —es más cómodo de
+// escribir y de leer— y después se reparten en las tablas normalizadas.
+// Las opciones/pistas/alias solo se insertan para las preguntas e items
+// NUEVOS: si un admin borró un alias, no vuelve a aparecer al reiniciar.
 
 async function seed() {
-    const db = await getDb();
+    const pool = await getDb();
+    // Cliente dedicado: las tablas temporales y la transacción viven en
+    // una sola conexión.
+    const db = await pool.connect();
+    let ok = false;
     try {
         console.log('Insertando datos de prueba para los juegos...');
+        await db.query('BEGIN');
+        await db.query(`
+            CREATE TEMP TABLE seed_preguntas (
+                tematica_id INTEGER, pregunta TEXT,
+                opcion_a TEXT, opcion_b TEXT, opcion_c TEXT, opcion_d TEXT,
+                respuesta_correcta TEXT
+            ) ON COMMIT DROP;
+            CREATE TEMP TABLE seed_adivina (
+                tematica_id INTEGER, respuesta TEXT, aliases TEXT, imagen TEXT,
+                pista_1 TEXT, pista_2 TEXT, pista_3 TEXT, pista_4 TEXT
+            ) ON COMMIT DROP;
+        `);
 
         // 1. Ahorcado
         await db.query(`
@@ -30,7 +60,7 @@ async function seed() {
 
         // 2. Preguntados
         await db.query(`
-            INSERT INTO preguntas (tematica_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta) VALUES
+            INSERT INTO seed_preguntas (tematica_id, pregunta, opcion_a, opcion_b, opcion_c, opcion_d, respuesta_correcta) VALUES
             (1, '¿Cuál es el fontanero más famoso de los videojuegos?', 'Luigi', 'Mario', 'Wario', 'Toad', 'b'),
             (1, '¿En qué juego aparece Master Chief?', 'Halo', 'Gears of War', 'Doom', 'Destiny', 'a'),
             (1, '¿Cuál de estos juegos fue creado por Markus Persson (Notch)?', 'Roblox', 'Terraria', 'Minecraft', 'Rust', 'c'),
@@ -87,7 +117,7 @@ async function seed() {
             (4, '¿Qué significa SQL?', 'Structured Query Language', 'Standard Query Language', 'Simple Query Language', 'System Query Language', 'a'),
             (4, '¿En Git, qué comando se usa para subir los cambios al repositorio remoto?', 'git pull', 'git commit', 'git push', 'git add', 'c'),
             (4, '¿Cuál de estos es un framework de PHP?', 'Django', 'Laravel', 'Spring', 'Express', 'b')
-            ON CONFLICT DO NOTHING;
+            ;
         `);
 
         // 3. Wordle
@@ -104,11 +134,9 @@ async function seed() {
             ON CONFLICT DO NOTHING;
         `);
         
-        // 4. Adivina la Cosa
-        // aliases va como JSON (array), igual que lo guarda el panel admin:
-        // /api/adivina/items lo lee con JSON.parse.
+        // 4. Adivina la Cosa (aliases como lista JSON, se reparte abajo)
         await db.query(`
-            INSERT INTO adivina_items (tematica_id, respuesta, aliases, imagen, pista_1, pista_2, pista_3, pista_4) VALUES
+            INSERT INTO seed_adivina (tematica_id, respuesta, aliases, imagen, pista_1, pista_2, pista_3, pista_4) VALUES
             (1, 'Minecraft', '["mine craft"]', '/logos/videojuegos/minecraft.jpg', 'Es un videojuego de mundo abierto lanzado en 2011.', 'Podés construir estructuras usando bloques.', 'Incluye un modo supervivencia donde debés comer y combatir criaturas.', 'El Creeper es uno de sus enemigos más icónicos.'),
             (1, 'God of War', '["god of war", "godofwar"]', '/logos/videojuegos/god-of-war.jpg', 'Es una saga de acción y aventura con temática mitológica.', 'El protagonista es un espartano con marcas blancas en la piel.', 'En las entregas recientes viaja por la mitología nórdica con su hijo Atreus.', 'Su nombre es Kratos.'),
             (1, 'Pokemon', '["pokémon", "pokemon rojo", "pokémon rojo"]', '/logos/videojuegos/pokemon-rojo.jpg', 'Es una saga de RPG donde coleccionás y entrenás criaturas.', 'Tu objetivo principal es vencer a los 8 líderes de gimnasio.', 'La primera entrega se lanzó en 1996 para Game Boy.', 'El Pokémon más famoso de la saga es Pikachu.'),
@@ -125,14 +153,77 @@ async function seed() {
             (4, 'Python', '["python", "py"]', '/logos/programacion/Python.png', 'Es un lenguaje de programación interpretado y de alto nivel.', 'Se caracteriza por el uso de indentación obligatoria.', 'Es extremadamente popular en ciencia de datos e Inteligencia Artificial.', 'Su logo son dos serpientes (azul y amarilla) entrelazadas.'),
             (4, 'Arduino', '["arduino"]', '/logos/programacion/arduino.png', 'Es una plataforma de hardware y software libre.', 'Se usa para crear prototipos electrónicos y proyectos de robótica.', 'Se programa en un lenguaje basado en C/C++.', 'Su placa más conocida es la UNO.'),
             (4, 'Node.js', '["node", "nodejs", "node.js"]', '/logos/programacion/node-js.png', 'Es un entorno de ejecución para JavaScript.', 'Permite ejecutar JavaScript en el servidor (backend).', 'Está basado en el motor V8 de Google Chrome.', 'Usa un gestor de paquetes llamado npm.')
+            ;
+        `);
+
+        // 2.b Preguntas staging → preguntas + pregunta_opciones
+        await db.query(`
+            CREATE TEMP TABLE nuevas_preguntas (id INTEGER, tematica_id INTEGER, pregunta TEXT) ON COMMIT DROP;
+            WITH ins AS (
+                INSERT INTO preguntas (tematica_id, pregunta)
+                SELECT tematica_id, pregunta FROM seed_preguntas
+                ON CONFLICT DO NOTHING
+                RETURNING id, tematica_id, pregunta
+            ) INSERT INTO nuevas_preguntas SELECT * FROM ins;
+        `);
+        await db.query(`
+            INSERT INTO pregunta_opciones (pregunta_id, letra, texto, es_correcta)
+            SELECT n.id, o.letra, o.texto, o.letra = UPPER(s.respuesta_correcta)
+            FROM nuevas_preguntas n
+            JOIN seed_preguntas s ON s.tematica_id = n.tematica_id AND s.pregunta = n.pregunta
+            CROSS JOIN LATERAL (VALUES ('A', s.opcion_a), ('B', s.opcion_b),
+                                       ('C', s.opcion_c), ('D', s.opcion_d)) AS o(letra, texto)
             ON CONFLICT DO NOTHING;
         `);
 
+        // 4.b Adivina staging → adivina_items + adivina_pistas + adivina_aliases
+        await db.query(`
+            CREATE TEMP TABLE nuevos_items (id INTEGER, tematica_id INTEGER, respuesta TEXT) ON COMMIT DROP;
+            WITH ins AS (
+                INSERT INTO adivina_items (tematica_id, respuesta, imagen)
+                SELECT tematica_id, respuesta, imagen FROM seed_adivina
+                ON CONFLICT DO NOTHING
+                RETURNING id, tematica_id, respuesta
+            ) INSERT INTO nuevos_items SELECT * FROM ins;
+        `);
+        await db.query(`
+            INSERT INTO adivina_pistas (item_id, orden, texto)
+            SELECT n.id, p.orden, p.texto
+            FROM nuevos_items n
+            JOIN seed_adivina s ON s.tematica_id = n.tematica_id AND s.respuesta = n.respuesta
+            CROSS JOIN LATERAL (VALUES (1, s.pista_1), (2, s.pista_2),
+                                       (3, s.pista_3), (4, s.pista_4)) AS p(orden, texto)
+            WHERE p.texto IS NOT NULL
+            ON CONFLICT DO NOTHING;
+        `);
+        await db.query(`
+            INSERT INTO adivina_aliases (item_id, alias)
+            SELECT n.id, TRIM(a.alias)
+            FROM nuevos_items n
+            JOIN seed_adivina s ON s.tematica_id = n.tematica_id AND s.respuesta = n.respuesta
+            CROSS JOIN LATERAL json_array_elements_text(COALESCE(s.aliases, '[]')::json) AS a(alias)
+            WHERE TRIM(a.alias) <> ''
+            ON CONFLICT DO NOTHING;
+        `);
+
+        // 5. Catálogo de logros (si cambia el nombre en logros_catalogo.js, se actualiza)
+        for (const [id, categoria, nombre] of LOGROS) {
+            await db.query(
+                `INSERT INTO logros (id, categoria, nombre) VALUES ($1, $2, $3)
+                 ON CONFLICT (id) DO UPDATE SET categoria = EXCLUDED.categoria, nombre = EXCLUDED.nombre`,
+                [id, categoria, nombre]
+            );
+        }
+
+        await db.query('COMMIT');
+        ok = true;
         console.log('¡Datos insertados correctamente!');
     } catch (error) {
+        await db.query('ROLLBACK');
         console.error('Error insertando datos:', error);
     } finally {
-        process.exit(0);
+        db.release();
+        process.exit(ok ? 0 : 1);
     }
 }
 

@@ -552,8 +552,9 @@ export class SurviGame {
       // dejar franjas negras; un celular (≈2:1) ve más mundo de costado.
       this.vistaW = Math.max(384, Math.min(720, Math.round(SurviConfig.VIEW_H * aspecto)));
     } else this.vistaW = SurviConfig.VIEW_W;
-    // la escala máxima del celular depende del tamaño: se recalcula siempre (al entrar y al salir)
-    if (this.tactil) this._readQuality();
+    // la escala máxima depende del tamaño en pantalla: se recalcula siempre
+    // (al entrar y salir de pantalla completa, al cambiar el tamaño de la ventana)
+    this._readQuality();
     SurviGame.E2D().fitCanvas(this.canvas, this.vistaW, SurviConfig.VIEW_H); // tamaño CSS (encaja en el contenedor)
     this.canvas.width = this.vistaW * this.renderScale; // backing store según el nivel gráfico
     this.canvas.height = SurviConfig.VIEW_H * this.renderScale;
@@ -940,13 +941,18 @@ export class SurviGame {
     // gama baja: el mapa de luz calcula menos margen afuera de la vista
     if (this.light) this.light.margen = this.quality === 'low' ? 7 : LightMap.MARGIN;
     this.renderScale = SurviGame.RENDER_BY_QUALITY[this.quality] || SurviGame.RENDER_SCALE;
-    // En celular: nunca más resolución interna que pixeles tiene la pantalla
-    // (con 4 se dibujaban ~3 veces más pixeles de los que se ven: en un
-    // celular de gama baja bajaba de 60 a 12 fps).
+    // Nunca mucha más resolución interna que pixeles tiene la pantalla. En
+    // celular ya estaba (con 4 se dibujaban ~3 veces más pixeles de los que
+    // se ven: de 60 a 12 fps); en PC faltaba: dentro de la sección el canvas
+    // se ve a ~720 px de ancho y en Alto se dibujaba a 1920 (7 veces más
+    // pixeles de los que se muestran). En PC se redondea para arriba (con
+    // un margen) así no pierde nitidez; en pantalla completa vuelve a subir.
     const cont = this.canvas && this.canvas.parentElement;
-    if (this.tactil && cont && cont.clientWidth) {
+    if (cont && cont.clientWidth) {
       const fisicos = Math.min(cont.clientWidth, cont.clientHeight * (this.vistaW / SurviConfig.VIEW_H)) * (globalThis.devicePixelRatio || 1);
-      this.renderScale = Math.max(1, Math.min(this.renderScale, Math.floor(fisicos / this.vistaW)));
+      const justo = fisicos / this.vistaW;
+      const tope = this.tactil ? Math.floor(justo) : Math.ceil(justo - 0.25);
+      this.renderScale = Math.max(1, Math.min(this.renderScale, tope));
     }
     this.lightEvery = SurviGame.LIGHT_EVERY_BY_QUALITY[this.quality] || 1;
     // zooms que dan pixeles enteros con esta escala
@@ -3788,8 +3794,9 @@ export class SurviGame {
     ctx.translate(x, y);
     ctx.rotate(-Math.PI / 2); // la cabeza hacia la izquierda
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = this.quality === 'high' ? 'high' : 'low';
-    SpritesSurvi.drawSprite(ctx, this.img.player, 0, 0, c, c, -PS.w / 2, -PS.h / 2, PS.w, PS.h, false);
+    ctx.imageSmoothingQuality = 'low';
+    const hoja = this._hojaJugador(ctx);
+    SpritesSurvi.drawSprite(ctx, hoja.img, 0, 0, hoja.c, hoja.c, -PS.w / 2, -PS.h / 2, PS.w, PS.h, false);
     ctx.restore();
     ctx.imageSmoothingEnabled = false;
     // "z" pixeladas que suben y se desvanecen
@@ -4313,6 +4320,47 @@ export class SurviGame {
 
   // Brazo + ítem girando alrededor del hombro. Se dibuja en coordenadas
   // lógicas de pantalla (ya dentro del ctx escalado por el zoom).
+  // Hoja del personaje ya achicada al tamaño con el que se ve en pantalla.
+  // El dibujo original tiene celdas de 184 px y en pantalla ocupa 36 px
+  // lógicos: achicarlo en cada frame con imageSmoothingQuality 'high' hacía
+  // que el navegador rearmara los mipmaps de TODA la hoja (1840x368) por
+  // frame — en calidad Alta el juego caía a menos de 10 fps en una PC justa.
+  // Ahora se achica UNA vez con el mejor filtro (también se ve mejor en
+  // Bajo/Medio, que antes usaban el filtro rápido) y se rehace solo si
+  // cambia la escala (zoom o calidad). Devuelve { img, c } (c = celda).
+  _hojaJugador(ctx) {
+    const img = this.img.player;
+    if (!img) return null;
+    const P = SpritesSurvi.PLAYER, PS = SurviConfig.PLAYER_SPRITE;
+    const t = ctx.getTransform();
+    const esc = Math.hypot(t.a, t.b) || 1; // px reales por px lógico (resolución x zoom)
+    const cs = Math.max(8, Math.round(PS.w * esc));
+    const h = this._hoja;
+    if (h && h.cs === cs && h.src === img) return h.ref;
+    const cv = document.createElement('canvas');
+    cv.width = P.cols * cs;
+    cv.height = P.rows * cs;
+    const g = cv.getContext('2d');
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = 'high';
+    // de a pasos de a la mitad: el filtro no se saltea pixeles al achicar mucho
+    let src = img, sw = img.width, sh = img.height;
+    while (sw / 2 > cv.width) {
+      const paso = document.createElement('canvas');
+      paso.width = Math.round(sw / 2);
+      paso.height = Math.round(sh / 2);
+      const pg = paso.getContext('2d');
+      pg.imageSmoothingQuality = 'high';
+      pg.drawImage(src, 0, 0, sw, sh, 0, 0, paso.width, paso.height);
+      src = paso;
+      sw = paso.width;
+      sh = paso.height;
+    }
+    g.drawImage(src, 0, 0, sw, sh, 0, 0, cv.width, cv.height);
+    this._hoja = { cs, src: img, ref: { img: cv, c: cs } };
+    return this._hoja.ref;
+  }
+
   _drawSwingArm(ctx, cellX, cellY) {
     const sw = this._swing;
     if (sw.t >= sw.dur) return;
@@ -4324,6 +4372,7 @@ export class SurviGame {
     const A = SpritesSurvi.PLAYER.arm,
       S = SpritesSurvi.PLAYER.shoulder,
       cs = SpritesSurvi.PLAYER.fw;
+    const hoja = this._hojaJugador(ctx); // antes de rotar: la escala sale del ctx
     const shx = cellX + (right ? S.x : cs - S.x);
     const shy = cellY + S.y;
     ctx.save();
@@ -4347,8 +4396,9 @@ export class SurviGame {
         ctx.restore();
       }
     }
-    const c = SpritesSurvi.PLAYER.cell;
-    ctx.drawImage(this.img.player, SpritesSurvi.PLAYER.frames.arm * c, 0, c, c, -A.pivotX, -A.pivotY, cs, cs);
+    const c = hoja.c;
+    ctx.imageSmoothingQuality = 'low';
+    ctx.drawImage(hoja.img, SpritesSurvi.PLAYER.frames.arm * c, 0, c, c, -A.pivotX, -A.pivotY, cs, cs);
     ctx.restore();
   }
 
@@ -4468,19 +4518,20 @@ export class SurviGame {
     } else if (!blink) {
       const p = this.camera.worldToScreen(this.player.x, this.player.y);
       const { f, flip } = this._playerFrame();
-      const c = SpritesSurvi.PLAYER.cell;
+      const hoja = this._hojaJugador(ctx);
+      const c = hoja.c;
       const swinging = !this.dead && this._swing.t < this._swing.dur;
       const row = swinging ? SpritesSurvi.PLAYER.armlessRow : 0;
       const cellX = p.x + SurviConfig.PLAYER_SPRITE.offX,
         cellY = p.y + SurviConfig.PLAYER_SPRITE.offY;
-      // El sprite está en su resolución original (más grande que en
-      // pantalla): se achica con suavizado de alta calidad para no perder
-      // detalle ni dejar pixeles desparejos. Los bloques siguen sin suavizar.
+      // La hoja ya viene achicada al tamaño de pantalla (ver _hojaJugador):
+      // se pega casi 1 a 1, con el filtro rápido alcanza. Los bloques
+      // siguen sin suavizar.
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = this.quality === 'high' ? 'high' : 'low';
+      ctx.imageSmoothingQuality = 'low';
       SpritesSurvi.drawSprite(
         ctx,
-        this.img.player,
+        hoja.img,
         f * c,
         row * c,
         c,

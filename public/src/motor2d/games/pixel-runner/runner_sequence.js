@@ -131,10 +131,10 @@ export class Secuencias {
     const total = juego.economia.totalCoins;
     const sub = yaEstabaCompleto
       ? ('Puntos: ' + juego.score + '  ·  Monedas totales: ' + total)
-      : ('¡Modo Infinito desbloqueado! 🔓  ·  Monedas totales: ' + total);
+      : ('¡Modo Infinito desbloqueado!  ·  Monedas totales: ' + total);
 
     juego.menu.mostrarComic(RC.COMICS.final, () => {
-      this.mostrarOverlay('🏆 ¡Historia completada!', sub, true, true);
+      this.mostrarOverlay('¡Historia completada!', sub, true, true);
     });
   }
 

@@ -292,7 +292,7 @@ export class RpgRender extends RpgModulo {
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
           ctx.fillRect(chest.x - 26, chest.y - RpgConfig.CHEST_DRAW_H - 14, 52, 12);
           ctx.fillStyle = '#fde68a';
-          ctx.fillText('💬 Abrir cofre', chest.x, chest.y - RpgConfig.CHEST_DRAW_H - 5);
+          ctx.fillText('Abrir cofre', chest.x, chest.y - RpgConfig.CHEST_DRAW_H - 5);
           ctx.restore();
         }
       }

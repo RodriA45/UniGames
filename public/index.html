@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="src/styles.css" />
   <link rel="stylesheet" href="src/motor2d/ui-components.css" />
   <link rel="stylesheet" href="src/modales.css" />
+  <link rel="stylesheet" href="src/admin.css" />
   <!-- El CSS de cada juego 2D lo agrega app2.js al entrar a su sección (carga diferida). -->
 </head>
 <body class="has-bg-gif">
@@ -235,7 +236,7 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">💀 Ahorcado</h3>
+      <h3 class="game-info-title"><i data-game-ico="ahorcado" data-ico-size="20"></i> Ahorcado</h3>
       <p class="game-info-desc">El clásico de siempre. Elegís letras del teclado en pantalla, una por una: si la letra está en la palabra oculta, se revela en su lugar; si no está, se dibuja una parte del cuerpo del ahorcado. Si el dibujo se completa (6 errores) antes de que adivines la palabra entera, perdés la partida.</p>
     </div>
 
@@ -291,7 +292,7 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🟩 Adivina la Palabra</h3>
+      <h3 class="game-info-title"><i data-game-ico="wordle" data-ico-size="20"></i> Adivina la Palabra</h3>
       <p class="game-info-desc">Estilo Wordle en modo difícil. Te decimos cuántas letras tiene la palabra oculta y escribís tu intento completo. El color de cada letra te da la pista: verde = letra correcta en ese lugar, amarillo = la letra está en la palabra pero en otro lugar, gris = la letra no está. Tenés 5 intentos para adivinarla.</p>
     </div>
 
@@ -331,7 +332,7 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🔍 Sopa de Letras</h3>
+      <h3 class="game-info-title"><i data-game-ico="sopa" data-ico-size="20"></i> Sopa de Letras</h3>
       <p class="game-info-desc">Encontrá las palabras ocultas en la grilla de letras. Tocá y arrastrá (o hacé click y arrastrá) sobre las letras en línea recta —horizontal, vertical o diagonal— para marcarlas. Cada palabra encontrada se resalta y suma puntos; encontralas todas antes de que se acabe el tiempo.</p>
     </div>
 
@@ -370,7 +371,7 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">❓ Preguntados</h3>
+      <h3 class="game-info-title"><i data-game-ico="preguntados" data-ico-size="20"></i> Preguntados</h3>
       <p class="game-info-desc">Trivia de opción múltiple sobre la temática elegida. En cada pregunta tenés unos segundos para elegir la respuesta correcta entre 4 opciones antes de que se acabe el tiempo. Cuantas más aciertes, más puntos sumás.</p>
     </div>
 
@@ -409,7 +410,7 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🔤 Termina la Palabra</h3>
+      <h3 class="game-info-title"><i data-game-ico="termina" data-ico-size="20"></i> Termina la Palabra</h3>
       <p class="game-info-desc">Te mostramos una palabra con algunas letras ya reveladas y el resto oculto. Escribí la palabra completa en el recuadro: tenés 5 intentos, y cada intento incorrecto gasta uno. ¡Pensá bien antes de tipear!</p>
     </div>
 
@@ -432,7 +433,7 @@
       <!-- Overlay inicio / fin -->
       <div class="adivina-overlay" id="adivinaOverlay">
         <div class="adivina-overlay-box">
-          <div id="adivinaOverlayEmoji" style="font-size:3rem;margin-bottom:.5rem;">🕵️</div>
+          <div id="adivinaOverlayEmoji" style="font-size:3rem;margin-bottom:.5rem;"><i data-ico="search" data-ico-size="48"></i></div>
           <p id="adivinaOverlayTitle" style="font-size:1.3rem;font-weight:800;color:#0f1e3d;margin-bottom:.4rem;">Adivina la Cosa</p>
           <p id="adivinaOverlayDesc" style="font-size:.9rem;color:#475569;margin-bottom:1.2rem;line-height:1.5;">
             Se muestran pistas una por una.<br>¡Cuantas menos uses, más puntos ganás!
@@ -456,28 +457,28 @@
 
         <div class="adivina-img-wrap">
           <canvas id="adivinaCanvas" width="260" height="200"></canvas>
-          <div class="adivina-blur-label">🔍 Imagen pixelada — desbloquear con pistas</div>
+          <div class="adivina-blur-label"><i data-ico="image" data-ico-size="13"></i> Imagen pixelada — desbloquear con pistas</div>
         </div>
 
         <div class="adivina-pistas-wrap">
           <div id="adivinaPistasList" class="adivina-pistas-list"></div>
           <button class="adivina-btn-pista" id="adivinaBtnPista" onclick="revelarPista()">
-            🔎 Revelar pista <span id="adivinaPistaCosto">(-100 pts)</span>
+            <i data-ico="search" data-ico-size="15"></i> Revelar pista <span id="adivinaPistaCosto">(-100 pts)</span>
           </button>
         </div>
 
         <div class="adivina-input-wrap">
           <input type="text" id="adivinaInput" class="adivina-input" placeholder="Escribí tu respuesta..." autocomplete="off" />
-          <button class="btn-play adivina-btn-submit" onclick="submitAdivina()">✓ Confirmar</button>
+          <button class="btn-play adivina-btn-submit" onclick="submitAdivina()"><i data-ico="check" data-ico-size="15"></i> Confirmar</button>
         </div>
-        <button class="btn-back" id="adivinaBtnRendirse" style="margin:.6rem auto 0;display:none;" onclick="rendirseAdivina()">🏳 Me rindo, mostrar respuesta</button>
+        <button class="btn-back" id="adivinaBtnRendirse" style="margin:.6rem auto 0;display:none;" onclick="rendirseAdivina()"><i data-ico="flag" data-ico-size="15"></i> Me rindo, mostrar respuesta</button>
 
         <div id="adivinaFeedback" class="adivina-feedback" style="display:none;"></div>
       </div>
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🕵️ Adivina la Cosa</h3>
+      <h3 class="game-info-title"><i data-game-ico="adivina" data-ico-size="20"></i> Adivina la Cosa</h3>
       <p class="game-info-desc">Se van revelando pistas, una por una, sobre un juego, película, actor o anime de la temática elegida. Escribí tu respuesta apenas creas saberla: cuantas menos pistas hayas usado, más puntos ganás. Si te trabás, podés rendirte para ver la respuesta.</p>
     </div>
 
@@ -500,7 +501,7 @@
           <div class="runner-score-display">Puntos: <span id="runner-score-display">0</span></div>
           <span class="runner-multiplier-badge hidden" id="runner-multiplier-display">x2</span>
         </div>
-        <div class="runner-coins-display">🪙 <span id="runner-coins-run-display">0</span></div>
+        <div class="runner-coins-display"><i data-ico="coin" data-ico-size="15"></i> <span id="runner-coins-run-display">0</span></div>
         <div class="runner-active-powerup hidden" id="runner-active-powerup-display"></div>
       </div>
       <button type="button" class="runner-hud-pause-btn hidden" id="runnerHudPauseBtn" onclick="runnerOpenPause()" aria-label="Pausa" title="Pausa">
@@ -530,18 +531,18 @@
         <div class="runner-panel-box">
           <div class="runner-panel-header">
             <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
-            <div class="runner-panel-title">🎮 Elegí tu modo</div>
+            <div class="runner-panel-title"><i data-ico="gamepad" data-ico-size="18"></i> Elegí tu modo</div>
           </div>
           <div class="runner-panel-content runner-mode-content">
             <button class="runner-mode-card" onclick="elegirModoRunner('historia')">
-              <span class="runner-mode-icon">📖</span>
+              <span class="runner-mode-icon"><i data-ico="book" data-ico-size="26"></i></span>
               <span class="runner-mode-name">Historia</span>
               <span class="runner-mode-desc">Llegá a los 2.500 puntos</span>
             </button>
             <button class="runner-mode-card locked" id="runnerModoInfinitoBtn" onclick="elegirModoRunner('infinito')">
-              <span class="runner-mode-icon">♾️</span>
+              <span class="runner-mode-icon"><i data-ico="infinity" data-ico-size="26"></i></span>
               <span class="runner-mode-name">Infinito</span>
-              <span class="runner-mode-desc" id="runnerModoInfinitoDesc">🔒 Completá Historia para desbloquear</span>
+              <span class="runner-mode-desc" id="runnerModoInfinitoDesc"><i data-ico="lock" data-ico-size="12"></i> Completá Historia para desbloquear</span>
             </button>
           </div>
         </div>
@@ -589,10 +590,10 @@
         <div class="runner-panel-box">
           <div class="runner-panel-header">
             <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
-            <div class="runner-panel-title">🛠️ Mejoras</div>
+            <div class="runner-panel-title"><i data-ico="wrench" data-ico-size="18"></i> Mejoras</div>
           </div>
           <div class="runner-panel-content runner-mejoras-content">
-            <div class="runner-mejoras-coins">🪙 <span id="runnerMejorasCoinsTotal">0</span> monedas juntadas</div>
+            <div class="runner-mejoras-coins"><i data-ico="coin" data-ico-size="15"></i> <span id="runnerMejorasCoinsTotal">0</span> monedas juntadas</div>
             <div class="runner-mejoras-grid" id="runnerMejorasGrid"></div>
           </div>
         </div>
@@ -631,7 +632,7 @@
         <div class="runner-panel-box">
           <div class="runner-panel-header">
             <button class="trampas-back-btn" onclick="cerrarPanelesRunner()">← Volver</button>
-            <div class="runner-panel-title">📋 Cómo jugar</div>
+            <div class="runner-panel-title"><i data-ico="list" data-ico-size="18"></i> Cómo jugar</div>
           </div>
           <div class="runner-panel-content trampas-howto-content">
             <div class="trampas-howto-row"><span class="trampas-howto-keys">↑ / Espacio / W</span><span>Saltar (doble salto disponible)</span></div>
@@ -653,7 +654,7 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🏃 Pixel Runner</h3>
+      <h3 class="game-info-title"><i data-game-ico="runner" data-ico-size="20"></i> Pixel Runner</h3>
       <p class="game-info-story">Un programador fue absorbido por su pantalla y llegó a un mundo desconocido, donde a lo lejos solo se ve un castillo.</p>
       <p class="game-info-desc">¡Corrés sin parar! Esquivá obstáculos que vienen del suelo y del cielo. Doble salto disponible. La velocidad aumenta. ¿Llegarás al final?</p>
     </div>
@@ -678,13 +679,13 @@
       <!-- HUD superpuesto al juego -->
       <div class="trampas-hud">
         <div class="trampas-hud-left">
-          <button class="trampas-hud-btn" onclick="trPauseGame()">⏸</button>
-          <button class="trampas-hud-btn" onclick="toggleCastleMusic()" title="Mute música">🔊</button>
-          <button class="trampas-hud-btn" onclick="trToggleControlsSign()" title="Controles">❓</button>
+          <button class="trampas-hud-btn" onclick="trPauseGame()" aria-label="Pausa"><i data-ico="pause" data-ico-size="16"></i></button>
+          <button class="trampas-hud-btn" onclick="toggleCastleMusic()" title="Mute música" aria-label="Música"><i data-ico="volume" data-ico-size="16"></i></button>
+          <button class="trampas-hud-btn" onclick="trToggleControlsSign()" title="Controles" aria-label="Controles"><i data-ico="help" data-ico-size="16"></i></button>
         </div>
         <div class="trampas-hud-info">
           <span class="trampas-hud-stars" id="trampas-hud-stars"></span>
-          <span class="trampas-hud-deaths" id="trampas-hud-deaths">💀 0</span>
+          <span class="trampas-hud-deaths" id="trampas-hud-deaths">Muertes: 0</span>
         </div>
       </div>
 
@@ -693,8 +694,8 @@
         <div class="trampas-menu-title">Castle Escape</div>
         <div class="trampas-menu-subtitle">¿Porqué este castillo es un laberinto?</div>
         <button class="trampas-menu-btn" onclick="trShowLevelSelect()">▶ Jugar</button>
-        <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowSettings()">⚙ Ajustes</button>
-        <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowHowToPlay()">❓ Cómo jugar</button>
+        <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowSettings()"><i data-ico="settings" data-ico-size="15"></i> Ajustes</button>
+        <button class="trampas-menu-btn trampas-menu-btn-secondary" onclick="trShowHowToPlay()"><i data-ico="help" data-ico-size="15"></i> Cómo jugar</button>
       </div>
 
       <!-- Selección de Niveles -->
@@ -736,7 +737,7 @@
             <span class="trampas-slider-value" id="trSfxVolumeValue">80%</span>
           </div>
           <div class="trampas-slider-row trampas-fullscreen-row" id="trFullscreenRow">
-            <label>🖥️ Pantalla completa</label>
+            <label><i data-ico="monitor" data-ico-size="15"></i> Pantalla completa</label>
             <button type="button" class="runner-fullscreen-btn" id="trFullscreenBtn" onclick="trToggleFullscreen()">Activar</button>
           </div>
           <div id="trQualitySlot"></div>
@@ -757,7 +758,7 @@
         </div>
       </div>
 
-      <!-- Cartel de controles (se muestra/oculta con el botón ❓ del HUD) -->
+      <!-- Cartel de controles (se muestra/oculta con el botón de ayuda del HUD) -->
       <div class="trampas-controls-sign hidden" id="trampasControlsSign">
         <div class="trampas-controls-sign-title">Controles</div>
         <div class="trampas-controls-sign-row"><b>← →</b> Moverse</div>
@@ -767,7 +768,7 @@
       <!-- Overlay de inicio/nivel -->
       <div class="trampas-overlay hidden" id="trampasOverlay">
         <div class="trampas-overlay-box">
-          <p class="trampas-overlay-title" id="trampasOverlayTitle">🏰 Castle Escape</p>
+          <p class="trampas-overlay-title" id="trampasOverlayTitle">Castle Escape</p>
           <p class="trampas-overlay-sub" id="trampasOverlaySub">No todo lo que ves es seguro.</p>
           <button class="btn-play trampas-start-btn" id="trampasStartBtn" onclick="startTrampas()">▶ Empezar</button>
         </div>
@@ -776,15 +777,15 @@
       <!-- Mini menú de pausa -->
       <div class="trampas-pause-menu hidden" id="trampasPauseMenu">
         <div class="trampas-pause-box">
-          <p class="trampas-pause-title">⏸ Pausa</p>
+          <p class="trampas-pause-title"><i data-ico="pause" data-ico-size="18"></i> Pausa</p>
           <button class="trampas-pause-opt" onclick="trResumeGame()">▶ Continuar</button>
-          <button class="trampas-pause-opt trampas-pause-exit" onclick="trExitToLevels()">✖ Salir</button>
+          <button class="trampas-pause-opt trampas-pause-exit" onclick="trExitToLevels()"><i data-ico="x" data-ico-size="15"></i> Salir</button>
         </div>
       </div>
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🏰 Castle Escape</h3>
+      <h3 class="game-info-title"><i data-game-ico="castle_escape" data-ico-size="20"></i> Castle Escape</h3>
       <p class="game-info-story">El programador por fin llega e ingresa al castillo. Un sujeto desconocido le dice que debe sobrevivir: es una prueba. Tiene que escapar para romper el hechizo, superarla y llegar a la cima del muro del castillo.</p>
       <p class="game-info-desc">Aventuras en el castillo: saltá plataformas, esquivá trampas y llegá a la salida de cada nivel. Muchos niveles y pruebas, ¿lograrás superarlo?</p>
     </div>
@@ -866,17 +867,17 @@
             <h2 class="rpg-menu-title">Ajustes</h2>
             <div class="trampas-settings-content rpg-ajustes-content">
               <div class="trampas-slider-row">
-                <label>🎵 Música</label>
+                <label><i data-ico="music" data-ico-size="15"></i> Música</label>
                 <input type="range" class="rpg-music-volume-input" min="0" max="100" value="50" oninput="rpgOnMusicVolumeChange(this.value)">
                 <span class="trampas-slider-value rpg-music-volume-value">50%</span>
               </div>
               <div class="trampas-slider-row">
-                <label>🔊 Efectos</label>
+                <label><i data-ico="volume" data-ico-size="15"></i> Efectos</label>
                 <input type="range" class="rpg-sfx-volume-input" min="0" max="100" value="80" oninput="rpgOnSfxVolumeChange(this.value)">
                 <span class="trampas-slider-value rpg-sfx-volume-value">80%</span>
               </div>
               <div class="trampas-slider-row runner-fullscreen-row rpg-fullscreen-row">
-                <label>🖥️ Pantalla completa</label>
+                <label><i data-ico="monitor" data-ico-size="15"></i> Pantalla completa</label>
                 <button type="button" class="runner-fullscreen-btn rpg-fullscreen-btn" onclick="rpgToggleFullscreen()">Activar</button>
               </div>
               <div id="rpgQualitySlot"></div>
@@ -919,14 +920,14 @@
                 <div class="rpg-hud-fill-bar rpg-hud-fill-enemy" id="rpgEnemyHpFill"></div>
                 </div>
             </div>
-            <button class="rpg-hud-btn" onclick="rpgPauseGame()" title="Pausa">⏸</button>
+            <button class="rpg-hud-btn" onclick="rpgPauseGame()" title="Pausa" aria-label="Pausa"><i data-ico="pause" data-ico-size="16"></i></button>
       </div>
 
       <!-- Overlay de inicio / pausa / resultado -->
       <div class="rpg-overlay hidden" id="rpgOverlay">
         <div class="rpg-overlay-box">
           <p class="rpg-overlay-title" id="rpgOverlayTitle">Nivel 1</p>
-          <p class="rpg-overlay-sub" id="rpgOverlaySub">Caminá con las flechas / WASD, disparás con Espacio o click en la dirección que caminaste. Mantené Shift o el botón 🛡️ para bloquear.</p>
+          <p class="rpg-overlay-sub" id="rpgOverlaySub">Caminá con las flechas / WASD, disparás con Espacio o click en la dirección que caminaste. Mantené Shift o el botón <i data-ico="shield" data-ico-size="13"></i> para bloquear.</p>
           <div class="rpg-overlay-buttons" id="rpgOverlayButtons">
             <button class="btn-play" onclick="rpgBeginCombat()">▶ Empezar</button>
           </div>
@@ -935,7 +936,7 @@
     </div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">🗡️ RPG Pixel</h3>
+      <h3 class="game-info-title"><i data-game-ico="rpg_pixel" data-ico-size="20"></i> RPG Pixel</h3>
       <p class="game-info-story">Luego de superar la prueba, el programador recibe un arma y un escudo. Descubre que para seguir el camino hay enemigos que debe vencer: solo le queda tomar valor y enfrentarlos.</p>
       <p class="game-info-desc">Combatí contra enemigos y jefes para avanzar hasta el final y así escapar del castillo. Moveté, disparás en la dirección que caminaste y usá el escudo para bloquear golpes. Al superar un piso hay un cofre con tesoro.</p>
     </div>
@@ -957,7 +958,7 @@
     <div id="survi-root"></div>
 
     <div class="game-info-box">
-      <h3 class="game-info-title">⛏️ Pixel Survi</h3>
+      <h3 class="game-info-title"><i data-game-ico="pixel_survi" data-ico-size="20"></i> Pixel Survi</h3>
       <p class="game-info-story">Junior despierta en un mundo generado de cero: bosque, pradera, desierto, nieve y jungla, con cuevas y minerales abajo. No hay mapa ni camino marcado — lo que haya, hay que picarlo.</p>
       <p class="game-info-desc">Mundo abierto por biomas: rompé bloques con el clic izquierdo (mantené para seguir picando), colocá con el derecho y armá lo que quieras. Tenés 20 de vida, la caída lastima y hay tres mundos guardados. En hardcore, si morís se borra el mundo.</p>
     </div>
@@ -1098,6 +1099,10 @@
   </section>
 
   <!-- ── Sección: Condiciones de Uso ── -->
+  <!-- Panel admin: vacío a propósito. El contenido lo manda el servidor
+       (GET /api/admin/panel) solo si la cuenta es admin. -->
+  <section class="section" id="sec-admin" aria-label="Panel de administración"></section>
+
   <section class="section" id="sec-terminos">
     <button class="btn-back" onclick="goTo('inicio')">← Volver a Inicio</button>
 
@@ -1172,7 +1177,7 @@
   <div class="modal-orb modal-orb-2"></div>
 
   <div class="modal-card">
-    <button class="modal-close-new" onclick="closeModal()">✕</button>
+    <button class="modal-close-new" onclick="closeModal()"><i data-ico="x" data-ico-size="14"></i></button>
 
     <div class="modal-logo-badge">
       <div class="modal-logo-dot"></div>
@@ -1275,7 +1280,7 @@
   <div class="modal-orb modal-orb-2"></div>
 
   <div class="modal-card">
-    <button class="modal-close-new" onclick="closeRecoverModal()">✕</button>
+    <button class="modal-close-new" onclick="closeRecoverModal()"><i data-ico="x" data-ico-size="14"></i></button>
 
     <div class="modal-logo-badge">
       <div class="modal-logo-dot"></div>
@@ -1307,7 +1312,7 @@
 <!-- Modal: info / créditos -->
 <div class="info-overlay" id="infoOverlay" onclick="if(event.target===this) closeInfoModal()">
   <div class="info-modal">
-    <button class="info-close" onclick="closeInfoModal()" aria-label="Cerrar modal">✕</button>
+    <button class="info-close" onclick="closeInfoModal()" aria-label="Cerrar modal"><i data-ico="x" data-ico-size="14"></i></button>
     
     <div class="info-pages-wrap">
     <!-- Página 1: el proyecto -->
@@ -1384,163 +1389,31 @@
   </div>
 </div>
 
-<!-- ── Panel admin ── -->
-
-<div class="admin-overlay" id="adminOverlay">
-  <div class="modal-bg-blur" onclick="closeAdminModal()"></div>
-  <div class="admin-card">
-    <div class="admin-card-header">
-      <div class="admin-card-title"><span class="modal-logo-dot"></span> Panel de Administración</div>
-      <button class="modal-close-new" onclick="closeAdminModal()">✕</button>
+<!-- ── Avisos de prioridad alta (cartel en el medio, para todos) ── -->
+<div class="aviso-alta-overlay" id="avisoAltaOverlay" role="dialog" aria-modal="true" aria-labelledby="avisoAltaTitulo" hidden>
+  <div class="aviso-alta-bg"></div>
+  <div class="aviso-alta-card">
+    <div class="aviso-alta-tag"><span class="aviso-alta-pulse"></span> AVISO IMPORTANTE</div>
+    <h2 class="aviso-alta-titulo" id="avisoAltaTitulo"></h2>
+    <p class="aviso-alta-texto" id="avisoAltaTexto"></p>
+    <div class="aviso-alta-pie">
+      <span class="aviso-alta-fecha" id="avisoAltaFecha"></span>
+      <span class="aviso-alta-cola" id="avisoAltaCola"></span>
     </div>
-
-    <div class="admin-tabs">
-      <button class="admin-tab active" onclick="switchAdminTab('dashboard')">Dashboard</button>
-      <button class="admin-tab" onclick="switchAdminTab('usuarios')">Cuentas</button>
-      <button class="admin-tab" onclick="switchAdminTab('avisos')">Avisos</button>
-      <button class="admin-tab" onclick="switchAdminTab('juegos')">Juegos</button>
-      <button class="admin-tab" onclick="switchAdminTab('reportes')">Reportes</button>
-      <button class="admin-tab" onclick="switchAdminTab('config')">Config</button>
-    </div>
-
-    <div class="admin-card-body">
-
-      <!-- Dashboard -->
-      <div class="admin-tab-content" id="adminTabDashboard" style="display:block;">
-        <div class="admin-stats-row">
-          <div class="admin-stat-card"><div class="n" id="dashboardTotal">-</div><div class="l">Usuarios totales</div></div>
-          <div class="admin-stat-card"><div class="n" id="dashboardActivos">-</div><div class="l">Usuarios activos</div></div>
-        </div>
-        <div class="admin-section-title">Top 5 jugadores</div>
-        <ul class="admin-list" id="dashboardTop5"></ul>
-        <div class="admin-section-title">Partidas por juego</div>
-        <div style="height:220px; position:relative;"><canvas id="gamesChart"></canvas></div>
-      </div>
-
-      <!-- Usuarios -->
-      <div class="admin-tab-content" id="adminTabUsuarios">
-        <div class="auth-form-group">
-          <input class="auth-input" id="adminUserSearch" placeholder="Buscar por usuario o email..." style="padding-left:12px;">
-        </div>
-        <ul class="admin-list" id="adminUsersList" style="max-height: 400px;"></ul>
-      </div>
-
-      <!-- Avisos -->
-      <div class="admin-tab-content" id="adminTabAvisos">
-        <div class="admin-section-title">Crear nuevo aviso</div>
-        <div class="admin-juegos-form">
-          <div class="auth-form-group">
-            <label class="auth-form-label">Texto del aviso</label>
-            <input class="auth-input" id="adminAvisoNuevoTexto" placeholder="Ej: Mantenimiento programado el viernes" style="padding-left:12px;">
-          </div>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-            <div class="auth-form-group">
-              <label class="auth-form-label">Ícono (emoji)</label>
-              <input class="auth-input" id="adminAvisoNuevoIcono" placeholder="📢" style="padding-left:12px;">
-            </div>
-            <div class="auth-form-group">
-              <label class="auth-form-label">Color</label>
-              <input class="auth-input" type="color" id="adminAvisoNuevoColor" value="#3b82f6" style="padding-left:12px; height:42px;">
-            </div>
-          </div>
-          <button class="auth-btn-submit" onclick="crearAvisoAdmin()"><span>Crear aviso</span></button>
-        </div>
-        <div class="admin-section-title">Avisos existentes</div>
-        <div id="adminAvisosList" style="display:flex; flex-direction:column; gap:8px;"></div>
-      </div>
-
-      <!-- Contenido de los juegos -->
-      <div class="admin-tab-content" id="adminTabJuegos">
-        <div class="admin-juegos-toolbar">
-          <div class="auth-form-group" style="margin-bottom:0;">
-            <label class="auth-form-label">Tipo de contenido</label>
-            <select class="auth-input" id="juegosTipoSelect" onchange="switchJuegoTipo(this.value)">
-              <option value="ahorcado">Ahorcado (palabras)</option>
-              <option value="sopa">Sopa de Letras</option>
-              <option value="wordle">Adivina la Palabra</option>
-              <option value="termina">Termina la Palabra</option>
-              <option value="preguntas">Preguntados</option>
-              <option value="adivina">Adivina la Cosa</option>
-            </select>
-          </div>
-          <div class="auth-form-group" style="margin-bottom:0;">
-            <label class="auth-form-label">Filtrar por temática</label>
-            <select class="auth-input" id="juegosTematicaFiltro" onchange="loadJuegosContenidoList()"></select>
-          </div>
-        </div>
-
-        <div class="admin-juegos-form">
-          <p class="admin-juegos-nota" id="jgNotaCompartida" style="display:none;"></p>
-          <div id="juegosCamposComunes"></div>
-          <div style="display:flex; gap:8px; margin-top:4px;">
-            <button class="auth-btn-submit" id="juegosSubmitBtn" onclick="guardarContenidoJuego()" style="margin-top:0;"><span>Agregar</span></button>
-            <button class="auth-btn-submit" id="juegosCancelBtn" onclick="cancelarEdicionJuego()" style="margin-top:0; display:none; background:#334155;"><span>Cancelar edición</span></button>
-          </div>
-        </div>
-
-        <div class="admin-section-title">Contenido cargado</div>
-        <div id="juegosContenidoList"></div>
-      </div>
-
-      <!-- Reportes: tabla en pantalla + exportar a CSV (Excel) o PDF -->
-      <div class="admin-tab-content" id="adminTabReportes">
-        <div class="admin-juegos-toolbar">
-          <div class="auth-form-group" style="margin-bottom:0;">
-            <label class="auth-form-label" for="reporteTipo">Reporte</label>
-            <select class="auth-input" id="reporteTipo" onchange="cambiarTipoReporte(this.value)">
-              <option value="usuarios">Usuarios registrados</option>
-              <option value="ranking">Ranking por juego</option>
-              <option value="actividad">Actividad por juego</option>
-            </select>
-          </div>
-          <div class="auth-form-group" id="reporteJuegoGrupo" style="margin-bottom:0; visibility:hidden;">
-            <label class="auth-form-label" for="reporteJuego">Juego</label>
-            <select class="auth-input" id="reporteJuego" onchange="cargarReporte()">
-              <option value="">Todos</option>
-            </select>
-          </div>
-        </div>
-        <div class="admin-reporte-barra">
-          <span class="admin-reporte-estado" id="reporteEstado"></span>
-          <div class="admin-reporte-botones">
-            <button class="auth-btn-submit" onclick="exportarReporteCSV()"><span>Descargar CSV (Excel)</span></button>
-            <button class="auth-btn-submit" onclick="exportarReportePDF()"><span>Descargar PDF</span></button>
-          </div>
-        </div>
-        <div class="admin-reporte-scroll">
-          <table class="admin-reporte-tabla" id="reporteTabla"></table>
-        </div>
-      </div>
-
-      <!-- Configuración -->
-      <div class="admin-tab-content" id="adminTabConfig">
-        <div class="auth-form-group">
-          <label class="auth-form-label">Tema del sitio (por defecto)</label>
-          <select class="auth-input" id="adminTema" style="padding-left:12px;">
-            <option value="dark">Oscuro (default)</option>
-            <option value="light">Claro</option>
-            <option value="red">Rojo</option>
-          </select>
-        </div>
-        <div class="admin-section-title">Perfiles del equipo (GitHub)</div>
-        <div class="auth-form-group">
-          <label class="auth-form-label">GitHub - Rodrigo</label>
-          <input class="auth-input" id="adminGitRodrigo" placeholder="usuario o URL de GitHub" style="padding-left:12px;">
-        </div>
-        <div class="auth-form-group">
-          <label class="auth-form-label">GitHub - Santiago</label>
-          <input class="auth-input" id="adminGitSantiago" placeholder="usuario o URL de GitHub" style="padding-left:12px;">
-        </div>
-        <div class="auth-form-group">
-          <label class="auth-form-label">GitHub - Kevin</label>
-          <input class="auth-input" id="adminGitKevin" placeholder="usuario o URL de GitHub" style="padding-left:12px;">
-        </div>
-        <button class="auth-btn-submit" onclick="saveAdminConfig()"><span>Guardar configuración</span></button>
-      </div>
-
-    </div>
+    <button class="aviso-alta-btn" id="avisoAltaBtn" onclick="avCerrarAvisoAlta()">Entendido</button>
   </div>
 </div>
+
+<!-- ── Modo mantenimiento (lo activa un admin desde Configuración) ── -->
+<div class="mant-overlay" id="mantenimientoOverlay" role="dialog" aria-modal="true" aria-labelledby="mantTitulo" hidden>
+  <div class="mant-card">
+    <div class="mant-icon" aria-hidden="true"><i data-ico="wrench" data-ico-size="56"></i></div>
+    <h2 class="mant-titulo" id="mantTitulo">EN MANTENIMIENTO</h2>
+    <p class="mant-texto" id="mantenimientoMsg"></p>
+    <button class="mant-login" onclick="openModal('login')">Soy admin · Iniciar sesión</button>
+  </div>
+</div>
+<div class="mant-strip" id="mantenimientoStrip" hidden><i data-ico="wrench" data-ico-size="14"></i> Modo mantenimiento activo: los usuarios no pueden entrar. <button onclick="admAbrir('config')">Desactivar</button></div>
 
 <!-- ── Duelos y notificaciones ── -->
 
@@ -1548,16 +1421,16 @@
 <div class="duelo-overlay" id="dueloSelectorOverlay">
   <div class="modal-bg-blur" onclick="cerrarSelectorJuegoDuelo()"></div>
   <div class="duelo-card">
-    <button class="modal-close-new" onclick="cerrarSelectorJuegoDuelo()">✕</button>
+    <button class="modal-close-new" onclick="cerrarSelectorJuegoDuelo()"><i data-ico="x" data-ico-size="14"></i></button>
 
     <!-- Paso 1: elegir el juego -->
-    <div class="duelo-card-title" id="dueloJuegoTitle">⚔️ ¿A qué lo retás?</div>
+    <div class="duelo-card-title" id="dueloJuegoTitle"><i data-ico="swords" data-ico-size="18"></i> ¿A qué lo retás?</div>
     <div class="duelo-juego-opciones" id="dueloJuegoOpciones">
       <!-- Lo llena app2.js (abrirSelectorJuegoDuelo) -->
     </div>
 
     <!-- Paso 2: temática (y duración) para los juegos que la piden -->
-    <div class="duelo-card-title" id="dueloOpcionesTitle" style="display:none;">🎯 Elegí las opciones</div>
+    <div class="duelo-card-title" id="dueloOpcionesTitle" style="display:none;"><i data-ico="target" data-ico-size="18"></i> Elegí las opciones</div>
     <div id="dueloOpcionesStep" style="display:none;">
       <p class="duelo-opciones-label">Temática</p>
       <div class="theme-selector game-start-themes" id="dueloTematicaOpciones">
@@ -1571,7 +1444,7 @@
         </div>
       </div>
 
-      <button class="btn-play" style="width:100%;margin-top:1.25rem;" onclick="confirmarDueloConOpciones()">⚔️ Enviar reto</button>
+      <button class="btn-play" style="width:100%;margin-top:1.25rem;" onclick="confirmarDueloConOpciones()"><i data-ico="swords" data-ico-size="15"></i> Enviar reto</button>
       <button class="btn-back duelo-opciones-volver" onclick="volverAPasoJuegoDuelo()">← Elegir otro juego</button>
     </div>
   </div>
@@ -1598,7 +1471,7 @@
   <div class="notif-card">
     <div class="notif-card-header">
       <div class="notif-card-title"><span class="modal-logo-dot"></span> Notificaciones</div>
-      <button class="modal-close-new" onclick="closeNotifModal()">✕</button>
+      <button class="modal-close-new" onclick="closeNotifModal()"><i data-ico="x" data-ico-size="14"></i></button>
     </div>
     <div class="notif-card-toolbar">
       <button class="notif-mark-all" onclick="marcarTodasNotifLeidas()">Marcar todas como leídas</button>

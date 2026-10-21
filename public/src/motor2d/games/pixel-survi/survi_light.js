@@ -149,29 +149,54 @@ export class LightMap {
       }
     }
     // oscuridad = 1 - luz (con una curva: la penumbra se ve menos lavada)
+    // De paso se anota el recuadro que tiene algo de oscuridad: de día, a
+    // cielo abierto, buena parte de la vista queda en 0 y no hace falta
+    // pasarla por draw() (estirar la capa sobre toda la pantalla era de lo
+    // que más costaba dibujar en gama baja).
     const d = this.image.data;
     const [R, G, B] = this.colorOscuro || SurviConfig.DARK_COLOR;
-    for (let i = 0; i < w * h; i++) {
-      const lit = Math.min(1, L[i]);
-      const dark = Math.pow(1 - lit, 1.25);
-      const o = i * 4;
-      d[o] = R;
-      d[o + 1] = G;
-      d[o + 2] = B;
-      d[o + 3] = Math.round(dark * 255);
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0, i = 0; y < h; y++) {
+      for (let x = 0; x < w; x++, i++) {
+        const lit = Math.min(1, L[i]);
+        const a = Math.round(Math.pow(1 - lit, 1.25) * 255);
+        const o = i * 4;
+        d[o] = R;
+        d[o + 1] = G;
+        d[o + 2] = B;
+        d[o + 3] = a;
+        if (a) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
     }
     this.ctx.putImageData(this.image, 0, 0);
+    // +1 celda de borde (transparente): el suavizado del estirado mezcla con
+    // la vecina, así el resultado es idéntico a dibujar la capa entera.
+    this.oscuro =
+      x1 < 0
+        ? null
+        : { x0: Math.max(0, x0 - 1), y0: Math.max(0, y0 - 1), x1: Math.min(w - 1, x1 + 1), y1: Math.min(h - 1, y1 + 1) };
   }
 
   // Dibuja la capa de oscuridad. Tiene que llamarse con el ctx ya escalado
   // por el zoom (mismo espacio que tilemap.draw).
   draw(ctx, camera) {
     if (!this.w) return;
-    const sx = this.c0 * SurviConfig.TILE - camera.x,
-      sy = this.r0 * SurviConfig.TILE - camera.y;
+    const b = this.oscuro;
+    if (b === null) return; // todo iluminado: no hay nada que oscurecer
+    const T = SurviConfig.TILE;
+    // Sin cálculo todavía (oscuro undefined): la capa entera, como siempre.
+    const x0 = b ? b.x0 : 0, y0 = b ? b.y0 : 0;
+    const bw = b ? b.x1 - b.x0 + 1 : this.w, bh = b ? b.y1 - b.y0 + 1 : this.h;
+    const sx = (this.c0 + x0) * T - camera.x,
+      sy = (this.r0 + y0) * T - camera.y;
     const prev = ctx.imageSmoothingEnabled;
     ctx.imageSmoothingEnabled = true; // degradé suave entre tiles
-    ctx.drawImage(this.canvas, 0, 0, this.w, this.h, sx, sy, this.w * SurviConfig.TILE, this.h * SurviConfig.TILE);
+    ctx.drawImage(this.canvas, x0, y0, bw, bh, sx, sy, bw * T, bh * T);
     ctx.imageSmoothingEnabled = prev;
   }
 
